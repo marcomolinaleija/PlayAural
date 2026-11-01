@@ -172,3 +172,146 @@ def test_stale_future_and_occupied_status_cannot_authorize_a_restart(tmp_path, a
     (tmp_path / 'data/maintenance-status.json').write_text(json.dumps({'observed_at': 1000 - age, 'table_count': count}))
     with pytest.raises(RuntimeError):
         module.idle_status(tmp_path, now=1000)
+
+
+@pytest.fixture
+def git_flow(tmp_path):
+    if shutil.which('git') is None:
+        pytest.skip('Real Git flow requires Git')
+    def git(directory, *args):
+        return subprocess.check_output(
+            ['git', '-C', str(directory), '-c', 'user.name=Test',
+             '-c', 'user.email=test@example.invalid', *args], text=True,
+            stderr=subprocess.PIPE).strip()
+    upstream = tmp_path / 'upstream'
+    upstream.mkdir()
+    git(upstream, 'init', '-q', '--initial-branch=main')
+    git(upstream, 'commit', '--allow-empty', '-qm', 'base')
+    base = git(upstream, 'rev-parse', 'HEAD')
+    remote = tmp_path / 'fork.git'
+    subprocess.run(['git', 'clone', '--bare', str(upstream), str(remote)], check=True, capture_output=True)
+    root = tmp_path / 'runtime'
+    repository = root / 'auto/repository'
+    repository.parent.mkdir(parents=True)
+    subprocess.run(['git', 'clone', str(remote), str(repository)], check=True, capture_output=True)
+    git(repository, 'remote', 'add', 'upstream', str(upstream))
+    git(repository, 'push', 'origin', 'HEAD:refs/heads/develop')
+    (root / 'current.env').write_text('RELEASE_ID=' + base + '\n')
+    controller = module.Coordinator(root)
+    return SimpleNamespace(controller=controller, git=git, upstream=upstream,
+                           remote=remote, repository=repository, root=root, base=base)
+
+
+def successful_ci(controller):
+    class API:
+        def repo(self, path):
+            assert path.startswith('actions/workflows/marco-ci.yml/runs?')
+            return {'workflow_runs': [{'id': 123, 'status': 'completed', 'conclusion': 'success'}]}
+    controller.api = API()
+
+
+def test_unreleased_develop_changes_do_not_start_a_release(git_flow):
+    flow = git_flow
+    flow.git(flow.repository, 'checkout', '-b', 'feature/pending')
+    flow.git(flow.repository, 'commit', '--allow-empty', '-qm', 'unfinished feature')
+    flow.git(flow.repository, 'push', 'origin', 'HEAD:refs/heads/develop')
+    assert flow.controller.create_job() is None
+    assert flow.controller.current_release() == flow.base
+    assert not flow.controller.state_path.exists()
+
+
+def test_upstream_integration_only_advances_develop_after_ci(git_flow):
+    flow = git_flow
+    flow.git(flow.upstream, 'commit', '--allow-empty', '-qm', 'upstream change')
+    job = flow.controller.create_job()
+    assert job['kind'] == 'integration' and job['phase'] == 'agent'
+    assert job['branch'].startswith('feature/upstream-')
+    flow.git(flow.repository, 'merge', '--no-ff', 'upstream/main', '-m', 'integrate upstream')
+    job.update(candidate=flow.git(flow.repository, 'rev-parse', 'HEAD'), phase='ci')
+    successful_ci(flow.controller)
+    assert flow.controller.ci(job) is False
+    assert job['phase'] == 'done' and job['integrated_ref'] == 'develop'
+    assert flow.git(flow.remote, 'rev-parse', 'main') == flow.base
+    assert flow.git(flow.remote, 'rev-parse', 'develop') == job['candidate']
+    assert flow.controller.current_release() == flow.base
+    assert not any(key in job for key in ('windows_run', 'android_code', 'promotion_unit'))
+    assert flow.controller.create_job() is None
+
+
+def test_main_release_is_pinned_without_merging_pending_upstream(git_flow, monkeypatch):
+    flow = git_flow
+    flow.git(flow.repository, 'commit', '--allow-empty', '-qm', 'approved release')
+    approved = flow.git(flow.repository, 'rev-parse', 'HEAD')
+    flow.git(flow.repository, 'push', 'origin', 'HEAD:refs/heads/main')
+    flow.git(flow.upstream, 'commit', '--allow-empty', '-qm', 'not approved for production')
+    monkeypatch.setattr(module, 'start_agent', lambda *args: pytest.fail('A release must not edit main'))
+    job = flow.controller.create_job()
+    assert job['kind'] == 'release' and job['phase'] == 'ci'
+    assert job['candidate'] == approved and job['branch'] == 'main'
+    successful_ci(flow.controller)
+    assert flow.controller.ci(job) is True
+    assert job['phase'] == 'windows'
+    assert flow.git(flow.remote, 'rev-parse', 'main') == approved
+    assert flow.git(flow.remote, 'rev-parse', 'develop') == flow.base
+    assert not flow.controller.ancestor(job['upstream'], approved)
+
+
+@pytest.mark.parametrize('branch', ['main', 'develop'])
+def test_integration_preserves_concurrent_main_and_develop_changes(git_flow, branch):
+    flow = git_flow
+    flow.git(flow.upstream, 'commit', '--allow-empty', '-qm', 'upstream change')
+    job = flow.controller.create_job()
+    flow.git(flow.repository, 'merge', '--no-ff', 'upstream/main', '-m', 'integrate upstream')
+    job.update(candidate=flow.git(flow.repository, 'rev-parse', 'HEAD'), phase='ci')
+    tree = flow.git(flow.repository, 'rev-parse', flow.base + '^{tree}')
+    concurrent = flow.git(flow.repository, 'commit-tree', tree, '-p', flow.base, '-m', 'concurrent change')
+    flow.git(flow.repository, 'push', 'origin', concurrent + ':refs/heads/' + branch)
+    successful_ci(flow.controller)
+    assert flow.controller.ci(job) is True
+    assert job['phase'] == 'agent'
+    assert flow.git(flow.remote, 'rev-parse', branch) == concurrent
+    assert job['main' if branch == 'main' else 'base'] == concurrent
+    assert flow.controller.current_release() == flow.base
+
+
+def test_failed_release_defers_without_creating_an_integration_agent(git_flow):
+    flow = git_flow
+    flow.git(flow.repository, 'commit', '--allow-empty', '-qm', 'approved release')
+    flow.git(flow.repository, 'push', 'origin', 'HEAD:refs/heads/main')
+    job = flow.controller.create_job()
+    assert flow.controller.repair(job, 'build failed', 'failure details') is False
+    assert job['phase'] == 'deferred'
+    assert flow.git(flow.remote, 'rev-parse', 'main') == job['candidate']
+    assert flow.controller.current_release() == flow.base
+    assert (flow.controller.job_dir(job) / 'failure.log').read_text() == 'failure details'
+
+
+def test_deferred_release_restarts_only_after_main_is_corrected(git_flow, monkeypatch):
+    flow = git_flow
+    flow.git(flow.repository, 'commit', '--allow-empty', '-qm', 'failed release')
+    flow.git(flow.repository, 'push', 'origin', 'HEAD:refs/heads/main')
+    failed = flow.controller.create_job()
+    flow.controller.repair(failed, 'build failed')
+    monkeypatch.setattr(module, 'Coordinator', lambda root: flow.controller)
+    monkeypatch.setattr(sys, 'argv', ['autoupdate.py', '--root', str(flow.root)])
+    advanced = []
+    def advance(job):
+        advanced.append(job['candidate'])
+        job['phase'] = 'done'
+        flow.controller.save(job)
+        return False
+    monkeypatch.setattr(flow.controller, 'advance', advance)
+    module.main()
+    assert not advanced
+    flow.git(flow.repository, 'commit', '--allow-empty', '-qm', 'corrected release')
+    corrected = flow.git(flow.repository, 'rev-parse', 'HEAD')
+    flow.git(flow.repository, 'push', 'origin', 'HEAD:refs/heads/main')
+    module.main()
+    assert advanced == [corrected]
+
+
+def test_git_flow_agent_prompt_identifies_all_histories_and_develop_target():
+    prompt = module.integration_prompt('upstream-sha', 'develop-sha', main='main-sha')
+    assert 'integration into develop' in prompt
+    assert 'main-sha' in prompt
+    assert 'Never merge develop into main' in prompt
