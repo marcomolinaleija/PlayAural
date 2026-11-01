@@ -104,6 +104,8 @@
   "chat-empty": "Chưa có tin nhắn trò chuyện.",
   "chat-unknown-sender": "Không rõ",
   "chat-private": "Tin nhắn riêng từ {player}: {message}",
+  "chat-global": "Trò chuyện chung, {player}: {message}",
+  "chat-local": "Trò chuyện bàn, {player}: {message}",
   "chat-announcement": "Thông báo hệ thống: {message}",
   "history-empty": "Chưa có thông báo nào.",
   "buffer-all": "Tất cả",

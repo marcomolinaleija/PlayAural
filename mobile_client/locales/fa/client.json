@@ -81,6 +81,8 @@
   "chat-empty": "هنوز پیامی در چت وجود ندارد.",
   "chat-unknown-sender": "ناشناس",
   "chat-private": "پیام خصوصی از {player}: {message}",
+  "chat-global": "گفتگوی عمومی، {player}: {message}",
+  "chat-local": "گفتگوی میز، {player}: {message}",
   "chat-announcement": "اعلامیه‌ی سیستم: {message}",
   "history-empty": "هنوز پیامی وجود ندارد.",
   "shortcuts-title": "میانبرها",

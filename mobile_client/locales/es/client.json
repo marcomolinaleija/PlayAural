@@ -104,6 +104,8 @@
   "chat-empty": "Aún no hay mensajes de chat.",
   "chat-unknown-sender": "Desconocido",
   "chat-private": "Mensaje privado de {player}: {message}",
+  "chat-global": "Chat global, {player}: {message}",
+  "chat-local": "Chat de mesa, {player}: {message}",
   "chat-announcement": "Anuncio del sistema: {message}",
   "history-empty": "Aún no hay mensajes.",
   "buffer-all": "Todo",

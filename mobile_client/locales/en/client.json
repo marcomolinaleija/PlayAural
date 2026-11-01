@@ -104,6 +104,8 @@
   "chat-empty": "No chat messages yet.",
   "chat-unknown-sender": "Unknown",
   "chat-private": "Private message from {player}: {message}",
+  "chat-global": "Global chat, {player}: {message}",
+  "chat-local": "Table chat, {player}: {message}",
   "chat-announcement": "System announcement: {message}",
   "history-empty": "No messages yet.",
   "buffer-all": "All",
