@@ -1,4 +1,4 @@
-window.PLAYAURAL_WEB_VERSION = "1.0.5.3";
+window.PLAYAURAL_WEB_VERSION = "1.0.5.3+marco.1";
 
 function startupErrorMessage() {
   const language = String(navigator.language || "").toLowerCase();

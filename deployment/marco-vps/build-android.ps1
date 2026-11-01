@@ -10,6 +10,7 @@ try {
     $env:PLAYAURAL_MARCO_BUILD = '1'
     $env:EXPO_PUBLIC_PLAYAURAL_SERVER_URL = 'wss://play.marco-ml.com'
     $env:PLAYAURAL_ANDROID_VERSION_CODE = $VersionCode
+    $env:EXPO_PUBLIC_PLAYAURAL_BUILD_ID = (& git rev-parse HEAD).Trim()
     & npm.cmd ci
     if ($LASTEXITCODE) { throw 'Android dependency installation failed' }
     & npm.cmd run typecheck

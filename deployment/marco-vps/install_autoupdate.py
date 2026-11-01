@@ -12,7 +12,7 @@ from controller_revision import controller_is_newer, record_controller
 
 PAYLOAD = ('autoupdate.py', 'agent_runner.py', 'codex_quota.py', 'deployment_gate.py', 'controller_revision.py',
            'github_release.py', 'sign_android.py', 'promote.sh', 'rollback.sh', 'install_autoupdate.py',
-           'prepare_public_web_source.py')
+           'prepare_public_web_source.py', 'auth_release_probe.py')
 UNITS = ('playaural-update.service', 'playaural-update.timer',
          'playaural-update-resume.service', 'playaural-update-resume.timer')
 

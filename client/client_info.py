@@ -6,6 +6,8 @@ import platform
 import sys
 from urllib.parse import urlsplit
 
+from release_build import get_build_id
+
 
 def _compact(text: str) -> str:
     return " ".join(str(text or "").split())
@@ -84,6 +86,9 @@ def client_auth_metadata(client: str = "python") -> dict[str, str]:
     platform_label = get_client_platform_label()
     if platform_label:
         metadata["platform"] = platform_label
+    build = get_build_id()
+    if build:
+        metadata['build_id'] = build
     return metadata
 
 

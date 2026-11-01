@@ -70,6 +70,7 @@ for attempt in $(seq 1 45); do
   sleep 1
 done
 test "$healthy" = 1
+docker exec -i playaural-game-1 /app/server/.venv/bin/python - < "$script_dir/auth_release_probe.py"
 ln -sfn "$target" "$root/current"
 cp "$backup/previous.env" "$root/previous.env"
 printf '%s\n' "$backup" > "$root/last-backup"

@@ -167,10 +167,29 @@ journalctl --user -u playaural-update.service -u playaural-update-resume.service
 ```
 
 Automatic server deployment and artifact publication do not bypass Android's
-installation confirmation. Existing clients compare protocol versions; a
-same-version correction is published at the downloads page without forcing an
-installed client to replace itself. Account authorization expiry and genuinely
-unsafe integrations remain explicit deferred states, never successful updates.
+installation confirmation. This downstream compatibility release is identified
+as `1.0.5.3+marco.1` in every component, using a local version label rather than
+claiming a new upstream release. The initial version change lets legacy clients
+discover the migration through their existing updater. Exact version checks
+remain in place; no version aliases or upstream binary substitutions are used.
+The convention follows [Python's downstream version identifiers](https://packaging.python.org/en/latest/specifications/version-specifiers/#local-version-identifiers).
+
+Modern Windows and Android packages also embed their actual source commit.
+Application artifacts publish that immutable `build_id`, allowing a correction
+to trigger the existing mandatory update flow even when the protocol version
+is unchanged. A reported stale native build receives an update-only bootstrap
+without replacing a live account session. The Windows ZIP enforces SHA-256;
+Android retains its stable signing key and increasing versionCode. The builders
+and coordinator verify the compiled identities before publishing them. Source
+development runs retain exact protocol checks without requiring packaged build
+metadata. Account authorization expiry and genuinely unsafe integrations remain
+explicit deferred states, never successful updates.
+
+The final deployment gate authenticates both native update channels over public
+TLS using the managed operator credential. Its deliberately outdated version
+receives only the update bootstrap and cannot displace an existing session.
+The same probe runs after startup; a protocol or artifact mismatch rolls the
+deployment back to its verified database backup.
 
 ## Private Backblaze backups
 

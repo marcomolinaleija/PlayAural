@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import time
 
@@ -25,6 +26,10 @@ def verify(root):
     quota = read_quota(env=dict(os.environ, CODEX_HOME=str(Path(root) / 'auto/agent-home')))
     if not quota['allowed']:
         raise RuntimeError('Codex reserve reached; deployment deferred')
+    with Path(__file__).with_name('auth_release_probe.py').open('rb') as probe:
+        result = subprocess.run(['docker', 'exec', '-i', 'playaural-game-1', '/app/server/.venv/bin/python', '-'],
+                                stdin=probe, capture_output=True, check=True, text=False, timeout=75)
+    print(result.stdout.decode('utf-8'), end='')
     if os.environ.get('PLAYAURAL_BOOTSTRAP_IDLE') == '1':
         current = (Path(root) / 'current.env').read_text()
         if 'RELEASE_ID=49a80c60117152c70107d0a58a62b30398e1db1c\n' not in current:
@@ -38,6 +43,6 @@ def verify(root):
 if __name__ == '__main__':
     try:
         verify(Path(sys.argv[1]))
-    except (RuntimeError, OSError, ValueError, KeyError, TimeoutError) as error:
+    except (RuntimeError, OSError, ValueError, KeyError, TimeoutError, subprocess.SubprocessError) as error:
         print(str(error), file=sys.stderr)
         sys.exit(75)

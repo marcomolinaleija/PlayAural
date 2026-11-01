@@ -158,7 +158,7 @@ from ..game_utils.game_result import GameResult
 from ..audio import SameTurnAudioBatcher
 
 
-VERSION = "1.0.5.3"
+VERSION = "1.0.5.3+marco.1"
 # Legacy native-updater compatibility constants. Retain these exact names and
 # values until an explicit compatibility cleanup removes them.
 UPDATE_URL = "https://github.com/Daoductrung/PlayAural/releases/latest/download/PlayAural.zip"
@@ -1830,7 +1830,20 @@ PlayAural Server
                 auth_failure_reason = "wrong_password"
             else:
                 canonical_username = user_record.username
-                if client_version != VERSION:
+                release_metadata = self._client_release_metadata(
+                    client_type=client_type,
+                    client_platform=client_platform,
+                    release_platform=release_platform,
+                )
+                expected_build = release_metadata.get('update_info', {}).get('build_id', '')
+                reported_build = packet.get('build_id')
+                build_mismatch = bool(
+                    expected_build
+                    and isinstance(reported_build, str)
+                    and reported_build
+                    and reported_build != expected_build
+                )
+                if client_version != VERSION or build_mismatch:
                     # Native clients need the existing authorize-success
                     # shape to launch their mandatory updater. This is an
                     # update-only bootstrap: it never installs an online
@@ -1839,11 +1852,7 @@ PlayAural Server
                         "type": "authorize_success",
                         "username": canonical_username,
                         "locale": user_record.locale or "en",
-                        **self._client_release_metadata(
-                            client_type=client_type,
-                            client_platform=client_platform,
-                            release_platform=release_platform,
-                        ),
+                        **release_metadata,
                         "preferences": {},
                     }
                 else:

@@ -1,6 +1,6 @@
 {
   "name": "playaural-mobile-client",
-  "version": "1.0.5.3",
+  "version": "1.0.5.3+marco.1",
   "private": true,
   "license": "GPL-3.0-or-later",
   "main": "index.ts",

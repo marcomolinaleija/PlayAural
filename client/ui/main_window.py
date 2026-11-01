@@ -39,6 +39,7 @@ from network_manager import NetworkManager
 from buffer_system import BufferSystem
 from config_manager import set_item_in_dict
 from localization import Localization
+from release_build import application_update_required
 from update_download import (
     DownloadProgress,
     ReleaseDownloadCancelled,
@@ -2755,8 +2756,7 @@ class MainWindow(wx.Frame):
         # Check for updates
         update_info = packet.get("update_info")
         if update_info:
-            server_ver = update_info.get("version")
-            if server_ver and server_ver != VERSION:
+            if application_update_required(update_info, VERSION):
                 wx.CallAfter(
                     self._handle_release_requirement,
                     update_info,

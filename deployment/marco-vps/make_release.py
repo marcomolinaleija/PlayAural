@@ -24,6 +24,10 @@ version, sounds_version = constants["VERSION"], constants["SOUNDS_VERSION"]
 assert (args.desktop / "PlayAural.exe").is_file()
 assert (args.desktop / "updater.exe").is_file()
 assert args.android.is_file()
+assert json.loads((args.desktop / '_internal/release-build.json').read_text())['source_commit'] == commit
+with zipfile.ZipFile(args.android) as apk:
+    assert commit.encode() in apk.read('assets/PlayAural-SOURCE.txt')
+    assert commit.encode() in apk.read('assets/index.android.bundle')
 sounds = args.desktop / "_internal/sounds"
 assert (sounds / "version.txt").read_text().strip() == sounds_version
 args.destination.mkdir(parents=True, exist_ok=False)
@@ -45,10 +49,10 @@ manifest = {
     "sha256": hashes,
     "targets": {
         "windows": {
-            "application": {"url": base + "/PlayAural.zip", "delivery": "windows_zip", "sha256": hashes["PlayAural.zip"]},
+            "application": {"url": base + "/PlayAural.zip", "delivery": "windows_zip", "sha256": hashes["PlayAural.zip"], "build_id": commit},
             "sounds": {"url": base + "/sounds.zip", "delivery": "windows_zip", "sha256": hashes["sounds.zip"]}},
         "android": {
-            "application": {"url": base + "/PlayAural.apk", "delivery": "browser"},
+            "application": {"url": base + "/PlayAural.apk", "delivery": "browser", "build_id": commit},
             "sounds": {"url": base + "/PlayAural.apk", "delivery": "browser"}},
     },
 }

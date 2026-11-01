@@ -344,8 +344,9 @@ class Coordinator:
                    '--build-tools', '/home/circleci/android-sdk/build-tools/36.0.0']
         result = subprocess.run(command, capture_output=True, text=True)
         (self.job_dir(job) / 'signing.log').write_text(result.stdout + result.stderr, encoding='utf-8')
-        if result.returncode or f"versionCode='{job['android_code']}'" not in result.stdout:
-            raise RuntimeError('Android signing or versionCode verification failed')
+        if (result.returncode or f"versionCode='{job['android_code']}'" not in result.stdout
+                or f"versionName='{job['windows_metadata']['version']}'" not in result.stdout):
+            raise RuntimeError('Android signing or version verification failed')
         expected_cert = '3657e4d8fdd4b31537eb80c327701cf65385d70b9e2caabd2bb6be5a1afc8748'
         if 'certificate SHA-256 digest: ' + expected_cert not in result.stdout:
             raise RuntimeError('Android signing certificate changed')
@@ -355,6 +356,8 @@ class Coordinator:
             if job['candidate'].encode() not in archive.read('assets/PlayAural-SOURCE.txt'):
                 raise ValueError('APK source notice does not match')
             bundle = archive.read('assets/index.android.bundle')
+            if job['windows_metadata'].get('build_id') and job['candidate'].encode() not in bundle:
+                raise ValueError('APK compiled build identity does not match')
             english = json.loads((code / 'mobile_client/locales/en/client.json').read_text())
             for key in ('chat-local', 'chat-global'):
                 if english[key].encode() not in bundle:
@@ -394,6 +397,11 @@ class Coordinator:
                                                 'sounds': {'url': base + '/sounds.zip', 'delivery': 'windows_zip', 'sha256': hashes['sounds.zip']}},
                                     'android': {'application': {'url': base + '/PlayAural.apk', 'delivery': 'browser'},
                                                 'sounds': {'url': base + '/PlayAural.apk', 'delivery': 'browser'}}}}
+            if metadata.get('build_id'):
+                if metadata['build_id'] != job['candidate']:
+                    raise ValueError('Native build identity does not match approved source')
+                for target in ('windows', 'android'):
+                    manifest['targets'][target]['application']['build_id'] = metadata['build_id']
             (staging / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n')
             (staging / 'SHA256SUMS.txt').write_text(''.join(f'{value}  {name}\n' for name, value in hashes.items()))
             for path in staging.iterdir():
@@ -500,7 +508,7 @@ class Coordinator:
                 raise RuntimeError('Public native manifest is not the approved release')
         version = active['version']
         revision = job['candidate']
-        html = f'''<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PlayAural Marco: descargas</title><style>body{{font:18px/1.6 system-ui;max-width:48rem;margin:3rem auto;padding:1rem;background:#101620;color:#f2f5fa}}a{{color:#9bd4ff}}li{{margin:1rem 0}}</style><main><h1>PlayAural Marco</h1><p><a href="/">Jugar desde el navegador</a></p><p>Versión {version}. Compilada desde las fuentes verificadas de esta instancia.</p><ul><li><a href="{revision}/PlayAural.zip">Windows de 64 bits: ZIP portátil</a>. Extrae la carpeta completa y ejecuta PlayAural.exe.</li><li><a href="{revision}/PlayAural.apk">Android: APK</a>. Instálalo sobre PlayAural Marco para conservar sus datos. Android solicita confirmar la instalación.</li></ul><p><a href="{revision}/source.tar.gz">Código fuente de esta entrega</a> · <a href="{revision}/SHA256SUMS.txt">Sumas SHA-256</a> · <a href="/licenses/LICENSE">Licencia GPL</a> · <a href="/licenses/THIRD_PARTY_NOTICES.md">Avisos de terceros</a></p><p>Las actualizaciones de servidor y descargas se preparan automáticamente. Si una corrección conserva la versión del protocolo, descarga el paquete actualizado desde esta página.</p></main></html>'''
+        html = f'''<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PlayAural Marco: descargas</title><style>body{{font:18px/1.6 system-ui;max-width:48rem;margin:3rem auto;padding:1rem;background:#101620;color:#f2f5fa}}a{{color:#9bd4ff}}li{{margin:1rem 0}}</style><main><h1>PlayAural Marco</h1><p><a href="/">Jugar desde el navegador</a></p><p>Versión {version}. Compilada desde las fuentes verificadas de esta instancia.</p><ul><li><a href="{revision}/PlayAural.zip">Windows de 64 bits: ZIP portátil</a>. Extrae la carpeta completa y ejecuta PlayAural.exe.</li><li><a href="{revision}/PlayAural.apk">Android: APK</a>. Instálalo sobre PlayAural Marco para conservar sus datos. Android solicita confirmar la instalación.</li></ul><p><a href="{revision}/source.tar.gz">Código fuente de esta entrega</a> · <a href="{revision}/SHA256SUMS.txt">Sumas SHA-256</a> · <a href="/licenses/LICENSE">Licencia GPL</a> · <a href="/licenses/THIRD_PARTY_NOTICES.md">Avisos de terceros</a></p><p>Las actualizaciones de servidor y descargas se preparan automáticamente. Los clientes de esta entrega detectan también las correcciones que conservan el número de versión. Android solicita confirmar la instalación de cada APK.</p></main></html>'''
         index = self.root / 'downloads/.index-auto.next'
         index.write_text(html, encoding='utf-8')
         index.chmod(0o644)
