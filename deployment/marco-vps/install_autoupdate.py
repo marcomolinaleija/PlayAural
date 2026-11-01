@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tomllib
 
+from github_release import GitHub
 
 PAYLOAD = ('autoupdate.py', 'agent_runner.py', 'codex_quota.py', 'deployment_gate.py',
            'github_release.py', 'sign_android.py', 'promote.sh', 'rollback.sh', 'install_autoupdate.py')
@@ -25,6 +26,19 @@ def install(root, source, *, enable=False):
     if not token.is_file():
         raise RuntimeError('Install the private GitHub credential before enabling the coordinator')
     token.chmod(0o600)
+    api = GitHub(token)
+    key = root / 'auto/credentials/repository_ed25519'
+    if not key.exists():
+        subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-C', 'PlayAural VPS updater', '-f', str(key)], check=True)
+    key.chmod(0o600)
+    public = key.with_suffix('.pub').read_text().strip()
+    identity = ' '.join(public.split()[:2])
+    existing_keys = api.repo('keys')
+    if not any(' '.join(item['key'].split()[:2]) == identity for item in existing_keys):
+        api.repo('keys', 'POST', {'title': 'PlayAural VPS automatic updates', 'key': public, 'read_only': False})
+    known_hosts = root / 'auto/credentials/known_hosts'
+    known_hosts.write_text(''.join('github.com ' + value + '\n' for value in api.api('/meta')['ssh_keys']))
+    known_hosts.chmod(0o600)
     auth = root / 'auto/agent-home/auth.json'
     if not auth.exists():
         shutil.copy2(Path.home() / '.codex/auth.json', auth)
@@ -56,6 +70,7 @@ def install(root, source, *, enable=False):
         subprocess.run(['git', '-C', str(repository), 'checkout', '--detach', 'origin/main'], check=True)
     for key, value in (('user.name', 'PlayAural maintenance'), ('user.email', '141619450+marcomolinaleija@users.noreply.github.com')):
         subprocess.run(['git', '-C', str(repository), 'config', key, value], check=True)
+    subprocess.run(['git', '-C', str(repository), 'remote', 'set-url', 'origin', 'git@github.com:marcomolinaleija/PlayAural.git'], check=True)
     subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
     if enable:
         subprocess.run(['systemctl', '--user', 'enable', '--now', 'playaural-update.timer', 'playaural-update-resume.timer'], check=True)

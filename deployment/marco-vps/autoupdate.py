@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import shlex
 import signal
 import stat
 import subprocess
@@ -83,6 +84,9 @@ class Coordinator:
     def git(self, *arguments, check=True):
         environment = dict(os.environ, GIT_NO_REPLACE_OBJECTS='1', GIT_TERMINAL_PROMPT='0',
                            GIT_ASKPASS=str(self.auto / 'credentials/askpass'), GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null')
+        environment['GIT_SSH_COMMAND'] = shlex.join(['ssh', '-i', str(self.auto / 'credentials/repository_ed25519'),
+                                                   '-o', 'IdentitiesOnly=yes', '-o', 'StrictHostKeyChecking=yes',
+                                                   '-o', 'UserKnownHostsFile=' + str(self.auto / 'credentials/known_hosts')])
         result = subprocess.run(['git', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false',
                                  '-C', str(self.repository), *arguments], capture_output=True, text=True, env=environment)
         if check and result.returncode:
