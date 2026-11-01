@@ -92,3 +92,35 @@ The Codex daily check prepares and validates updates; a failed build or merge
 must retain the current production version. Running code from main and
 installing the newest upstream APK are separate operations: neither alone
 proves compatibility.
+
+## Private Backblaze backups
+
+The separate mode-600 `config/rclone-b2.conf` contains remote `b2playaural`,
+restricted to private bucket `marcoml-playaural-backups`. It is excluded from
+Git and kept in the operator's private local recovery files. Existing rclone
+remotes are untouched. Backblaze-managed encryption at rest is enabled.
+
+Install `upload_backup_b2.py` at `ops/upload_backup_b2.py` and the B2 upload
+service/timer in the user's systemd directory. Install `playaural-backup-b2.conf`
+as `playaural-backup.service.d/backblaze.conf`: a successful daily SQLite backup
+then queues cloud upload. The hourly timer retries pending uploads without
+creating another SQLite snapshot and without needing the operator's PC.
+
+Only complete snapshot folders with the database, previous environment and
+matching release manifest are archived. An internal manifest records SHA-256
+for every included file; arbitrary files, credentials and incomplete snapshots
+are excluded. The uploader validates SQLite, uses deterministic immutable
+archives, reads each newly uploaded archive back and compares SHA-256 before
+recording success in `ops/b2-upload-state.json`. It never synchronizes deletions
+or removes local/cloud backups. Signing keys, SMTP/voice credentials and the
+rclone key are not included in these database snapshots; keep their existing
+private recovery copies separately.
+
+Cloud archives live at `b2playaural:marcoml-playaural-backups/snapshots/`.
+To restore, download a selected archive with the private rclone configuration,
+validate its outer digest against the upload ledger, validate every file
+against its internal `MANIFEST.json`, then check SQLite using the canonical
+username functions. Extract only the expected regular snapshot files into a
+new private backup directory; use the existing rollback procedure after
+reviewing which database and release are being restored. Do not overwrite
+production just to test retrieval.

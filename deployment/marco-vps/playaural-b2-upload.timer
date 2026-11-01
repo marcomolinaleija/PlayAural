@@ -1,0 +1,10 @@
+[Unit]
+Description=Retry pending PlayAural cloud backups independently of the PC
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
