@@ -2,6 +2,9 @@
 param([string]$VersionCode = '10503001')
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+if ((Get-PSDrive -Name ([IO.Path]::GetPathRoot($root).TrimEnd('\').TrimEnd(':'))).Free -lt 15GB) {
+    throw 'Android builds need at least 15 GB free. Use the VPS Linux builder when local storage is limited.'
+}
 Push-Location (Join-Path $root 'mobile_client')
 try {
     $env:PLAYAURAL_MARCO_BUILD = '1'

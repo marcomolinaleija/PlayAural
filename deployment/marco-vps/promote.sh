@@ -34,14 +34,24 @@ mkdir "$backup"
 cp "$root/current.env" "$backup/previous.env"
 cp "$root/config/releases.json" "$backup/releases.json"
 old_code=$(sed -n 's/^CODE_ROOT=//p' "$root/current.env")
+backup_ready=0
+recover() {
+  if test "$backup_ready" = 1; then
+    "$target/deployment/marco-vps/rollback.sh" "$backup"
+  else
+    env -u PLAYAURAL_HOME -u CODE_ROOT -u RELEASE_ID docker compose --env-file "$root/current.env" -f "$old_code/deployment/marco-vps/compose.yaml" up -d --no-build
+  fi
+}
+trap recover ERR
 env -u PLAYAURAL_HOME -u CODE_ROOT -u RELEASE_ID docker compose --env-file "$root/current.env" -f "$old_code/deployment/marco-vps/compose.yaml" stop web game
+python3 "$target/deployment/marco-vps/storage_preflight.py"
 python3 - "$root/data/PlayAural.db" "$backup/PlayAural.db" <<'PY'
 import sqlite3, sys
 with sqlite3.connect(sys.argv[1]) as source, sqlite3.connect(sys.argv[2]) as target:
     source.backup(target)
     assert target.execute('PRAGMA quick_check').fetchone()[0] == 'ok'
 PY
-trap '"$target/deployment/marco-vps/rollback.sh" "$backup"' ERR
+backup_ready=1
 cp "$manifest" "$root/config/releases.json"
 printf 'PLAYAURAL_HOME=%s\nCODE_ROOT=%s\nRELEASE_ID=%s\n' "$root" "$target" "$commit" > "$root/current.env"
 "${compose[@]}" up -d --no-build

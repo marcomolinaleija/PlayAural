@@ -57,6 +57,12 @@ The Android browser-download delivery does not enforce the manifest checksum;
 HTTPS and the stable APK signature protect native updates. Windows ZIP
 delivery enforces the configured SHA-256.
 
+Prefer `build-android.sh` inside the pinned Android Docker builder on the VPS
+when local disk space is limited. Mount only an isolated build checkout at
+`/workspace`; do not expose production data or signing keys to npm/build steps.
+The Windows script rejects builds with less than 15 GB free. Signing is a
+separate, offline step using the existing deployment key.
+
 Upload and verify downloads before promotion. `promote.sh FULL_COMMIT MANIFEST`
 requires the manifest's source_commit to match the approved commit on the
 fork's main history. It builds isolated images, checks manifest compatibility,
@@ -64,6 +70,10 @@ runs the full Linux server suite, stops writes, verifies a SQLite backup and
 starts the candidate. A failed startup restores the previous images, manifest
 and database through `rollback.sh`. Both scripts run as marco, using Docker.
 Only the host HTTPS proxy initially required sudo.
+Startup probes verify service ownership and fsync on the live/backup
+filesystems. Game crashes have at most three automatic restarts, so persistent
+migration failures do not loop indefinitely. After a host reboot, the user
+startup service brings the stack back up.
 
 Keep small fork changes visible in PRs and run CI before merging upstream.
 The Codex daily check prepares and validates updates; a failed build or merge
