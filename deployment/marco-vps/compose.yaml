@@ -8,6 +8,7 @@ services:
     env_file: ${PLAYAURAL_HOME}/config/voice.env
     environment:
       PLAYAURAL_RELEASE_MANIFEST: /config/releases.json
+      PLAYAURAL_MAINTENANCE_STATUS: /data/maintenance-status.json
     ports:
       - "127.0.0.1:3047:8000"
     volumes:
