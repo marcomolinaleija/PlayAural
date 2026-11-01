@@ -10,7 +10,8 @@ test ! -e "$backup/INCOMPLETE"
 python3 - "$backup/PlayAural.db" <<'PY'
 import sqlite3, sys
 with sqlite3.connect('file:' + sys.argv[1] + '?mode=ro', uri=True) as db:
-    assert db.execute('PRAGMA quick_check').fetchone()[0] == 'ok'
+    assert db.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
+    assert not db.execute('PRAGMA foreign_key_check').fetchall()
 PY
 current_code=$(sed -n 's/^CODE_ROOT=//p' "$root/current.env")
 docker compose --env-file "$root/current.env" -f "$current_code/deployment/marco-vps/compose.yaml" stop web game

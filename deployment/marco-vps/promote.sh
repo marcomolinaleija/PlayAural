@@ -45,11 +45,11 @@ recover() {
 trap recover ERR
 env -u PLAYAURAL_HOME -u CODE_ROOT -u RELEASE_ID docker compose --env-file "$root/current.env" -f "$old_code/deployment/marco-vps/compose.yaml" stop web game
 python3 "$target/deployment/marco-vps/storage_preflight.py"
-python3 - "$root/data/PlayAural.db" "$backup/PlayAural.db" <<'PY'
-import sqlite3, sys
-with sqlite3.connect(sys.argv[1]) as source, sqlite3.connect(sys.argv[2]) as target:
-    source.backup(target)
-    assert target.execute('PRAGMA quick_check').fetchone()[0] == 'ok'
+python3 - "$root/data/PlayAural.db" "$backup/PlayAural.db" "$target/deployment/marco-vps" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[3])
+from backup_database import backup_sqlite
+backup_sqlite(sys.argv[1], sys.argv[2])
 PY
 backup_ready=1
 cp "$manifest" "$root/config/releases.json"

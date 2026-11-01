@@ -82,6 +82,10 @@ Startup probes verify service ownership and fsync on the live/backup
 filesystems. Game crashes have at most three automatic restarts, so persistent
 migration failures do not loop indefinitely. After a host reboot, the user
 startup service brings the stack back up.
+Backups hold one SQLite read snapshot, compare schema and row counts, run full
+integrity and foreign-key checks, fsync the saved file and atomically publish
+it. Daily backups share the promotion lock and incomplete directories are
+explicitly marked and rejected by rollback.
 
 Keep small fork changes visible in PRs and run CI before merging upstream.
 The Codex daily check prepares and validates updates; a failed build or merge
