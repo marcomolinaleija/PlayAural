@@ -193,6 +193,7 @@ def git_flow(tmp_path):
     root = tmp_path / 'runtime'
     repository = root / 'auto/repository'
     repository.parent.mkdir(parents=True)
+    (root / 'auto/jobs').mkdir()
     subprocess.run(['git', 'clone', str(remote), str(repository)], check=True, capture_output=True)
     git(repository, 'remote', 'add', 'upstream', str(upstream))
     git(repository, 'push', 'origin', 'HEAD:refs/heads/develop')
