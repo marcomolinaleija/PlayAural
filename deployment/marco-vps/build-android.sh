@@ -12,7 +12,8 @@ npx expo prebuild --platform android --no-install
 mkdir -p android/app/src/main/assets
 cp /workspace/LICENSE android/app/src/main/assets/PlayAural-LICENSE.txt
 cp /workspace/THIRD_PARTY_NOTICES.md android/app/src/main/assets/PlayAural-NOTICES.txt
-printf 'Corresponding source: https://github.com/marcomolinaleija/PlayAural/tree/%s\n' "$(git -C /workspace rev-parse HEAD)" > android/app/src/main/assets/PlayAural-SOURCE.txt
+commit=$(git -c safe.directory=/workspace -C /workspace rev-parse HEAD)
+printf 'Corresponding source: https://github.com/marcomolinaleija/PlayAural/tree/%s\n' "$commit" > android/app/src/main/assets/PlayAural-SOURCE.txt
 python3 - <<'PY'
 from pathlib import Path
 p = Path('android/gradle/wrapper/gradle-wrapper.properties')
