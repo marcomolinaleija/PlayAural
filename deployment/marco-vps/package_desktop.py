@@ -1,6 +1,7 @@
 """Finalize a PyInstaller build and retain the licenses of installed packages."""
 import argparse
 import importlib.metadata
+import json
 import shutil
 import subprocess
 import zipfile
@@ -42,6 +43,7 @@ for distribution in importlib.metadata.distributions():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+assert json.loads((contents / 'release-build.json').read_text())['source_commit'] == commit
 (release / "SOURCE.txt").write_text(
     f"PlayAural Marco, based on Daoductrung/PlayAural.\n"
     f"Corresponding source: https://github.com/marcomolinaleija/PlayAural/tree/{commit}\n"

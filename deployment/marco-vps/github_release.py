@@ -98,6 +98,15 @@ def extract_windows_artifact(archive_path, destination, commit):
             archive.getinfo(name)
         if commit.encode() not in archive.read('PlayAural/SOURCE.txt'):
             raise ValueError('Windows source notice does not match')
+        if metadata.get('build_id'):
+            if metadata['build_id'] != commit:
+                raise ValueError('Windows compiled build identity does not match')
+            try:
+                record = json.loads(archive.read('PlayAural/_internal/release-build.json'))
+            except (KeyError, ValueError) as error:
+                raise ValueError('Windows build identity is missing or invalid') from error
+            if not isinstance(record, dict) or record.get('source_commit') != commit:
+                raise ValueError('Windows compiled build identity does not match')
         if archive.testzip() is not None:
             raise ValueError('Corrupt Windows ZIP')
     return metadata

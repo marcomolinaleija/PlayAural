@@ -33,9 +33,26 @@ function localizationModule(url) {
   });
 }
 const { MobileLocalization } = localizationModule(new URL("../src/i18n/localization.ts", import.meta.url));
+const { applicationUpdateRequired } = compile(readFileSync(new URL("../src/network/releaseVersion.ts", import.meta.url), "utf8"));
 const { BUFFER_NAMES, BufferStore, normalizeBufferName } = compile(
   readFileSync(new URL("../src/state/BufferStore.ts", import.meta.url), "utf8"),
 );
+
+test("native corrections with the same protocol use the mandatory update flow", () => {
+  const prompts = [];
+  const gate = handler("checkVersionGates", {
+    MOBILE_CLIENT_VERSION: "same", bundledSoundVersion: "13",
+    applicationUpdateRequired: (info, version) => applicationUpdateRequired(info, version, "a".repeat(40), false),
+    localization: { t: (key) => key }, setStatusText: () => {},
+    promptMandatoryUpdate: (...args) => prompts.push(args), releaseDownloadUrl: (info) => info.url,
+  });
+  assert.equal(gate({ update_info: { version: "same", build_id: "b".repeat(40), url: "https://play.example/new.apk" } }), true);
+  assert.equal(prompts.length, 1);
+  assert.equal(prompts[0][3], "https://play.example/new.apk");
+  assert.equal(gate({ update_info: { version: "same", build_id: "a".repeat(40) }, sounds_info: { version: "13" } }), false);
+  assert.equal(applicationUpdateRequired({ version: "different" }, "same", "", true), true);
+  assert.equal(applicationUpdateRequired({ version: "same", build_id: "b".repeat(40) }, "same", "", true), false);
+});
 
 test("a server voice close preserves the table context needed to rejoin", () => {
   const source = readFileSync(appUrl, "utf8");

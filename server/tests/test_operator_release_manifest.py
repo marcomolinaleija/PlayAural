@@ -35,6 +35,15 @@ def test_operator_can_pin_windows_and_android_independently(tmp_path):
     assert not registry["linux"].application.available
 
 
+def test_native_build_identity_is_immutable_and_optional_for_legacy_registries(tmp_path):
+    registry = load(tmp_path, targets={'android': {'application': {
+        'url': 'https://play.example/releases/approved/PlayAural.apk', 'delivery': 'browser', 'build_id': 'a' * 40}}})
+    assert registry['android'].packet('application', '1.0')['build_id'] == 'a' * 40
+    with pytest.raises(ValueError):
+        load(tmp_path, targets={'android': {'application': {
+            'url': 'https://play.example/PlayAural.apk', 'delivery': 'browser', 'build_id': '../latest'}}})
+
+
 @pytest.mark.parametrize("changes", [
     {"version": "2.0"}, {"sounds_version": "14"},
     {"targets": {"unknown": {}}}, {"targets": []},

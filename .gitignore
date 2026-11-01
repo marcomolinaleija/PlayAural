@@ -62,3 +62,5 @@ PRIVATE_ANDROID_BUILD_GUIDE.md
 *.jks
 *.keystore
 *keystore*credential*.md
+# Generated identity for the packaged desktop client.
+/client/release-build.json

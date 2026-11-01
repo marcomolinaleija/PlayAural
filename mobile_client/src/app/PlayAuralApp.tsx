@@ -41,6 +41,7 @@ import { useSelfVoicingGestures } from "../gestures/useSelfVoicingGestures";
 import { bundledSoundVersion } from "../generated/soundManifest";
 import { MobileLocalization, resolveMobileLocale, type MobileLocale } from "../i18n/localization";
 import { PlayAuralConnection } from "../network/PlayAuralConnection";
+import { applicationUpdateRequired } from "../network/releaseVersion";
 import {
   clientAuthMetadata,
   getClientReleasePlatform,
@@ -90,7 +91,7 @@ import { observeSpeechEnvironment } from "../tts/observeSpeechEnvironment";
 import { ENABLE_CLIENT_DEBUG_LOGS } from "../utils/debug";
 import { MobileVoiceManager, type MobileVoiceConnectionState } from "../voice/MobileVoiceManager";
 
-const MOBILE_CLIENT_VERSION = "1.0.5.3";
+const MOBILE_CLIENT_VERSION = "1.0.5.3+marco.1";
 const MOBILE_BUILD_STAMP = "2026-10-02 02:37:27 +07:00";
 const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_PLAYAURAL_SERVER_URL || "wss://playaural.ddt.one:443";
 const CLIENT_CONFIG_STORAGE_KEY = "playaural.mobile.clientConfig";
@@ -2514,8 +2515,8 @@ export function PlayAuralApp() {
   };
 
   const checkVersionGates = (packet: AuthorizeSuccessPacket): boolean => {
-    const latestAppVersion = packet.update_info?.version?.trim();
-    if (latestAppVersion && latestAppVersion !== MOBILE_CLIENT_VERSION) {
+    const latestAppVersion = packet.update_info?.version?.trim() || "";
+    if (applicationUpdateRequired(packet.update_info, MOBILE_CLIENT_VERSION)) {
       setStatusText(localization.t("update-required-status", { value: latestAppVersion }));
       promptMandatoryUpdate(
         "mandatory-app-update",

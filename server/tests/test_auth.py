@@ -245,6 +245,33 @@ class TestAuthSecurity:
         assert client.sent_messages[-1]["error"] == "username_reserved"
         assert self.db.get_user(username) is None
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize('client_type', ['python', 'mobile'])
+    async def test_old_build_same_version_gets_update_without_replacing_live_session(self, monkeypatch, client_type):
+        self.server._auth.register('Alice', 'Password123')
+        original_metadata = self.server._client_release_metadata
+        def metadata(**kwargs):
+            result = original_metadata(**kwargs)
+            result['update_info']['build_id'] = 'b' * 40
+            return result
+        monkeypatch.setattr(self.server, '_client_release_metadata', metadata)
+        current = MockClient()
+        outdated = MockClient()
+        outdated.address = '127.0.0.1:23456'
+        self.server._ws_server.bind_client(current)
+        self.server._ws_server.bind_client(outdated)
+        packet = {'type': 'authorize', 'client': client_type, 'username': 'Alice', 'password': 'Password123',
+                  'version': VERSION, 'build_id': 'b' * 40}
+        await self.server._handle_authorize(current, packet)
+        current_user = self.server._users['Alice']
+        await self.server._handle_authorize(outdated, {**packet, 'build_id': 'a' * 40})
+        assert len(outdated.sent_messages) == 1
+        assert outdated.sent_messages[0]['update_info']['build_id'] == 'b' * 40
+        assert outdated.retired is True and outdated.authenticated is False
+        assert self.server._users['Alice'] is current_user
+        assert self.server._ws_server.get_client_by_username('Alice') is current
+        assert current.closed is False
+
     @pytest.mark.parametrize(
         ("username", "expected"),
         [

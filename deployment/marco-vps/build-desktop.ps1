@@ -12,6 +12,9 @@ try {
     if ($LASTEXITCODE) { throw 'Build tooling installation failed' }
     & $python -m pytest client/tests -q
     if ($LASTEXITCODE) { throw 'Desktop tests failed' }
+    $sourceRevision = (& git rev-parse HEAD).Trim()
+    $identity = @{ source_commit = $sourceRevision } | ConvertTo-Json
+    [IO.File]::WriteAllText((Join-Path $root 'client/release-build.json'), $identity, [Text.UTF8Encoding]::new($false))
     & $python -m PyInstaller --noconfirm --distpath $Output PlayAural.spec
     if ($LASTEXITCODE) { throw 'Desktop build failed' }
     & $python -m PyInstaller --noconfirm --distpath $Output updater.spec

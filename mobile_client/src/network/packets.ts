@@ -87,6 +87,7 @@ export type AuthorizeSuccessPacket = {
   reset_ui?: boolean;
   update_info?: {
     version?: string;
+    build_id?: string;
     target?: string;
     available?: boolean;
     url?: string;

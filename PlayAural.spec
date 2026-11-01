@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
+from pathlib import Path
 
 
 datas = [
@@ -7,6 +8,8 @@ datas = [
     ("client/locales", "locales"),
     ("cosmos/LICENSE", "cosmos"),
 ]
+if Path('client/release-build.json').is_file():
+    datas.append(('client/release-build.json', '.'))
 binaries = collect_dynamic_libs("cosmos")
 hiddenimports = [
     "wx",

@@ -4,6 +4,7 @@ export type ClientAuthMetadata = {
   client: "mobile";
   platform?: string;
   release_platform: ClientReleasePlatform;
+  build_id?: string;
 };
 
 export type ClientReleasePlatform = "android" | "ios" | "web" | "unknown";
@@ -93,9 +94,11 @@ export function getClientReleasePlatform(): ClientReleasePlatform {
 
 export function clientAuthMetadata(): ClientAuthMetadata {
   const platform = getClientPlatformLabel();
+  const build = process.env.EXPO_PUBLIC_PLAYAURAL_BUILD_ID || "";
   return {
     client: "mobile",
     release_platform: getClientReleasePlatform(),
     ...(platform ? { platform } : {}),
+    ...(/^[0-9a-f]{40}$/.test(build) ? { build_id: build } : {}),
   };
 }

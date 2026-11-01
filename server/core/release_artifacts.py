@@ -72,14 +72,18 @@ class ReleaseArtifact:
     url: str = ""
     delivery: str = ""
     sha256: str = ""
+    build_id: str = ""
 
     def __post_init__(self) -> None:
         url = _validated_download_url(self.url, "url")
         delivery = str(self.delivery or "").strip().lower()
         sha256 = _validated_sha256(self.sha256, "sha256")
+        build_id = str(self.build_id or '').strip()
+        if build_id and re.fullmatch(r'[0-9a-f]{40}', build_id) is None:
+            raise ValueError('build_id must be a full immutable source commit')
 
         if not url:
-            if delivery or sha256:
+            if delivery or sha256 or build_id:
                 raise ValueError(
                     "Unavailable release artifacts cannot define delivery or SHA-256"
                 )
@@ -100,6 +104,7 @@ class ReleaseArtifact:
         object.__setattr__(self, "url", url)
         object.__setattr__(self, "delivery", delivery)
         object.__setattr__(self, "sha256", sha256)
+        object.__setattr__(self, "build_id", build_id)
 
     @property
     def available(self) -> bool:
@@ -121,7 +126,7 @@ class ReleaseArtifact:
                 f"Delivery {self.delivery!r} does not support target "
                 f"{normalized_target!r}"
             )
-        return {
+        result = {
             "version": normalized_version,
             "target": normalized_target,
             "available": self.available,
@@ -129,6 +134,9 @@ class ReleaseArtifact:
             "delivery": self.delivery,
             "hash": self.sha256,
         }
+        if self.build_id:
+            result['build_id'] = self.build_id
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,7 +229,7 @@ def load_release_registry(
         artifacts = {}
         for kind in ("application", "sounds"):
             values = entry.get(kind, {})
-            if not isinstance(values, dict) or set(values).difference({"url", "delivery", "sha256"}):
+            if not isinstance(values, dict) or set(values).difference({"url", "delivery", "sha256", "build_id"}):
                 raise ValueError(f"Invalid release artifact for {target}/{kind}")
             if any(not isinstance(value, str) for value in values.values()):
                 raise ValueError("Release artifact values must be strings")
