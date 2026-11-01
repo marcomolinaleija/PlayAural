@@ -26,6 +26,9 @@ try {
     }
     Push-Location android
     try {
+        # React Native does not track locale JSON as bundle task inputs.
+        & ./gradlew.bat :app:createBundleReleaseJsAndAssets --rerun-tasks --no-daemon --max-workers=4
+        if ($LASTEXITCODE) { throw 'Android locale bundle generation failed' }
         & ./gradlew.bat assembleRelease --no-daemon --max-workers=4
         if ($LASTEXITCODE) { throw 'Android build failed' }
     } finally { Pop-Location }

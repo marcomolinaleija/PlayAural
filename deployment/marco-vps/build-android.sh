@@ -21,6 +21,9 @@ p.write_text(p.read_text().replace('gradle-9.0.0-bin.zip', 'gradle-8.14.3-bin.zi
 PY
 cd android
 chmod +x gradlew
+# React Native's bundle task tracks JS/TS sources but omits locale JSON inputs.
+# Regenerate the bundle explicitly so a locale-only update cannot ship stale text.
+./gradlew :app:createBundleReleaseJsAndAssets --rerun-tasks --no-daemon --max-workers=2
 ./gradlew assembleRelease --no-daemon --max-workers=2
 test -f app/build/outputs/apk/release/app-release.apk
 echo 'APK built; sign with the private deployment key before publication.'
