@@ -3,10 +3,19 @@ import argparse
 import fcntl
 import json
 import os
+import runpy
 import shutil
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
+
+IDENTITY_PATH = Path(__file__).resolve().parents[2] / 'server/users/identity.py'
+
+
+def register_sqlite_functions(db):
+    identity = runpy.run_path(str(IDENTITY_PATH))
+    db.create_function('USERNAME_KEY', 1, identity['legacy_username_key_v2'], deterministic=True)
+    db.create_function('USERNAME_KEY_V3', 1, identity['username_key'], deterministic=True)
 
 def signature(db):
     schema = db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name").fetchall()
@@ -37,6 +46,7 @@ def backup_sqlite(source_path, destination):
         expected = signature(source)
         with sqlite3.connect(partial) as target:
             source.backup(target)
+            register_sqlite_functions(target)
             assert target.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
             assert not target.execute('PRAGMA foreign_key_check').fetchall()
             assert signature(target) == expected

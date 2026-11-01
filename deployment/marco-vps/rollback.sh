@@ -7,9 +7,12 @@ backup=$(realpath "${1:?Supply a backup directory}")
 case "$backup" in "$root"/backups/*) ;; *) exit 64 ;; esac
 test -f "$backup/previous.env" && test -f "$backup/releases.json" && test -f "$backup/PlayAural.db"
 test ! -e "$backup/INCOMPLETE"
-python3 - "$backup/PlayAural.db" <<'PY'
+python3 - "$backup/PlayAural.db" "$(dirname "$0")" <<'PY'
 import sqlite3, sys
+sys.path.insert(0, sys.argv[2])
+from backup_database import register_sqlite_functions
 with sqlite3.connect('file:' + sys.argv[1] + '?mode=ro', uri=True) as db:
+    register_sqlite_functions(db)
     assert db.execute('PRAGMA integrity_check').fetchall() == [('ok',)]
     assert not db.execute('PRAGMA foreign_key_check').fetchall()
 PY
