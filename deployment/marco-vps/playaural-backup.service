@@ -1,0 +1,7 @@
+[Unit]
+Description=Verified PlayAural SQLite backup
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /home/marco/apps/playaural/current/deployment/marco-vps/backup_database.py

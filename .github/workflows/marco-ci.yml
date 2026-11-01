@@ -1,0 +1,35 @@
+name: Marco compatibility checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  server-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: uv run --project server --locked --extra dev --python 3.13 python -m pytest server/tests -q -n 4
+      - run: npm --prefix web_client ci --ignore-scripts && npm --prefix web_client test
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: uv run --project client --locked --extra dev --python 3.13 python -m pytest client/tests -q
+  android-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: npm --prefix mobile_client ci
+      - run: npm --prefix mobile_client run typecheck
+      - run: node --test mobile_client/tests/*.test.mjs

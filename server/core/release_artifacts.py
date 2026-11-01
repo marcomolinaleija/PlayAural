@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from types import MappingProxyType
 from typing import Mapping
 from urllib.parse import urlsplit
@@ -187,6 +189,47 @@ def freeze_release_registry(
                 f"artifact target {artifacts.target!r}"
             )
     return MappingProxyType(registry)
+
+
+def load_release_registry(
+    path: str | Path,
+    *,
+    version: str,
+    sounds_version: str,
+) -> Mapping[str, ReleaseArtifacts]:
+    """Load an operator-approved release without falling back to upstream latest.
+
+    Omitted targets are unavailable. A stale manifest prevents startup rather
+    than offering installers that don't match the running server.
+    """
+    with Path(path).open(encoding="utf-8") as source:
+        manifest = json.load(source)
+    if not isinstance(manifest, dict):
+        raise ValueError("Release manifest must be an object")
+    if manifest.get("version") != version:
+        raise ValueError("Release manifest version does not match the server")
+    if manifest.get("sounds_version") != sounds_version:
+        raise ValueError("Release manifest sounds_version does not match the server")
+    targets = manifest.get("targets")
+    if not isinstance(targets, dict) or set(targets).difference(RELEASE_TARGETS):
+        raise ValueError("Release manifest contains invalid targets")
+    entries = {}
+    for target in RELEASE_TARGETS:
+        entry = targets.get(target, {})
+        if not isinstance(entry, dict) or set(entry).difference({"application", "sounds"}):
+            raise ValueError(f"Invalid release entry for {target}")
+        artifacts = {}
+        for kind in ("application", "sounds"):
+            values = entry.get(kind, {})
+            if not isinstance(values, dict) or set(values).difference({"url", "delivery", "sha256"}):
+                raise ValueError(f"Invalid release artifact for {target}/{kind}")
+            if any(not isinstance(value, str) for value in values.values()):
+                raise ValueError("Release artifact values must be strings")
+            if "/latest/" in values.get("url", "").lower():
+                raise ValueError("Release manifest must pin an immutable download URL")
+            artifacts[kind] = ReleaseArtifact(**values)
+        entries[target] = ReleaseArtifacts(target=target, **artifacts)
+    return freeze_release_registry(entries)
 
 
 def resolve_release_target(

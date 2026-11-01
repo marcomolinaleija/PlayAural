@@ -1,0 +1,14 @@
+[Unit]
+Description=Start the approved PlayAural containers after host boot
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/docker compose --env-file /home/marco/apps/playaural/current.env -f /home/marco/apps/playaural/current/deployment/marco-vps/compose.yaml up -d --no-build
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

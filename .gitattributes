@@ -11,3 +11,9 @@ web_client/vendor/stb-vorbis.js text eol=lf
 
 # Management scripts are uploaded from Windows and executed directly on Linux.
 server/sc.sh text eol=lf
+deployment/marco-vps/*.sh text eol=lf
+
+# Keep the documented byte hashes stable on Linux and Windows checkouts.
+server/games/humanitycards/humanity_packs_es.json -text whitespace=cr-at-eol
+server/games/humanitycards/humanity_black_cards_pt_br.json -text whitespace=cr-at-eol
+server/games/humanitycards/humanity_white_cards_pt_br.json -text whitespace=cr-at-eol

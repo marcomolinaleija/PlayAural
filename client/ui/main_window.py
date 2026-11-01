@@ -2302,7 +2302,7 @@ class MainWindow(wx.Frame):
         """Auto-connect to server using login credentials."""
         username = self.credentials.get("username", "Guest")
         password = self.credentials.get("password", "")
-        server_url = self.credentials.get("server_url", "wss://playaural.ddt.one")
+        server_url = self.credentials.get("server_url", "wss://play.marco-ml.com")
 
         self._start_connection_audio()
 
