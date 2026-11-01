@@ -1,0 +1,11 @@
+[Unit]
+Description=Check PlayAural upstream daily without the owner's PC
+
+[Timer]
+OnCalendar=*-*-* 07:00:00 America/Mexico_City
+RandomizedDelaySec=5m
+Persistent=true
+Unit=playaural-update.service
+
+[Install]
+WantedBy=timers.target

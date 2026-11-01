@@ -1,0 +1,14 @@
+[Unit]
+Description=Integrate, build and deploy verified PlayAural updates
+After=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /home/marco/apps/playaural/ops/autoupdate/autoupdate.py --run-through
+TimeoutStartSec=4h
+KillMode=process
+Nice=10
+
+[Install]
+WantedBy=default.target

@@ -471,6 +471,8 @@ class Coordinator:
             source_link.unlink()
         source_link.symlink_to(revision + '/source.tar.gz')
         source_link.replace(self.root / 'downloads/source.tar.gz')
+        installer = self.root / 'releases' / revision / 'deployment/marco-vps/install_autoupdate.py'
+        subprocess.run(['python3', str(installer), '--root', str(self.root), '--enable'], check=True)
         subprocess.run(['systemctl', '--user', 'start', '--no-block', 'playaural-b2-upload.service'], check=True)
         job.update(phase='done', completed_at=time.time(), last_error='')
         self.save(job)
