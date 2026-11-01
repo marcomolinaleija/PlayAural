@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 root=/home/marco/apps/playaural
 commit=${1:?Usage: promote.sh FULL_COMMIT MANIFEST_JSON}
-manifest=${2:?Supply the approved release manifest}
+manifest=$(realpath "${2:?Supply the approved release manifest}")
 [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || exit 64
 exec 9>"$root/promotion.lock"
 flock -n 9 || { echo 'Another promotion is running' >&2; exit 1; }
@@ -34,7 +34,7 @@ mkdir "$backup"
 cp "$root/current.env" "$backup/previous.env"
 cp "$root/config/releases.json" "$backup/releases.json"
 old_code=$(sed -n 's/^CODE_ROOT=//p' "$root/current.env")
-docker compose --env-file "$root/current.env" -f "$old_code/deployment/marco-vps/compose.yaml" stop web game
+env -u PLAYAURAL_HOME -u CODE_ROOT -u RELEASE_ID docker compose --env-file "$root/current.env" -f "$old_code/deployment/marco-vps/compose.yaml" stop web game
 python3 - "$root/data/PlayAural.db" "$backup/PlayAural.db" <<'PY'
 import sqlite3, sys
 with sqlite3.connect(sys.argv[1]) as source, sqlite3.connect(sys.argv[2]) as target:

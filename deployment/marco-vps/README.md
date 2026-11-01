@@ -38,3 +38,35 @@ need a separate TURN/TLS service. Provider firewalls must allow the RTC ports.
 The operator owns account initialization and SMTP configuration. Create the
 first account while the game endpoint is private: upstream grants that account
 developer privileges. Never commit its password or production database.
+
+## Client release procedure
+
+On Windows, run `build-desktop.ps1` with Python 3.13 (including Tk for the
+updater), and `build-android.ps1` from a short checkout path such as
+`C:/Users/leija/Documents/Codex/work/pa`. Long Windows CMake paths can fail.
+Android builds set a separate application id, `com.marcoml.playaural`, so they
+can coexist with the official application. Increase the deployment's Android
+versionCode on each publication. The Gradle 8.14.3 pin works around the pinned
+React Native Foojay plugin's use of a JVM vendor removed in Gradle 9.
+
+Use `sign-android.ps1` with the existing private deployment keystore and signing
+configuration outside Git. It verifies APK signatures and 16 KiB alignment.
+Use `make_release.py` to package the desktop folder, sound pack, signed APK and
+version/commit/hash manifest under an immutable commit-named download path.
+The Android browser-download delivery does not enforce the manifest checksum;
+HTTPS and the stable APK signature protect native updates. Windows ZIP
+delivery enforces the configured SHA-256.
+
+Upload and verify downloads before promotion. `promote.sh FULL_COMMIT MANIFEST`
+requires the manifest's source_commit to match the approved commit on the
+fork's main history. It builds isolated images, checks manifest compatibility,
+runs the full Linux server suite, stops writes, verifies a SQLite backup and
+starts the candidate. A failed startup restores the previous images, manifest
+and database through `rollback.sh`. Both scripts run as marco, using Docker.
+Only the host HTTPS proxy initially required sudo.
+
+Keep small fork changes visible in PRs and run CI before merging upstream.
+The Codex daily check prepares and validates updates; a failed build or merge
+must retain the current production version. Running code from main and
+installing the newest upstream APK are separate operations: neither alone
+proves compatibility.

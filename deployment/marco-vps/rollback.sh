@@ -2,6 +2,7 @@
 set -euo pipefail
 umask 077
 root=/home/marco/apps/playaural
+unset PLAYAURAL_HOME CODE_ROOT RELEASE_ID
 backup=$(realpath "${1:?Supply a backup directory}")
 case "$backup" in "$root"/backups/*) ;; *) exit 64 ;; esac
 test -f "$backup/previous.env" && test -f "$backup/releases.json" && test -f "$backup/PlayAural.db"
