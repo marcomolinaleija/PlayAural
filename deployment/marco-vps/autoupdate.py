@@ -136,19 +136,32 @@ class Coordinator:
         self.git('fetch', 'upstream', 'main')
         base = self.head('origin/main')
         upstream = self.head('upstream/main')
-        if self.current_release() == base and self.ancestor(upstream, base):
+        develop = self.head('origin/develop')
+        release = self.current_release() != base
+        if not release and self.ancestor(upstream, develop) and self.ancestor(base, develop):
             return None
         identifier = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
-        job = {'id': identifier, 'phase': 'agent', 'base': base, 'upstream': upstream,
-               'branch': 'automation/' + identifier, 'created_at': time.time(), 'agent_attempt': 0,
+        job = {'id': identifier, 'phase': 'ci' if release else 'agent',
+               'kind': 'release' if release else 'integration',
+               'base': base if release else develop, 'main': base, 'upstream': upstream,
+               'branch': 'main' if release else 'feature/upstream-' + identifier,
+               'created_at': time.time(), 'agent_attempt': 0,
                'bootstrap': bootstrap, 'previous_release': self.current_release()}
+        if release:
+            job['candidate'] = base
         job['git_config_sha256'] = sha256(self.repository / '.git/config')
         self.job_dir(job).mkdir(mode=0o700)
-        self.git('checkout', '-b', job['branch'], base)
+        if not release:
+            self.git('checkout', '-b', job['branch'], develop)
         self.save(job)
         return job
 
     def repair(self, job, reason, log=''):
+        if job.get('kind') == 'release':
+            (self.job_dir(job) / 'failure.log').write_text(log[-40000:], encoding='utf-8')
+            job.update(phase='deferred', last_error=reason + '; fix develop or a hotfix and merge into main before retrying')
+            self.save(job)
+            return False
         if job.get('repair_count', 0) >= 2:
             job.update(phase='deferred', last_error=reason)
             self.save(job)
@@ -173,7 +186,8 @@ class Coordinator:
             if not self.quota(job):
                 return False
             start_agent(self.root, self.repository, self.job_dir(job), name,
-                        integration_prompt(job['upstream'], job['base'], job.get('correction', '')))
+                        integration_prompt(job['upstream'], job['base'], job.get('correction', ''),
+                                           main=job.get('main') if job.get('kind') == 'integration' else None))
             self.save(job)
             return False
         if status['Running']:
@@ -199,6 +213,8 @@ class Coordinator:
         candidate = self.head()
         if not self.ancestor(job['base'], candidate) or not self.ancestor(job['upstream'], candidate):
             return self.repair(job, 'Candidate does not preserve both approved fork and upstream history', log)
+        if job.get('kind') == 'integration' and not self.ancestor(job['main'], candidate):
+            return self.repair(job, 'Integration must also preserve approved main history', log)
         protected = self.git('diff', '--name-only', job['base'], candidate, '--', 'deployment/marco-vps', '.github/workflows/marco*').stdout.strip()
         if protected:
             job.update(phase='deferred', last_error='Integration changes trusted controller files: ' + protected)
@@ -209,7 +225,7 @@ class Coordinator:
             self.save(job)
             return False
         self.git('push', 'origin', 'HEAD:refs/heads/' + job['branch'])
-        if candidate != job['base']:
+        if candidate != job['base'] and job.get('kind') != 'integration':
             existing = self.api.repo('pulls?' + urllib.parse.urlencode({'head': REPOSITORY.split('/')[0] + ':' + job['branch'], 'state': 'open'}))
             pr = existing[0] if existing else self.api.repo('pulls', 'POST', {
                 'title': 'Actualizar PlayAural desde upstream ' + job['upstream'][:8],
@@ -250,6 +266,28 @@ class Coordinator:
             return self.repair(job, 'CI rejected candidate ' + job['candidate'], failure_log)
         self.git('fetch', 'origin')
         main = self.head('origin/main')
+        if job.get('kind') == 'integration':
+            develop = self.head('origin/develop')
+            if not self.ancestor(main, job['candidate']):
+                job['main'] = main
+                job['base'] = develop
+                return self.repair(job, 'Main advanced. Merge the new main and develop bases as well as upstream, preserving all three histories.')
+            if develop != job['candidate']:
+                if develop != job['base']:
+                    job['base'] = develop
+                    job['main'] = main
+                    return self.repair(job, 'Develop advanced. Merge the new develop and main bases as well as upstream, preserving all three histories.')
+                self.git('push', 'origin', job['candidate'] + ':refs/heads/develop')
+            job.update(phase='done', completed_at=time.time(), last_error='', integrated_ref='develop')
+            self.save(job)
+            print('Upstream integration verified on develop; production unchanged: ' + job['candidate'])
+            return False
+        if job.get('kind') == 'release':
+            if not self.ancestor(job['candidate'], main):
+                return self.repair(job, 'The approved release no longer belongs to main')
+            job['phase'] = 'windows'
+            self.save(job)
+            return True
         if main != job['candidate']:
             if main != job['base']:
                 job['base'] = main
@@ -552,6 +590,10 @@ def main():
         except BlockingIOError:
             return
         job = coordinator.state
+        if job and job['phase'] == 'deferred' and job.get('kind') == 'release' and not args.resume_only:
+            coordinator.git('fetch', 'origin')
+            if coordinator.head('origin/main') != job['candidate']:
+                job = None
         if not job or job['phase'] == 'done':
             if args.resume_only:
                 return

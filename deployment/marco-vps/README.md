@@ -87,7 +87,8 @@ integrity and foreign-key checks, fsync the saved file and atomically publish
 it. Daily backups share the promotion lock and incomplete directories are
 explicitly marked and rejected by rollback.
 
-Keep small fork changes visible in PRs and run CI before merging upstream.
+Follow the fork's Git Flow in [CONTRIBUTING.md](../../CONTRIBUTING.md).
+Write collaborators may merge directly; PRs are optional. Run CI before integration.
 The Codex daily check prepares and validates updates; a failed build or merge
 must retain the current production version. Running code from main and
 installing the newest upstream APK are separate operations: neither alone
@@ -108,7 +109,15 @@ cache and job results. Production data, signing keys, GitHub API credentials
 and the Docker socket are absent. Git configuration and hooks are read-only.
 The controller rejects unsafe result files, verifies both fork and upstream
 ancestry, protects its own scripts/workflows and requires full compatibility
-CI before advancing main. Ordinary CI/build failures receive a bounded agent
+CI before advancing `develop`. Integration jobs use `feature/upstream-*`,
+preserve `develop`, `main` and upstream history, and finish without building
+native artifacts or deploying. Concurrent main/develop changes must be merged
+and checked again; the controller never overwrites them.
+
+Only a human-approved `main` commit starts a release job. It is pinned before
+CI and contains no automatically added upstream/develop work. Main release jobs
+never invoke a source-repair agent: build failures defer publication until a
+corrected main commit arrives. Integration failures receive a bounded agent
 repair attempt; unsafe or unresolved candidates stay deferred with production
 unchanged. Live jobs are observed by their actual handles rather than restarted.
 

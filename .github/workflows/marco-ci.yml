@@ -1,7 +1,7 @@
 name: Marco compatibility checks
 on:
   push:
-    branches: [main]
+    branches: [main, develop, 'feature/**', 'release/**', 'hotfix/**', 'automation/**']
   pull_request:
   workflow_dispatch:
 permissions:
