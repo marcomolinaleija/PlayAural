@@ -104,6 +104,8 @@
   "chat-empty": "Belum ada pesan obrolan.",
   "chat-unknown-sender": "Tidak diketahui",
   "chat-private": "Pesan pribadi dari {player}: {message}",
+  "chat-global": "Obrolan global, {player}: {message}",
+  "chat-local": "Obrolan meja, {player}: {message}",
   "chat-announcement": "Pengumuman sistem: {message}",
   "history-empty": "Belum ada pesan.",
   "buffer-all": "Semua",

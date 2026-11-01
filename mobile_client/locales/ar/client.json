@@ -104,6 +104,8 @@
   "chat-empty": "لا توجد رسائل دردشة بعد.",
   "chat-unknown-sender": "غير معروف",
   "chat-private": "رسالة خاصة من {player}: {message}",
+  "chat-global": "الدردشة العامة، {player}: {message}",
+  "chat-local": "دردشة الطاولة، {player}: {message}",
   "chat-announcement": "إعلان النظام: {message}",
   "history-empty": "لا توجد رسائل بعد.",
   "buffer-all": "الكل",

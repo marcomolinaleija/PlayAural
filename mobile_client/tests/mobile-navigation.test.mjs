@@ -318,6 +318,38 @@ test("server speech is retained but never voiced through a muted or malformed bu
   assert.equal(revision, 4);
 });
 
+test("received chat retains sender and contents through real formatting, history and speech in every locale", () => {
+  const formatter = app.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === "formatChatMessage");
+  assert.ok(formatter);
+  const formatterSource = ts.createPrinter().printNode(ts.EmitHint.Unspecified, formatter, app);
+  const formatChatMessage = compile(`${formatterSource}\nmodule.exports = formatChatMessage;`);
+  const localization = new MobileLocalization();
+  const message = "Hola, ¿se lee? ñ العربية <texto>";
+  for (const locale of localization.getAvailableLocales()) {
+    localization.setLocale(locale);
+    for (const convo of ["local", "global", "private", "announcement"]) {
+      const buffers = new BufferStore();
+      const speech = [];
+      const alerts = [];
+      const receiveChat = handler("handleChatPacket", {
+        audio: { playSound: (name) => alerts.push(name), playSoundFamily: (name) => alerts.push(name) },
+        buffers, formatChatMessage, localization,
+        preferencesRef: { current: {} },
+        setHistoryRevision: () => {},
+        speakServerAnnouncement: (text) => speech.push(text),
+      });
+      receiveChat({ convo, sender: "PruebaMarco", message });
+      const buffer = convo === "private" ? "private" : "chat";
+      const history = buffers.getMessages(buffer);
+      assert.equal(history.length, 1, `${locale}/${convo}`);
+      assert.ok(history[0].text.includes(message), `${locale}/${convo}: message contents missing`);
+      if (convo !== "announcement") assert.ok(history[0].text.includes("PruebaMarco"), `${locale}/${convo}: sender missing`);
+      assert.deepEqual(speech, [history[0].text]);
+      assert.equal(alerts.length, 1);
+    }
+  }
+});
+
 test("chat buffer mute suppresses its notification sound and TTS in both speech modes", () => {
   const buffers = new BufferStore();
   buffers.setMutedBuffers(["chat"]);
