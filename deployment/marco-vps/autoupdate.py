@@ -154,6 +154,9 @@ class Coordinator:
             self.save(job)
             return False
         (self.job_dir(job) / 'failure.log').write_text(log[-40000:], encoding='utf-8')
+        if 'promotion_unit' in job:
+            job['promotion_attempt'] = job.get('promotion_attempt', 0) + 1
+        job['promotion_failures'] = 0
         job.update(phase='agent', correction=reason + '\nRead /results/failure.log for the bounded failure log.',
                    agent_attempt=job['agent_attempt'] + 1, previous_candidate=job.get('candidate'), repair_count=job.get('repair_count', 0) + 1)
         for key in ('candidate', 'windows_run', 'windows_requested_at', 'windows_dispatch_ref', 'windows_downloaded',
