@@ -1,0 +1,11 @@
+[Unit]
+Description=Resume pending PlayAural update stages
+After=network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/bin/python3 /home/marco/apps/playaural/ops/autoupdate/autoupdate.py --resume-only --run-through
+TimeoutStartSec=4h
+KillMode=process
+Nice=10

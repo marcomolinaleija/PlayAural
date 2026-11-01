@@ -93,6 +93,77 @@ must retain the current production version. Running code from main and
 installing the newest upstream APK are separate operations: neither alone
 proves compatibility.
 
+## Autonomous VPS maintenance
+
+`autoupdate.py` replaces the PC-based heartbeat after the complete pipeline has
+been verified. `playaural-update.timer` checks upstream daily at 07:00 in
+America/Mexico_City. `playaural-update-resume.timer` resumes pending work every
+five minutes, including after a restart or quota reset. Unchanged production
+requires no model invocation or build. A private, fsynced state file under
+`auto/state.json` records the source, branch, CI run, Windows run, Docker build
+containers, Android versionCode, verified downloads and promotion unit.
+
+The agent runs in a container with only the candidate checkout, private Codex
+cache and job results. Production data, signing keys, GitHub API credentials
+and the Docker socket are absent. Git configuration and hooks are read-only.
+The controller rejects unsafe result files, verifies both fork and upstream
+ancestry, protects its own scripts/workflows and requires full compatibility
+CI before advancing main. Ordinary CI/build failures receive a bounded agent
+repair attempt; unsafe or unresolved candidates stay deferred with production
+unchanged. Live jobs are observed by their actual handles rather than restarted.
+
+Windows is compiled on GitHub-hosted Windows runners using
+`marco-windows-release.yml`, exact source checkout, Python 3.13 with Tk and
+read-only repository permissions. The VPS retrieves the artifact without
+forwarding its GitHub token to storage redirects, checks its digest/source and
+inner hashes, and retains the portable ZIP and sound pack. Android uses the
+pinned VPS builder and persistent SDK/Gradle volumes, with three CPUs and 8 GiB
+RAM. Signing is a separate network-isolated step with the existing key. The
+versionCode is reserved durably and increases on each publication. JSON-only
+translation changes explicitly regenerate the JavaScript bundle.
+
+Codex limits come from the documented app-server `account/rateLimits/read`
+method using the agent's own auth cache. Unknown limits or 3% or less remaining
+in either window defer work. A running agent receives a graceful stop; its
+candidate and logs remain intact for resumption. The final quota/idle check
+runs after all build/tests and immediately before stopping the production
+stack. An optional private runtime file reports anonymous counts every ten
+seconds; stale counts or a table with people present defer deployment. The
+operator-only `--bootstrap` option is restricted to the initial legacy release
+that predates that observer. Do not use bootstrap for subsequent releases.
+
+Artifact folders and source archives are immutable, and their served HTTPS
+contents are hashed before promotion. A separately tracked systemd promotion
+unit finishes the existing backup/rollback transaction independently of the
+coordinator's SSH session. Only matching healthy game/web image tags, the
+active manifest and public health/download checks finish a job. The approved
+coordinator scripts update from that verified release. B2 upload is then
+queued; valid backups and prior releases are retained.
+
+Private installation prerequisites: `auto/credentials/github.token`, the
+existing VPS Codex login, and the existing Android signing files. Run
+`install_autoupdate.py` from the approved source to install scripts and units;
+`--enable` activates the timers. The installer creates a write deploy key
+restricted to this fork and uses GitHub's HTTPS metadata for known host keys.
+Credentials never enter Git, GitHub build jobs or the Android builder. The
+first full run must be verified before retiring the old desktop heartbeat.
+The implementation follows [OpenAI's non-interactive Codex guidance](https://learn.chatgpt.com/docs/non-interactive-mode)
+and [app-server usage API](https://learn.chatgpt.com/docs/app-server).
+
+Operations:
+
+```sh
+python3 /home/marco/apps/playaural/ops/autoupdate/autoupdate.py --status
+systemctl --user list-timers 'playaural-update*'
+journalctl --user -u playaural-update.service -u playaural-update-resume.service --no-pager -n 30
+```
+
+Automatic server deployment and artifact publication do not bypass Android's
+installation confirmation. Existing clients compare protocol versions; a
+same-version correction is published at the downloads page without forcing an
+installed client to replace itself. Account authorization expiry and genuinely
+unsafe integrations remain explicit deferred states, never successful updates.
+
 ## Private Backblaze backups
 
 The separate mode-600 `config/rclone-b2.conf` contains remote `b2playaural`,

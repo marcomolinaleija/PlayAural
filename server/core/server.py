@@ -27,6 +27,7 @@ from .power import (
     ServerPowerManager,
 )
 from .maintenance import ServerMaintenanceManager
+from .maintenance_status import MaintenanceStatus
 from .release_artifacts import (
     RELEASE_DELIVERY_BROWSER,
     RELEASE_DELIVERY_WINDOWS_ZIP,
@@ -521,6 +522,7 @@ class Server:
         self._tables._server = self  # Enable callbacks from TableManager
         self._ws_server: WebSocketServer | None = None
         self._tick_scheduler: TickScheduler | None = None
+        self._maintenance_status = MaintenanceStatus(os.environ.get('PLAYAURAL_MAINTENANCE_STATUS'))
 
         # User tracking
         self._users: dict[str, NetworkUser] = {}  # username -> NetworkUser
@@ -986,6 +988,16 @@ PlayAural Server
 
         # Build and send menus for players marked dirty during this tick
         self._tables.flush_menus()
+
+        status = getattr(self, '_maintenance_status', None)
+        if status is not None:
+            status.publish(
+                table_count=sum(
+                    any(member.username in self._users for member in table.members)
+                    for table in self._tables.get_all_tables()
+                ),
+                version=VERSION,
+            )
 
         # Flush queued messages for all users
         self._flush_user_messages()

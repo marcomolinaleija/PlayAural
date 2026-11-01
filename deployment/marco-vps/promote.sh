@@ -29,6 +29,9 @@ docker run --rm -v "$manifest:/approved.json:ro" -e PLAYAURAL_RELEASE_MANIFEST=/
 docker run --rm --user 1000:1000 -v "$target:/workspace" -w /workspace -e UV_CACHE_DIR=/tmp/uv \
   ghcr.io/astral-sh/uv@sha256:08477888ac23d6cfbeb8c7dc6fc70cf297fd38b7bf35522be33ce832750ca242 \
   uv run --project server --locked --extra dev --python 3.13 python -m pytest server/tests -q -n 4
+if test "${PLAYAURAL_AUTOMATED_DEPLOYMENT:-0}" = 1; then
+  python3 "$root/ops/autoupdate/deployment_gate.py" "$root"
+fi
 backup="$root/backups/$(date -u +%Y%m%dT%H%M%SZ)-${commit:0:8}"
 mkdir "$backup"
 cp "$root/current.env" "$backup/previous.env"
