@@ -185,6 +185,8 @@ buffer-system = Hệ thống
 buffer-misc = Linh tinh
 
 system-announcement = Thông báo hệ thống
+chat-global = Trò chuyện chung, { $player }: { $message }
+chat-local = Trò chuyện bàn, { $player }: { $message }
 chat-announcement = Thông báo hệ thống: { $message }
 chat-private = Tin nhắn riêng từ { $player }: { $message }
 login-error-connection-refused = Kết nối bị từ chối: Máy chủ có thể đang ngoại tuyến.
