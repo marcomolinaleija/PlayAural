@@ -4,6 +4,12 @@ PlayAural is an audio-first online multiplayer gaming platform designed for blin
 
 PlayAural is built upon the open-source foundation of [PlayPalace](https://github.com/XGDevGroup/PlayPalace11).
 
+## Contributing to this fork
+
+This fork uses Git Flow: features integrate into `develop`, and approved releases
+reach production through `main`. Write collaborators may merge directly without
+a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow.
+
 ## Play Now
 
 - Download the latest app builds from the repository's **Releases** page.

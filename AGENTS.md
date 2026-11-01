@@ -94,6 +94,16 @@ joins, leaves, replacements, reconnects, and save/load. Never reserve localized
 bot bases from registration, infer bot status from text, or route an action by
 an unqualified base name.
 
+## Fork Git Workflow
+
+This fork uses Git Flow; see `CONTRIBUTING.md`. Start `feature/*` from
+`develop`; finish release branches into both `main` and `develop`. Start
+urgent `hotfix/*` branches from `main` and merge them back into both branches.
+Write collaborators may merge directly; PRs are optional. Run compatibility CI
+before integration. Automated upstream integration advances `develop` only;
+publication uses exact human-approved `main` commits. Never publish development
+branches or silently add pending upstream changes to a release.
+
 ## Commands
 
 Run server tests from the repo root through uv:
