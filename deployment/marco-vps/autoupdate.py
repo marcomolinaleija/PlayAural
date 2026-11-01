@@ -449,7 +449,7 @@ class Coordinator:
                 job['phase'] = 'verify'
                 self.save(job)
                 return True
-            command = ['systemd-run', '--user', '--unit=' + unit, '--property=Type=oneshot', '--property=RemainAfterExit=yes',
+            command = ['systemd-run', '--user', '--no-block', '--unit=' + unit, '--property=Type=oneshot', '--property=RemainAfterExit=yes',
                        '--property=TimeoutStartSec=3600', '--property=KillMode=process', '--setenv=PLAYAURAL_AUTOMATED_DEPLOYMENT=1']
             if job.get('bootstrap'):
                 command.append('--setenv=PLAYAURAL_BOOTSTRAP_IDLE=1')
@@ -463,6 +463,12 @@ class Coordinator:
             self.save(job)
             return False
         if status.get('ActiveState') == 'failed' or status.get('ExecMainStatus') != '0':
+            if job.get('promotion_failures', 0) < 1:
+                job.update(phase='await_idle', promotion_failures=job.get('promotion_failures', 0) + 1,
+                           promotion_attempt=job.get('promotion_attempt', 0) + 1,
+                           last_error='Previous promotion failed and rolled back; one bounded retry preserves the approved artifacts')
+                self.save(job)
+                return False
             logs = subprocess.check_output(['journalctl', '--user', '-u', unit, '-n', '250', '--no-pager'], text=True)
             return self.repair(job, 'Promotion failed and its transaction attempted rollback; inspect the bounded log', logs)
         job['phase'] = 'verify'

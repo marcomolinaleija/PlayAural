@@ -48,6 +48,20 @@ def test_resuming_a_live_agent_observes_its_container_without_restarting(tmp_pat
     assert job['phase'] == 'agent'
 
 
+def test_failed_promotion_retries_approved_artifacts_once_without_rebuilding(tmp_path, monkeypatch):
+    (tmp_path / 'auto/jobs/test').mkdir(parents=True)
+    controller = module.Coordinator(tmp_path)
+    monkeypatch.setattr(controller, 'unit_status', lambda name: {'LoadState': 'loaded', 'ActiveState': 'failed', 'ExecMainStatus': '1'})
+    monkeypatch.setattr(controller, 'repair', lambda *args: pytest.fail('premature agent repair'))
+    job = {'id': 'test', 'phase': 'promoting', 'promotion_unit': 'test-unit', 'candidate': 'a' * 40,
+           'windows_run': 123, 'android_code': 10503003, 'agent_attempt': 0}
+    assert controller.promoting(job) is False
+    assert job['phase'] == 'await_idle'
+    assert job['promotion_failures'] == 1
+    assert job['promotion_attempt'] == 1
+    assert job['candidate'] == 'a' * 40 and job['windows_run'] == 123 and job['android_code'] == 10503003
+
+
 def test_atomic_state_never_follows_a_preplanted_temporary_symlink(tmp_path):
     private = tmp_path / 'private'
     private.write_text('preserved')

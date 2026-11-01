@@ -2,6 +2,7 @@
 set -euo pipefail
 umask 077
 root=/home/marco/apps/playaural
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 commit=${1:?Usage: promote.sh FULL_COMMIT MANIFEST_JSON}
 manifest=$(realpath "${2:?Supply the approved release manifest}")
 [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || exit 64
@@ -16,10 +17,12 @@ manifest = json.load(open(sys.argv[1]))
 assert manifest['source_commit'] == sys.argv[2], 'Manifest must describe this exact source commit'
 PY
 target="$root/releases/$commit"
+test ! -L "$target"
 if ! test -d "$target"; then
   mkdir "$target"
-  git -C "$root/source" archive "$commit" | tar -x -C "$target"
+  git -C "$root/source" archive "$commit" | tar --same-permissions -x -C "$target"
 fi
+python3 "$script_dir/prepare_public_web_source.py" "$target"
 export PLAYAURAL_HOME="$root" CODE_ROOT="$target" RELEASE_ID="$commit"
 compose=(docker compose -f "$target/deployment/marco-vps/compose.yaml")
 "${compose[@]}" build
