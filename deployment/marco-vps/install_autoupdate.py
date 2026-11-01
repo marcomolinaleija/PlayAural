@@ -8,16 +8,22 @@ import subprocess
 import tomllib
 
 from github_release import GitHub
+from controller_revision import controller_is_newer, record_controller
 
-PAYLOAD = ('autoupdate.py', 'agent_runner.py', 'codex_quota.py', 'deployment_gate.py',
+PAYLOAD = ('autoupdate.py', 'agent_runner.py', 'codex_quota.py', 'deployment_gate.py', 'controller_revision.py',
            'github_release.py', 'sign_android.py', 'promote.sh', 'rollback.sh', 'install_autoupdate.py')
 UNITS = ('playaural-update.service', 'playaural-update.timer',
          'playaural-update-resume.service', 'playaural-update-resume.timer')
 
 
-def install(root, source, *, enable=False):
+def install(root, source, *, enable=False, source_commit):
     os.umask(0o077)
     root, source = Path(root).resolve(), Path(source).resolve()
+    if controller_is_newer(root, source_commit):
+        if enable:
+            subprocess.run(['systemctl', '--user', 'enable', '--now', 'playaural-update.timer', 'playaural-update-resume.timer'], check=True)
+        print('Kept the newer trusted coordinator')
+        return
     for directory in ('auto', 'auto/jobs', 'auto/credentials', 'auto/agent-home', 'ops/autoupdate'):
         path = root / directory
         path.mkdir(parents=True, exist_ok=True)
@@ -72,6 +78,7 @@ def install(root, source, *, enable=False):
         subprocess.run(['git', '-C', str(repository), 'config', key, value], check=True)
     subprocess.run(['git', '-C', str(repository), 'remote', 'set-url', 'origin', 'git@github.com:marcomolinaleija/PlayAural.git'], check=True)
     subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
+    record_controller(root, source_commit)
     if enable:
         subprocess.run(['systemctl', '--user', 'enable', '--now', 'playaural-update.timer', 'playaural-update-resume.timer'], check=True)
     print('Trusted PlayAural coordinator installed' + (' and timers enabled' if enable else '; timers not enabled by this command'))
@@ -81,5 +88,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', type=Path, default=Path('/home/marco/apps/playaural'))
     parser.add_argument('--enable', action='store_true')
+    parser.add_argument('--source-commit', required=True)
     args = parser.parse_args()
-    install(args.root, Path(__file__).resolve().parent, enable=args.enable)
+    install(args.root, Path(__file__).resolve().parent, enable=args.enable, source_commit=args.source_commit)

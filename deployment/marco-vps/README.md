@@ -142,13 +142,21 @@ queued; valid backups and prior releases are retained.
 
 Private installation prerequisites: `auto/credentials/github.token`, the
 existing VPS Codex login, and the existing Android signing files. Run
-`install_autoupdate.py` from the approved source to install scripts and units;
+`install_autoupdate.py --source-commit FULL_SHA` from the approved source to install scripts and units;
 `--enable` activates the timers. The installer creates a write deploy key
 restricted to this fork and uses GitHub's HTTPS metadata for known host keys.
 Credentials never enter Git, GitHub build jobs or the Android builder. The
 first full run must be verified before retiring the old desktop heartbeat.
 The implementation follows [OpenAI's non-interactive Codex guidance](https://learn.chatgpt.com/docs/non-interactive-mode)
 and [app-server usage API](https://learn.chatgpt.com/docs/app-server).
+
+The installation receipt at `auto/controller-source.json` prevents a completed
+older app job from replacing newer trusted coordinator fixes. Controller
+upgrades must be on the same approved history. Public release directories are
+explicitly mode 755 even though private coordinator work uses umask 077; a
+resumed publication repairs directory traversal permissions without changing
+artifact bytes. Usage-reader exceptions follow the same graceful agent stop as
+an exhausted quota, including while an agent is already running.
 
 Operations:
 

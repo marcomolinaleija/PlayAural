@@ -24,6 +24,7 @@ import zipfile
 
 from agent_runner import BUILDER, container_status, integration_prompt, start_agent
 from codex_quota import read_quota
+from controller_revision import controller_is_newer
 from deployment_gate import idle_status
 from github_release import GitHub, REPOSITORY, extract_windows_artifact, sha256
 
@@ -107,12 +108,16 @@ class Coordinator:
         return result.returncode == 0
 
     def quota(self, job):
-        quota = read_quota(env=dict(os.environ, CODEX_HOME=str(self.auto / 'agent-home')))
+        try:
+            quota = read_quota(env=dict(os.environ, CODEX_HOME=str(self.auto / 'agent-home')))
+        except Exception as error:
+            # A reader failure must also stop an already-running model process.
+            quota = {'allowed': False, 'remaining_percent': None, 'error': type(error).__name__}
         atomic_json(self.auto / 'quota.json', quota)
         job['quota_checked_at'] = time.time()
         if not quota['allowed']:
             job['quota_deferred'] = True
-            job['last_error'] = 'Codex reserve reached; candidate preserved and production unchanged'
+            job['last_error'] = ('Codex usage unavailable' if quota.get('error') else 'Codex reserve reached') + '; candidate preserved and production unchanged'
             self.save(job)
             return False
         job.pop('quota_deferred', None)
@@ -369,7 +374,10 @@ class Coordinator:
         destination = self.root / 'downloads' / job['candidate']
         staging = self.root / 'downloads' / ('.candidate-' + job['id'])
         if not destination.exists():
+            if staging.is_symlink():
+                raise ValueError('Staging directories cannot be symlinks')
             staging.mkdir(mode=0o755, exist_ok=True)
+            staging.chmod(0o755)
             for name in ('PlayAural.zip', 'sounds.zip'):
                 shutil.copy2(self.job_dir(job) / 'windows' / name, staging / name)
             shutil.copy2(self.job_dir(job) / 'signed/PlayAural.apk', staging / 'PlayAural.apk')
@@ -390,9 +398,12 @@ class Coordinator:
                 with path.open('rb') as saved:
                     os.fsync(saved.fileno())
             staging.rename(destination)
+        if destination.is_symlink() or not destination.is_dir():
+            raise ValueError('Release directories must be regular directories')
         manifest = json.loads((destination / 'release.json').read_text())
         if manifest['source_commit'] != job['candidate'] or manifest['android_version_code'] != job['android_code']:
             raise ValueError('Existing immutable release does not match this job')
+        destination.chmod(0o755)
         for name, expected_hash in manifest['sha256'].items():
             if sha256(destination / name) != expected_hash:
                 raise ValueError('Published artifact failed checksum verification')
@@ -490,8 +501,11 @@ class Coordinator:
             source_link.unlink()
         source_link.symlink_to(revision + '/source.tar.gz')
         source_link.replace(self.root / 'downloads/source.tar.gz')
-        installer = self.root / 'releases' / revision / 'deployment/marco-vps/install_autoupdate.py'
-        subprocess.run(['python3', str(installer), '--root', str(self.root), '--enable'], check=True)
+        if controller_is_newer(self.root, revision):
+            subprocess.run(['systemctl', '--user', 'enable', '--now', 'playaural-update.timer', 'playaural-update-resume.timer'], check=True)
+        else:
+            installer = self.root / 'releases' / revision / 'deployment/marco-vps/install_autoupdate.py'
+            subprocess.run(['python3', str(installer), '--root', str(self.root), '--enable', '--source-commit', revision], check=True)
         subprocess.run(['systemctl', '--user', 'start', '--no-block', 'playaural-b2-upload.service'], check=True)
         job.update(phase='done', completed_at=time.time(), last_error='')
         self.save(job)
