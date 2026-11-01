@@ -191,6 +191,8 @@ buffer-system = Sistema
 buffer-misc = Varios
 
 system-announcement = Anuncio del sistema
+chat-global = Chat global, { $player }: { $message }
+chat-local = Chat de mesa, { $player }: { $message }
 chat-announcement = Anuncio del sistema: { $message }
 chat-private = Mensaje privado de { $player }: { $message }
 login-error-connection-refused = Conexión rechazada: es posible que el servidor esté fuera de línea.

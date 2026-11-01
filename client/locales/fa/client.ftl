@@ -136,6 +136,8 @@ buffer-name-system = سیستم
 buffer-name-chat = چت
 
 system-announcement = اطلاعیه سیستم
+chat-global = گفتگوی عمومی، { $player }: { $message }
+chat-local = گفتگوی میز، { $player }: { $message }
 chat-announcement = اطلاعیه سیستم: { $message }
 login-error-connection-refused = اتصال رد شد: ممکن است سرور آفلاین باشد.
 login-error-connection-timeout = زمان اتصال به پایان رسید: سرور پاسخ نداد.

@@ -196,6 +196,8 @@ buffer-system = النظام
 buffer-misc = متنوع
 
 system-announcement = إعلان النظام
+chat-global = الدردشة العامة، { $player }: { $message }
+chat-local = دردشة الطاولة، { $player }: { $message }
 chat-announcement = إعلان النظام: { $message }
 chat-private = رسالة خاصة من { $player }: { $message }
 login-error-connection-refused = تم رفض الاتصال: قد يكون الخادم غير متصل.
