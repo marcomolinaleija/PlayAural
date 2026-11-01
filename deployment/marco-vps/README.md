@@ -63,6 +63,14 @@ when local disk space is limited. Mount only an isolated build checkout at
 The Windows script rejects builds with less than 15 GB free. Signing is a
 separate, offline step using the existing deployment key.
 
+The verified builder is `cimg/android:2026.10.1-node`, pinned as
+`cimg/android@sha256:7cf8be3b40321a557dc4c1eebbec711903cbef6ed14484e724a558687893ff52`.
+It provides JDK 21, Node 24 and Android build-tools 36.0.0. Run the build with
+three CPUs, 8 GiB RAM, a persistent SDK volume at `/home/circleci/android-sdk`
+and Gradle cache at `/root/.gradle`; the script limits Gradle workers to two.
+The SDK installs the NDK/CMake versions selected by the locked React Native
+dependencies on its first build.
+
 Upload and verify downloads before promotion. `promote.sh FULL_COMMIT MANIFEST`
 requires the manifest's source_commit to match the approved commit on the
 fork's main history. It builds isolated images, checks manifest compatibility,
