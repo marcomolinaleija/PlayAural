@@ -3,6 +3,7 @@ import argparse
 import ast
 from datetime import datetime, timezone
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -106,7 +107,7 @@ class Coordinator:
         return result.returncode == 0
 
     def quota(self, job):
-        quota = read_quota()
+        quota = read_quota(env=dict(os.environ, CODEX_HOME=str(self.auto / 'agent-home')))
         atomic_json(self.auto / 'quota.json', quota)
         job['quota_checked_at'] = time.time()
         if not quota['allowed']:
@@ -395,6 +396,16 @@ class Coordinator:
         for name, expected_hash in manifest['sha256'].items():
             if sha256(destination / name) != expected_hash:
                 raise ValueError('Published artifact failed checksum verification')
+            url = 'https://play.marco-ml.com/downloads/' + job['candidate'] + '/' + name
+            if job.get('verified_downloads', {}).get(url) != expected_hash:
+                downloaded = hashlib.sha256()
+                with urllib.request.urlopen(url, timeout=120) as response:
+                    while chunk := response.read(1024 * 1024):
+                        downloaded.update(chunk)
+                if downloaded.hexdigest() != expected_hash:
+                    raise ValueError('Public HTTPS artifact checksum mismatch')
+                job.setdefault('verified_downloads', {})[url] = expected_hash
+                self.save(job)
         job['phase'] = 'await_idle'
         self.save(job)
         return True
@@ -457,6 +468,10 @@ class Coordinator:
         state = json.loads(state)
         if not state['Running'] or state.get('Health', {}).get('Status') != 'healthy':
             return False
+        for container, expected_image in (('playaural-game-1', 'playaural-game:'), ('playaural-web-1', 'playaural-web:')):
+            image = subprocess.check_output(['docker', 'inspect', '--format', '{{.Config.Image}}', container], text=True).strip()
+            if image != expected_image + job['candidate']:
+                raise RuntimeError('Runtime image does not match the approved source')
         with urllib.request.urlopen('https://play.marco-ml.com/health', timeout=20) as response:
             if response.status != 200:
                 raise RuntimeError('Public web health check failed')

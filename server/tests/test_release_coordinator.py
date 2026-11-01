@@ -53,7 +53,7 @@ def test_atomic_state_never_follows_a_preplanted_temporary_symlink(tmp_path):
 def test_quota_reserve_preserves_phase_and_stops_advancement(tmp_path, monkeypatch):
     (tmp_path / 'auto/jobs/test').mkdir(parents=True)
     controller = module.Coordinator(tmp_path)
-    monkeypatch.setattr(module, 'read_quota', lambda: {'allowed': False, 'remaining_percent': 2})
+    monkeypatch.setattr(module, 'read_quota', lambda **kwargs: {'allowed': False, 'remaining_percent': 2})
     job = {'id': 'test', 'phase': 'await_idle'}
     assert not controller.quota(job)
     assert job['quota_deferred']

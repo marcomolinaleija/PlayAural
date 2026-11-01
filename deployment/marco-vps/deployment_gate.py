@@ -22,7 +22,7 @@ def idle_status(root, now=None):
 
 
 def verify(root):
-    quota = read_quota()
+    quota = read_quota(env=dict(os.environ, CODEX_HOME=str(Path(root) / 'auto/agent-home')))
     if not quota['allowed']:
         raise RuntimeError('Codex reserve reached; deployment deferred')
     if os.environ.get('PLAYAURAL_BOOTSTRAP_IDLE') == '1':
