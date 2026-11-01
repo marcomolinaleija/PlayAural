@@ -3,6 +3,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -116,6 +117,7 @@ def test_publication_is_traversable_under_private_umask_and_resume_repairs_permi
     assert hashes == json.loads((destination / 'release.json').read_text())['sha256']
 
 
+@pytest.mark.skipif(shutil.which('git') is None, reason='Real Git ancestry is verified in CI; the minimal game image has no Git')
 def test_older_completed_app_job_cannot_downgrade_a_newer_controller(tmp_path):
     source = tmp_path / 'source'
     source.mkdir()
