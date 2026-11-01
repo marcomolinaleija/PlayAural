@@ -93,10 +93,13 @@ def test_windows_native_telex_messages_resolve_every_physical_press() -> None:
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows window subclass API")
-def test_windows_text_observer_sees_native_and_ime_key_messages_once() -> None:
+def test_windows_text_observer_sees_native_and_ime_key_messages_once(monkeypatch) -> None:
     import ctypes
     import wx
 
+    # Synthetic messages must not inherit physical modifier keys held by the
+    # person using the machine while the test runs.
+    monkeypatch.setattr("windows_typing._windows_key_down", lambda key: False)
     app = wx.GetApp() or wx.App(False)
     frame = wx.Frame(None)
     text_control = wx.TextCtrl(frame)

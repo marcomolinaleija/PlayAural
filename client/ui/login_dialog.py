@@ -60,11 +60,10 @@ class LoginDialog(wx.Dialog):
         # Initialize config manager
         self.config_manager = ConfigManager()
 
-        # Initialize Official Server
-        self.server_id = "official_server"  # Using a fixed ID for the "Official" server
-        # Ensure this server exists in config, if not create it default to official server
+        # Keep this deployment's accounts separate from the upstream service.
+        self.server_id = "marco_server"
         if not self.config_manager.get_server_by_id(self.server_id):
-            self.config_manager.add_server("Official Server", "wss://playaural.ddt.one", "443", server_id=self.server_id)
+            self.config_manager.add_server("PlayAural Marco", "wss://play.marco-ml.com", "443", server_id=self.server_id)
 
         # Local dev server toggle: only when running from source (never in a
         # packaged/production build), so testers can point at a local server
@@ -224,7 +223,7 @@ class LoginDialog(wx.Dialog):
     def on_toggle_local_server(self, event):
         """Switch between the official and local dev server (source builds only)."""
         use_local = self.chk_local_server.GetValue()
-        self.server_id = self.local_server_id if use_local else "official_server"
+        self.server_id = self.local_server_id if use_local else "marco_server"
         self.server_url = self.config_manager.get_server_url(self.server_id)
         self.config_manager.set_last_server(self.server_id)
         # Refresh the account area for the newly selected server.

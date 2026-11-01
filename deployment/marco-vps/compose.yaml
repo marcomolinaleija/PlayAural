@@ -1,0 +1,56 @@
+name: playaural
+services:
+  game:
+    image: playaural-game:${RELEASE_ID:?Set RELEASE_ID}
+    build:
+      context: ${CODE_ROOT:?Set CODE_ROOT}
+      dockerfile: deployment/marco-vps/Dockerfile
+    env_file: ${PLAYAURAL_HOME}/config/voice.env
+    environment:
+      PLAYAURAL_RELEASE_MANIFEST: /config/releases.json
+    ports:
+      - "127.0.0.1:3047:8000"
+    volumes:
+      - ${PLAYAURAL_HOME}/data:/data
+      - ${PLAYAURAL_HOME}/backups:/backups
+      - ${PLAYAURAL_HOME}/config:/config:ro
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    stop_grace_period: 45s
+    healthcheck:
+      test: [CMD, /app/server/.venv/bin/python, -c, "import socket; socket.create_connection(('127.0.0.1',8000),3).close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  web:
+    image: playaural-web:${RELEASE_ID:?Set RELEASE_ID}
+    build:
+      context: ${CODE_ROOT:?Set CODE_ROOT}
+      dockerfile: deployment/marco-vps/Dockerfile.web
+    ports:
+      - "127.0.0.1:3048:8080"
+    volumes:
+      - ${PLAYAURAL_HOME}/config/config.js:/usr/share/nginx/html/config.js:ro
+      - ${PLAYAURAL_HOME}/downloads:/downloads:ro
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    depends_on: [game, livekit]
+  livekit:
+    image: livekit/livekit-server@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20
+    command: [--config, /etc/livekit.yaml]
+    ports:
+      - "127.0.0.1:7880:7880"
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
+      - "443:443/udp"
+    volumes:
+      - ${PLAYAURAL_HOME}/config/livekit.yaml:/etc/livekit.yaml:ro
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    logging:
+      options: {max-size: 10m, max-file: "3"}

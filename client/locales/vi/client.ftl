@@ -110,6 +110,7 @@ login-account-deleted = Đã xóa tài khoản thành công.
 login-manual-title = Đăng nhập
 login-failed-title = Đăng nhập thất bại
 login-info-logging-in = Đang đăng nhập...
+login-info-failed = Xác minh thất bại!
 
 reg-dialog-title = Tạo tài khoản PlayAural
 reg-title = Tạo tài khoản mới

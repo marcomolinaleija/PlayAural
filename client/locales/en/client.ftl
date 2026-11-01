@@ -110,6 +110,7 @@ login-account-deleted = Account deleted successfully.
 login-manual-title = Login
 login-failed-title = Login Failed
 login-info-logging-in = Logging in...
+login-info-failed = Verification failed!
 
 reg-dialog-title = Create Play Aural Account
 reg-title = Create New Account

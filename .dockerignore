@@ -1,0 +1,11 @@
+.git
+**/.venv
+**/__pycache__
+**/node_modules
+**/.pytest_cache
+**/*.db
+**/*.log
+dist
+build
+mobile_client/android
+mobile_client/ios

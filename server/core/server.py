@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import math
+import os
 import re
 import secrets
 import signal
@@ -34,6 +35,7 @@ from .release_artifacts import (
     ReleaseArtifact,
     ReleaseArtifacts,
     freeze_release_registry,
+    load_release_registry,
     resolve_release_target,
 )
 from .tick import TickScheduler
@@ -203,6 +205,13 @@ CLIENT_RELEASE_ARTIFACTS = freeze_release_registry(
         "web": ReleaseArtifacts(target="web"),
     }
 )
+if os.environ.get("PLAYAURAL_RELEASE_MANIFEST"):
+    CLIENT_RELEASE_ARTIFACTS = load_release_registry(
+        os.environ["PLAYAURAL_RELEASE_MANIFEST"],
+        version=VERSION,
+        sounds_version=SOUNDS_VERSION,
+    )
+
 MAX_CLIENT_VOICE_IDENTIFIER_LENGTH = 512
 TABLE_CREATED_NOTIFICATION_SOUND = "table_created.ogg"
 TABLE_INVITE_NOTIFICATION_SOUND = "table_invite.ogg"
