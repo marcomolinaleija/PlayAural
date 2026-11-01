@@ -1,0 +1,8 @@
+[Unit]
+Description=Upload verified PlayAural backups to private Backblaze B2
+
+[Service]
+Type=oneshot
+UMask=0077
+TimeoutStartSec=15min
+ExecStart=/usr/bin/python3 /home/marco/apps/playaural/ops/upload_backup_b2.py
