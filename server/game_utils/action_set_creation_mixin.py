@@ -213,6 +213,16 @@ class ActionSetCreationMixin:
         )
         action_set.add(
             Action(
+                id="read_table_presence",
+                label=Localization.get(locale, "read-table-presence"),
+                handler="_action_read_table_presence",
+                is_enabled="_is_whos_at_table_enabled",
+                is_hidden="_is_read_table_presence_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
                 id="check_scores",
                 label=Localization.get(locale, "check-scores"),
                 handler="_action_check_scores",
@@ -334,6 +344,20 @@ class ActionSetCreationMixin:
             "ctrl+u",
             "Who's at the table",
             ["whos_at_table"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "ctrl+w",
+            "Who's at the table",
+            ["whos_at_table"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "w",
+            "Read table participants and host",
+            ["read_table_presence"],
             state=KeybindState.ALWAYS,
             include_spectators=True,
         )

@@ -112,7 +112,7 @@ Khi Ngửa bài, người còn tay bài hiệu lực có thể dùng các hành 
 \* \*\*F:\*\* Bỏ bài.
 \* \*\*R:\*\* Tố.
 \* \*\*Shift+A:\*\* Tất tay.
-\* \*\*W:\*\* đọc bài tẩy của bạn.
+\* \*\*Alt+W:\*\* đọc bài tẩy của bạn.
 \* \*\*G:\*\* đọc sức mạnh tay bài.
 \* \*\*E:\*\* đọc bài chung.
 \* \*\*P:\*\* kiểm tra hũ.

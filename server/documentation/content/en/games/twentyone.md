@@ -228,7 +228,7 @@ Your opponent takes 2 damage (base bet 1, plus 1 from your Raise one). They drop
 
 \* \*\*R:\*\* Read current hand (announces your cards and total).
 
-\* \*\*W:\*\* Read current bets (announces the effective bet for each player after modifier adjustments).
+\* \*\*Alt+W:\*\* Read current bets (announces the effective bet for each player after modifier adjustments).
 
 \* \*\*E:\*\* Read active effects (announces every active player's table effects, including targets where relevant).
 

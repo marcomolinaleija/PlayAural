@@ -138,4 +138,4 @@ Trước khi bắt đầu trận đấu, chủ bàn có thể chỉnh các mục
 
 \* \*\*E:\*\* Đọc số quân mà những người chơi khác đang cầm.
 
-\* \*\*W:\*\* Đọc tay cờ của bạn.
+\* \*\*Alt+W:\*\* Đọc tay cờ của bạn.

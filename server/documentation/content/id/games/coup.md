@@ -56,4 +56,4 @@ Jika Alice memiliki Duke, ia membuka kartunya. Bob kehilangan satu kartu dan Ali
 
 Tekan \*\*C\*\* untuk menantang klaim tindakan atau penghalangan. Tekan \*\*V\*\* untuk menghalangi tindakan yang menyasar Anda atau untuk menghalangi bantuan luar negeri. Tekan \*\*P\*\* untuk melewati kesempatan menanggapi. Jika semua pemain melewati kesempatan itu, waktu tunggu langsung diakhiri.
 
-Tekan \*\*W\*\* untuk memeriksa koin semua pemain yang masih bertahan. Tekan \*\*H\*\* untuk memeriksa kartu tertutup Anda. Tekan \*\*L\*\* untuk memeriksa kartu pengaruh yang telah hilang dan terbuka di meja.
+Tekan \*\*Alt+W\*\* untuk memeriksa koin semua pemain yang masih bertahan. Tekan \*\*H\*\* untuk memeriksa kartu tertutup Anda. Tekan \*\*L\*\* untuk memeriksa kartu pengaruh yang telah hilang dan terbuka di meja.

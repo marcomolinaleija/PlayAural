@@ -138,4 +138,4 @@ El anfitrión puede ajustar la siguiente configuración antes de que empiece la 
 
 \* \*\*E:\*\* Leer cuántas fichas tienen los demás jugadores.
 
-\* \*\*W:\*\* Leer tu mano.
+\* \*\*Alt+W:\*\* Leer tu mano.

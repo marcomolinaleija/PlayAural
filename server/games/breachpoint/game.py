@@ -1720,7 +1720,7 @@ class BreachPointGame(BreachPointAudioMixin, Game):
             state=KeybindState.ACTIVE,
         )
         self.define_keybind(
-            "w",
+            "alt+w",
             Localization.get("en", "breachpoint-action-read-enemies"),
             ["read_enemies"],
             state=KeybindState.ACTIVE,

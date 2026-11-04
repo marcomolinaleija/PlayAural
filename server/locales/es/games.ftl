@@ -179,3 +179,5 @@ game-info-no-options = Este juego no tiene opciones de configuración personaliz
 # How to Play (Ctrl+F1)
 how-to-play = Cómo jugar
 game-rules-not-available = Las reglas de {$game} aún no están disponibles.
+
+game-name-freetable = Mesa libre

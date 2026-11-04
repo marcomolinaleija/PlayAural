@@ -440,3 +440,33 @@ test("the checked-in Web vendors carry complete dependency notices", async () =>
     (await readFile(new URL("../vendor/LIVEKIT_NOTICE", import.meta.url), "utf8")).trim(),
   );
 });
+
+
+test("table roster shortcuts preserve key and modifier dispatch", () => {
+  const menuElement = { contains: () => false };
+  const packets = [];
+  let keydown;
+  globalThis.document = {
+    activeElement: menuElement,
+    addEventListener(type, handler) { if (type === "keydown") keydown = handler; },
+  };
+  installKeybinds({
+    store: { state: {
+      connection: { authenticated: true },
+      currentMenu: { menuId: "turn_menu", items: [{id: "whos_at_table", text: "People"}], selection: 0, multiletter: false },
+    } },
+    menuView: { getElement: () => menuElement },
+    sendKeybind: packet => packets.push(packet),
+  });
+  for (const [key, control, alt] of [["w", false, false], ["w", true, false], ["u", true, false], ["w", false, true]]) {
+    keydown({key, ctrlKey: control, altKey: alt, shiftKey: false, metaKey: false, preventDefault() {}});
+    assert.equal(packets.at(-1).key, key);
+    assert.equal(packets.at(-1).control, control);
+    assert.equal(packets.at(-1).alt, alt);
+  }
+  assert.equal(packets.length, 4);
+  // These assertions cover dispatched application events; browsers may reserve Ctrl+W.
+  document.activeElement = { tagName: "INPUT" };
+  keydown({key: "w", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, preventDefault() {}});
+  assert.equal(packets.length, 4);
+});

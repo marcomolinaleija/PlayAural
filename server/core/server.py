@@ -652,7 +652,7 @@ class Server:
 
     def _prune_obsolete_game_data(self) -> None:
         """Remove data outside the current registered game/stat schema."""
-        game_classes = GameRegistry.get_all()
+        game_classes = GameRegistry.get_all(include_social=True)
         valid_game_types = {game_class.get_type() for game_class in game_classes}
         supported_stats = {
             game_class.get_type(): StatsExtractor.supported_persisted_stat_keys(
@@ -2826,6 +2826,11 @@ PlayAural Server
         items = [
             MenuItem(text=Localization.get(user.locale, "play"), id="play"),
             MenuItem(
+                text=Localization.get(user.locale, "create-free-table"),
+                id="create_free_table",
+                description_key="free-table-description",
+            ),
+            MenuItem(
                 text=Localization.get(user.locale, "view-active-tables"),
                 id="active_tables",
             ),
@@ -2883,12 +2888,16 @@ PlayAural Server
         return counts
 
     def _get_localized_game_list(
-        self, user: NetworkUser, category_filter: str | None = None
+        self,
+        user: NetworkUser,
+        category_filter: str | None = None,
+        *,
+        include_social: bool = False,
     ) -> list[tuple[type, str]]:
         """Return registered games sorted by localized display name."""
         selected_filter = category_filter or CATEGORY_FILTER_ALL
         game_list = []
-        for game_class in GameRegistry.get_all():
+        for game_class in GameRegistry.get_all(include_social=include_social):
             if (
                 selected_filter != CATEGORY_FILTER_ALL
                 and selected_filter not in normalize_categories(game_class.get_categories())
@@ -6569,6 +6578,17 @@ PlayAural Server
         """Handle main menu selection."""
         if selection_id == "play":
             self._nav_push(user, self._show_games_list_menu)
+        elif selection_id == "create_free_table":
+            if self._tables.find_user_table(user.username):
+                return
+            await self._handle_tables_selection(
+                user,
+                "create_table",
+                {
+                    "game_type": "freetable",
+                    "game_name": Localization.get(user.locale, "game-name-freetable"),
+                },
+            )
         elif selection_id == "active_tables":
             self._nav_push(user, self._show_active_tables_menu)
         elif selection_id == "saved_tables":
@@ -9930,15 +9950,18 @@ PlayAural Server
                             game=local_game_name
                         )
 
-                min_players = game_class.get_min_players()
-                max_players = game_class.get_max_players()
-                user.speak_l(
-                    "waiting-for-players",
-                    buffer="game",
-                    current=len(game.players),
-                    min=min_players,
-                    max=max_players,
-                )
+                if game_class.is_social_activity:
+                    user.speak_l("free-table-ready", buffer="game")
+                else:
+                    min_players = game_class.get_min_players()
+                    max_players = game_class.get_max_players()
+                    user.speak_l(
+                        "waiting-for-players",
+                        buffer="game",
+                        current=len(game.players),
+                        min=min_players,
+                        max=max_players,
+                    )
 
         elif selection_id.startswith("table_"):
             table_id = selection_id[6:]  # Remove "table_" prefix
@@ -10995,7 +11018,7 @@ PlayAural Server
             ], page_data
         targets = [
             (game_class, name)
-            for game_class, name in self._get_localized_game_list(user)
+            for game_class, name in self._get_localized_game_list(user, include_social=True)
             if game_class.get_type() != table.game_type
             and game_class.get_max_players() >= active_seats
         ]
@@ -11203,7 +11226,11 @@ PlayAural Server
         show_confirmation_menu(
             user,
             HOST_GAME_SWITCH_CONFIRM_MENU,
-            prompt_key="host-game-switch-confirm",
+            prompt_key=(
+                "host-game-switch-confirm-free-table"
+                if target_class.is_social_activity
+                else "host-game-switch-confirm"
+            ),
             prompt_kwargs={
                 "old_game": (
                     Localization.get(user.locale, current_class.get_name_key())
@@ -13397,7 +13424,7 @@ PlayAural Server
             and row.get("kind") == "user"
             and row.get("name") != user.username
             and row.get("is_table_member")
-            and not row.get("is_spectator")
+            and (not row.get("is_spectator") or table.game.is_social_activity)
             and not row.get("is_replaced_by_bot")
             and player
             and account_id

@@ -176,7 +176,7 @@ O Pôquer do Morto atualmente usa regras fixas. O anfitrião não tem opções e
 * **F:** Desistir, ou Desistência Covarde quando esse for o contexto atual de desistência.
 * **D:** Trocar carta.
 * **Shift+A:** All-in, ou cobrir o all-in ao responder a um all-in.
-* **W:** Ler sua mão.
+* **Alt+W:** Ler sua mão.
 * **G:** Ler a força atual da sua mão.
 * **E:** Ler cartas comunitárias.
 * **V:** Ler o status completo da mesa.

@@ -74,7 +74,7 @@ Syarat kemenangan menentukan cara memilih pemenang. Bawaannya Pemain terakhir ya
 
 \*\*Pintasan keyboard\*\*
 
-Tekan \*\*R\*\* untuk menu taruhan cepat merah, \*\*U\*\* untuk biru, \*\*Y\*\* untuk kuning, \*\*G\*\* untuk hijau, \*\*W\*\* untuk putih, atau \*\*O\*\* untuk oranye.
+Tekan \*\*R\*\* untuk menu taruhan cepat merah, \*\*U\*\* untuk biru, \*\*Y\*\* untuk kuning, \*\*G\*\* untuk hijau, \*\*Alt+W\*\* untuk putih, atau \*\*O\*\* untuk oranye.
 
 Tekan \*\*C\*\* untuk menghapus semua taruhan Anda saat ini. Tekan \*\*Spasi\*\* untuk mengunci taruhan ronde ini.
 

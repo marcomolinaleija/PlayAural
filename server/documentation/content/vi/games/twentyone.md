@@ -228,7 +228,7 @@ Lan chịu 2 sát thương (cược cơ bản 1, cộng 1 từ Tăng một của
 
 \* \*\*R:\*\* Đọc tay bài hiện tại (thông báo các lá bài và tổng điểm của bạn).
 
-\* \*\*W:\*\* Đọc cược hiện tại (thông báo mức cược hiệu lực của mỗi người sau khi tính hiệu ứng).
+\* \*\*Alt+W:\*\* Đọc cược hiện tại (thông báo mức cược hiệu lực của mỗi người sau khi tính hiệu ứng).
 
 \* \*\*E:\*\* Đọc hiệu ứng đang hoạt động (thông báo hiệu ứng bàn của mọi người chơi còn sống, bao gồm mục tiêu nếu có).
 

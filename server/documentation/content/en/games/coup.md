@@ -102,7 +102,7 @@ The host can configure these settings at the table before starting:
 
 \* \*\*P:\*\* Pass (agreeing not to challenge or block). If everyone passes, the timer fast-forwards.
 
-\* \*\*W:\*\* Check Wealth (lists all alive players and their coins).
+\* \*\*Alt+W:\*\* Check Wealth (lists all alive players and their coins).
 
 \* \*\*H:\*\* Check Hand (reminds you of your current face-down cards).
 

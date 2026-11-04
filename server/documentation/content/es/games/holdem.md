@@ -112,7 +112,7 @@ En la revelación de cartas, los jugadores con manos vivas pueden usar las accio
 \* \*\*F:\*\* retirarse.
 \* \*\*R:\*\* subir.
 \* \*\*Shift+A:\*\* all in.
-\* \*\*W:\*\* leer tus cartas privadas.
+\* \*\*Alt+W:\*\* leer tus cartas privadas.
 \* \*\*G:\*\* leer la fuerza de la mano.
 \* \*\*E:\*\* leer cartas comunitarias.
 \* \*\*P:\*\* ver el bote.

@@ -109,7 +109,7 @@ Spectators can use the public information actions but cannot read a player's pri
 \* \*\*Shift+A:\*\* All in.
 \* \*\*1 through 5:\*\* select or deselect that card during the draw.
 \* \*\*D:\*\* exchange the selected cards or stand pat.
-\* \*\*W:\*\* read your hand.
+\* \*\*Alt+W:\*\* read your hand.
 \* \*\*G:\*\* read your hand strength.
 \* \*\*P:\*\* check the pot.
 \* \*\*N:\*\* check the amount to call.

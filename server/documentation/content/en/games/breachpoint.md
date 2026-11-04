@@ -183,7 +183,7 @@ Desktop players find information actions in the actions menu and can use the sho
 \* \*\*P:\*\* Read your loadout and tactical status.
 \* \*\*M:\*\* Open the tactical map.
 \* \*\*V:\*\* Open teammate status.
-\* \*\*W:\*\* Open known enemy status.
+\* \*\*Alt+W:\*\* Open known enemy status.
 \* \*\*O:\*\* Read bomb status.
 \* \*\*S:\*\* Read the brief score.
 \* \*\*Shift+S:\*\* Open detailed scores.

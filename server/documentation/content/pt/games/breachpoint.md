@@ -183,7 +183,7 @@ Jogadores desktop encontram ações de informação no menu de ações e podem u
 \* \*\*P:\*\* Ler seu equipamento e status tático.
 \* \*\*M:\*\* Abrir o mapa tático.
 \* \*\*V:\*\* Abrir status dos colegas.
-\* \*\*W:\*\* Abrir status de inimigos conhecidos.
+\* \*\*Alt+W:\*\* Abrir status de inimigos conhecidos.
 \* \*\*O:\*\* Ler status da bomba.
 \* \*\*S:\*\* Ler a pontuação breve.
 \* \*\*Shift+S:\*\* Abrir pontuação detalhada.

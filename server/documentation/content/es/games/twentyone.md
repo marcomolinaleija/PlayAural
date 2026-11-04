@@ -172,7 +172,7 @@ Tu oponente recibe 2 de daño (apuesta base 1, más 1 por tu Subir uno). Baja a 
 
 \* \*\*R:\*\* Leer mano actual (anuncia tus cartas y tu total).
 
-\* \*\*W:\*\* Leer apuestas actuales (anuncia la apuesta efectiva de cada jugador tras los ajustes de modificadores).
+\* \*\*Alt+W:\*\* Leer apuestas actuales (anuncia la apuesta efectiva de cada jugador tras los ajustes de modificadores).
 
 \* \*\*E:\*\* Leer efectos activos (anuncia los efectos de mesa de cada jugador activo, incluyendo los objetivos cuando corresponda).
 

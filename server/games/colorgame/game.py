@@ -1100,7 +1100,7 @@ class ColorGameGame(Game):
         self.define_keybind("u", "Set blue bet", ["set_bet_blue"], state=KeybindState.ACTIVE)
         self.define_keybind("y", "Set yellow bet", ["set_bet_yellow"], state=KeybindState.ACTIVE)
         self.define_keybind("g", "Set green bet", ["set_bet_green"], state=KeybindState.ACTIVE)
-        self.define_keybind("w", "Set white bet", ["set_bet_white"], state=KeybindState.ACTIVE)
+        self.define_keybind("alt+w", "Set white bet", ["set_bet_white"], state=KeybindState.ACTIVE)
         self.define_keybind("o", "Set orange bet", ["set_bet_orange"], state=KeybindState.ACTIVE)
         self.define_keybind("c", "Clear bets", ["clear_bets"], state=KeybindState.ACTIVE)
         self.define_keybind("space", "Confirm bets", ["confirm_bets"], state=KeybindState.ACTIVE)

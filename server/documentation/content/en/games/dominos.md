@@ -138,4 +138,4 @@ The host can adjust the following settings before the match starts:
 
 \* \*\*E:\*\* Read how many tiles the other players are holding.
 
-\* \*\*W:\*\* Read your hand.
+\* \*\*Alt+W:\*\* Read your hand.
