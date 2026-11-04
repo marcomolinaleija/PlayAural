@@ -22,6 +22,8 @@ Esta guía explica los controles que funcionan en toda la plataforma de PlayAura
 
 \* \*\*Ctrl + M:\*\* Abre Gestión del anfitrión si eres el anfitrión de la mesa.
 \* \*\*Ctrl + I:\*\* Abre Información del juego.
+\* \*\*W:\*\* Escucha cuántas personas hay en la mesa, sus nombres y quién es el jefe de mesa, sin abrir un menú.
+\* \*\*Ctrl + W:\*\* Abre el menú de personas de la mesa (también disponible con Ctrl + U).
 \* \*\*Ctrl + U:\*\* Abre Quién está en la mesa.
 \* \*\*Ctrl + F1:\*\* Abre Cómo jugar.
 \* \*\*Alt + V:\*\* Mueve el foco al área de Chat de voz en el cliente de escritorio.

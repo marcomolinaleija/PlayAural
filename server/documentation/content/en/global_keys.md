@@ -28,6 +28,8 @@ When Menu Hints are off, focus any described menu item and press \*\*F1\*\* in t
 
 \* \*\*Ctrl + M:\*\* Open Host Management if you are the table host.
 \* \*\*Ctrl + I:\*\* Open Game Info.
+\* \*\*W:\*\* Read the number and names of people at the table and its host without opening a menu.
+\* \*\*Ctrl + W:\*\* Open the table participants menu (also available with Ctrl + U).
 \* \*\*Ctrl + U:\*\* Open Who's at the table.
 \* \*\*Ctrl + F1:\*\* Open How to Play.
 \* \*\*Alt + V:\*\* Move focus to the Voice Chat area on the desktop client.

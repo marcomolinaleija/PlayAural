@@ -108,7 +108,7 @@ Se os jogadores estiverem empatados no topo, o desempate é feito nesta ordem ex
 * **U:** Abre o menu de aposta rápida do azul.
 * **Y:** Abre o menu de aposta rápida do amarelo.
 * **G:** Abre o menu de aposta rápida do verde.
-* **W:** Abre o menu de aposta rápida do branco.
+* **Alt+W:** Abre o menu de aposta rápida do branco.
 * **O:** Abre o menu de aposta rápida do laranja.
 * **C:** Limpa suas apostas atuais.
 * **Espaço:** Bloqueia suas apostas para a rodada atual.

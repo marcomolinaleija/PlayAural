@@ -164,6 +164,6 @@ Lawan menerima 2 damage, yaitu taruhan dasar 1 ditambah 1 dari \*\*Naikkan satu\
 
 \*\*O\*\* membacakan kartu terbuka setiap lawan beserta totalnya. \*\*R\*\* membacakan kartu dan total Anda saat ini.
 
-\*\*W\*\* membacakan taruhan efektif setiap pemain setelah penyesuaian efek. \*\*E\*\* membacakan efek di meja setiap pemain aktif, termasuk sasaran jika ada.
+\*\*Alt+W\*\* membacakan taruhan efektif setiap pemain setelah penyesuaian efek. \*\*E\*\* membacakan efek di meja setiap pemain aktif, termasuk sasaran jika ada.
 
 \*\*S\*\* memeriksa skor berupa HP setiap pemain aktif. \*\*Shift+S\*\* membuka rincian skor.

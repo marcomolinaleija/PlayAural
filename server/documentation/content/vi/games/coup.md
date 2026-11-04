@@ -104,7 +104,7 @@ Chủ bàn có thể thiết lập các tùy chọn sau trước khi bắt đầ
 
 \* \*\*P:\*\* Bỏ qua (đồng ý không thách thức hoặc chặn). Nếu tất cả đều bỏ qua, đồng hồ đếm ngược sẽ kết thúc sớm.
 
-\* \*\*W:\*\* Kiểm tra tài sản (đọc danh sách những người chơi còn sống và số xu của họ).
+\* \*\*Alt+W:\*\* Kiểm tra tài sản (đọc danh sách những người chơi còn sống và số xu của họ).
 
 \* \*\*H:\*\* Kiểm tra bài trên tay (đọc lại các lá bài bạn đang giữ).
 

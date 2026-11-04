@@ -1334,3 +1334,18 @@ game-unranked-removed-you = Chỗ của bạn đã bị xóa khỏi ván chơi. 
 game-unranked-released = Chỗ giữ cho { $player } đã được chuyển hẳn cho bot. Ván này sẽ không được tính vào bảng xếp hạng hay điểm kỹ năng.
 game-unranked-substituted = Một người chơi khác đã tiếp quản chỗ của { $player }. Ván này sẽ không được tính vào bảng xếp hạng hay điểm kỹ năng.
 game-unranked-substituted-you = Một người chơi khác đã tiếp quản chỗ của bạn. Ván này sẽ không được tính vào bảng xếp hạng hay điểm kỹ năng.
+
+# Bàn tự do và thông báo người tham gia
+create-free-table = Tạo bàn tự do
+read-table-presence = Nghe danh sách người tham gia và chủ bàn
+free-table-ready = Bàn tự do của bạn đã mở. Bạn có thể trò chuyện bằng văn bản hoặc tham gia trò chuyện thoại. Dùng Quản lý bàn để chuyển sang trò chơi.
+free-table-no-match = Bàn tự do không có ván để bắt đầu. Hãy chọn trò chơi trong Quản lý bàn để chơi.
+table-presence-summary = { $count ->
+    [one] Có { $count } người ở bàn: { $people }. Chủ bàn là { $host }.
+   *[other] Có { $count } người ở bàn: { $people }. Chủ bàn là { $host }.
+    }
+table-presence-bots = Bot ở bàn: { $bots }.
+host-game-switch-confirm-free-table = Chuyển bàn này sang bàn tự do? Mọi người vẫn còn ở bàn sẽ giữ nguyên vai trò người chơi hoặc khán giả. Các bot sẽ bị xóa; ván hiện tại, tùy chọn, đội và trạng thái sẵn sàng sẽ bị hủy. Chủ bàn, chế độ riêng tư, danh sách cấm và trò chuyện thoại vẫn được giữ nguyên. Những lời mời trò chơi đang chờ sẽ bị hủy.
+free-table-choose-game = Chọn trò chơi
+free-table-description = Mở bàn để trò chuyện bằng văn bản và giọng nói mà không bắt đầu trò chơi.
+free-table-help = Trợ giúp bàn tự do

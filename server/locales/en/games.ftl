@@ -179,3 +179,5 @@ game-info-no-options = This game has no custom configuration options.
 # How to Play (Ctrl+F1)
 how-to-play = How to Play
 game-rules-not-available = Rules for {$game} are not available yet.
+
+game-name-freetable = Free table

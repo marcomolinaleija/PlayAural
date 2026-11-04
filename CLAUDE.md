@@ -495,7 +495,7 @@ conflicting, as UNO does. Likewise, `enter` can start the game while idle and
 select a grid cell while active.
 
 Base/client bindings to respect include `enter`, `escape`, `b`, `shift+b`,
-`f3`, `t`, `s`, `shift+s`, `ctrl+m`, `ctrl+q`, `ctrl+u`, `ctrl+s`,
+`f3`, `t`, `s`, `shift+s`, `ctrl+m`, `ctrl+q`, `ctrl+u`, `ctrl+w`, `w`, `ctrl+s`,
 `ctrl+i`, `f1`, and `ctrl+f1`. Plain `F1` is the client-owned
 focused-menu-description command and sends `menu_description`, never a game
 keybind; `Ctrl+F1` remains How to Play. Do not reuse `ALWAYS` bindings or
@@ -1310,3 +1310,5 @@ The server currently registers **51 games**:
 - Mobile: `expo`, `react-native`, `expo-audio`, `expo-speech`, `@react-native-async-storage/async-storage`, `expo-secure-store`
 - Package manager: `uv` for Python components, `npm` for the mobile client
 - Languages: English and Vietnamese are official defaults; partial community translations fall back to English
+
+Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W and Ctrl+U open the interactive roster, and displaced game-specific W bindings use Alt+W.

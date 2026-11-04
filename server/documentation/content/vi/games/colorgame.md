@@ -108,7 +108,7 @@ Nếu nhiều người hòa nhau ở đầu bảng, thứ tự phân định ch�
 \* \*\*U:\*\* Mở trình đơn cược nhanh cho cửa xanh dương.
 \* \*\*Y:\*\* Mở trình đơn cược nhanh cho cửa vàng.
 \* \*\*G:\*\* Mở trình đơn cược nhanh cho cửa xanh lá.
-\* \*\*W:\*\* Mở trình đơn cược nhanh cho cửa trắng.
+\* \*\*Alt+W:\*\* Mở trình đơn cược nhanh cho cửa trắng.
 \* \*\*O:\*\* Mở trình đơn cược nhanh cho cửa cam.
 \* \*\*C:\*\* Xóa toàn bộ cửa cược hiện tại của bạn.
 \* \*\*Dấu cách:\*\* Khóa cược cho vòng hiện tại.

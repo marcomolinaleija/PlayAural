@@ -334,7 +334,7 @@ class DominosGame(Game):
         self.define_keybind("v", "View chain", ["view_chain"], state=KeybindState.ACTIVE, include_spectators=True)
         self.define_keybind("c", "Read ends", ["read_ends"], state=KeybindState.ACTIVE, include_spectators=True)
         self.define_keybind("e", "Read counts", ["read_counts"], state=KeybindState.ACTIVE, include_spectators=True)
-        self.define_keybind("w", "Read hand", ["read_hand"], state=KeybindState.ACTIVE)
+        self.define_keybind("alt+w", "Read hand", ["read_hand"], state=KeybindState.ACTIVE)
 
     def before_menu_build(self, player: Player) -> None:
         self._sync_turn_actions(player)

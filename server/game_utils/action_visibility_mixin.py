@@ -327,6 +327,10 @@ class ActionVisibilityMixin:
         """Check if whos_at_table action is enabled."""
         return None
 
+    def _is_read_table_presence_hidden(self, player: "Player") -> Visibility:
+        """The spoken roster is available from the actions menu and W."""
+        return Visibility.HIDDEN
+
     def _is_whos_at_table_hidden(self, player: "Player") -> Visibility:
         """Whos at table is always hidden (keybind only)."""
         return Visibility.HIDDEN

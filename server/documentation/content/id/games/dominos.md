@@ -74,4 +74,4 @@ Aturan pembuka menentukan cara setiap ronde dimulai. Bawaannya Batu kembar terti
 
 \*\*Space\*\* mengambil batu dari cadangan. \*\*P\*\* melewati giliran jika Anda tidak dapat bermain.
 
-\*\*V\*\* membuka seluruh rangkaian. \*\*C\*\* membacakan angka pada ujung yang terbuka. \*\*E\*\* membacakan jumlah batu yang dipegang pemain lain. \*\*W\*\* membacakan batu di tangan Anda.
+\*\*V\*\* membuka seluruh rangkaian. \*\*C\*\* membacakan angka pada ujung yang terbuka. \*\*E\*\* membacakan jumlah batu yang dipegang pemain lain. \*\*Alt+W\*\* membacakan batu di tangan Anda.

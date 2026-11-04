@@ -184,7 +184,7 @@ Pemain desktop menemukan tindakan informasi di menu tindakan dan dapat menggunak
 
 \*\*Pintasan keyboard\*\*
 
-\*\*H\*\* membacakan kesehatan dan pelindung. \*\*P\*\* membacakan perlengkapan dan status taktis Anda. \*\*M\*\* membuka peta taktis. \*\*V\*\* membuka status rekan satu tim. \*\*W\*\* membuka status musuh yang diketahui. \*\*O\*\* membacakan status bom.
+\*\*H\*\* membacakan kesehatan dan pelindung. \*\*P\*\* membacakan perlengkapan dan status taktis Anda. \*\*M\*\* membuka peta taktis. \*\*V\*\* membuka status rekan satu tim. \*\*Alt+W\*\* membuka status musuh yang diketahui. \*\*O\*\* membacakan status bom.
 
 \*\*S\*\* membacakan skor singkat. \*\*Shift+S\*\* membuka skor terperinci. \*\*E\*\* menyelesaikan pembelian atau mengakhiri giliran pertempuran, sesuai tahap saat ini.
 

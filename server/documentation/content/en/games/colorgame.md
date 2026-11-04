@@ -108,7 +108,7 @@ If players are tied at the top, ranking is broken in this exact order:
 \* \*\*U:\*\* Open the blue quick-bet menu.
 \* \*\*Y:\*\* Open the yellow quick-bet menu.
 \* \*\*G:\*\* Open the green quick-bet menu.
-\* \*\*W:\*\* Open the white quick-bet menu.
+\* \*\*Alt+W:\*\* Open the white quick-bet menu.
 \* \*\*O:\*\* Open the orange quick-bet menu.
 \* \*\*C:\*\* Clear your current bets.
 \* \*\*Space:\*\* Lock your bets for the current round.

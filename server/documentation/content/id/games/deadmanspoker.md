@@ -164,6 +164,6 @@ Permainan ini tidak menggunakan skor atau target skor. Pertandingan berakhir saa
 
 \*\*C\*\* untuk Call, atau menyamai all-in saat menanggapi all-in. \*\*F\*\* untuk Fold, atau Coward's Fold jika sedang tersedia dalam konteks tombol tersebut. \*\*D\*\* untuk menukar kartu. \*\*Shift+A\*\* untuk All-in, atau menyamai all-in saat menanggapi all-in.
 
-\*\*W\*\* untuk membaca kartu Anda. \*\*G\*\* untuk membaca kekuatan kombinasi saat ini. \*\*E\*\* untuk membaca kartu bersama. \*\*V\*\* untuk membaca keadaan meja secara lengkap. \*\*P\*\* untuk membaca risiko revolver.
+\*\*Alt+W\*\* untuk membaca kartu Anda. \*\*G\*\* untuk membaca kekuatan kombinasi saat ini. \*\*E\*\* untuk membaca kartu bersama. \*\*V\*\* untuk membaca keadaan meja secara lengkap. \*\*P\*\* untuk membaca risiko revolver.
 
 \*\*T\*\* untuk memeriksa giliran saat ini. \*\*Ctrl+U\*\* untuk mendengar siapa saja yang berada di meja.

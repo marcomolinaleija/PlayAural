@@ -183,7 +183,7 @@ Los jugadores de escritorio encuentran las acciones de información en el menú 
 \* \*\*P:\*\* Leer tu equipamiento y estado táctico.
 \* \*\*M:\*\* Abrir el mapa táctico.
 \* \*\*V:\*\* Abrir el estado de los compañeros.
-\* \*\*W:\*\* Abrir el estado de los enemigos conocidos.
+\* \*\*Alt+W:\*\* Abrir el estado de los enemigos conocidos.
 \* \*\*O:\*\* Leer el estado de la bomba.
 \* \*\*S:\*\* Leer la puntuación breve.
 \* \*\*Shift+S:\*\* Abrir la puntuación detallada.

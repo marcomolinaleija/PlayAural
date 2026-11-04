@@ -7694,7 +7694,7 @@ def test_game_keybinds_use_active_scope_without_base_collisions() -> None:
         "p": "read_position",
         "o": "read_bomb",
         "v": "read_teammates",
-        "w": "read_enemies",
+        "alt+w": "read_enemies",
         "e": "context_finish_or_end",
         "r": "reload",
         "x": "context_menu_back",

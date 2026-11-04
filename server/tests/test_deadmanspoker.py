@@ -516,11 +516,13 @@ def test_keybinds_use_active_state_and_do_not_collide_with_reserved_keys() -> No
         "ctrl+m",
         "ctrl+q",
         "ctrl+u",
+        "ctrl+w",
+        "w",
         "ctrl+s",
         "ctrl+i",
         "ctrl+f1",
     }
-    game_keys = {"c", "f", "d", "shift+a", "w", "g", "e", "v", "p"}
+    game_keys = {"c", "f", "d", "shift+a", "alt+w", "g", "e", "v", "p"}
     assert game_keys.isdisjoint(reserved)
     for key in game_keys:
         assert key in game._keybinds

@@ -28,6 +28,8 @@ Khi tắt Gợi ý trong trình đơn, hãy chọn một mục có mô tả rồ
 
 \* \*\*Ctrl + M:\*\* Mở phần quản lý bàn nếu bạn là chủ bàn.
 \* \*\*Ctrl + I:\*\* Mở phần Thông tin trò chơi.
+\* \*\*W:\*\* Nghe số người, tên những người ở bàn và chủ bàn mà không mở trình đơn.
+\* \*\*Ctrl + W:\*\* Mở trình đơn người tham gia bàn (cũng có thể dùng Ctrl + U).
 \* \*\*Ctrl + U:\*\* Mở phần Ai đang ở bàn.
 \* \*\*Ctrl + F1:\*\* Mở phần Cách chơi.
 \* \*\*Alt + V:\*\* Chuyển tiêu điểm tới khu vực Trò chuyện thoại trên ứng dụng máy tính.
