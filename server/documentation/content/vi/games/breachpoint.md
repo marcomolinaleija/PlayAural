@@ -183,7 +183,7 @@ Người chơi máy tính tìm các hành động thông tin trong trình đơn 
 \* \*\*P:\*\* Xem trang bị và trạng thái chiến thuật của bạn.
 \* \*\*M:\*\* Mở bản đồ chiến thuật.
 \* \*\*V:\*\* Mở tình trạng đồng đội.
-\* \*\*W:\*\* Mở tình trạng đối thủ đã biết.
+\* \*\*Alt+W:\*\* Mở tình trạng đối thủ đã biết.
 \* \*\*O:\*\* Xem tình trạng bom.
 \* \*\*S:\*\* Nghe tỷ số ngắn.
 \* \*\*Shift+S:\*\* Mở tỷ số chi tiết.

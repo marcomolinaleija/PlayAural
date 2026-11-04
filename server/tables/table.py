@@ -1225,7 +1225,11 @@ class Table(DataClassJSONMixin):
                     self._game._users.pop(player_id, None)
 
         if self.host in offline_usernames:
-            candidates = [member for member in self.members if not member.is_spectator]
+            candidates = [
+                member for member in self.members
+                if not member.is_spectator
+                or (self._game and self._game.is_social_activity)
+            ]
             if candidates:
                 self.host = candidates[0].username
                 if self._game:
@@ -1257,7 +1261,7 @@ class Table(DataClassJSONMixin):
         """Promote the next eligible human table member to host."""
         candidates = []
         for member in self.members:
-            if member.is_spectator:
+            if member.is_spectator and not (self._game and self._game.is_social_activity):
                 continue
             member_user = self._users.get(member.username)
             if member_user and getattr(member_user, "is_bot", False):
@@ -1318,7 +1322,11 @@ class Table(DataClassJSONMixin):
         # Active-game abandonment is handled before gameplay ticks above.
         if self._server and self.effective_status() == "waiting":
             host_online = self.host in self._server._users
-            if self._game:
+            if self._game and self._game.is_social_activity:
+                any_human_present = any(
+                    member.username in self._server._users for member in self.members
+                )
+            elif self._game:
                 any_human_present = bool(self._online_active_humans())
             else:
                 any_human_present = any(
@@ -1657,6 +1665,8 @@ class Table(DataClassJSONMixin):
             live_members, live_users, seats = self._game_transition_seats()
             if not any(member.username == self.host for member in live_members):
                 return False
+            if not target_class.supports_bots:
+                seats = [seat for seat in seats if not seat.is_bot]
             active_seats = sum(1 for seat in seats if not seat.is_spectator)
             if active_seats > target_class.get_max_players():
                 return False

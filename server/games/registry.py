@@ -25,9 +25,12 @@ class GameRegistry:
         return cls._games.get(game_type)
 
     @classmethod
-    def get_all(cls) -> list[Type["Game"]]:
-        """Get all registered game classes."""
-        return list(cls._games.values())
+    def get_all(cls, *, include_social: bool = False) -> list[Type["Game"]]:
+        """List games, optionally including social activities for table recovery/switching."""
+        return [
+            game_class for game_class in cls._games.values()
+            if include_social or not getattr(game_class, "is_social_activity", False)
+        ]
 
     @classmethod
     def get_games_for_preference(cls, pref_name: str) -> list[str]:
@@ -47,7 +50,7 @@ class GameRegistry:
     def get_by_category(cls) -> dict[str, list[Type["Game"]]]:
         """Get games organized by category."""
         categories: dict[str, list[Type["Game"]]] = {}
-        for game_class in cls._games.values():
+        for game_class in cls.get_all():
             for category in normalize_categories(game_class.get_categories()):
                 if category not in categories:
                     categories[category] = []

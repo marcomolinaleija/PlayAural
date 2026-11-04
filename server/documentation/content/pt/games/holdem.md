@@ -112,7 +112,7 @@ No confronto, jogadores com mãos ativas podem usar as ações de revelação pa
 * **F:** desistir (fold).
 * **R:** aumentar (raise).
 * **Shift+A:** all in.
-* **W:** lê suas cartas particulares.
+* **Alt+W:** lê suas cartas particulares.
 * **G:** lê a força da mão.
 * **E:** lê as cartas comunitárias.
 * **P:** verifica o pote.

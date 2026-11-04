@@ -109,7 +109,7 @@ Espectadores podem usar as ações de informação pública, mas não podem ler 
 * **Shift+A:** All in.
 * **1 a 5:** seleciona ou desmarca essa carta durante a troca.
 * **D:** troca as cartas selecionadas ou mantém a mão (stand pat).
-* **W:** lê sua mão.
+* **Alt+W:** lê sua mão.
 * **G:** lê a força da sua mão.
 * **P:** verifica o pote.
 * **N:** verifica o valor para pagar.

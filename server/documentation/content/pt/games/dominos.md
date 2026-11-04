@@ -68,4 +68,4 @@ O anfitrião pode ajustar as seguintes configurações antes do início da parti
 * **V:** Abre a visualização completa da corrente.
 * **C:** Lê os valores das pontas expostas.
 * **E:** Lê quantas peças os outros jogadores estão segurando.
-* **W:** Lê sua mão.
+* **Alt+W:** Lê sua mão.

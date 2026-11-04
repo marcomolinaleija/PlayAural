@@ -441,7 +441,7 @@ class CoupGame(Game):
         locale = user.locale if user else "en"
 
         # Information Keybinds
-        self.define_keybind("w", Localization.get(locale, "coup-action-check-wealth"), ["check_wealth"], state=KeybindState.ACTIVE, include_spectators=True)
+        self.define_keybind("alt+w", Localization.get(locale, "coup-action-check-wealth"), ["check_wealth"], state=KeybindState.ACTIVE, include_spectators=True)
         self.define_keybind("h", Localization.get(locale, "coup-action-check-hand"), ["check_hand"], state=KeybindState.ACTIVE)
         self.define_keybind("l", Localization.get(locale, "coup-action-check-table"), ["check_table"], state=KeybindState.ACTIVE, include_spectators=True)
 

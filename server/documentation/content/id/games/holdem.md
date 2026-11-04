@@ -134,7 +134,7 @@ Maksimum raise per putaran taruhan menentukan berapa kali raise boleh dilakukan 
 
 \*\*C\*\* untuk check atau call. \*\*F\*\* untuk fold. \*\*R\*\* untuk raise. \*\*Shift+A\*\* untuk all-in.
 
-\*\*W\*\* untuk membaca kartu pribadi Anda. \*\*G\*\* untuk membaca kekuatan kombinasi. \*\*E\*\* untuk membaca kartu bersama.
+\*\*Alt+W\*\* untuk membaca kartu pribadi Anda. \*\*G\*\* untuk membaca kekuatan kombinasi. \*\*E\*\* untuk membaca kartu bersama.
 
 \*\*P\*\* untuk memeriksa pot. \*\*N\*\* untuk memeriksa jumlah untuk call. \*\*M\*\* untuk memeriksa rentang raise yang tersedia. \*\*H\*\* untuk memeriksa pemain dalam ronde.
 

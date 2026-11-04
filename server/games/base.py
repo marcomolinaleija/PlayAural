@@ -189,6 +189,9 @@ class Game(
 
     #: User preference names this game is relevant to (for per-game overrides).
     relevant_preferences: ClassVar[list[str]] = []
+    #: Social activities reuse table lifecycle without being playable games.
+    is_social_activity: ClassVar[bool] = False
+    supports_bots: ClassVar[bool] = True
     #: Action sets whose pure visibility callbacks may run before enabled-state
     #: callbacks so contextually hidden rows can be discarded cheaply.
     visibility_first_action_sets: ClassVar[frozenset[str]] = frozenset()
@@ -667,6 +670,8 @@ class Game(
         allow_waiting: bool = False,
     ) -> bool:
         """Replace a human player with a bot (shared logic)."""
+        if not self.supports_bots:
+            return False
         if self.status != "playing" and not (
             allow_waiting and self.status == "waiting"
         ):

@@ -109,7 +109,7 @@ Los espectadores pueden usar las acciones de información pública pero no puede
 \* \*\*Shift+A:\*\* All in.
 \* \*\*1 al 5:\*\* seleccionar o deseleccionar esa carta durante el descarte.
 \* \*\*D:\*\* cambiar las cartas seleccionadas o plantarte.
-\* \*\*W:\*\* leer tu mano.
+\* \*\*Alt+W:\*\* leer tu mano.
 \* \*\*G:\*\* leer la fuerza de tu mano.
 \* \*\*P:\*\* ver el bote.
 \* \*\*N:\*\* ver el monto para igualar.

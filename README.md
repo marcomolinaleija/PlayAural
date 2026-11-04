@@ -44,6 +44,8 @@ PlayAural is designed so the full state of the platform can be followed without 
 
 ## Game Catalog
 
+PlayAural includes **free tables** for text and voice conversation, with switching to and from games while keeping the same table and voice channel. Choose **Create a free table** in the main menu. **W** announces people and the host; **Ctrl+W** or **Ctrl+U** opens the participants menu. Game actions previously bound to W use **Alt+W**.
+
 PlayAural currently includes **51 games** across backend categories:
 
 - Card games such as BANG! The Bullet, Blackjack, Crazy Eights, UNO, Skip-Bo, Flip 7, Exploding Kittens, Pusoy Dos, Tien Len, Scopa, Ninety Nine, Mile by Mile, Citadels, Coup, Dead Man's Deck, Dominos, Nine, 21, Cards Against Humanity, and Age of Heroes

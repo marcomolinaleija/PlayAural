@@ -34,7 +34,7 @@ def setup_poker_keybinds(
     game.define_keybind("c", "Call/Check", [call])
     game.define_keybind("r", "Raise", [raise_action])
     game.define_keybind("shift+a", "All in", [all_in])
-    game.define_keybind("w", "Read hand", [read_hand], include_spectators=False)
+    game.define_keybind("alt+w", "Read hand", [read_hand], include_spectators=False)
     game.define_keybind("g", "Read hand strength", [hand_value], include_spectators=False)
     game.define_keybind("x", dealer_label, [check_dealer], include_spectators=True)
     game.define_keybind("z", "Position", [check_position], include_spectators=False)

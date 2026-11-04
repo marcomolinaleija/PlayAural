@@ -180,7 +180,7 @@ El Póker del Muerto actualmente usa reglas fijas. El anfitrión no tiene opcion
 \* \*\*F:\*\* Retirarse, o Retiro del Cobarde cuando ese es el contexto actual de retiro.
 \* \*\*D:\*\* Cambiar carta.
 \* \*\*Shift+A:\*\* All-in, o igualar el all-in al responder a un all-in.
-\* \*\*W:\*\* Leer tu mano.
+\* \*\*Alt+W:\*\* Leer tu mano.
 \* \*\*G:\*\* Leer la fuerza actual de tu mano.
 \* \*\*E:\*\* Leer cartas comunitarias.
 \* \*\*V:\*\* Leer el estado completo de la mesa.

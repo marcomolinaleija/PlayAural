@@ -1359,3 +1359,18 @@ host-invite-rate-limited = Estás enviando invitaciones de mesa demasiado rápid
    *[other] { $seconds } segundos
 }.
 table-invite-no-longer-available = Esa invitación de mesa ya no está disponible.
+
+# Mesas libres y anuncio de participantes
+create-free-table = Crear mesa libre
+read-table-presence = Escuchar participantes y jefe de mesa
+free-table-ready = Tu mesa libre está abierta. Puedes conversar por texto o entrar al chat de voz. Usa Gestión del anfitrión para cambiar a un juego.
+free-table-no-match = Las mesas libres no tienen una partida que iniciar. Elige un juego en Gestión del anfitrión para jugar.
+table-presence-summary = { $count ->
+    [one] Hay { $count } persona en la mesa: { $people }. El jefe de mesa es { $host }.
+   *[other] Hay { $count } personas en la mesa: { $people }. El jefe de mesa es { $host }.
+    }
+table-presence-bots = Bots en la mesa: { $bots }.
+host-game-switch-confirm-free-table = ¿Cambiar esta mesa a una mesa libre? Todas las personas presentes conservarán su función de jugador o espectador. Se retirarán los bots y se descartarán la partida actual, las opciones, los equipos y el estado de preparación. Se conservarán el jefe de mesa, la privacidad, los baneos y el chat de voz. Se cancelarán las invitaciones pendientes del juego.
+free-table-choose-game = Cambiar a un juego
+free-table-description = Abre una mesa para conversar por texto y voz sin iniciar un juego.
+free-table-help = Ayuda de mesa libre

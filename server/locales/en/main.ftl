@@ -1345,3 +1345,18 @@ game-unranked-removed-you = Your seat was removed. This match will not award lea
 game-unranked-released = { $player }'s reserved seat was permanently released to a bot. This match will not award leaderboard records or ratings.
 game-unranked-substituted = A different player has taken over { $player }'s seat. This match will not award leaderboard records or ratings.
 game-unranked-substituted-you = A different player has taken over your seat. This match will not award leaderboard records or ratings.
+
+# Free tables and spoken table presence
+create-free-table = Create a free table
+read-table-presence = Read participants and table host
+free-table-ready = Your free table is open. You can chat by text or join voice chat. Use Host Management to switch to a game.
+free-table-no-match = Free tables have no match to start. Choose a game in Host Management to play.
+table-presence-summary = { $count ->
+    [one] { $count } person is at the table: { $people }. The table host is { $host }.
+   *[other] { $count } people are at the table: { $people }. The table host is { $host }.
+    }
+table-presence-bots = Bots at the table: { $bots }.
+host-game-switch-confirm-free-table = Switch this table to a free table? Everyone still present will keep their playing or spectating role. Bots will be removed and the current match, options, teams, and ready state will be discarded. The host, privacy, bans, and voice chat will stay connected. Pending game invitations will be cancelled.
+free-table-choose-game = Choose a game
+free-table-description = Open a table to talk by text and voice without starting a game.
+free-table-help = Free table help

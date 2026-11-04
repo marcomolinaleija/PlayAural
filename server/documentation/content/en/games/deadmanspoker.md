@@ -180,7 +180,7 @@ Dead Man's Poker currently uses fixed rules. The host has no game-specific optio
 \* \*\*F:\*\* Fold, or Coward's Fold when that is the current fold context.
 \* \*\*D:\*\* Switch card.
 \* \*\*Shift+A:\*\* All-in, or match all-in when responding to an all-in.
-\* \*\*W:\*\* Read your hand.
+\* \*\*Alt+W:\*\* Read your hand.
 \* \*\*G:\*\* Read your current hand strength.
 \* \*\*E:\*\* Read community cards.
 \* \*\*V:\*\* Read the full table status.
