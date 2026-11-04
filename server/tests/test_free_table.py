@@ -258,13 +258,17 @@ async def test_free_table_passes_host_to_a_person_who_was_spectating(room):
 
 
 @pytest.mark.asyncio
-async def test_free_table_recovers_from_a_real_database_checkpoint(room):
+@pytest.mark.parametrize("legacy_actions", [False, True])
+async def test_free_table_recovers_from_a_real_database_checkpoint(room, legacy_actions):
     server, host, guest = room
     table = await create_room(server, host)
     server._auto_join_table(guest, table, "freetable")
     table.is_private = True
     table.set_voice_host_muted(guest.uuid, True)
     table.set_personal_voice_volume(host.uuid, guest.uuid, 50)
+    if legacy_actions:
+        for player in table.game.players:
+            table.game.get_action_set(player, "standard").remove("read_table_presence")
     server._save_tables(
         checkpoint_kind="planned_reboot",
         checkpoint_expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
@@ -375,3 +379,34 @@ async def test_presence_counts_people_separately_from_bots_and_keeps_voice_conte
     assert not guest.get_spoken_messages()
     changed_context = server._resolve_table_voice_context(host, {"context_id": table.table_id})
     assert changed_context.scope == context.scope and changed_context.context_id == context.context_id
+
+
+@pytest.mark.parametrize("status", ["waiting", "playing"])
+@pytest.mark.parametrize("spectator", [False, True])
+def test_old_game_saves_gain_w_without_replacing_their_actions(status, spectator):
+    game_class = GameRegistry.get("pig")
+    host = MockUser("LegacyHost", locale="es")
+    game = game_class()
+    game.initialize_lobby(host.username, host)
+    player = game.get_player_by_id(host.uuid)
+    standard = game.get_action_set(player, "standard")
+    standard.remove("read_table_presence")
+    player.is_spectator = spectator
+    game.status = status
+    restored = game_class.from_json(game.to_json())
+    restored.rebuild_runtime_state()
+    restored.setup_keybinds()
+    player = restored.get_player_by_id(host.uuid)
+    original_ids = list(restored.get_action_set(player, "standard")._order)
+    restored.attach_user(host.uuid, host)
+    restored.attach_user(host.uuid, host)
+    upgraded = restored.get_action_set(player, "standard")
+    assert upgraded._order == original_ids + ["read_table_presence"]
+    assert upgraded.get_action("read_table_presence").label == Localization.get(
+        "es", "read-table-presence"
+    )
+    player.reconnect_grace_ticks = 0
+    host.clear_messages()
+    restored.handle_event(player, {"type": "keybind", "key": "w"})
+    assert "1 persona" in host.get_last_spoken()
+    assert "El jefe de mesa es LegacyHost" in host.get_last_spoken()

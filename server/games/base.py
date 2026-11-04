@@ -1094,6 +1094,9 @@ class Game(
         table-wide resume announcement is introduced.
         """
         self._users[player_id] = user
+        player = self.get_player_by_id(player_id)
+        if player is not None and not player.is_bot:
+            self._ensure_table_presence_action(player)
         # Play current music/ambience for the joining user
         for state in self.active_audio.values():
             if state.recipient_ids and player_id not in state.recipient_ids:

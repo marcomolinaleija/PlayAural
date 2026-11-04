@@ -211,16 +211,7 @@ class ActionSetCreationMixin:
                 include_spectators=True,
             )
         )
-        action_set.add(
-            Action(
-                id="read_table_presence",
-                label=Localization.get(locale, "read-table-presence"),
-                handler="_action_read_table_presence",
-                is_enabled="_is_whos_at_table_enabled",
-                is_hidden="_is_read_table_presence_hidden",
-                include_spectators=True,
-            )
-        )
+        action_set.add(self._create_table_presence_action(player))
         action_set.add(
             Action(
                 id="check_scores",
@@ -262,6 +253,24 @@ class ActionSetCreationMixin:
             )
         )
         return action_set
+
+    def _create_table_presence_action(self, player: "Player") -> Action:
+        """Build the shared spoken roster for new and restored participants."""
+        user = self.get_user(player)
+        return Action(
+            id="read_table_presence",
+            label=Localization.get(user.locale if user else "en", "read-table-presence"),
+            handler="_action_read_table_presence",
+            is_enabled="_is_whos_at_table_enabled",
+            is_hidden="_is_read_table_presence_hidden",
+            include_spectators=True,
+        )
+
+    def _ensure_table_presence_action(self, player: "Player") -> None:
+        """Upgrade an older serialized action set without replacing game-owned actions."""
+        standard = self.get_action_set(player, "standard")
+        if standard is not None and standard.get_action("read_table_presence") is None:
+            standard.add(self._create_table_presence_action(player))
 
     def _order_touch_standard_actions(
         self, action_set: ActionSet, target_order: list[str]
