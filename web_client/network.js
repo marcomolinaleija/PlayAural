@@ -41,6 +41,8 @@ function refNameFromMapping(ref) {
 
 const OPTIONAL_PROTOCOL_FIELDS = {
   server_to_client: {
+    menu: { title: { type: "string" } },
+    update_menu: { title: { type: "string" } },
     speak: {
       history: { type: "boolean" },
     },

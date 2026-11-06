@@ -1,0 +1,147 @@
+"""Content-first forum views: context is announced; actions follow content."""
+
+from datetime import datetime, timezone
+
+from ..menu_pagination import pagination_menu_items
+from ..messages.localization import Localization
+from ..messages.relative_time import format_relative_time
+from ..users.base import EscapeBehavior, MenuItem
+from . import navigation as nav
+from .text import excerpt, reading_chunks
+
+
+def label(user, key: str, **values) -> str:
+    return Localization.get(user.locale, key, **values)
+
+
+def item(user, key: str, item_id: str, *, read_only: bool = False, **values) -> MenuItem:
+    return MenuItem(text=label(user, key, **values), id=item_id, read_only=read_only)
+
+
+def author(user, record) -> str:
+    return record.author_name if record.author_uuid else label(user, "forum-deleted-account")
+
+
+def age(user, timestamp: int) -> str:
+    return format_relative_time(user.locale, datetime.fromtimestamp(timestamp, timezone.utc))
+
+
+class ForumViews:
+    def __init__(self, server, service):
+        self.server = server
+        self.service = service
+
+    @staticmethod
+    def identity(state: dict) -> tuple:
+        return tuple(state.get(key) for key in (
+            "menu", "forum_topic", "forum_post", "forum_view", "forum_category", "forum_query", "forum_page",
+        ))
+
+    def render(self, user, menu: str, rows: list[MenuItem], *, title: str,
+               announcement: tuple[str, dict], **state) -> None:
+        before = self.server._user_states.get(user.username, {})
+        next_state = {"menu": menu, **state}
+        previous_visible = getattr(user, "_last_menu_packet_id", menu)
+        entering = (self.identity(before) != self.identity(next_state)
+                    or previous_visible not in {None, menu})
+        rows.append(item(user, "back", "back"))
+        user.show_menu(menu, rows, title=title, multiletter=True, escape_behavior=EscapeBehavior.SELECT_LAST)
+        self.server._user_states[user.username] = next_state
+        if entering:
+            key, values = announcement
+            user.speak_l(key, buffer="misc", history=False, **values)
+
+    def home(self, user) -> None:
+        rows = [item(user, "forum-category-row", f"category:{category.id}",
+                     name=label(user, f"forum-category-{category.id}"), count=category.topic_count)
+                for category in self.service.categories(user.uuid)]
+        rows.extend([item(user, "forum-recent", "recent"), item(user, "forum-unread", "unread"),
+                     item(user, "forum-saved", "saved"), item(user, "forum-search", "search")])
+        self.render(user, nav.HOME, rows, title=label(user, "forum-heading"),
+                    announcement=("forum-entry-home", {}))
+
+    def topics(self, user, view: str = "recent", category_id: str = "", query: str = "", page: int = 1) -> None:
+        data = self.service.topics(user.uuid, view=view, category_id=category_id, query=query, page=page)
+        heading = label(user, f"forum-category-{category_id}") if view == "category" else label(user, f"forum-{view}")
+        rows = []
+        for topic in data.items:
+            flags = []
+            if topic.pinned:
+                flags.append(label(user, "forum-pinned"))
+            if topic.closed:
+                flags.append(label(user, "forum-closed"))
+            flags.append(label(user, "forum-unread-count", count=topic.unread_count)
+                         if topic.unread_count else label(user, "forum-read"))
+            rows.append(item(user, "forum-topic-row", f"topic:{topic.id}", title=topic.title,
+                             author=author(user, topic), count=topic.post_count, age=age(user, topic.last_activity),
+                             status=Localization.format_list(user.locale, flags)))
+        if view == "category":
+            rows.append(item(user, "forum-new-topic", "new_topic"))
+        rows.extend(self.page_controls(user, data))
+        context = {"title": heading, "count": data.total, "page": data.page, "pages": data.total_pages,
+                   "empty": label(user, "forum-no-topics") if not data.total else ""}
+        if query:
+            context["query"] = query
+        self.render(user, nav.TOPICS, rows, title=heading,
+                    announcement=("forum-entry-search" if query else "forum-entry-topics", context),
+                    forum_view=view, forum_category=category_id, forum_query=query,
+                    forum_page=data.page, forum_pages=data.total_pages)
+
+    @staticmethod
+    def page_controls(user, data) -> list[MenuItem]:
+        rows = pagination_menu_items(user.locale, data)
+        rows.append(item(user, "menu-page-refresh", "refresh"))
+        return rows
+
+    def thread(self, user, topic_id: int, page: int | None = None) -> None:
+        topic = self.service.topic(user.uuid, topic_id)
+        resume = self.service.repository.resume_post(user.uuid, topic_id)
+        if page is None:
+            target = resume or topic.last_post_id
+            page = self.service.repository.post_page(user.uuid, topic_id, target)
+        data = self.service.posts(user.uuid, topic_id, page)
+        rows = [item(user, "forum-post-row", f"post:{post.id}", author=author(user, post),
+                     age=age(user, post.created_at),
+                     body=label(user, "forum-hidden-post") if post.hidden else excerpt(post.body))
+                for post in data.items]
+        if not topic.closed:
+            rows.append(item(user, "forum-reply", "reply"))
+        rows.append(item(user, "forum-unsave" if topic.bookmarked else "forum-save", "bookmark"))
+        if resume:
+            rows.append(item(user, "forum-continue", "continue"))
+        rows.extend(self.page_controls(user, data))
+        if self.service.is_moderator(user.uuid):
+            rows.extend([
+                item(user, "forum-reopen" if topic.closed else "forum-close", "toggle_closed"),
+                item(user, "forum-unpin" if topic.pinned else "forum-pin", "toggle_pinned"),
+            ])
+        self.render(user, nav.THREAD, rows, title=topic.title,
+                    announcement=("forum-entry-thread", {
+                        "title": topic.title, "author": author(user, topic),
+                        "category": label(user, f"forum-category-{topic.category_id}"), "count": topic.post_count,
+                        "status": label(user, "forum-closed-help" if topic.closed else "forum-open-help"),
+                        "page": data.page, "pages": data.total_pages,
+                    }), forum_topic=topic_id, forum_page=data.page, forum_pages=data.total_pages)
+
+    def post(self, user, post_id: int) -> None:
+        post = self.service.post(user.uuid, post_id, mark_read=True)
+        topic = self.service.topic(user.uuid, post.topic_id)
+        if post.hidden:
+            rows = [item(user, "forum-hidden-post", "hidden", read_only=True)]
+        else:
+            rows = [MenuItem(text=text, id=f"body:{post.id}:{index}", read_only=True)
+                    for index, text in enumerate(reading_chunks(post.body))]
+        next_post = self.service.repository.resume_post(user.uuid, post.topic_id)
+        if next_post:
+            rows.append(item(user, "forum-next-unread", "next_unread"))
+        if not topic.closed:
+            rows.append(item(user, "forum-reply", "reply"))
+        if self.service.can_edit(user.uuid, post) and (not topic.closed or self.service.is_moderator(user.uuid)):
+            rows.append(item(user, "forum-edit", "edit"))
+        if self.service.is_moderator(user.uuid):
+            rows.append(item(user, "forum-restore-post" if post.hidden else "forum-hide-post", "toggle_hidden"))
+        self.render(user, nav.POST, rows, title=topic.title,
+                    announcement=("forum-entry-post", {
+                        "title": topic.title, "author": author(user, post), "age": age(user, post.created_at),
+                        "edited": label(user, "forum-edited", age=age(user, post.edited_at)) if post.edited_at else "",
+                    }), forum_topic=post.topic_id, forum_post=post.id)

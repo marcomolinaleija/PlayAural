@@ -178,6 +178,7 @@ class MockUser(User):
         grid_height: int = 0,
         grid_width: int = 1,
         capture_focus_context_id: str | None = None,
+        title: str | None = None,
     ) -> None:
         if capture_focus_context_id is not None:
             capture_focus_context_id = validate_menu_focus_context_id(
@@ -205,6 +206,8 @@ class MockUser(User):
             "capture_focus_context_id": capture_focus_context_id,
             "restore_focus_context_id": restore_focus_context_id,
         }
+        if title:
+            menu_data["title"] = title
         self.menus[menu_id] = menu_data
         self.messages.append(Message("show_menu", {"menu_id": menu_id, **menu_data}))
 

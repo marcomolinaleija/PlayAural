@@ -207,6 +207,7 @@ type FocusableMenuItem = {
 };
 
 type MenuState = {
+  title?: string;
   escapeBehavior: string;
   focusIndex: number;
   gridEnabled: boolean;
@@ -326,6 +327,7 @@ type StoredClientConfig = {
 };
 
 const defaultMenuState: MenuState = {
+  title: "",
   escapeBehavior: "keybind",
   focusIndex: 0,
   gridEnabled: false,
@@ -1993,6 +1995,7 @@ export function PlayAuralApp() {
     );
 
     const nextMenuState: MenuState = {
+      title: typeof packet.title === "string" ? packet.title : isSameMenuId ? previous.title : "",
       escapeBehavior:
         packet.escape_behavior !== undefined || !isSameMenuId
           ? packet.escape_behavior ?? "keybind"
@@ -5190,7 +5193,7 @@ export function PlayAuralApp() {
 
   const renderMainView = () => (
     <View style={styles.panel}>
-      <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{localization.t("mode-main")}</Text>
+      <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{menuState.title || localization.t("mode-main")}</Text>
       <View
         onLayout={(event) => {
           const { height, width } = event.nativeEvent.layout;

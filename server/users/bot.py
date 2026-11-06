@@ -92,6 +92,7 @@ class Bot(User):
         grid_height: int = 0,
         grid_width: int = 1,
         capture_focus_context_id: str | None = None,
+        title: str | None = None,
     ) -> None:
         pass
 

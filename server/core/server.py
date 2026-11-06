@@ -136,6 +136,11 @@ from ..menu_pagination import (
     paginate_sequence,
 )
 from ..documentation.manager import DocumentationManager
+from ..forum.manager import ForumManager
+from ..forum.navigation import (
+    MENU_IDS as FORUM_MENU_IDS,
+    CONFIRMATION_IDS as FORUM_CONFIRMATION_IDS,
+)
 from .smtp_mailer import SmtpMailer
 from ..users.bot import Bot
 from ..game_utils.stats_extractor import StatsExtractor
@@ -322,6 +327,7 @@ FRIENDS_MENU_IDS = frozenset(
 )
 NON_RESUMABLE_ACTION_MENUS = frozenset(
     {
+        *FORUM_CONFIRMATION_IDS,
         "broadcast_choice_menu",
         "demote_confirm_menu",
         "email_confirm_menu",
@@ -453,6 +459,7 @@ class Server:
     # Global menus handled directly by the server, even if the user is sitting at a table.
     # This prevents active games from swallowing interactions meant for global overlays (like options or online list).
     GLOBAL_SYSTEM_MENUS = {
+        *FORUM_MENU_IDS,
         "main_menu", "personal_options_menu", "games_menu", "tables_menu",
         "game_category_filter_menu", "active_tables_menu", "active_tables_filter_menu",
         *OPTIONS_MENU_IDS,
@@ -590,6 +597,7 @@ class Server:
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
+        self.forum_manager = ForumManager(self)
 
         # Initialize rate limiters
         self._rate_limiter = RateLimiter()
@@ -2825,6 +2833,8 @@ PlayAural Server
             )
         items = [
             MenuItem(text=Localization.get(user.locale, "play"), id="play"),
+            MenuItem(text=Localization.get(user.locale, "forum-heading"), id="forum",
+                     description_key="forum-description"),
             MenuItem(
                 text=Localization.get(user.locale, "create-free-table"),
                 id="create_free_table",
@@ -6351,7 +6361,9 @@ PlayAural Server
             return
 
         # Handle menu selections based on current menu
-        if current_menu == "main_menu":
+        if current_menu in FORUM_MENU_IDS:
+            self.forum_manager.handle_menu(user, selection_id, state)
+        elif current_menu == "main_menu":
             await self._handle_main_menu_selection(user, selection_id)
         elif current_menu == "personal_options_menu":
             await self._handle_personal_options_selection(user, selection_id)
@@ -6578,6 +6590,8 @@ PlayAural Server
         """Handle main menu selection."""
         if selection_id == "play":
             self._nav_push(user, self._show_games_list_menu)
+        elif selection_id == "forum":
+            self._nav_push(user, self.forum_manager.home)
         elif selection_id == "create_free_table":
             if self._tables.find_user_table(user.username):
                 return
@@ -15856,6 +15870,10 @@ PlayAural Server
                         self._show_main_menu(user)
                 return
 
+        if current_menu in FORUM_MENU_IDS:
+            self.forum_manager.handle_input(user, packet, user_state)
+            return
+
         # Handle system menu input
         if user:
             if packet.get("cancelled"):
@@ -16842,6 +16860,9 @@ PlayAural Server
     def _navigation_frame_identity(self, frame: dict) -> tuple[Any, ...] | None:
         """Return the logical identity for stack frames that must not duplicate."""
         menu = frame.get("menu")
+        if menu in FORUM_MENU_IDS:
+            return (menu, frame.get("forum_topic"), frame.get("forum_post"),
+                    frame.get("forum_view"), frame.get("forum_category"), frame.get("forum_query"))
         if menu not in self.IN_GAME_OVERLAY_MENUS:
             return None
         table_id = frame.get("table_id")
@@ -17271,7 +17292,9 @@ PlayAural Server
                 self._restore_menu_focus(user, frame)
             return  # IN_GAME_OVERLAY_MENUS manage their own state
         # For all other menus: call show function then re-inject stack
-        if menu == "main_menu":
+        if menu in FORUM_MENU_IDS:
+            self.forum_manager.restore(user, frame)
+        elif menu == "main_menu":
             self._show_main_menu(user)
         elif menu == "personal_options_menu":
             self._show_personal_options_menu(user)
@@ -17863,6 +17886,7 @@ PlayAural Server
         user.show_menu(
             menu_id,
             self._restoreable_menu_items(menu_state.get("items", [])),
+            title=menu_state.get("title"),
             multiletter=menu_state.get(
                 "multiletter_enabled",
                 menu_state.get("multiletter", True),

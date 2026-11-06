@@ -50,6 +50,7 @@ only-include = [
     "auth",
     "core",
     "documentation",
+    "forum",
     "games",
     "game_utils",
     "locales",

@@ -3391,6 +3391,17 @@ class MainWindow(wx.Frame):
 
         items_raw = packet.get("items", [])
         menu_id = packet.get("menu_id", None)
+        menu_title = packet.get("title")
+        if not isinstance(menu_title, str) or not menu_title.strip():
+            menu_title = (getattr(self, "current_menu_title", "")
+                          if menu_id == getattr(self, "current_menu_id", None) else "")
+        menu_title = menu_title or Localization.get("main-menu-label")
+        if menu_title != getattr(self, "current_menu_title", None):
+            self.current_menu_title = menu_title
+            if hasattr(self, "menu_label"):
+                self.menu_label.SetLabel(menu_title)
+            if hasattr(self.menu_list, "SetName"):
+                self.menu_list.SetName(menu_title)
         position = packet.get("position", None)  # Optional position to move to
         selection_id = packet.get("selection_id", None)  # Optional item ID to focus
         grid_enabled = packet.get("grid_enabled", False)

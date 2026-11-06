@@ -6,6 +6,15 @@ conflict, follow `CLAUDE.md` and update `AGENTS.md`.
 
 ## Project
 
+The native forum lives in `server/forum/`: keep schema, repository, service,
+navigation, composing, and presentation separate. It shares account UUIDs,
+approval/moderation/block rules, the central SQLite lifecycle (schema v4), and
+the existing menu/input/speech protocol across desktop, web, and mobile.
+Forum content precedes all actions. Menu titles are metadata; announce brief
+context on entry without adding heading/help rows or repeating it on refresh.
+Drafts are bounded session data, never account preferences. See
+`devdoc/forum-foundation.md` for the feature scope and data lifecycle.
+
 PlayAural is an audio-first multiplayer gaming platform for screen reader users.
 It is licensed under GPL-3.0-or-later and has four first-party components:
 

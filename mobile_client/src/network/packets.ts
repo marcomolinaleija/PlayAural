@@ -21,6 +21,7 @@ export type MenuItemData = {
 
 export type MenuPacket = {
   type: "menu" | "update_menu";
+  title?: string;
   menu_id?: string;
   items: Array<string | MenuItemData>;
   position?: number;

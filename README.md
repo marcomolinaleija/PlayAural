@@ -92,6 +92,20 @@ documentation fall back to English rather than displaying raw translation keys.
 - `mobile_client/` - Expo application, mobile locales, sounds, build configuration, and voice integration
 - `deployment/` - deployment-specific configuration examples
 
+## Community Forum
+
+Choose **Forum** in the main menu on desktop, web, or mobile. Browse Community,
+Questions and help, or Ideas and feedback; start a discussion, read messages,
+reply, and edit your messages. Recent activity, unread discussions, saved
+discussions, and text search help you find and continue conversations.
+
+Content comes first and actions follow it. Brief context is announced on entry;
+titles and page summaries do not occupy extra menu rows. Messages remain plain
+text, and publishing always follows an explicit preview. Existing accounts,
+approval, bans, mutes, blocks, and administrator roles apply across the forum.
+See **Documentation > Forum** for the user guide and
+[the foundation notes](devdoc/forum-foundation.md) for architecture and a local demo.
+
 ## Web Client
 
 The browser client is a standalone PWA served from `web_client/`.

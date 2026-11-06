@@ -1,4 +1,4 @@
-const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-20";
+const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-21";
 
 const PRECACHE_URLS = [
   "./",
@@ -27,6 +27,7 @@ const PRECACHE_URLS = [
   "./ui/history.js",
   "./ui/collapsiblePanels.js",
   "./ui/menus.js",
+  "./ui/menuTitle.js",
   "./vendor/livekit-client.umd.js",
   "./vendor/stb-vorbis.js",
 ];

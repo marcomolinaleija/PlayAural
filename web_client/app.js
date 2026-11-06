@@ -13,6 +13,7 @@ import {
   normalizeLocale,
 } from "./locales/index.js";
 import { installCollapsiblePanels } from "./ui/collapsiblePanels.js";
+import { semanticMenuTitle } from "./ui/menuTitle.js";
 import {
   BUFFER_CATEGORY_NAVIGATION_ASSET,
   BUFFER_ITEM_NAVIGATION_ASSET,
@@ -3017,7 +3018,7 @@ class PlayAuralWebApp {
       },
     );
 
-    const title = packet.title || this.titleFromMenuId(packet.menu_id);
+    const title = packet.title || semanticMenuTitle(packet.items) || this.titleFromMenuId(packet.menu_id);
     const shouldFocus = this.shouldFocusMenuAfterPacket(previousMenu.menuId, packet.menu_id);
     this.store.setMenu({
       menuId: packet.menu_id || null,

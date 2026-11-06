@@ -167,6 +167,9 @@ def test_uuid_lookup_fails_closed_if_live_storage_is_corrupted(db):
     second = db.create_user("Second Account", "hash")
     assert first is not None
     assert second is not None
+    # Deliberately bypass both v3 identity constraints and v4 forum foreign
+    # keys to model live storage corruption rather than an ordinary mutation.
+    db._conn.execute("PRAGMA foreign_keys = OFF")
     db._conn.execute("DROP INDEX idx_users_uuid")
     db._conn.execute("DROP TRIGGER protect_users_immutable_identity")
     db._conn.execute(
