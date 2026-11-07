@@ -69,6 +69,28 @@ async def test_free_table_creation_and_conversation_menu(room, client_type):
     assert len(table.members) == 2
     assert game.status == "waiting" and not game.game_active
     for user in (host, guest):
+        surface = user.get_current_menu_items("turn_menu")
+        assert len(surface) == 1
+        assert surface[0].id == "free_table_space"
+        assert surface[0].text == "" and surface[0].read_only
+        participant = game.get_player_by_id(user.uuid)
+        game.handle_event(participant, {
+            "type": "menu", "menu_id": "turn_menu", "selection_id": surface[0].id,
+        })
+        assert participant.id not in game._actions_menu_open
+        game.handle_event(participant, {
+            "type": "keybind", "key": "escape", "menu_item_id": surface[0].id,
+        })
+        action_ids = {item.id for item in user.get_current_menu_items("actions_menu")}
+        assert {"whos_at_table", "read_table_presence", "leave_game", "game_rules", "go_back"} <= action_ids
+        if user is host:
+            assert {"host_management", "switch_game"} <= action_ids
+        else:
+            assert not {"host_management", "switch_game"} & action_ids
+        game.handle_event(participant, {
+            "type": "menu", "menu_id": "actions_menu", "selection_id": "go_back",
+        })
+        assert user.get_current_menu_items("turn_menu") == surface
         ids = [a.action.id for a in game.get_all_visible_actions(game.get_player_by_id(user.uuid))]
         assert "whos_at_table" in ids and "read_table_presence" in ids
         assert "leave_game" in ids
@@ -322,7 +344,10 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await receive(ws, lambda p: p.get("menu_id") == "main_menu")
             await menu_choice("main_menu", "create_free_table")
             menu = await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
-            assert "start_game" not in [i.get("id") for i in menu["items"]]
+            assert len(menu["items"]) == 1
+            assert menu["items"][0]["id"] == "free_table_space"
+            assert menu["items"][0]["text"] == ""
+            assert menu["items"][0]["read_only"] is True
             table = service._tables.find_user_table("RoomTester")
             table_id = table.table_id
             await send({"type": "keybind", "key": "w", "menu_id": "turn_menu"})
@@ -333,7 +358,9 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await menu_choice(TABLE_MEMBERS_MENU, "back")
             await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
             # Select a real first-page target, then switch back through the host menu.
-            await menu_choice("turn_menu", "switch_game")
+            await send({"type": "keybind", "key": "escape", "menu_id": "turn_menu"})
+            await receive(ws, lambda p: p.get("menu_id") == "actions_menu")
+            await menu_choice("actions_menu", "switch_game")
             choices = await receive(ws, lambda p: p.get("menu_id") == HOST_GAME_SWITCH_MENU)
             target_id = next(i["id"] for i in choices["items"] if i.get("id", "").startswith(HOST_GAME_SWITCH_ACTION_PREFIX))
             await menu_choice(HOST_GAME_SWITCH_MENU, target_id)
@@ -352,7 +379,9 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await menu_choice(HOST_GAME_SWITCH_MENU, HOST_GAME_SWITCH_ACTION_PREFIX + "freetable")
             await receive(ws, lambda p: p.get("menu_id") == HOST_GAME_SWITCH_CONFIRM_MENU)
             await menu_choice(HOST_GAME_SWITCH_CONFIRM_MENU, "yes")
-            await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
+            menu = await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
+            assert menu["items"][0]["id"] == "free_table_space"
+            assert menu["items"][0]["text"] == ""
             assert isinstance(table.game, FreeTable) and table.table_id == table_id
             await send({"type": "logout"})
             await receive(ws, lambda p: p.get("type") == "force_exit")
