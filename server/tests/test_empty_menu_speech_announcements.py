@@ -305,3 +305,104 @@ async def test_leaderboard_types_empty_selection_announces():
         for m in alice.messages if m.type == "speak"
     )
 
+
+@pytest.mark.asyncio
+async def test_active_tables_empty_announcement():
+    server = _setup_server()
+    rec = server._db.create_user("Alice", "hash", trust_level=USER_TRUST_LEVEL)
+    server._db.approve_user("Alice")
+    alice = MockUser("Alice", uuid=rec.uuid)
+    alice.queue_protocol_packet = lambda packet: None
+    server._users[alice.username] = alice
+
+    server._show_main_menu(alice)
+    assert server._user_states[alice.username]["menu"] == "main_menu"
+    alice.clear_messages()
+
+    await server._handle_main_menu_selection(alice, "active_tables")
+    assert server._user_states[alice.username]["menu"] == "main_menu"
+    assert "active_tables_menu" not in alice.menus
+    assert any(
+        Localization.get(alice.locale, "no-active-tables-all") in m.data.get("text", "")
+        for m in alice.messages if m.type == "speak"
+    )
+
+
+@pytest.mark.asyncio
+async def test_admin_target_menus_empty_announcements():
+    server = _setup_server()
+    rec = server._db.create_user("AdminUser", "hash", trust_level=ADMIN_TRUST_LEVEL)
+    server._db.approve_user("AdminUser")
+    admin = MockUser("AdminUser", uuid=rec.uuid)
+    admin.trust_level = ADMIN_TRUST_LEVEL
+    admin.queue_protocol_packet = lambda packet: None
+    server._users[admin.username] = admin
+
+    server.admin_manager._show_admin_menu(admin)
+    assert server._user_states[admin.username]["menu"] == "admin_menu"
+
+    checks = [
+        ("promote_admin", "no-users-to-promote", "promote_admin_menu"),
+        ("demote_admin", "no-admins-to-demote", "demote_admin_menu"),
+        ("ban_user", "no-users-to-ban", "ban_menu"),
+        ("unban_user", "no-banned-users", "unban_menu"),
+        ("mute_user", "no-users-to-mute", "mute_menu"),
+        ("unmute_user", "no-muted-users", "unmute_menu"),
+        ("kick_user", "no-users-to-kick", "kick_menu"),
+    ]
+
+    for selection_id, expected_locale_key, menu_name in checks:
+        admin.clear_messages()
+        await server.admin_manager._handle_admin_menu_selection(admin, selection_id)
+        assert server._user_states[admin.username]["menu"] == "admin_menu"
+        assert menu_name not in admin.menus
+        assert any(
+            Localization.get(admin.locale, expected_locale_key) in m.data.get("text", "")
+            for m in admin.messages if m.type == "speak"
+        )
+
+
+@pytest.mark.asyncio
+async def test_admin_moderation_browse_messages_and_history_empty():
+    server = _setup_server()
+    rec = server._db.create_user("AdminUser", "hash", trust_level=ADMIN_TRUST_LEVEL)
+    server._db.approve_user("AdminUser")
+    admin = MockUser("AdminUser", uuid=rec.uuid)
+    admin.trust_level = ADMIN_TRUST_LEVEL
+    admin.queue_protocol_packet = lambda packet: None
+    server._users[admin.username] = admin
+
+    server.admin_manager._show_moderation_menu(admin)
+    assert server._user_states[admin.username]["menu"] == "admin_moderation_menu"
+
+    # 1. browse_messages with 0 chat messages in db
+    admin.clear_messages()
+    await server.admin_manager._handle_moderation_selection(admin, "browse_messages")
+    assert server._user_states[admin.username]["menu"] == "admin_moderation_menu"
+    assert "admin_moderation_messages_menu" not in admin.menus
+    assert any(
+        Localization.get(admin.locale, "admin-moderation-message-list-empty") in m.data.get("text", "")
+        for m in admin.messages if m.type == "speak"
+    )
+
+    # 2. find_history input submitted for unknown or empty user
+    server.admin_manager._show_moderation_history_input(admin)
+    state = server._user_states[admin.username]
+    assert state["menu"] == "admin_moderation_history_input"
+    admin.clear_messages()
+
+    handled = await server.admin_manager.handle_input(
+        admin,
+        {"input_id": "admin_moderation_history_input", "text": "nonexistent_user"},
+        state,
+    )
+    assert handled is True
+    assert server._user_states[admin.username]["menu"] == "admin_moderation_menu"
+    assert "admin_moderation_sender_results_menu" not in admin.menus
+    assert any(
+        Localization.get(admin.locale, "admin-moderation-no-sender-history", username="nonexistent_user")
+        in m.data.get("text", "")
+        for m in admin.messages if m.type == "speak"
+    )
+
+

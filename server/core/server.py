@@ -6590,6 +6590,23 @@ PlayAural Server
                 },
             )
         elif selection_id == "active_tables":
+            all_tables = self._tables.get_all_tables()
+            filter_type = user.preferences.active_tables_filter
+            socially_blocked_ids = self._db.get_socially_blocked_ids(user.uuid)
+            visible_tables = [
+                table
+                for table in all_tables
+                if self._is_visible_active_table(
+                    user,
+                    table,
+                    status_filter=filter_type,
+                    socially_blocked_ids=socially_blocked_ids,
+                )
+            ]
+            if not visible_tables:
+                empty_msg_key = f"no-active-tables-{filter_type}"
+                user.speak_l(empty_msg_key, buffer="system")
+                return
             self._nav_push(user, self._show_active_tables_menu)
         elif selection_id == "saved_tables":
             if self._db.count_user_saved_tables(user.username) == 0:
