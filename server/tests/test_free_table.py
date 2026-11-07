@@ -70,16 +70,10 @@ async def test_free_table_creation_and_conversation_menu(room, client_type):
     assert game.status == "waiting" and not game.game_active
     for user in (host, guest):
         surface = user.get_current_menu_items("turn_menu")
-        assert len(surface) == 1
-        assert surface[0].id == "free_table_space"
-        assert surface[0].text == "" and surface[0].read_only
+        assert len(surface) == 0
         participant = game.get_player_by_id(user.uuid)
         game.handle_event(participant, {
-            "type": "menu", "menu_id": "turn_menu", "selection_id": surface[0].id,
-        })
-        assert participant.id not in game._actions_menu_open
-        game.handle_event(participant, {
-            "type": "keybind", "key": "escape", "menu_item_id": surface[0].id,
+            "type": "keybind", "key": "escape",
         })
         action_ids = {item.id for item in user.get_current_menu_items("actions_menu")}
         assert {"whos_at_table", "read_table_presence", "leave_game", "game_rules", "go_back"} <= action_ids
@@ -344,10 +338,7 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await receive(ws, lambda p: p.get("menu_id") == "main_menu")
             await menu_choice("main_menu", "create_free_table")
             menu = await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
-            assert len(menu["items"]) == 1
-            assert menu["items"][0]["id"] == "free_table_space"
-            assert menu["items"][0]["text"] == ""
-            assert menu["items"][0]["read_only"] is True
+            assert len(menu["items"]) == 0
             table = service._tables.find_user_table("RoomTester")
             table_id = table.table_id
             await send({"type": "keybind", "key": "w", "menu_id": "turn_menu"})
@@ -380,8 +371,7 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await receive(ws, lambda p: p.get("menu_id") == HOST_GAME_SWITCH_CONFIRM_MENU)
             await menu_choice(HOST_GAME_SWITCH_CONFIRM_MENU, "yes")
             menu = await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
-            assert menu["items"][0]["id"] == "free_table_space"
-            assert menu["items"][0]["text"] == ""
+            assert len(menu["items"]) == 0
             assert isinstance(table.game, FreeTable) and table.table_id == table_id
             await send({"type": "logout"})
             await receive(ws, lambda p: p.get("type") == "force_exit")

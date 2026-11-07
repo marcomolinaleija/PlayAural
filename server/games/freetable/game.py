@@ -41,13 +41,13 @@ class FreeTable(Game):
         return Player(id=player_id, name=name)
 
     def build_menu_items(self, player: Player, user: User) -> MenuBuild:
-        # Keep a stable, focusable surface without duplicating the Escape menu.
-        return MenuBuild(items=[MenuItem(text="", id="free_table_space", read_only=True)])
+        # No menu items; keep the turn menu completely empty.
+        return MenuBuild(items=[])
 
     def create_lobby_action_set(self, player: Player) -> ActionSet:
         actions = super().create_lobby_action_set(player)
         for action_id in list(actions._order):
-            if action_id not in {"host_management", "leave_game"}:
+            if action_id != "host_management":
                 actions.remove(action_id)
         user = self.get_user(player)
         actions.add(
@@ -82,8 +82,20 @@ class FreeTable(Game):
         ):
             actions.remove(action_id)
         user = self.get_user(player)
+        locale = user.locale if user else "en"
         actions.get_action("game_rules").label = Localization.get(
-            user.locale if user else "en", "free-table-help"
+            locale, "free-table-help"
+        )
+        # Place leave_game after game_rules (free table help) and before go_back
+        actions.add(
+            Action(
+                id="leave_game",
+                label=Localization.get(locale, "leave-table"),
+                handler="_action_leave_game",
+                is_enabled="_is_leave_game_enabled",
+                is_hidden="_is_leave_game_hidden",
+                include_spectators=True,
+            )
         )
         return actions
 

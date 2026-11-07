@@ -104,14 +104,26 @@ export function installKeybinds({
 
     if (
       connected
-      && event.altKey
+      && (
+        (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "v")
+        || (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.key.toLowerCase() === "m")
+      )
+    ) {
+      event.preventDefault();
+      onToggleVoiceMic?.();
+      return;
+    }
+
+    if (
+      connected
+      && event.ctrlKey
       && event.shiftKey
-      && !event.ctrlKey
+      && !event.altKey
       && !event.metaKey
       && event.key.toLowerCase() === "v"
     ) {
       event.preventDefault();
-      onToggleVoiceMic?.();
+      onToggleVoiceChat?.();
       return;
     }
 
