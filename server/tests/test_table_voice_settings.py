@@ -40,7 +40,13 @@ def test_voice_settings_only_enter_durable_live_table_checkpoints() -> None:
     checkpoint_json = table.serialize_saved_state(include_checkpoint_state=True)
     checkpoint_payload = json.loads(checkpoint_json)
 
-    assert set(manual_payload["properties"]) == {"banned_uuids", "is_private"}
+    assert set(manual_payload["properties"]) == {
+        "banned_uuids",
+        "created_at",
+        "is_private",
+        "peak_occupancy",
+        "total_unique_visitors",
+    }
     assert "voice_host_muted_account_ids" in checkpoint_payload["properties"]
     restored = Table(table_id="table-one", game_type="pig", host="Alice")
     restored.restore_saved_state(
