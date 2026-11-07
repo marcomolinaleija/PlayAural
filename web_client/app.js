@@ -2471,7 +2471,7 @@ class PlayAuralWebApp {
         this.webSpeech.speak(text);
       }
     } else {
-      this.a11y.announce(text, { assertive });
+      this.a11y.announce(text, { assertive, interrupt });
     }
   }
 

@@ -14,6 +14,7 @@ export function createA11y({ politeEl, assertiveEl }) {
         items: [],
         lastAnnouncementAt: 0,
         lastAnnouncementText: "",
+        lastRenderedText: "",
         timer: null,
       });
     }
@@ -40,7 +41,8 @@ export function createA11y({ politeEl, assertiveEl }) {
     while (next) {
       now = performance.now();
       if (
-        next.text !== state.lastAnnouncementText
+        next.interrupt
+        || next.text !== state.lastAnnouncementText
         || now - state.lastAnnouncementAt >= DUPLICATE_WINDOW_MS
       ) {
         break;
@@ -51,15 +53,21 @@ export function createA11y({ politeEl, assertiveEl }) {
       return;
     }
 
+    const renderedText = (
+      next.interrupt && state.lastRenderedText === next.text
+        ? `${next.text}\u00A0`
+        : next.text
+    );
     state.active = true;
     state.lastAnnouncementText = next.text;
+    state.lastRenderedText = renderedText;
     state.lastAnnouncementAt = now;
     target.replaceChildren();
 
     requestAnimationFrame(() => {
       const span = document.createElement("span");
       span.setAttribute("data-announce-id", String(next.id));
-      span.textContent = next.text;
+      span.textContent = renderedText;
       target.replaceChildren(span);
 
       state.timer = window.setTimeout(() => {
@@ -71,7 +79,7 @@ export function createA11y({ politeEl, assertiveEl }) {
   }
 
   function announce(text, options = {}) {
-    const { assertive = false } = options;
+    const { assertive = false, interrupt = false } = options;
     const target = assertive ? assertiveEl : politeEl;
     const state = queueFor(target);
     if (!target || !state) {
@@ -81,9 +89,18 @@ export function createA11y({ politeEl, assertiveEl }) {
     if (!normalized) {
       return;
     }
+    if (interrupt) {
+      state.items.length = 0;
+      if (state.timer) {
+        window.clearTimeout(state.timer);
+        state.timer = null;
+      }
+      state.active = false;
+    }
     announcementNonce += 1;
     state.items.push({
       id: announcementNonce,
+      interrupt: Boolean(interrupt),
       text: normalized,
     });
     processQueue(target, state);

@@ -124,12 +124,12 @@ def validate_board(board: BoardDefinition) -> None:
         raise ValueError("Monopoly building supplies cannot be negative")
     development = board.development
     if development.level_keys and (
-        len(development.level_keys) != 5
+        len(development.level_keys) != development.houses_per_hotel + 1
         or not development.empty_key
         or any(not key for key in development.level_keys)
     ):
         raise ValueError(
-            "Named Monopoly development systems need an empty state and five levels"
+            "Named Monopoly development systems need an empty state and level keys"
         )
     if not all(
         (
@@ -283,8 +283,15 @@ def validate_board(board: BoardDefinition) -> None:
     for space in board.spaces:
         if space.kind not in valid_kinds:
             raise ValueError(f"Space {space.id} has an invalid kind")
-        if space.kind == SPACE_STREET and len(space.rents) != 6:
-            raise ValueError(f"Street {space.id} must define six rent levels")
+        if space.kind == SPACE_STREET and len(space.rents) not in (6, 7, 8):
+            raise ValueError(f"Street {space.id} must define six, seven, or eight rent levels")
+        if space.kind == SPACE_STREET:
+            expected_levels = board.development.houses_per_hotel + space.max_hotels + 1
+            if len(space.rents) != expected_levels:
+                raise ValueError(
+                    f"Street {space.id} needs {expected_levels} rent levels for "
+                    f"{board.development.houses_per_hotel} houses and {space.max_hotels} hotel(s)"
+                )
         if space.kind in OWNABLE_SPACE_KINDS and (
             not space.group_id
             or space.group_id not in group_ids

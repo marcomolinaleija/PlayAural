@@ -28,9 +28,13 @@ No hay puntos ni puntaje objetivo. Cuando solo queda un jugador que no está en 
 
 \*\*Tableros\*\*
 
-El anfitrión elige un tablero antes de la partida. Los tableros disponibles son Estados Unidos, Londres, París, Alemania, Italia, Madrid, Tokio, Australia, Nueva Zelanda y Hanói, Vietnam. El tablero elegido determina todos los nombres de casillas, valores de escrituras, cartas, moneda, casillas de tránsito, términos de desarrollo y demás montos específicos del tablero. La estructura del turno se mantiene igual.
+El anfitrión elige un tablero antes de la partida. Los tableros disponibles son Estados Unidos, Londres, París, Alemania, Italia, Madrid, Tokio, Australia, Nueva Zelanda, México y Hanói, Vietnam. El tablero elegido determina todos los nombres de casillas, valores de escrituras, cartas, moneda, casillas de tránsito, términos de desarrollo y demás montos específicos del tablero. La estructura del turno se mantiene igual.
 
 La mayoría de los tableros usan casas y hoteles. El tablero de Hanói, Vietnam usa đồng vietnamita, comienza en Hồ Hoàn Kiếm, llama negocios a sus propiedades construibles y usa cinco niveles de mejora de negocio. Los nombres y montos específicos de cada tablero siempre se muestran en los menús.
+
+El tablero de México tiene 22 ciudades agrupadas por regiones cercanas, desde Baja California y el norte interior hasta el altiplano, el occidente, el centro, el oriente, el sur y la península de Yucatán. Los grupos son una distribución de juego, no una ruta carretera o ferroviaria; los precios son valores de juego, no avalúos inmobiliarios reales. Elige México en la opción Tablero antes de comenzar.
+
+Cuatro estaciones de metro sustituyen a los ferrocarriles: Cuauhtémoc de Metrorrey en Monterrey, Juárez del Tren Ligero SITEUR en Guadalajara, y Tacubaya y Pantitlán del Metro de la Ciudad de México. Sus alquileres son 25, 50, 100 o 200 pesos según cuántas estaciones posea el dueño. El Aeropuerto Internacional de Monterrey, situado en Apodaca, y el Aeropuerto Internacional Benito Juárez de la Ciudad de México sustituyen a las compañías de servicios: cada uno cuesta 150 pesos y cobra 4 veces una nueva tirada de dados si el dueño posee uno, o 10 veces si posee ambos. Las cartas que llevan al tránsito o servicio más cercano también se aplican a estas propiedades. Comienzas con 1500 pesos mexicanos y cobras 200 en la Salida. Las casas, hoteles, impuestos, cárcel y ambos mazos mantienen el funcionamiento explicado a continuación.
 
 \*\*Empezando la partida\*\*
 
