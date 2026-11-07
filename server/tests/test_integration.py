@@ -336,6 +336,7 @@ class TestGameRegistryIntegration:
             "midnight": "dice",
             "milebymile": "cards",
             "monopoly": "board",
+            "mexicopoly": "board",
             "nine": "cards",
             "ninetynine": "cards",
             "pig": "dice",
