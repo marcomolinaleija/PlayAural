@@ -508,7 +508,9 @@ def development_score(
 
     space = board.space(property_id)
     state = states[property_id]
-    if space.kind != SPACE_STREET or state.buildings >= 5:
+    h_per_hotel = board.development.houses_per_hotel
+    max_level = h_per_hotel + space.max_hotels
+    if space.kind != SPACE_STREET or state.buildings >= max_level:
         return -1
     projected = {key: replace(value) for key, value in states.items()}
     projected[property_id].buildings += 1
@@ -533,8 +535,9 @@ def building_sale_damage(
     if space.kind != SPACE_STREET or state.buildings <= 0:
         return 10**9
     projected = {key: replace(value) for key, value in states.items()}
+    h_per_hotel = board.development.houses_per_hotel
     projected[property_id].buildings = (
-        4 if state.buildings == 5 else state.buildings - 1
+        h_per_hotel if state.buildings == h_per_hotel + 1 else state.buildings - 1
     )
     current_rent = calculate_rent(board, states, space, 7)
     reduced_rent = calculate_rent(board, projected, space, 7)
