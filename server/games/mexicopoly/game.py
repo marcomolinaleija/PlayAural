@@ -4,22 +4,26 @@ from dataclasses import dataclass, field
 import random
 from typing import Any
 
-from ...game_utils.actions import Visibility
+from ...game_utils.actions import MenuInput, Visibility
 from ...game_utils.options import BoolOption, MenuOption, option_field
 from ...game_utils.poker_timer import PokerTurnTimer
 from ...game_utils.turn_timer_mixin import TurnTimerMixin
 from ...messages.localization import Localization
+from ...ui.keybinds import KeybindState
 from ...users.base import MenuItem
 from ..monopoly import audio as game_audio
+from ..monopoly.bot import risk_adjusted_cash_reserve
 from ..monopoly.game import (
-    MonopolyGame, MonopolyOptions, MonopolyPlayer, PHASE_AWAIT_ROLL, PHASE_TURN_ACTIONS,
-    PHASE_PROPERTY, PHASE_AUCTION, PHASE_RENT, PHASE_DEBT, PHASE_JAIL,
-    PHASE_MANAGE, PHASE_TRADE_BUILD, PHASE_TRADE_RESPONSE, PHASE_MORTGAGE_TRANSFER,
+    MonopolyGame, MonopolyOptions, MonopolyPlayer, PHASE_SETUP, PHASE_AWAIT_ROLL,
+    PHASE_TURN_ACTIONS, PHASE_PROPERTY, PHASE_AUCTION, PHASE_RENT, PHASE_DEBT,
+    PHASE_JAIL, PHASE_MANAGE, PHASE_TRADE_BUILD, PHASE_TRADE_RESPONSE,
+    PHASE_MORTGAGE_TRANSFER, PHASE_ENTRY_ACTIONS,
 )
 from ..monopoly.models import (
     BoardDefinition, BoardSpaceDefinition, CardDefinition, OWNABLE_SPACE_KINDS,
-    PropertyState, SPACE_STREET,
+    PropertyState, SPACE_STREET, SPACE_TAX, SPACE_TRANSIT, SPACE_UTILITY,
 )
+from ..monopoly.rules import can_build, liquid_assets, owns_group
 from ...game_utils.sequence_runner_mixin import SequenceBeat, SequenceOperation
 from ..registry import register_game
 from .board import MEXICO_BOARD as LEGACY_BOARD
@@ -27,14 +31,30 @@ from .compact_board import MEXICO_BOARD
 
 TURN_TIMER_CHOICES = ("0", "20", "30", "40", "60", "120")
 AUCTION_TIMER_CHOICES = ("3", "5", "8", "10", "15")
+ECONOMIC_MODE_CHOICES = ("normal", "crisis", "bonanza", "caos")
 SAT_AUDIT_PERCENT = 20
 SAT_JAIL_TURNS = 2
 COBRO_START_CARDS = frozenset({"chance_cobro_de_piso", "community_cobro_de_piso"})
 MARINA_OPERATIVO_CARDS = frozenset({"chance_marina_operativo", "community_marina_operativo"})
-RANDOM_COBRO_START_PROBABILITY = 0.12
-RANDOM_MARINA_BASE_PROBABILITY = 0.18
-RANDOM_MARINA_TURN_BONUS = 0.05
-RANDOM_MARINA_MAX_PROBABILITY = 0.45
+MIN_COBRO_DE_PISO_TURNS = 8
+COBRO_COOLDOWN_TURNS = 3
+RANDOM_COBRO_START_PROBABILITY = 0.15
+RANDOM_MARINA_BASE_PROBABILITY = 0.05
+RANDOM_MARINA_TURN_BONUS = 0.025
+RANDOM_MARINA_MAX_PROBABILITY = 0.25
+
+PHASE_VANDALISM_DECISION = "vandalism_decision"
+VANDALISM_DURATION_TURNS = 3
+PHASE_ENTRY_ACTIONS[PHASE_VANDALISM_DECISION] = (
+    "denounce_vandal",
+    "skip_vandalism_denounce",
+)
+
+SPECIAL_EVENT_FERIA = "feria_turistica"
+SPECIAL_EVENT_HOY_NO_CIRCULA = "hoy_no_circula"
+SPECIAL_EVENT_APAGON = "apagon_nacional"
+SPECIAL_EVENT_DURATION_TURNS = 6
+RANDOM_SPECIAL_EVENT_PROBABILITY = 0.14
 
 _CONCISE_MESSAGES = {
     "monopoly-you-roll": "mexicopoly-you-roll",
@@ -60,6 +80,15 @@ class MexicopolyOptions(MonopolyOptions):
 
     # No option metadata: clients cannot change this fixed, serialized board id.
     board_id: str = field(default="mexico50")
+    economic_mode: str = option_field(MenuOption(
+        default="normal", choices=list(ECONOMIC_MODE_CHOICES),
+        value_key="value",
+        label="mexicopoly-option-economic-mode",
+        change_msg="mexicopoly-option-changed-economic-mode",
+        prompt="mexicopoly-option-select-economic-mode",
+        description="mexicopoly-option-economic-mode-description",
+        choice_labels={value: f"mexicopoly-economic-mode-{value}" for value in ECONOMIC_MODE_CHOICES},
+    ))
     automatic_rent: bool = option_field(BoolOption(
         default=True,
         label="mexicopoly-option-automatic-rent",
@@ -109,6 +138,15 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     sat_jail_turns: dict[str, int] = field(default_factory=dict)
     cobro_de_piso_active: bool = False
     cobro_de_piso_turns: int = 0
+    cobro_cooldown_turns: int = 0
+    vandalized_turns: dict[str, int] = field(default_factory=dict)
+    vandalized_this_turn: bool = False
+    vandalism_pending: dict[str, Any] = field(default_factory=dict)
+    vandalism_resume_phase: str = ""
+    vandalism_resume_actor_id: str = ""
+    active_special_event: str = ""
+    special_event_turns: int = 0
+    special_event_group_id: str = ""
 
     @classmethod
     def get_name(cls) -> str:
@@ -132,7 +170,18 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             errors.append("mexicopoly-error-turn-timer")
         if self.options.auction_timer not in AUCTION_TIMER_CHOICES:
             errors.append("mexicopoly-error-auction-timer")
+        if self.options.economic_mode not in ECONOMIC_MODE_CHOICES:
+            errors.append("mexicopoly-error-economic-mode")
         return errors
+
+    def setup_keybinds(self) -> None:
+        super().setup_keybinds()
+        self.define_keybind(
+            "x",
+            "Vandalize opponent property",
+            ["vandalize_property"],
+            state=KeybindState.ACTIVE,
+        )
 
     def rebuild_runtime_state(self):
         super().rebuild_runtime_state()
@@ -145,7 +194,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                     action.description = None
                     action.get_description = None
                     if action_id == "jail_roll":
-                        action.label = "monopoly-action-roll"
+                        action.is_hidden = "_is_jail_roll_hidden"
             decline = self.find_action(player, "decline_property")
             if decline:
                 decline.get_label = "_get_decline_property_label"
@@ -173,11 +222,60 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 action.description = None
                 action.get_description = None
                 if action_id == "jail_roll":
-                    action.label = "monopoly-action-roll"
+                    action.is_hidden = "_is_jail_roll_hidden"
         decline = actions.get_action("decline_property")
         if decline:
             decline.get_label = "_get_decline_property_label"
             decline.get_description = "_get_decline_property_description"
+        actions.add(
+            self._action(
+                player,
+                "vandalize_property",
+                "mexicopoly-action-vandalize-property",
+                "_action_vandalize_property",
+                "_is_vandalize_enabled",
+                "_is_vandalize_hidden",
+                description_key="mexicopoly-desc-vandalize-property",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-vandalize-property",
+                    options="_vandalize_property_options",
+                    bot_select="_first_menu_option",
+                    option_label="_vandalize_property_option_label",
+                    option_description="_property_option_description",
+                    initial_selection="_first_menu_option",
+                ),
+            )
+        )
+        actions.add(
+            self._action(
+                player,
+                "denounce_vandal",
+                "mexicopoly-action-denounce-vandal",
+                "_action_denounce_vandal",
+                "_is_vandalism_response_enabled",
+                "_is_vandalism_response_hidden",
+                description_key="mexicopoly-desc-denounce-vandal",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-denounce-vandal",
+                    options="_vandalism_suspect_options",
+                    bot_select="_bot_vandalism_suspect_input",
+                    option_label="_vandalism_suspect_option_label",
+                    option_description="_trade_target_description",
+                    initial_selection="_first_menu_option",
+                ),
+            )
+        )
+        actions.add(
+            self._action(
+                player,
+                "skip_vandalism_denounce",
+                "mexicopoly-action-skip-vandalism-denounce",
+                "_action_skip_vandalism_denounce",
+                "_is_vandalism_response_enabled",
+                "_is_vandalism_response_hidden",
+                description_key="mexicopoly-desc-skip-vandalism-denounce",
+            )
+        )
         return actions
 
     def _get_decline_property_label(self, player, action_id):
@@ -221,14 +319,98 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         del player
         return Visibility.HIDDEN
 
+    def _starting_cash(self) -> int:
+        if self.board.id != MEXICO_BOARD.id:
+            return self.board.starting_cash
+        mode = self.options.economic_mode
+        if mode == "crisis":
+            return 2400
+        if mode == "bonanza":
+            return 4000
+        if mode == "caos":
+            return 3200
+        return self.board.starting_cash
+
+    def _go_salary(self) -> int:
+        if self.board.id != MEXICO_BOARD.id:
+            return self.board.go_salary
+        mode = self.options.economic_mode
+        if mode == "crisis":
+            return 300
+        if mode == "bonanza":
+            return 550
+        if mode == "caos":
+            return 450
+        return self.board.go_salary
+
     def on_start(self) -> None:
         self.jail_counts.clear()
         self.sat_jail_turns.clear()
         self.cobro_de_piso_active = False
         self.cobro_de_piso_turns = 0
+        self.cobro_cooldown_turns = 0
+        self.vandalized_turns.clear()
+        self.vandalized_this_turn = False
+        self.vandalism_pending.clear()
+        self.vandalism_resume_phase = ""
+        self.vandalism_resume_actor_id = ""
+        self.active_special_event = ""
+        self.special_event_turns = 0
+        self.special_event_group_id = ""
         self.auction_gavel_stage = 0
         self.auction_gavel_timer.clear()
         super().on_start()
+        starting_cash = self._starting_cash()
+        for player in self.get_active_players():
+            if isinstance(player, MonopolyPlayer):
+                player.cash = starting_cash
+
+    def _clear_interactions(self) -> None:
+        super()._clear_interactions()
+        self.vandalism_pending.clear()
+        self.vandalism_resume_phase = ""
+        self.vandalism_resume_actor_id = ""
+
+    def on_sequence_callback(
+        self,
+        sequence_id: str,
+        callback_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        if callback_id == "announce_game_start":
+            board = self.board
+            starting_cash = self._starting_cash()
+            self._broadcast_global(
+                "monopoly-game-started",
+                "monopoly-game-started-brief",
+                players=len(self.alive_players),
+                board=lambda locale: Localization.get(locale, board.name_key),
+                cash=lambda locale: self._money(locale, starting_cash),
+            )
+            return
+        super().on_sequence_callback(sequence_id, callback_id, payload)
+
+    def _collect_go(
+        self, player: MonopolyPlayer, *, landed_on_go: bool = False
+    ) -> None:
+        amount = self._go_salary()
+        if landed_on_go and self.options.double_salary_on_go:
+            amount *= 2
+        player.cash += amount
+        player.passed_go_once = True
+        self._broadcast_actor(
+            player,
+            "monopoly-you-pass-go",
+            "monopoly-player-pass-go",
+            go=lambda locale: self._space_name(
+                locale, self.board.space(self.board.go_space_id)
+            ),
+            amount=lambda locale: self._money(locale, amount),
+            cash=lambda locale: self._money(locale, player.cash),
+            brief_personal_key="monopoly-you-pass-go-brief",
+            brief_others_key="monopoly-player-pass-go-brief",
+        )
+        self.play_sound(random.choice(game_audio.SOUND_CASH_RECEIVED))  # nosec B311
 
     def _send_to_jail(self, player: MonopolyPlayer) -> None:
         self.sat_jail_turns.pop(player.id, None)
@@ -253,6 +435,32 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     def _jail_fine(self, player: MonopolyPlayer) -> int:
         count = max(1, self.jail_counts.get(player.id, 1))
         return self.board.jail_fine * (2 ** (count - 1))
+
+    def _is_jail_roll_hidden(self, player) -> Visibility:
+        del player
+        return Visibility.HIDDEN
+
+    def _is_roll_enabled(self, player: MonopolyPlayer):
+        if self.phase == PHASE_JAIL:
+            return self._is_jail_roll_enabled(player)
+        return super()._is_roll_enabled(player)
+
+    def _action_roll_dice(self, player: MonopolyPlayer, action_id: str) -> None:
+        if self.phase == PHASE_JAIL:
+            self._action_jail_roll(player, "jail_roll")
+            return
+        super()._action_roll_dice(player, action_id)
+
+    def _focus_after_user_transition(self, player: MonopolyPlayer) -> None:
+        if (
+            not player.is_bot
+            and self.status == "playing"
+            and self.decision_player_id == player.id
+            and self.phase == PHASE_JAIL
+        ):
+            self.request_menu_focus(player, "roll_dice")
+            return
+        super()._focus_after_user_transition(player)
 
     def _is_jail_pay_enabled(self, player: MonopolyPlayer):
         if not self._is_actor(player, PHASE_JAIL):
@@ -410,6 +618,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     ) -> bool:
         was_active = self.cobro_de_piso_active
         self.cobro_de_piso_active = True
+        self.cobro_cooldown_turns = 0
         if self.cobro_de_piso_turns <= 0:
             self.cobro_de_piso_turns = 1
         if announce and not was_active:
@@ -427,6 +636,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         was_active = self.cobro_de_piso_active
         self.cobro_de_piso_active = False
         self.cobro_de_piso_turns = 0
+        self.cobro_cooldown_turns = COBRO_COOLDOWN_TURNS
         if announce:
             key = (
                 "mexicopoly-cobro-de-piso-ended"
@@ -448,17 +658,858 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             return
         if not any(state.owner_id for state in self.property_states.values()):
             return
+        mode = self.options.economic_mode
         if self.cobro_de_piso_active:
             self.cobro_de_piso_turns += 1
+            min_turns = (
+                10 if mode == "crisis" else MIN_COBRO_DE_PISO_TURNS
+            )
+            if self.cobro_de_piso_turns < min_turns:
+                return
+            turns_over = self.cobro_de_piso_turns - min_turns + 1
             chance = min(
                 RANDOM_MARINA_MAX_PROBABILITY,
                 RANDOM_MARINA_BASE_PROBABILITY
-                + RANDOM_MARINA_TURN_BONUS * self.cobro_de_piso_turns,
+                + RANDOM_MARINA_TURN_BONUS * turns_over,
             )
             if random.random() < chance:  # nosec B311
                 self._deactivate_cobro_de_piso(announce=True, play_sound=True)
-        elif random.random() < RANDOM_COBRO_START_PROBABILITY:  # nosec B311
+            return
+        if self.cobro_cooldown_turns > 0:
+            self.cobro_cooldown_turns -= 1
+            return
+        start_prob = (
+            0.22
+            if mode == "caos"
+            else (0.20 if mode == "crisis" else RANDOM_COBRO_START_PROBABILITY)
+        )
+        if random.random() < start_prob:  # nosec B311
             self._activate_cobro_de_piso(announce=True, play_sound=True)
+
+    # ------------------------------------------------------------------
+    # Special Board Events
+    # ------------------------------------------------------------------
+
+    def _special_event_name(
+        self, locale: str, event_id: str, group_id: str = ""
+    ) -> str:
+        if event_id == SPECIAL_EVENT_FERIA:
+            return Localization.get(
+                locale,
+                "mexicopoly-event-name-feria",
+                group=self._group_name(locale, group_id) if group_id else "",
+            )
+        if event_id == SPECIAL_EVENT_HOY_NO_CIRCULA:
+            return Localization.get(locale, "mexicopoly-event-name-hoy-no-circula")
+        if event_id == SPECIAL_EVENT_APAGON:
+            return Localization.get(locale, "mexicopoly-event-name-apagon")
+        return event_id
+
+    def _activate_special_event(
+        self,
+        event_id: str,
+        *,
+        group_id: str = "",
+        turns: int = SPECIAL_EVENT_DURATION_TURNS,
+        announce: bool = True,
+    ) -> None:
+        if event_id == SPECIAL_EVENT_FERIA and not group_id:
+            street_groups = [
+                group.id
+                for group in self.board.property_groups
+                if any(
+                    space.kind == SPACE_STREET
+                    for space in self.board.group_spaces(group.id)
+                )
+            ]
+            owned_street_groups = [
+                gid
+                for gid in street_groups
+                if any(
+                    self.property_states[space.id].owner_id
+                    for space in self.board.group_spaces(gid)
+                )
+            ]
+            pool = owned_street_groups or street_groups
+            group_id = random.choice(pool) if pool else ""  # nosec B311
+        self.active_special_event = event_id
+        self.special_event_turns = turns
+        self.special_event_group_id = (
+            group_id if event_id == SPECIAL_EVENT_FERIA else ""
+        )
+        if not announce:
+            return
+        if event_id == SPECIAL_EVENT_FERIA:
+            self._broadcast_global(
+                "mexicopoly-event-feria-started",
+                "mexicopoly-event-feria-started-brief",
+                group=lambda locale: self._group_name(
+                    locale, self.special_event_group_id
+                ),
+                turns=turns,
+            )
+        elif event_id == SPECIAL_EVENT_HOY_NO_CIRCULA:
+            self._broadcast_global(
+                "mexicopoly-event-hoy-no-circula-started",
+                "mexicopoly-event-hoy-no-circula-started-brief",
+                turns=turns,
+            )
+        elif event_id == SPECIAL_EVENT_APAGON:
+            self._broadcast_global(
+                "mexicopoly-event-apagon-started",
+                "mexicopoly-event-apagon-started-brief",
+                turns=turns,
+            )
+
+    def _maybe_trigger_special_event(self) -> None:
+        if self.status != "playing" or self.turn_number < 3:
+            return
+        if self.active_special_event:
+            self.special_event_turns -= 1
+            if self.special_event_turns <= 0:
+                ended_event = self.active_special_event
+                ended_group = self.special_event_group_id
+                self.active_special_event = ""
+                self.special_event_turns = 0
+                self.special_event_group_id = ""
+                self._broadcast_global(
+                    "mexicopoly-event-ended",
+                    "mexicopoly-event-ended-brief",
+                    event=lambda locale: self._special_event_name(
+                        locale, ended_event, ended_group
+                    ),
+                )
+            return
+        if not any(state.owner_id for state in self.property_states.values()):
+            return
+        prob = (
+            0.28
+            if self.options.economic_mode == "caos"
+            else RANDOM_SPECIAL_EVENT_PROBABILITY
+        )
+        if random.random() >= prob:  # nosec B311
+            return
+        event_id = random.choice(  # nosec B311
+            (
+                SPECIAL_EVENT_FERIA,
+                SPECIAL_EVENT_HOY_NO_CIRCULA,
+                SPECIAL_EVENT_APAGON,
+            )
+        )
+        self._activate_special_event(event_id, announce=True)
+
+    # ------------------------------------------------------------------
+    # Property Vandalism & Accusation System
+    # ------------------------------------------------------------------
+
+    def _vandalism_cost(
+        self, space: BoardSpaceDefinition, state: PropertyState | None = None
+    ) -> int:
+        state = state if state is not None else self.property_states.get(space.id)
+        base = max(60, (space.price * 25) // 100)
+        if space.kind == SPACE_STREET and state is not None and state.buildings > 0:
+            base += state.buildings * max(30, (space.building_cost * 25) // 100)
+        return base
+
+    def _vandalism_caught_penalty(
+        self,
+        space: BoardSpaceDefinition,
+        state: PropertyState | None,
+        cost: int,
+    ) -> int:
+        buildings = state.buildings if (space.kind == SPACE_STREET and state) else 0
+        proportional = (space.price * 50) // 100 + buildings * max(
+            50, (space.building_cost * 40) // 100
+        )
+        return max(cost * 2, proportional)
+
+    def _vandalism_false_accusation_penalty(
+        self,
+        space: BoardSpaceDefinition,
+        state: PropertyState | None,
+        cost: int,
+    ) -> int:
+        buildings = state.buildings if (space.kind == SPACE_STREET and state) else 0
+        proportional = (space.price * 35) // 100 + buildings * max(
+            40, (space.building_cost * 25) // 100
+        )
+        return max((cost * 3) // 2, proportional)
+
+    def _vandalize_property_options(self, player: MonopolyPlayer) -> list[str]:
+        if not isinstance(player, MonopolyPlayer):
+            return []
+        options: list[str] = []
+        for space in self.board.spaces:
+            if space.id not in self.property_states:
+                continue
+            state = self.property_states[space.id]
+            owner = self._alive_player_by_id(state.owner_id)
+            if (
+                not owner
+                or owner.id == player.id
+                or state.mortgaged
+                or self.vandalized_turns.get(space.id, 0) > 0
+            ):
+                continue
+            options.append(space.id)
+        return options
+
+    def _vandalize_property_option_label(
+        self, player: MonopolyPlayer, value: str
+    ) -> str:
+        if value not in self.property_states:
+            return value
+        locale = self._locale(player)
+        space = self.board.space(value)
+        state = self.property_states[value]
+        owner = self._alive_player_by_id(state.owner_id)
+        cost = self._vandalism_cost(space, state)
+        return Localization.get(
+            locale,
+            "mexicopoly-vandalize-property-option",
+            property=self._space_name(locale, space),
+            owner=owner.name if owner else "",
+            cost=self._money(locale, cost),
+        )
+
+    def _is_vandalize_hidden(self, player: MonopolyPlayer) -> Visibility:
+        if (
+            self.status != "playing"
+            or getattr(player, "is_spectator", False)
+            or getattr(player, "bankrupt", False)
+            or self.phase not in {PHASE_AWAIT_ROLL, PHASE_TURN_ACTIONS}
+            or self.decision_player_id != player.id
+            or self.vandalized_this_turn
+            or not self._vandalize_property_options(player)
+        ):
+            return Visibility.HIDDEN
+        return Visibility.VISIBLE
+
+    def _is_vandalize_enabled(self, player: MonopolyPlayer):
+        if not self._is_actor(player) or self.phase not in {
+            PHASE_AWAIT_ROLL,
+            PHASE_TURN_ACTIONS,
+        }:
+            return self._waiting_reason(player)
+        if self.vandalized_this_turn:
+            return "mexicopoly-error-already-vandalized-turn"
+        options = self._vandalize_property_options(player)
+        if not options:
+            return "mexicopoly-error-no-vandalizable-properties"
+        cheapest = min(
+            self._vandalism_cost(
+                self.board.space(prop_id), self.property_states[prop_id]
+            )
+            for prop_id in options
+        )
+        if player.cash < cheapest:
+            locale = self._locale(player)
+            return (
+                "mexicopoly-error-vandalize-needs-cash",
+                {
+                    "cost": self._money(locale, cheapest),
+                    "cash": self._money(locale, player.cash),
+                },
+            )
+        return None
+
+    def _announce_vandalism_attack(
+        self,
+        culprit: MonopolyPlayer,
+        victim: MonopolyPlayer,
+        space: BoardSpaceDefinition,
+        cost: int,
+    ) -> None:
+        for listener in self.players:
+            user = self.get_user(listener)
+            if not user:
+                continue
+            locale = user.locale
+            is_brief = self._wants_brief(user)
+            prop_name = self._space_name(locale, space)
+            if listener.id == culprit.id:
+                key = (
+                    "mexicopoly-you-vandalize-property-brief"
+                    if is_brief
+                    else "mexicopoly-you-vandalize-property"
+                )
+                user.speak_l(
+                    key,
+                    buffer="game",
+                    property=prop_name,
+                    owner=victim.name,
+                    cost=self._money(locale, cost),
+                    cash=self._money(locale, culprit.cash),
+                    turns=VANDALISM_DURATION_TURNS,
+                )
+            elif listener.id == victim.id:
+                key = (
+                    "mexicopoly-your-property-vandalized-brief"
+                    if is_brief
+                    else "mexicopoly-your-property-vandalized"
+                )
+                user.speak_l(
+                    key,
+                    buffer="game",
+                    property=prop_name,
+                    turns=VANDALISM_DURATION_TURNS,
+                )
+            else:
+                key = (
+                    "mexicopoly-property-vandalized-brief"
+                    if is_brief
+                    else "mexicopoly-property-vandalized"
+                )
+                user.speak_l(
+                    key,
+                    buffer="game",
+                    owner=victim.name,
+                    property=prop_name,
+                    turns=VANDALISM_DURATION_TURNS,
+                )
+
+    def _action_vandalize_property(
+        self, player: MonopolyPlayer, input_value: str, action_id: str
+    ) -> None:
+        del action_id
+        error = self._is_vandalize_enabled(player)
+        if error:
+            if isinstance(error, tuple):
+                self._speak(player, error[0], **error[1])
+            else:
+                self._speak(player, error)
+            return
+        options = self._vandalize_property_options(player)
+        if input_value not in options:
+            self._speak(player, "mexicopoly-error-no-vandalizable-properties")
+            return
+        space = self.board.space(input_value)
+        state = self.property_states[space.id]
+        victim = self._alive_player_by_id(state.owner_id)
+        if not victim or victim.id == player.id:
+            return
+        cost = self._vandalism_cost(space, state)
+        if player.cash < cost:
+            locale = self._locale(player)
+            self._speak(
+                player,
+                "mexicopoly-error-vandalize-needs-cash",
+                cost=self._money(locale, cost),
+                cash=self._money(locale, player.cash),
+            )
+            return
+        player.cash -= cost
+        if self.options.free_parking_cash:
+            self.free_parking_pot += cost
+        self.vandalized_this_turn = True
+        self.vandalized_turns[space.id] = VANDALISM_DURATION_TURNS
+        alibi_holds = (
+            random.random() < 0.45  # nosec B311
+            if len(self.alive_players) <= 2
+            else False
+        )
+        self.vandalism_resume_phase = self.phase
+        self.vandalism_resume_actor_id = self.decision_player_id
+        self.vandalism_pending = {
+            "property_id": space.id,
+            "owner_id": victim.id,
+            "culprit_id": player.id,
+            "cost": cost,
+            "resume_phase": self.phase,
+            "resume_actor_id": self.decision_player_id,
+            "alibi_holds": alibi_holds,
+        }
+        self.phase = PHASE_VANDALISM_DECISION
+        self.decision_player_id = victim.id
+        self._announce_vandalism_attack(player, victim, space, cost)
+        self.play_sound(game_audio.SOUND_DEBT_WARNING)
+        self._focus_after_user_transition(victim)
+        self.refresh_menus()
+
+    def _is_vandalism_response_hidden(self, player: MonopolyPlayer) -> Visibility:
+        return self._visible_for_actor(player, PHASE_VANDALISM_DECISION)
+
+    def _is_vandalism_response_enabled(self, player: MonopolyPlayer):
+        return (
+            None
+            if self._is_actor(player, PHASE_VANDALISM_DECISION)
+            else self._waiting_reason(player)
+        )
+
+    def _vandalism_suspect_options(self, player: MonopolyPlayer) -> list[str]:
+        return [
+            other.id
+            for other in self.alive_players
+            if other.id != player.id
+        ]
+
+    def _bot_vandalism_suspect_input(
+        self, player: MonopolyPlayer, options: list[str]
+    ) -> str | None:
+        del player
+        return random.choice(options) if options else None  # nosec B311
+
+    def _vandalism_suspect_option_label(
+        self, player: MonopolyPlayer, value: str
+    ) -> str:
+        suspect = self._alive_player_by_id(value)
+        if not suspect:
+            return value
+        locale = self._locale(player)
+        prop_id = str(self.vandalism_pending.get("property_id", ""))
+        cost = int(self.vandalism_pending.get("cost", 0))
+        if prop_id in self.property_states:
+            space = self.board.space(prop_id)
+            state = self.property_states[prop_id]
+            caught_pen = self._vandalism_caught_penalty(space, state, cost)
+            false_pen = self._vandalism_false_accusation_penalty(space, state, cost)
+            return Localization.get(
+                locale,
+                "mexicopoly-vandalism-suspect-option",
+                suspect=suspect.name,
+                reward=self._money(locale, caught_pen),
+                risk=self._money(locale, false_pen),
+            )
+        return suspect.name
+
+    def _action_denounce_vandal(
+        self, player: MonopolyPlayer, input_value: str, action_id: str
+    ) -> None:
+        del action_id
+        if not self._is_actor(player, PHASE_VANDALISM_DECISION):
+            return
+        suspect = self._alive_player_by_id(input_value)
+        if not suspect or suspect.id == player.id:
+            return
+        pending = dict(self.vandalism_pending)
+        prop_id = str(pending.get("property_id", ""))
+        culprit_id = str(pending.get("culprit_id", ""))
+        cost = int(pending.get("cost", 0))
+        alibi_holds = bool(pending.get("alibi_holds", False))
+        self.vandalism_resume_phase = str(
+            pending.get("resume_phase", self.vandalism_resume_phase or PHASE_AWAIT_ROLL)
+        )
+        self.vandalism_resume_actor_id = str(
+            pending.get("resume_actor_id", self.vandalism_resume_actor_id)
+        )
+        self.vandalism_pending.clear()
+        if prop_id not in self.property_states:
+            self._resume_after_vandalism()
+            return
+        space = self.board.space(prop_id)
+        state = self.property_states[prop_id]
+        caught = suspect.id == culprit_id and not alibi_holds
+        if caught:
+            self.vandalized_turns.pop(prop_id, None)
+            penalty = self._vandalism_caught_penalty(space, state, cost)
+            self._broadcast_actor_target(
+                player,
+                suspect,
+                "mexicopoly-you-denounce-correct",
+                "mexicopoly-you-were-caught-vandalizing",
+                "mexicopoly-player-denounces-correct",
+                brief_personal_key="mexicopoly-you-denounce-correct-brief",
+                brief_target_key="mexicopoly-you-were-caught-vandalizing-brief",
+                brief_others_key="mexicopoly-player-denounces-correct-brief",
+                suspect=suspect.name,
+                victim=player.name,
+                property=lambda locale: self._space_name(locale, space),
+                penalty=lambda locale: self._money(locale, penalty),
+            )
+            self._start_debt(
+                suspect,
+                player.id,
+                penalty,
+                "mexicopoly-debt-vandalism-caught",
+                continuation="resume_after_vandalism",
+            )
+            self._focus_after_user_transition(player)
+            return
+        penalty = self._vandalism_false_accusation_penalty(space, state, cost)
+        self._broadcast_actor_target(
+            player,
+            suspect,
+            "mexicopoly-you-denounce-false",
+            "mexicopoly-you-were-falsely-accused",
+            "mexicopoly-player-denounces-false",
+            brief_personal_key="mexicopoly-you-denounce-false-brief",
+            brief_target_key="mexicopoly-you-were-falsely-accused-brief",
+            brief_others_key="mexicopoly-player-denounces-false-brief",
+            suspect=suspect.name,
+            accuser=player.name,
+            property=lambda locale: self._space_name(locale, space),
+            penalty=lambda locale: self._money(locale, penalty),
+        )
+        self._start_debt(
+            player,
+            suspect.id,
+            penalty,
+            "mexicopoly-debt-false-accusation",
+            continuation="resume_after_vandalism",
+        )
+        self._focus_after_user_transition(player)
+
+    def _action_skip_vandalism_denounce(
+        self, player: MonopolyPlayer, action_id: str
+    ) -> None:
+        del action_id
+        if not self._is_actor(player, PHASE_VANDALISM_DECISION):
+            return
+        pending = dict(self.vandalism_pending)
+        prop_id = str(pending.get("property_id", ""))
+        self.vandalism_resume_phase = str(
+            pending.get("resume_phase", self.vandalism_resume_phase or PHASE_AWAIT_ROLL)
+        )
+        self.vandalism_resume_actor_id = str(
+            pending.get("resume_actor_id", self.vandalism_resume_actor_id)
+        )
+        self.vandalism_pending.clear()
+        if prop_id in self.property_states:
+            space = self.board.space(prop_id)
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-skip-denounce",
+                "mexicopoly-player-skips-denounce",
+                property=lambda locale: self._space_name(locale, space),
+                turns=self.vandalized_turns.get(prop_id, VANDALISM_DURATION_TURNS),
+                brief_personal_key="mexicopoly-you-skip-denounce-brief",
+                brief_others_key="mexicopoly-player-skips-denounce-brief",
+            )
+        self._resume_after_vandalism()
+        self._focus_after_user_transition(player)
+
+    def _resume_after_vandalism(self) -> None:
+        resume_phase = self.vandalism_resume_phase or PHASE_AWAIT_ROLL
+        resume_actor_id = self.vandalism_resume_actor_id
+        self.vandalism_resume_phase = ""
+        self.vandalism_resume_actor_id = ""
+        self.vandalism_pending.clear()
+        actor = self._alive_player_by_id(resume_actor_id)
+        if not actor:
+            current = self.current_player
+            if isinstance(current, MonopolyPlayer) and not current.bankrupt:
+                actor = current
+            else:
+                self._start_turn(announce=True)
+                return
+        self._restore_interrupted_phase(resume_phase, actor.id)
+        self._focus_after_user_transition(actor)
+
+    def _tick_vandalized_properties(self) -> None:
+        if not self.vandalized_turns:
+            return
+        expired: list[str] = []
+        for prop_id in list(self.vandalized_turns.keys()):
+            remaining = self.vandalized_turns[prop_id] - 1
+            if remaining <= 0:
+                expired.append(prop_id)
+                del self.vandalized_turns[prop_id]
+            else:
+                self.vandalized_turns[prop_id] = remaining
+        for prop_id in expired:
+            if prop_id in self.property_states:
+                space = self.board.space(prop_id)
+                self._broadcast_global(
+                    "mexicopoly-vandalism-repaired",
+                    "mexicopoly-vandalism-repaired-brief",
+                    property=lambda locale, s=space: self._space_name(locale, s),
+                )
+
+    def _next_building_cost(
+        self, space: BoardSpaceDefinition, current_buildings: int | None = None
+    ) -> int:
+        if current_buildings is None:
+            state = self.property_states.get(space.id)
+            current_buildings = state.buildings if state else 0
+        h_per_hotel = self.board.development.houses_per_hotel
+        if current_buildings >= h_per_hotel:
+            return max(1, (space.building_cost * 3) // 2)
+        return space.building_cost
+
+    def _street_undeveloped_group_rents(
+        self, space: BoardSpaceDefinition
+    ) -> tuple[int, int]:
+        base = space.rents[0] if space.rents else 0
+        two_of_three = max(1, (base * 150) // 100)
+        full_group = max(1, (base * 2 * 125) // 100)
+        return two_of_three, full_group
+
+    def _rent_schedule_text(self, locale: str, space: BoardSpaceDefinition) -> str:
+        if space.kind == SPACE_STREET and self.board.id == MEXICO_BOARD.id:
+            h_per_hotel = self.board.development.houses_per_hotel
+            two_of_three, full_group = self._street_undeveloped_group_rents(space)
+            parts = [
+                f"base {self._money(locale, space.rents[0])}",
+                Localization.get(
+                    locale,
+                    "mexicopoly-rent-two-of-three",
+                    amount=self._money(locale, two_of_three),
+                ),
+                Localization.get(
+                    locale,
+                    "mexicopoly-rent-full-group",
+                    amount=self._money(locale, full_group),
+                ),
+            ]
+            for h in range(1, h_per_hotel + 1):
+                h_name = Localization.get(
+                    locale, "monopoly-building-house-count", count=h
+                )
+                parts.append(f"{h_name} {self._money(locale, space.rents[h])}")
+            parts.append(
+                f"{Localization.get(locale, 'monopoly-building-one-hotel')} "
+                f"{self._money(locale, space.rents[h_per_hotel + 1])}"
+            )
+            if space.max_hotels > 1 and len(space.rents) > h_per_hotel + 2:
+                parts.append(
+                    f"{Localization.get(locale, 'mexicopoly-building-two-hotels', count=2)} "
+                    f"{self._money(locale, space.rents[h_per_hotel + 2])}"
+                )
+            schedule = "; ".join(parts)
+            hotel_str = (
+                Localization.get(locale, "monopoly-building-one-hotel")
+                if space.max_hotels == 1
+                else Localization.get(
+                    locale, "mexicopoly-building-two-hotels", count=space.max_hotels
+                )
+            )
+            spec = Localization.get(
+                locale,
+                "mexicopoly-building-spec",
+                houses=h_per_hotel,
+                hotels=hotel_str,
+            )
+            cost_spec = Localization.get(
+                locale,
+                "mexicopoly-hotel-cost-spec",
+                house_cost=self._money(locale, space.building_cost),
+                hotel_cost=self._money(
+                    locale, self._next_building_cost(space, h_per_hotel)
+                ),
+            )
+            return f"{schedule}. {spec} {cost_spec}"
+        return super()._rent_schedule_text(locale, space)
+
+    def _build_property_error(
+        self, player: MonopolyPlayer, property_id: str
+    ) -> str | tuple[str, dict] | None:
+        turns = self.vandalized_turns.get(property_id, 0)
+        if turns > 0:
+            return ("mexicopoly-error-property-vandalized", {"turns": turns})
+        state = self.property_states.get(property_id)
+        if not state or state.owner_id != player.id:
+            return "monopoly-error-not-your-property"
+        space = self.board.space(property_id)
+        error = can_build(
+            self.board,
+            self.property_states,
+            property_id,
+            player.id,
+            self.bank_houses,
+            self.bank_hotels,
+        )
+        if error:
+            return self._development_error_key(error)
+        cost = self._next_building_cost(space, state.buildings)
+        if player.cash < cost:
+            locale = self._locale(player)
+            return (
+                "monopoly-error-building-needs-cash",
+                {
+                    "cost": self._money(locale, cost),
+                    "cash": self._money(locale, player.cash),
+                },
+            )
+        return None
+
+    def _build_selector_empty_reason(
+        self, player: MonopolyPlayer
+    ) -> str | tuple[str, dict]:
+        reason = super()._build_selector_empty_reason(player)
+        if isinstance(reason, tuple):
+            eligible = [
+                self.board.space(prop_id)
+                for prop_id in self._manage_property_options(player)
+                if self.board.space(prop_id).kind == SPACE_STREET
+                and self.vandalized_turns.get(prop_id, 0) == 0
+                and can_build(
+                    self.board,
+                    self.property_states,
+                    prop_id,
+                    player.id,
+                    self.bank_houses,
+                    self.bank_hotels,
+                )
+                is None
+            ]
+            if eligible:
+                cheapest = min(
+                    self._next_building_cost(
+                        space, self.property_states[space.id].buildings
+                    )
+                    for space in eligible
+                )
+                locale = self._locale(player)
+                return (
+                    reason[0],
+                    {
+                        "cost": self._money(locale, cheapest),
+                        "cash": self._money(locale, player.cash),
+                    },
+                )
+        return reason
+
+    def _get_management_action_label(self, player, action_id: str) -> str:
+        if action_id == "build" and isinstance(player, MonopolyPlayer):
+            context = self._management_context(player)
+            if (
+                context
+                and context[0].kind == SPACE_STREET
+                and not self._management_action_disabled_reason(player, action_id)
+            ):
+                space, state = context
+                locale = self._locale(player)
+                return Localization.get(
+                    locale,
+                    "monopoly-build-label",
+                    building=self._development_level_text(
+                        locale, state.buildings + 1
+                    ),
+                    cost=self._money(
+                        locale, self._next_building_cost(space, state.buildings)
+                    ),
+                )
+        return super()._get_management_action_label(player, action_id)
+
+    def _build_property_option_label(self, player, value: str) -> str:
+        if value not in self.property_states:
+            return value
+        locale = self._locale(player)
+        space = self.board.space(value)
+        state = self.property_states[value]
+        return Localization.get(
+            locale,
+            "monopoly-build-property-option",
+            property=self._space_name(locale, space),
+            group=self._group_name(locale, space.group_id),
+            building=self._development_level_text(locale, state.buildings + 1),
+            cost=self._money(
+                locale, self._next_building_cost(space, state.buildings)
+            ),
+            current=self._building_text(locale, state.buildings),
+            cash=self._money(locale, getattr(player, "cash", 0)),
+        )
+
+    def _apply_build(
+        self, player: MonopolyPlayer, property_id: str, *, announce: bool = True
+    ) -> None:
+        if self._build_property_error(player, property_id):
+            return
+        space = self.board.space(property_id)
+        state = self.property_states[property_id]
+        cost = self._next_building_cost(space, state.buildings)
+        player.cash -= cost
+        built_level = state.buildings + 1
+        state.buildings = built_level
+        h_per_hotel = self.board.development.houses_per_hotel
+        if self.board.development.finite_supply:
+            if built_level == h_per_hotel + 1:
+                self.bank_hotels -= 1
+                self.bank_houses += h_per_hotel
+            elif built_level > h_per_hotel + 1:
+                self.bank_hotels -= 1
+            else:
+                self.bank_houses -= 1
+        if announce:
+            self._broadcast_actor(
+                player,
+                "monopoly-you-build",
+                "monopoly-player-builds",
+                building=lambda locale: self._development_level_text(
+                    locale, built_level
+                ),
+                property=lambda locale: self._space_name(locale, space),
+                cost=lambda locale: self._money(locale, cost),
+                cash=lambda locale: self._money(locale, player.cash),
+                brief_personal_key="monopoly-you-build-brief",
+                brief_others_key="monopoly-player-builds-brief",
+            )
+            self.play_sound(game_audio.SOUND_DEVELOPMENT_BUILT)
+        self.refresh_menus()
+
+    def _bot_management_choice(
+        self,
+        player: MonopolyPlayer,
+        property_id: str,
+    ) -> tuple[str, int] | None:
+        choice = super()._bot_management_choice(player, property_id)
+        if not choice:
+            return None
+        if choice[0] == "build":
+            if self._build_property_error(player, property_id) is not None:
+                return None
+            space = self.board.space(property_id)
+            state = self.property_states[property_id]
+            cost = self._next_building_cost(space, state.buildings)
+            reserve = risk_adjusted_cash_reserve(
+                self.board,
+                self.property_states,
+                player.id,
+            )
+            cash_after_build = player.cash - cost
+            if cash_after_build < reserve or (
+                state.buildings >= 3 and cash_after_build < reserve * 2
+            ):
+                return None
+        return choice
+
+    def _start_debt(
+        self,
+        debtor: MonopolyPlayer,
+        creditor_id: str,
+        amount: int,
+        reason_key: str,
+        *,
+        continuation: str,
+        property_id: str = "",
+    ) -> None:
+        super()._start_debt(
+            debtor,
+            creditor_id,
+            amount,
+            reason_key,
+            continuation=continuation,
+            property_id=property_id,
+        )
+        if (
+            self.phase == PHASE_DEBT
+            and self.debt_state
+            and self.debt_state.debtor_id == debtor.id
+            and liquid_assets(
+                self.board,
+                self.property_states,
+                debtor.id,
+                debtor.cash,
+            )
+            < self.debt_state.amount
+        ):
+            self._action_declare_bankruptcy(debtor, "declare_bankruptcy")
+
+    def _property_state_text(
+        self,
+        locale: str,
+        state: PropertyState,
+        space: BoardSpaceDefinition | None = None,
+    ) -> str:
+        base = super()._property_state_text(locale, state, space)
+        if space and self.vandalized_turns.get(space.id, 0) > 0:
+            suffix = Localization.get(
+                locale,
+                "mexicopoly-property-state-vandalized-suffix",
+                turns=self.vandalized_turns[space.id],
+            )
+            return f"{base}{suffix}"
+        return base
 
     def _card_text(self, locale: str, card: CardDefinition) -> str:
         if card.id == "chance_sat_audit":
@@ -515,6 +1566,9 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             if isinstance(current, MonopolyPlayer) and not current.bankrupt:
                 self._send_to_sat_jail(current, turns=SAT_JAIL_TURNS)
             return
+        if continuation == "resume_after_vandalism":
+            self._resume_after_vandalism()
+            return
         super()._continue_after_debt(continuation)
 
     def _resolve_landing(
@@ -546,6 +1600,16 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 )
                 self._finish_landing()
                 return
+        if space.kind == SPACE_TAX and self.options.economic_mode == "crisis":
+            tax_amount = (space.tax_amount * 125) // 100
+            self._start_debt(
+                player,
+                "",
+                tax_amount,
+                "monopoly-debt-tax",
+                continuation="finish_landing",
+            )
+            return
         super()._resolve_landing(
             player,
             rent_multiplier=rent_multiplier,
@@ -775,6 +1839,38 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         self._finish_auction()
 
     def _begin_rent_decision(self, tenant, owner, space, rent):
+        if rent > 0:
+            if space.kind == SPACE_STREET:
+                state = self.property_states.get(space.id)
+                if state and state.buildings == 0:
+                    group_spaces = self.board.group_spaces(space.group_id)
+                    owned_in_group = sum(
+                        1
+                        for member in group_spaces
+                        if self.property_states[member.id].owner_id == owner.id
+                    )
+                    if owned_in_group == 2:
+                        rent = max(1, (rent * 150) // 100)
+                    elif owned_in_group == len(group_spaces) and len(group_spaces) >= 3:
+                        rent = max(1, (rent * 125) // 100)
+            if (
+                self.active_special_event == SPECIAL_EVENT_FERIA
+                and space.kind == SPACE_STREET
+                and space.group_id == self.special_event_group_id
+            ):
+                rent = max(1, (rent * 150) // 100)
+            elif (
+                self.active_special_event == SPECIAL_EVENT_HOY_NO_CIRCULA
+                and space.kind == SPACE_TRANSIT
+            ):
+                rent = max(1, (rent * 150) // 100)
+            elif (
+                self.active_special_event == SPECIAL_EVENT_APAGON
+                and space.kind == SPACE_UTILITY
+            ):
+                rent = max(1, (rent * 150) // 100)
+            if self.vandalized_turns.get(space.id, 0) > 0:
+                rent = max(1, rent // 2)
         if not self.options.automatic_rent:
             return super()._begin_rent_decision(tenant, owner, space, rent)
         # Use the debt/payment engine directly: no redundant collection prompt,
@@ -791,8 +1887,11 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             self._finish_turn()
 
     def _start_turn(self, *, announce):
+        self.vandalized_this_turn = False
         if announce:
+            self._tick_vandalized_properties()
             self._maybe_trigger_random_cobro_event()
+            self._maybe_trigger_special_event()
         super()._start_turn(announce=announce)
         self.turn_time_exhausted = False
         self.response_timer.clear()
@@ -802,6 +1901,8 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     def _can_interrupt(self, player):
         # Optional management/trades belong to the acting player's own turn.
         # Required auction/debt responders may still manage their assets.
+        if self.phase == PHASE_VANDALISM_DECISION:
+            return False
         current = self.current_player
         if (current and current.id != player.id
                 and self.phase in {PHASE_AWAIT_ROLL, PHASE_JAIL, PHASE_TURN_ACTIONS}):
@@ -815,8 +1916,13 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         return super()._can_interrupt(player)
 
     def bot_think(self, player):
+        if self.phase == PHASE_VANDALISM_DECISION:
+            suspects = self._vandalism_suspect_options(player)
+            if suspects and random.random() < 0.65:  # nosec B311
+                return "denounce_vandal"
+            return "skip_vandalism_denounce"
         if self.phase == PHASE_JAIL and self.sat_jail_turns.get(player.id, 0) > 0:
-            return "jail_roll"
+            return "roll_dice"
         # Management used to happen after rolling. Do it before the final roll
         # now, otherwise automatic turn completion would prevent bots building.
         if self.phase == PHASE_AWAIT_ROLL:
@@ -826,7 +1932,8 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 player.bot_trade_turn = self.turn_number
                 if self._bot_best_trade_plan(player):
                     return "propose_trade"
-        return super().bot_think(player)
+        choice = super().bot_think(player)
+        return "roll_dice" if choice == "jail_roll" else choice
 
     def on_tick(self):
         super().on_tick()
@@ -896,6 +2003,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 PHASE_RENT: "rent", PHASE_DEBT: "debt", PHASE_MANAGE: "close-management",
                 PHASE_TRADE_BUILD: "cancel-trade", PHASE_TRADE_RESPONSE: "reject-trade",
                 PHASE_MORTGAGE_TRANSFER: "keep-mortgage",
+                PHASE_VANDALISM_DECISION: "skip-denounce",
             }.get(self.phase)
         if not action:
             return
@@ -912,7 +2020,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             else:
                 self._finish_turn()
         elif self.phase == PHASE_JAIL:
-            self._action_jail_roll(actor, "jail_roll")
+            self._action_roll_dice(actor, "roll_dice")
         elif self.phase == PHASE_PROPERTY:
             self._action_decline_property(actor, "decline_property")
         elif self.phase == PHASE_AUCTION:
@@ -935,9 +2043,31 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             self._action_trade_reject(actor, "trade_reject")
         elif self.phase == PHASE_MORTGAGE_TRANSFER:
             self._action_keep_received_mortgaged(actor, "keep_received_mortgaged")
+        elif self.phase == PHASE_VANDALISM_DECISION:
+            self._action_skip_vandalism_denounce(actor, "skip_vandalism_denounce")
+
+    def _phase_name(self, locale: str) -> str:
+        if self.phase != PHASE_SETUP and self.is_sequence_gameplay_locked():
+            return Localization.get(locale, "monopoly-phase-resolving")
+        if self.phase == PHASE_VANDALISM_DECISION:
+            return Localization.get(locale, "mexicopoly-phase-vandalism-decision")
+        return super()._phase_name(locale)
 
     def _build_game_status(self, player, user):
         result = super()._build_game_status(player, user)
+        result.items.append(
+            MenuItem(
+                id="mexicopoly:economic_mode",
+                text=Localization.get(
+                    user.locale,
+                    "mexicopoly-status-economic-mode",
+                    mode=Localization.get(
+                        user.locale,
+                        f"mexicopoly-economic-mode-{self.options.economic_mode}",
+                    ),
+                ),
+            )
+        )
         result.items.append(
             MenuItem(
                 id="mexicopoly:cobro_de_piso",
@@ -951,6 +2081,36 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 ),
             )
         )
+        if self.active_special_event:
+            result.items.append(
+                MenuItem(
+                    id="mexicopoly:special_event",
+                    text=Localization.get(
+                        user.locale,
+                        "mexicopoly-status-special-event",
+                        event=self._special_event_name(
+                            user.locale,
+                            self.active_special_event,
+                            self.special_event_group_id,
+                        ),
+                        turns=self.special_event_turns,
+                    ),
+                )
+            )
+        for prop_id, turns in self.vandalized_turns.items():
+            if turns > 0 and prop_id in self.property_states:
+                space = self.board.space(prop_id)
+                result.items.append(
+                    MenuItem(
+                        id=f"mexicopoly:vandalized:{prop_id}",
+                        text=Localization.get(
+                            user.locale,
+                            "mexicopoly-status-vandalized-property",
+                            property=self._space_name(user.locale, space),
+                            turns=turns,
+                        ),
+                    )
+                )
         for active_player in self.alive_players:
             sat_turns = self.sat_jail_turns.get(active_player.id, 0)
             if active_player.in_jail and sat_turns > 0:

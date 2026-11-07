@@ -90,7 +90,8 @@ def test_independent_registration_options_and_classic_compatibility():
     options = MexicopolyOptions()
     assert options.board_id == "mexico50"
     assert "board_id" not in options.get_option_metas()
-    assert len(options.get_option_metas()) == 9
+    assert len(options.get_option_metas()) == 10
+    assert options.economic_mode == "normal"
     assert options.automatic_rent is True
     assert options.auctions_enabled is True
     assert options.auction_timer == "5"
@@ -121,7 +122,7 @@ def test_complete_private_board_and_geographic_membership():
     assert MEXICO_BOARD.space("tijuana").group_id == "brown"
     for position, identifier in {**METRO_STATIONS, **AIRPORTS}.items():
         assert MEXICO_BOARD.spaces[position].id == identifier
-    assert len(MEXICO_BOARD.chance_cards) == len(MEXICO_BOARD.community_cards) == 26
+    assert len(MEXICO_BOARD.chance_cards) == 26 and len(MEXICO_BOARD.community_cards) == 32
 
 
 def test_cards_keep_effects_but_own_their_text_and_destinations():

@@ -92,16 +92,30 @@ def test_manual_collection_remains_optional(waive):
 
 
 def test_insolvent_rent_keeps_the_tenant_decision_open():
+    # When the tenant has no cash but owns a mortgageable property, PHASE_DEBT stays open:
     game = make_game()
     tenant = force_actor(game)
     tenant.cash = 0
     owner = game.players[1]
     game.property_states["tijuana"].owner_id = owner.id
+    game.property_states["mexicali"].owner_id = tenant.id
     tenant.position = game.board.space_index("tijuana")
     game._resolve_landing(tenant)
     assert game.phase == PHASE_DEBT
     assert game.decision_player_id == tenant.id
     assert game.current_player.id == tenant.id and owner.cash == 3000
+
+    # When the tenant has neither cash nor sufficient liquid assets, bankruptcy is automatic:
+    auto_game = make_game()
+    broke_tenant = force_actor(auto_game)
+    broke_tenant.cash = 0
+    creditor = auto_game.players[1]
+    auto_game.property_states["tijuana"].owner_id = creditor.id
+    broke_tenant.position = auto_game.board.space_index("tijuana")
+    auto_game._resolve_landing(broke_tenant)
+    assert broke_tenant.bankrupt is True
+    assert auto_game.status == "finished"
+    assert auto_game.winner_id == creditor.id
 
 
 def test_purchase_and_auction_finish_before_automatic_turn_end():
@@ -382,30 +396,44 @@ def test_five_houses_and_up_to_two_hotels_on_major_hubs():
     assert game.property_states["tijuana"].buildings == 5 and game.bank_houses == 0
 
 
-def test_escalating_jail_fine_and_concise_jail_actions():
+def test_escalating_jail_fine_and_concise_jail_actions(monkeypatch):
     game = make_game(locale="es")
     actor = force_actor(game)
     user = game.get_user(actor)
     for action_id in ("roll_dice", "roll_shortcut", "jail_roll"):
         action = game.find_action(actor, action_id)
         assert action.description is None and action.get_description is None
-    assert game.find_action(actor, "jail_roll").label == "monopoly-action-roll"
+    assert game.find_action(actor, "jail_roll").is_hidden == "_is_jail_roll_hidden"
     for expected_fine in (100, 200, 400):
         game._send_to_jail(actor)
         game.current_player = actor
         game.phase = PHASE_JAIL
         game.decision_player_id = actor.id
+        turn_set = game.get_action_set(actor, "turn")
+        visible_ids = [item.action.id for item in turn_set.get_visible_actions(game, actor)]
+        assert "roll_dice" in visible_ids and "jail_roll" not in visible_ids
+        assert game._is_roll_enabled(actor) is None
         assert game._jail_fine(actor) == expected_fine
         assert f"MX${expected_fine}" in game._get_jail_pay_label(actor, "jail_pay")
         user.clear_messages()
         game._action_jail_pay(actor, "jail_pay")
         assert user.get_last_spoken() == f"Pagas MX${expected_fine} y sales de la cárcel."
+    # Verify normal roll_dice button executes the jail roll when in PHASE_JAIL:
+    game._send_to_jail(actor)
+    game.current_player = actor
+    game.phase = PHASE_JAIL
+    game.decision_player_id = actor.id
+    monkeypatch.setattr(game, "_roll_pair", lambda: (3, 3))
+    game._action_roll_dice(actor, "roll_dice")
+    drain(game, "monopoly_roll")
+    assert not actor.in_jail
     restored = MexicopolyGame.from_json(game.to_json())
     restored.rebuild_runtime_state()
-    assert restored.jail_counts[actor.id] == 3
+    assert restored.jail_counts[actor.id] == 4
     for action_id in ("roll_dice", "roll_shortcut", "jail_roll"):
         action = restored.find_action(restored.players[0], action_id)
         assert action.description is None and action.get_description is None
+    assert restored.find_action(restored.players[0], "jail_roll").is_hidden == "_is_jail_roll_hidden"
     restored.on_start()
     drain(restored, "monopoly_intro")
     assert restored.jail_counts == {}
@@ -518,13 +546,13 @@ def test_mexican_folklore_cards_sat_audit_false_accusation_and_sat_refund():
     assert other.cash == 3000 and actor.cash == 2240
     assert any("SAT" in m.data["text"] for m in other_user.messages if m.type == "speak")
 
-    # Actor's turn 1 in SAT jail: bail and jail card are disabled; bot chooses jail_roll
+    # Actor's turn 1 in SAT jail: bail and jail card are disabled; bot chooses roll_dice
     game.current_player = actor
     game.phase = PHASE_JAIL
     game.decision_player_id = actor.id
     assert game._is_jail_pay_enabled(actor) == ("mexicopoly-error-sat-no-bail", {"turns": 2})
     assert game._is_jail_card_enabled(actor) == ("mexicopoly-error-sat-no-bail", {"turns": 2})
-    assert game.bot_think(actor) == "jail_roll"
+    assert game.bot_think(actor) == "roll_dice"
 
     # Even rolling doubles on turn 1 of SAT jail does NOT release actor!
     game._start_jail_roll_sequence(actor, 4, 4)
@@ -602,22 +630,233 @@ def test_cobro_de_piso_extortion_tiers_cards_and_marina_operativo(monkeypatch):
     assert tenant.cash == tenant_before - 1650
     assert owner.cash == owner_before + (1650 - 825)
 
-    # Marina operation card clears cobro de piso and grants reward
+    # Marina operation card clears cobro de piso, grants reward, and starts cooldown
     force_actor(game)
     owner_before = owner.cash
     marina_card = game.board.card("chance", "chance_marina_operativo")
     game._resolve_card(owner, marina_card)
     assert game.cobro_de_piso_active is False
+    assert game.cobro_cooldown_turns == 3
     assert owner.cash == owner_before + 250
 
-    # Random event triggers at turn start when threshold is met
+    # Random event respects cooldown, then triggers and lasts at least MIN_COBRO_DE_PISO_TURNS (8)
     game.turn_number = 6
     monkeypatch.setattr("server.games.mexicopoly.game.random.random", lambda: 0.01)
+    for _ in range(3):
+        game._maybe_trigger_random_cobro_event()
+        assert game.cobro_de_piso_active is False
     game._maybe_trigger_random_cobro_event()
     assert game.cobro_de_piso_active is True
-    game.cobro_de_piso_turns = 2
+    # Turns 2 through 7 of cobro de piso cannot randomly end even with random() == 0.01
+    for expected_turns in range(2, 8):
+        game._maybe_trigger_random_cobro_event()
+        assert game.cobro_de_piso_active is True
+        assert game.cobro_de_piso_turns == expected_turns
+    # On turn 8 (>= MIN_COBRO_DE_PISO_TURNS), random Marina raid can liberate properties
     game._maybe_trigger_random_cobro_event()
     assert game.cobro_de_piso_active is False
+
+
+def test_vandalize_property_and_denounce_correct_false_and_skip():
+    game = make_game(count=3, locale="es")
+    p1, p2, p3 = game.players
+    u1, u2, u3 = (game.get_user(p) for p in (p1, p2, p3))
+
+    # Give p2 all brown properties with 1 house each so we can test proportional cost & building lock
+    for city in ("tijuana", "mexicali", "la_paz"):
+        game.property_states[city].owner_id = p2.id
+        game.property_states[city].buildings = 1
+
+    # Scenario 1: p1 vandalizes p2's Tijuana, and p2 FALSELY accuses p3
+    force_actor(game)
+    tijuana = game.board.space("tijuana")
+    cost = game._vandalism_cost(tijuana, game.property_states["tijuana"])
+    false_penalty = game._vandalism_false_accusation_penalty(
+        tijuana, game.property_states["tijuana"], cost
+    )
+    u2.clear_messages()
+    game._action_vandalize_property(p1, "tijuana", "vandalize_property")
+    assert p1.cash == 3000 - cost
+    assert game.vandalized_turns.get("tijuana") == 3
+    assert game.phase == "vandalism_decision"
+    assert game.decision_player_id == p2.id
+    # Victim's message does NOT reveal p1's name
+    victim_spoken = " ".join(m.data["text"] for m in u2.messages if m.type == "speak")
+    assert p1.name not in victim_spoken
+
+    # p2 falsely accuses p3 -> p2 pays false_penalty to p3, and Tijuana remains vandalized
+    p2_before = p2.cash
+    p3_before = p3.cash
+    game._action_denounce_vandal(p2, p3.id, "denounce_vandal")
+    assert p2.cash == p2_before - false_penalty
+    assert p3.cash == p3_before + false_penalty
+    assert game.vandalized_turns.get("tijuana") == 3
+    assert game.phase == PHASE_AWAIT_ROLL
+    assert game.decision_player_id == p1.id
+
+    # While Tijuana is vandalized:
+    # 1) Building on Tijuana is blocked
+    assert game._build_property_error(p2, "tijuana") == (
+        "mexicopoly-error-property-vandalized",
+        {"turns": 3},
+    )
+    # 2) Landing on Tijuana charges only 50% rent (1 house rent on Tijuana is 60 -> 30)
+    p1.position = game.board.space_index("tijuana")
+    p1_before_rent = p1.cash
+    p2_before_rent = p2.cash
+    game._resolve_landing(p1)
+    assert p1.cash == p1_before_rent - 30
+    assert p2.cash == p2_before_rent + 30
+
+    # Scenario 2: Next turn, p1 vandalizes p2's Mexicali, and p2 CORRECTLY denounces p1
+    game.vandalized_this_turn = False
+    force_actor(game)
+    mexicali = game.board.space("mexicali")
+    cost_m = game._vandalism_cost(mexicali, game.property_states["mexicali"])
+    caught_penalty = game._vandalism_caught_penalty(
+        mexicali, game.property_states["mexicali"], cost_m
+    )
+    p1_before = p1.cash
+    p2_before = p2.cash
+    game._action_vandalize_property(p1, "mexicali", "vandalize_property")
+    assert p1.cash == p1_before - cost_m
+    assert game.vandalized_turns.get("mexicali") == 3
+    assert game.phase == "vandalism_decision"
+
+    game._action_denounce_vandal(p2, p1.id, "denounce_vandal")
+    assert "mexicali" not in game.vandalized_turns
+    assert p1.cash == p1_before - cost_m - caught_penalty
+    assert p2.cash == p2_before + caught_penalty
+    assert game.phase == PHASE_AWAIT_ROLL
+    assert game.decision_player_id == p1.id
+
+    # Scenario 3: Skipping denunciation keeps La Paz vandalized for 3 turns and then repairs it
+    game.vandalized_this_turn = False
+    force_actor(game)
+    game._action_vandalize_property(p1, "la_paz", "vandalize_property")
+    assert game.vandalized_turns.get("la_paz") == 3
+    game._action_skip_vandalism_denounce(p2, "skip_vandalism_denounce")
+    assert game.vandalized_turns.get("la_paz") == 3
+    assert game.phase == PHASE_AWAIT_ROLL
+    for expected_remaining in (2, 1):
+        game._tick_vandalized_properties()
+        assert game.vandalized_turns.get("la_paz") == expected_remaining
+    game._tick_vandalized_properties()
+    assert "la_paz" not in game.vandalized_turns
+
+
+def test_economic_modes_and_special_board_events():
+    # Test Crisis mode starting cash (2400), Go salary (300), and +25% tax
+    crisis_game = make_game(locale="es", start=False)
+    crisis_game.options.economic_mode = "crisis"
+    crisis_game.on_start()
+    drain(crisis_game, "monopoly_intro")
+    p1, p2 = crisis_game.players
+    assert p1.cash == 2400 and p2.cash == 2400
+    crisis_game._collect_go(p1, landed_on_go=False)
+    assert p1.cash == 2700
+    force_actor(crisis_game)
+    p1.position = crisis_game.board.space_index("income_tax")
+    crisis_game._resolve_landing(p1)
+    # Income tax is 450; +25% in crisis mode = 562
+    assert p1.cash == 2700 - 562
+
+    # Test Bonanza mode starting cash (4000) and Go salary (550)
+    bonanza_game = make_game(locale="es", start=False)
+    bonanza_game.options.economic_mode = "bonanza"
+    bonanza_game.on_start()
+    drain(bonanza_game, "monopoly_intro")
+    b1, b2 = bonanza_game.players
+    assert b1.cash == 4000
+    bonanza_game._collect_go(b1, landed_on_go=False)
+    assert b1.cash == 4550
+
+    # Test Special Board Events (+50% rent on color group and transit)
+    bonanza_game.property_states["tijuana"].owner_id = b2.id
+    bonanza_game._activate_special_event("feria_turistica", group_id="brown", turns=2)
+    force_actor(bonanza_game)
+    b1.position = bonanza_game.board.space_index("tijuana")
+    b1_before = b1.cash
+    # Tijuana base rent is 15; +50% during Feria Turística = 22
+    bonanza_game._resolve_landing(b1)
+    assert b1.cash == b1_before - 22
+    # Event expires after ticking its remaining turns
+    bonanza_game.turn_number = 5
+    bonanza_game._maybe_trigger_special_event()
+    assert bonanza_game.special_event_turns == 1
+    bonanza_game._maybe_trigger_special_event()
+    assert bonanza_game.active_special_event == ""
+
+
+def test_community_movement_cards_hotel_cost_premium_and_group_rent_bonuses():
+    game = make_game(locale="es")
+    tenant, owner = game.players
+
+    # 1. Verify all 6 new Community Chest movement cards move to their target space:
+    movement_targets = (
+        ("community_guadalajara_mariachi", "guadalajara"),
+        ("community_monterrey_carne_asada", "monterrey"),
+        ("community_oaxaca_guelaguetza", "oaxaca"),
+        ("community_cdmx_tramite", "mexico_city"),
+        ("community_veracruz_carnaval", "veracruz"),
+        ("community_aeropuerto_cdmx", "benito_juarez_airport"),
+    )
+    for card_id, expected_space_id in movement_targets:
+        force_actor(game)
+        tenant.position = 0
+        card = game.board.card("community", card_id)
+        game._resolve_card(tenant, card)
+        assert tenant.position == game.board.space_index(expected_space_id)
+
+    # 2. Verify partial (2 of 3) and full (3 of 3) undeveloped color-group rent scaling:
+    # Cancún base rent is 240:
+    # - 1 of 3 owned -> 240
+    # - 2 of 3 owned -> 360 (+50%)
+    # - 3 of 3 owned (unbuilt) -> 600 (2.5x base)
+    cancun_idx = game.board.space_index("cancun")
+    game.property_states["cancun"].owner_id = owner.id
+    force_actor(game)
+    tenant.cash = 5000
+    owner.cash = 5000
+    tenant.position = cancun_idx
+    game._resolve_landing(tenant)
+    assert tenant.cash == 5000 - 240 and owner.cash == 5000 + 240
+
+    game.property_states["merida"].owner_id = owner.id
+    force_actor(game)
+    tenant.position = cancun_idx
+    game._resolve_landing(tenant)
+    assert tenant.cash == 4760 - 360 and owner.cash == 5240 + 360
+
+    game.property_states["chetumal"].owner_id = owner.id
+    force_actor(game)
+    tenant.position = cancun_idx
+    game._resolve_landing(tenant)
+    assert tenant.cash == 4400 - 600 and owner.cash == 5600 + 600
+
+    # 3. Verify houses vs hotel purchase cost premium (hotel costs 1.5x house cost):
+    # In Brown group, house cost is 120, hotel cost is 180.
+    for city in ("tijuana", "mexicali", "la_paz"):
+        game.property_states[city].owner_id = owner.id
+        game.property_states[city].buildings = 4
+    tijuana_space = game.board.space("tijuana")
+    assert game._next_building_cost(tijuana_space, 4) == 120
+    assert game._next_building_cost(tijuana_space, 5) == 180
+    assert game._next_building_cost(tijuana_space, 6) == 180
+
+    owner.cash = 1000
+    for city in ("tijuana", "mexicali", "la_paz"):
+        game._apply_build(owner, city, announce=False)
+        assert game.property_states[city].buildings == 5
+    # 3 houses built at 120 each = 360 spent -> 640 left
+    assert owner.cash == 640
+
+    # Building 1st hotel on Tijuana costs 180 (1.5x 120), not 120:
+    game._apply_build(owner, "tijuana", announce=False)
+    assert game.property_states["tijuana"].buildings == 6
+    assert owner.cash == 640 - 180 == 460
+
+
 
 
 
