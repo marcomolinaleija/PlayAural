@@ -78,7 +78,7 @@ class FreeTable(Game):
     def create_standard_action_set(self, player: Player) -> ActionSet:
         actions = super().create_standard_action_set(player)
         for action_id in (
-            "save_table", "whose_turn", "check_scores", "check_scores_detailed", "game_info"
+            "whose_turn", "check_scores", "check_scores_detailed", "game_info"
         ):
             actions.remove(action_id)
         user = self.get_user(player)

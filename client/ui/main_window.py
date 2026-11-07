@@ -911,18 +911,17 @@ class MainWindow(wx.Frame):
         if not self.voice_capability.get("enabled"):
             self.on_voice_status("voice-chat-unavailable", True)
             return
-        if not self.current_table_context_id:
-            self.on_voice_status("voice-not-at-table", True)
-            return
+        scope = "table" if self.current_table_context_id else "global"
+        context_id = self.current_table_context_id if scope == "table" else "lobby"
         self.voice_state = "connecting"
         self.voice_mic_enabled = False
-        self.voice_requested_context_id = self.current_table_context_id
+        self.voice_requested_context_id = context_id
         self.update_voice_ui()
         self.on_voice_status("voice-chat-joining", True)
         if not self.network.send_packet(
             {
                 "type": "voice_join",
-                "scope": "table",
+                "scope": scope,
                 "context_id": self.voice_requested_context_id,
             }
         ):
@@ -977,11 +976,16 @@ class MainWindow(wx.Frame):
         packet_scope = packet.get("scope", "table")
         packet_context_id = packet.get("context_id", "")
         if server_requested:
-            if (
-                packet_scope != "table"
-                or not packet_context_id
-                or packet_context_id != self.current_table_context_id
-            ):
+            if packet_scope == "table":
+                invalid = (
+                    not packet_context_id
+                    or packet_context_id != self.current_table_context_id
+                )
+            elif packet_scope == "global":
+                invalid = not packet_context_id
+            else:
+                invalid = True
+            if invalid:
                 self.network.send_packet(
                     {
                         "type": "voice_leave",
@@ -1057,7 +1061,7 @@ class MainWindow(wx.Frame):
         packet_context_id = packet.get("context_id", "")
         if (
             self.voice_state == "connecting"
-            and packet_scope == "table"
+            and packet_scope in {"table", "global"}
             and packet_context_id
             and packet_context_id == self.voice_requested_context_id
         ):
@@ -1083,7 +1087,7 @@ class MainWindow(wx.Frame):
             and self.current_table_context_id != previous_context_id
         ):
             self.sound_manager.stop_all(fade_ms=800)
-        if not self.current_table_context_id:
+        if not self.current_table_context_id and self.voice_context.get("scope", "table") == "table":
             if self.voice_state in {"connected", "connecting"}:
                 self.cleanup_voice_chat(send_leave=False, announce=False)
             self.voice_requested_context_id = ""

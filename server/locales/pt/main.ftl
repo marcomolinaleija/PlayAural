@@ -901,6 +901,17 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } minutos e { $seconds } segundos
 duration-hours-minutes = { $hours } horas e { $minutes } minutos
+duration-days = { $count ->
+    [one] 1 dia
+   *[other] { $count } dias
+}
+duration-days-hours = { $days ->
+    [one] 1 dia
+   *[other] { $days } dias
+} e { $hours ->
+    [one] 1 hora
+   *[other] { $hours } horas
+}
 server-error-changing-language = Não foi possível alterar o idioma. A interface no idioma anterior continua ativa.
 default-save-name = { $game } - { $date }
 
@@ -1049,6 +1060,17 @@ host-management-pass-host = Passar Host para Outro Jogador
 host-management-kick = Expulsar um Jogador
 host-management-kick-ban = Expulsar e Banir um Jogador
 host-management-restart-game = Reiniciar Jogo
+host-management-table-stats = Estatísticas da mesa
+table-stats-created-at = Data de criação: { $date }
+table-stats-uptime = Tempo da mesa: { $duration }
+table-stats-user-duration = Seu tempo na mesa: { $duration }
+table-stats-peak = Pico de participantes: { $count }
+table-stats-total-visitors = Visitantes totais: { $count }
+table-stats-game = Atividade: { $game }
+table-stats-host = Anfitrião: { $host }
+table-stats-members = Participantes ({ $count }): { $members }
+table-stats-spectators = Espectadores ({ $count }): { $spectators }
+table-stats-spectators-none = Espectadores: Nenhum
 host-management-table-now-private = Esta mesa agora é privada. Apenas jogadores convidados podem entrar.
 host-management-table-now-public = Esta mesa agora é pública.
 host-restart-confirm = Reiniciar o jogo atual e retornar esta mesa para a sala de espera? Os jogadores atuais e o chat de voz continuarão conectados, mas a partida atual será cancelada.
@@ -1351,3 +1373,22 @@ game-unranked-removed-you = Seu assento foi removido. Esta partida não será cl
 game-unranked-released = O assento reservado de { $player } foi liberado permanentemente para um bot. Esta partida não será classificatória nem concederá registros de ranking.
 game-unranked-substituted = Outro jogador assumiu o assento de { $player }. Esta partida não será classificatória nem concederá registros de ranking.
 game-unranked-substituted-you = Outro jogador assumiu seu assento. Esta partida não será classificatória nem concederá registros de ranking.
+
+# Chat de voz global
+global-voice-chat = Chat de voz global
+global-voice-chat-description = Conecte-se ou consulte o chat de voz global com jogadores de todo o servidor.
+global-voice-chat-connect = Conectar ao chat de voz global
+global-voice-chat-connect-description = Conecte-se ao canal de chat de voz do servidor.
+global-voice-chat-disconnect = Desconectar do chat de voz global
+global-voice-chat-disconnect-description = Saia do canal de chat de voz do servidor.
+global-voice-chat-participants-heading = Participantes conectados ({ $count }):
+global-voice-chat-no-participants = Nenhum participante conectado no momento.
+global-voice-chat-disabled-notice = O chat de voz global está desativado pelos administradores.
+admin-moderation-global-voice-chat-toggle = Chat de voz global: { $status }
+admin-moderation-global-voice-chat-toggle-description = Ativa ou desativa o chat de voz em todo o servidor. Esta configuração persiste após reiniciar o servidor.
+admin-moderation-global-voice-chat-status-description = Estado atual em todo o servidor. Apenas um Desenvolvedor pode alterar esta configuração.
+admin-moderation-global-voice-chat-update-failed = A configuração do chat de voz global não pôde ser salva, portanto nenhuma alteração foi feita. Tente novamente.
+global-voice-chat-availability-enabled = O desenvolvedor ativou o chat de voz global.
+global-voice-chat-availability-disabled = O desenvolvedor desativou temporariamente o chat de voz global.
+voice-room-global-label = Chat de voz global
+voice-global-chat-disabled = O chat de voz global está desativado.

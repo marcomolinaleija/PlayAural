@@ -2817,21 +2817,15 @@ export function PlayAuralApp() {
           const expectedContextId = serverRequested
             ? voiceContextRef.current.contextId
             : voiceRequestedContextIdRef.current;
-          if (packetScope !== "table") {
+          const isInvalidScope = packetScope === "table"
+            ? (!packetContextId || packetContextId !== expectedContextId)
+            : packetScope === "global"
+              ? !packetContextId
+              : true;
+          if (isInvalidScope) {
             connectionRef.current?.send({
               context_id: packetContextId,
               scope: packetScope,
-              type: "voice_leave",
-            });
-            return;
-          }
-          if (
-            !packetContextId
-            || packetContextId !== expectedContextId
-          ) {
-            connectionRef.current?.send({
-              context_id: packetContextId,
-              scope: "table",
               type: "voice_leave",
             });
             return;
@@ -4926,12 +4920,14 @@ export function PlayAuralApp() {
       return;
     }
     voiceJoinPendingRef.current = true;
-    setVoiceRequestedContextId(contextId);
+    const scope = contextId ? "table" : "global";
+    const resolvedContextId = contextId || "lobby";
+    setVoiceRequestedContextId(resolvedContextId);
     setVoiceState("connecting");
     setVoiceStatusMessage("voice-chat-joining", true);
     connection?.send({
-      context_id: contextId,
-      scope: "table",
+      context_id: resolvedContextId,
+      scope: scope,
       type: "voice_join",
     });
   }, [connected, connection, setVoiceStatusMessage, voice, voiceCapability.enabled, voiceState]);

@@ -188,6 +188,18 @@ class Table(DataClassJSONMixin):
         default=False,
         metadata={SAVED_TABLE_PROPERTY: "is_private"},
     )  # Private tables are hidden from active tables lists
+    created_at: float = field(
+        default_factory=time.time,
+        metadata={SAVED_TABLE_PROPERTY: "created_at"},
+    )
+    peak_occupancy: int = field(
+        default=1,
+        metadata={SAVED_TABLE_PROPERTY: "peak_occupancy"},
+    )
+    total_unique_visitors: set[str] = field(
+        default_factory=set,
+        metadata={SAVED_TABLE_PROPERTY: "total_unique_visitors"},
+    )
 
     # These properties follow this table through manual saves and transient
     # server checkpoints. They are not account-global: final table/save
@@ -239,6 +251,7 @@ class Table(DataClassJSONMixin):
         self._server = None
         self._db = None
         self._last_menu_state_hash = None
+        self._member_joined_at = {}
         self._member_offline_since = {}
         self._offline_since = None
         self._destroyed = False
@@ -658,6 +671,11 @@ class Table(DataClassJSONMixin):
             ):
                 member.is_spectator = as_spectator
                 self._users[member.username] = user
+                self.total_unique_visitors.add(username)
+                if not hasattr(self, "_member_joined_at") or self._member_joined_at is None:
+                    self._member_joined_at = {}
+                self._member_joined_at.setdefault(username, time.time())
+                self.peak_occupancy = max(self.peak_occupancy, len(self.members))
                 if not as_spectator:
                     self._offline_since = None
                 if self._manager and hasattr(self._manager, "_username_to_table"):
@@ -672,6 +690,11 @@ class Table(DataClassJSONMixin):
 
         self.members.append(TableMember(username=username, is_spectator=as_spectator))
         self._users[username] = user
+        self.total_unique_visitors.add(username)
+        if not hasattr(self, "_member_joined_at") or self._member_joined_at is None:
+            self._member_joined_at = {}
+        self._member_joined_at.setdefault(username, time.time())
+        self.peak_occupancy = max(self.peak_occupancy, len(self.members))
         if not as_spectator:
             self._offline_since = None
         if self._manager and hasattr(self._manager, "_username_to_table"):
@@ -761,6 +784,8 @@ class Table(DataClassJSONMixin):
 
         self.members = [m for m in self.members if m.username != username]
         self._users.pop(username, None)
+        if hasattr(self, "_member_joined_at") and self._member_joined_at:
+            self._member_joined_at.pop(username, None)
         self.clear_voice_listener_settings(removed_account_id)
         if self._manager and hasattr(self._manager, "_username_to_table"):
             self._manager._username_to_table.pop(username, None)

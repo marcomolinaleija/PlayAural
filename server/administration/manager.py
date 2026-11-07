@@ -1141,6 +1141,7 @@ class AdministrationManager:
             statuses=CLOSED_REPORT_STATUSES
         )
         global_chat_enabled = self.server.global_chat_sending_enabled
+        global_voice_chat_enabled = self.server.global_voice_chat_enabled
         items = [
             MenuItem(
                 text=Localization.get(
@@ -1156,6 +1157,23 @@ class AdministrationManager:
                     "admin-moderation-global-chat-toggle-description"
                     if user.trust_level >= DEVELOPER_TRUST_LEVEL
                     else "admin-moderation-global-chat-status-description"
+                ),
+                read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-moderation-global-voice-chat-toggle",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if global_voice_chat_enabled else "option-off",
+                    ),
+                ),
+                id="toggle_global_voice_chat",
+                description_key=(
+                    "admin-moderation-global-voice-chat-toggle-description"
+                    if user.trust_level >= DEVELOPER_TRUST_LEVEL
+                    else "admin-moderation-global-voice-chat-status-description"
                 ),
                 read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
             ),
@@ -3469,6 +3487,40 @@ class AdministrationManager:
                 "global-chat-availability-enabled"
                 if enabled
                 else "global-chat-availability-disabled"
+            )
+            for recipient in tuple(self.server.users.values()):
+                recipient.play_sound_family("notify", buffer="system")
+                recipient.speak_l(announcement_key, buffer="system")
+                recipient_state = self.server.user_states.get(
+                    recipient.username,
+                    {},
+                )
+                if recipient_state.get("menu") == ADMIN_MODERATION_MENU:
+                    self.server._nav_refresh(
+                        recipient,
+                        self._show_moderation_menu,
+                    )
+        elif selection_id == "toggle_global_voice_chat":
+            if user.trust_level < DEVELOPER_TRUST_LEVEL:
+                user.speak_l("dev-only-action", buffer="system")
+                self.server._nav_refresh(user, self._show_moderation_menu)
+                return
+            enabled = not self.server.global_voice_chat_enabled
+            try:
+                self.server.set_global_voice_chat_enabled(enabled)
+            except Exception:
+                logging.getLogger("playaural").exception(
+                    "Failed to persist the global-voice-chat availability setting"
+                )
+                user.speak_l(
+                    "admin-moderation-global-voice-chat-update-failed",
+                    buffer="system",
+                )
+                return
+            announcement_key = (
+                "global-voice-chat-availability-enabled"
+                if enabled
+                else "global-voice-chat-availability-disabled"
             )
             for recipient in tuple(self.server.users.values()):
                 recipient.play_sound_family("notify", buffer="system")
