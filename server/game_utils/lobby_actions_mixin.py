@@ -450,7 +450,7 @@ class LobbyActionsMixin:
         self, player: "Player", action_id: str
     ) -> None:
         """Confirm arranged teams and start the game."""
-        if player.name != self.host or not self.team_arrangement_active:
+        if not self._is_host_or_admin(player) or not self.team_arrangement_active:
             return
 
         if not self._validate_start_request():
@@ -475,7 +475,7 @@ class LobbyActionsMixin:
         self, player: "Player", action_id: str
     ) -> None:
         """Cancel arranged teams and return to normal lobby setup."""
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return
         self._cancel_team_arrangement("team-arrangement-cancelled")
 
@@ -494,7 +494,7 @@ class LobbyActionsMixin:
         self, player: "Player", selected_id: str, action_id: str
     ) -> None:
         """Select a team member before choosing a swap target."""
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return
         selected = self._find_team_arrangement_player(selected_id)
         user = self.get_user(player)
@@ -524,7 +524,7 @@ class LobbyActionsMixin:
         self, player: "Player", target_id: str, action_id: str
     ) -> None:
         """Swap the selected team member with another active player."""
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return
 
         user = self.get_user(player)
@@ -906,8 +906,8 @@ class LobbyActionsMixin:
         )
 
     def _action_host_management(self, player: "Player", action_id: str) -> None:
-        """Open the server-level host management menu (host only)."""
-        if player.name != self.host:
+        """Open the server-level host management menu (host or admin/dev)."""
+        if not self._is_host_or_admin(player):
             return
         user = self.get_user(player)
         if not user or not self._table:

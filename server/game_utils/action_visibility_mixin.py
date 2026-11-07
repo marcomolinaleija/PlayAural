@@ -50,6 +50,13 @@ class ActionVisibilityMixin:
         """Get the number of non-spectator seats represented by humans."""
         return len(self.get_active_human_players())
 
+    def _is_host_or_admin(self, player: "Player") -> bool:
+        """Check if a player is the host or an administrator/developer."""
+        if player.name == self.host:
+            return True
+        user = self.get_user(player) if hasattr(self, "get_user") else None
+        return bool(user and getattr(user, "trust_level", 1) >= 2)
+
     # --- Lobby actions ---
 
     def _is_start_game_enabled(self, player: "Player") -> str | None:
@@ -60,7 +67,7 @@ class ActionVisibilityMixin:
         """
         if self.status != "waiting":
             return "action-game-in-progress"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         return None
 
@@ -89,7 +96,7 @@ class ActionVisibilityMixin:
             return "action-not-available"
         if not self.team_arrangement_active:
             return "action-not-available"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         return None
 
@@ -115,7 +122,7 @@ class ActionVisibilityMixin:
             return "action-game-in-progress"
         if not self.team_arrangement_active:
             return "team-arrangement-not-active"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         if self.get_active_player_count() < 2:
             return "action-need-more-players"
@@ -128,7 +135,7 @@ class ActionVisibilityMixin:
         if (
             self.status == "waiting"
             and self.team_arrangement_active
-            and player.name == self.host
+            and self._is_host_or_admin(player)
         ):
             return Visibility.VISIBLE
         return Visibility.HIDDEN
@@ -139,7 +146,7 @@ class ActionVisibilityMixin:
             return "action-game-in-progress"
         if not self.team_arrangement_active:
             return "team-arrangement-not-active"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         if not self.team_arrangement_selected_player_id:
             return "team-arrangement-select-first"
@@ -155,7 +162,7 @@ class ActionVisibilityMixin:
             self.status == "waiting"
             and self.team_arrangement_active
             and self.team_arrangement_selected_player_id
-            and player.name == self.host
+            and self._is_host_or_admin(player)
         ):
             return Visibility.VISIBLE
         return Visibility.HIDDEN
@@ -166,7 +173,7 @@ class ActionVisibilityMixin:
             return "action-game-in-progress"
         if not self.team_arrangement_active:
             return "team-arrangement-not-active"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         return None
 
@@ -182,7 +189,7 @@ class ActionVisibilityMixin:
             return "action-game-in-progress"
         if self.team_arrangement_active:
             return "team-arrangement-in-progress"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         if self.get_active_player_count() >= self.get_max_players():
             return "action-table-full"
@@ -198,7 +205,7 @@ class ActionVisibilityMixin:
             return "action-game-in-progress"
         if self.team_arrangement_active:
             return "team-arrangement-in-progress"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         if not any(p.is_bot for p in self.players):
             return "action-no-bots"
@@ -256,8 +263,8 @@ class ActionVisibilityMixin:
         return Localization.get(locale, "spectate")
 
     def _is_host_management_enabled(self, player: "Player") -> str | None:
-        """Host management is only available to the host."""
-        if player.name != self.host:
+        """Host management is available to the host or admins/devs."""
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         return None
 
@@ -276,12 +283,12 @@ class ActionVisibilityMixin:
     # --- Option actions ---
 
     def _is_option_enabled(self, player: "Player") -> str | None:
-        """Check if option actions are enabled (waiting state, host only)."""
+        """Check if option actions are enabled (waiting state, host or admin)."""
         if self.status != "waiting":
             return "action-game-in-progress"
         if self.team_arrangement_active:
             return "team-arrangement-in-progress"
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         return None
 
@@ -289,7 +296,7 @@ class ActionVisibilityMixin:
         """Options are visible in waiting state only."""
         if self.status != "waiting" or self.team_arrangement_active:
             return Visibility.HIDDEN
-        if player.is_spectator and player.name != self.host:
+        if player.is_spectator and not self._is_host_or_admin(player):
             return Visibility.HIDDEN
         return Visibility.VISIBLE
 
@@ -305,7 +312,7 @@ class ActionVisibilityMixin:
 
     def _is_save_table_enabled(self, player: "Player") -> str | None:
         """Check if save_table action is enabled."""
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return "action-not-host"
         return None
 
