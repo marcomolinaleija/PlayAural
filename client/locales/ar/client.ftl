@@ -105,6 +105,7 @@ login-custom-server-url-prompt = عنوان الخادم أو رابطه (مثا
 login-custom-server-name-prompt = الاسم المعروض للخادم (اختياري):
 login-use-local-server = الاتصال بخادم التطوير المحلي
 login-server-switched = يُستخدم الآن: { $server }
+login-server-switched-exit = جارٍ قطع الاتصال لتبديل الخادم...
 login-logged-in-as = تم تسجيل الدخول باسم: { $username }
 login-btn-login-now = تسجيل الدخول الآن
 login-btn-auto-login = تسجيل الدخول تلقائيًا في المرة القادمة

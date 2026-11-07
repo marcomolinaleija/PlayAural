@@ -105,6 +105,7 @@ login-custom-server-url-prompt = Địa chỉ hoặc URL máy chủ (vd: wss://d
 login-custom-server-name-prompt = Tên hiển thị của máy chủ (tùy chọn):
 login-use-local-server = Kết nối tới máy chủ phát triển cục bộ
 login-server-switched = Đang dùng: { $server }
+login-server-switched-exit = Đang ngắt kết nối để chuyển máy chủ...
 login-logged-in-as = Đã đăng nhập với tên: { $username }
 login-btn-login-now = Đăng nhập ngay
 login-btn-auto-login = Tự động đăng nhập lần sau

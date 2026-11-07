@@ -75,6 +75,7 @@ login-custom-server-url-prompt = آدرس یا پیوند سرور (مانند: 
 login-custom-server-name-prompt = نام نمایشی سرور (اختیاری):
 login-use-local-server = اتصال به سرور محلی توسعه
 login-server-switched = سرور فعلی: { $server }
+login-server-switched-exit = در حال قطع اتصال برای تغییر سرور...
 login-logged-in-as = وارد شده با نام: { $username }
 login-btn-login-now = همین حالا وارد شوید
 login-btn-auto-login = ورود خودکار در دفعات بعدی

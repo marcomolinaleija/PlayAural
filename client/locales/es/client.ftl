@@ -106,6 +106,7 @@ login-custom-server-url-prompt = Dirección o URL del servidor (ej. wss://dev.ej
 login-custom-server-name-prompt = Nombre para mostrar del servidor (opcional):
 login-use-local-server = Conectar al servidor de desarrollo local
 login-server-switched = Ahora usando: { $server }
+login-server-switched-exit = Desconectando para cambiar de servidor...
 login-logged-in-as = Sesión iniciada como: { $username }
 login-btn-login-now = Iniciar sesión ahora
 login-btn-auto-login = Iniciar sesión automáticamente la próxima vez

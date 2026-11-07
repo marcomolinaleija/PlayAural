@@ -607,6 +607,8 @@ admin-broadcast-prompt = Ingresa el mensaje para anunciar a todos los usuarios e
 admin-broadcast-sent = Anuncio enviado a { $count } usuarios.
 
 manage-motd = Gestionar mensaje del día
+admin-switch-server = Cambiar de servidor
+admin-desc-switch-server = Desconectar y volver al selector de servidores del cliente.
 create-update-motd = Crear/Actualizar mensaje del día
 view-motd = Ver mensaje del día activo
 delete-motd = Eliminar mensaje del día

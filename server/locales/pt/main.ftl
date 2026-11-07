@@ -797,6 +797,8 @@ admin-broadcast-prompt = Insira a mensagem para transmitir a todos os usuários 
 admin-broadcast-sent = Transmissão enviada para { $count } usuários.
 
 manage-motd = Gerenciar AVISO (MOTD)
+admin-switch-server = Trocar de servidor
+admin-desc-switch-server = Desconectar e retornar ao seletor de servidores do cliente.
 create-update-motd = Criar/Atualizar AVISO
 view-motd = Ver AVISO Ativo
 delete-motd = Excluir AVISO

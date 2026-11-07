@@ -242,6 +242,8 @@ class NetworkManager:
             self.main_window.on_receive_chat(packet)
         elif packet_type == "force_exit":
              self.main_window.on_force_exit(packet)
+        elif packet_type == "switch_server":
+             self.main_window.on_switch_server(packet)
         elif packet_type == "update_preference":
              self.main_window.on_update_preference(packet)
         elif packet_type == "pong":

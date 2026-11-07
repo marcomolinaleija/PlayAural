@@ -810,6 +810,8 @@ admin-broadcast-prompt = Nhập tin nhắn để thông báo cho tất cả ngư
 admin-broadcast-sent = Đã gửi thông báo đến { $count } người dùng.
 
 manage-motd = Quản lý thông báo ngày (MOTD)
+admin-switch-server = Chuyển máy chủ
+admin-desc-switch-server = Ngắt kết nối và quay lại bộ chọn máy chủ của ứng dụng.
 create-update-motd = Tạo/Cập nhật MOTD
 view-motd = Xem MOTD hiện tại
 delete-motd = Xóa MOTD

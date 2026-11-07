@@ -800,6 +800,8 @@ admin-broadcast-prompt = أدخل الرسالة لبثّها لجميع الم�
 admin-broadcast-sent = تم إرسال البث إلى { $count } مستخدم.
 
 manage-motd = إدارة رسالة اليوم
+admin-switch-server = تبديل الخادم
+admin-desc-switch-server = قطع الاتصال والعودة إلى محدد الخوادم في التطبيق.
 create-update-motd = إنشاء/تحديث رسالة اليوم
 view-motd = عرض رسالة اليوم النشطة
 delete-motd = حذف رسالة اليوم

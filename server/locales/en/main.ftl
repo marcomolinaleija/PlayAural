@@ -810,6 +810,8 @@ admin-broadcast-prompt = Enter the message to broadcast to all online users. (Th
 admin-broadcast-sent = Broadcast sent to { $count } users.
 
 manage-motd = Manage MOTD
+admin-switch-server = Switch Server
+admin-desc-switch-server = Disconnect and return to the client server selector.
 create-update-motd = Create/Update MOTD
 view-motd = View Active MOTD
 delete-motd = Delete MOTD

@@ -9578,6 +9578,36 @@ PlayAural Server
             self.on_user_presence_changed()
         return True
 
+    async def _complete_switch_server(
+        self,
+        user: NetworkUser,
+        *,
+        leave_activities: bool = True,
+    ) -> bool:
+        """Gracefully leave runtime activities, retire session, and instruct client to switch server."""
+        if self._users.get(user.username) is not user:
+            return False
+
+        if leave_activities:
+            await self._leave_session_activities(user)
+
+        retired_user, client = await self._retire_account_session_locked(
+            user.username
+        )
+        if retired_user is not user:
+            return False
+
+        await self._close_retired_session(client, {"type": "switch_server"})
+        if not self.power_manager.is_finalizing:
+            self._broadcast_presence(
+                user.username,
+                user.uuid,
+                trust_level=user.trust_level,
+                is_online=False,
+            )
+            self.on_user_presence_changed()
+        return True
+
     async def _failsafe_close(self, user):
         """Close connection after delay if client hasn't already."""
         await asyncio.sleep(5.0)

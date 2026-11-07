@@ -505,6 +505,8 @@ admin-broadcast-prompt = پیام خود را برای پخش به همه‌ی �
 admin-broadcast-sent = اعلامیه برای { $count } کاربر ارسال شد.
 
 manage-motd = مدیریت پیام روز
+admin-switch-server = تغییر سرور
+admin-desc-switch-server = قطع اتصال و بازگشت به بخش انتخاب سرور در برنامه.
 create-update-motd = ایجاد/به‌روزرسانی پیام روز
 view-motd = مشاهده‌ی پیام روز فعال
 delete-motd = حذف پیام روز

@@ -2502,6 +2502,20 @@ class MainWindow(wx.Frame):
         except Exception:
             self._finish_local_exit()
 
+    def on_switch_server(self, packet):
+        """Handle server switch request: cleanly exit to server selector without reconnecting."""
+        self.disconnect_reason = "switch_server"
+        self.quitting = True
+        self.is_reconnecting = False
+        self.expecting_reconnect = False
+        self._logout_request_pending = False
+        self._cancel_logout_response_timer()
+        try:
+            self.speaker.speak(Localization.get("login-server-switched-exit"), interrupt=True)
+        except Exception:
+            pass
+        wx.CallLater(300, self._finish_local_exit)
+
     def on_update_preference(self, packet):
         """Handle preference update from server."""
         key = packet.get("key") # e.g. "audio/music_volume"

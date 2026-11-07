@@ -2587,6 +2587,13 @@ class AdministrationManager:
                     id="smtp_settings",
                 )
             )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "admin-switch-server"),
+                id="switch_server",
+                description_key="admin-desc-switch-server",
+            )
+        )
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "admin_menu",
@@ -2973,6 +2980,8 @@ class AdministrationManager:
             else:
                 user.speak_l("dev-only-action", buffer="system")
                 self.server._nav_refresh(user, self._show_admin_menu)
+        elif selection_id == "switch_server":
+            await self.server._complete_switch_server(user)
         elif selection_id == "back":
             self.server._nav_back(user)
 

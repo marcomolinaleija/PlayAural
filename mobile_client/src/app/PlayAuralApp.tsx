@@ -2678,7 +2678,7 @@ export function PlayAuralApp() {
           return;
         }
 
-        if (packet.type === "force_exit") {
+        if (packet.type === "force_exit" || packet.type === "switch_server") {
           const forceExitPacket = packet as ForceExitPacket;
           const reason = localizeSystemMessage(forceExitPacket.reason, "logout-complete");
           leaveVoiceChat({

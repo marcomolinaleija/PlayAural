@@ -2560,6 +2560,7 @@ class PlayAuralWebApp {
         this.handleServerDisconnect(packet);
         break;
       case "force_exit":
+      case "switch_server":
         this.handleForceExit(packet);
         break;
       case "audio":

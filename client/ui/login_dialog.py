@@ -57,11 +57,14 @@ class LoginDialog(wx.Dialog):
         super().__init__(parent, title=Localization.get("login-title"), size=(450, 480))
 
         if disconnect_message:
-            wx.CallAfter(lambda: wx.MessageBox(
-                disconnect_message,
-                Localization.get("common-disconnected"),
-                wx.OK | wx.ICON_INFORMATION
-            ))
+            if disconnect_message != "switch_server":
+                wx.CallAfter(lambda: wx.MessageBox(
+                    disconnect_message,
+                    Localization.get("common-disconnected"),
+                    wx.OK | wx.ICON_INFORMATION
+                ))
+            else:
+                wx.CallAfter(lambda: self.server_choice.SetFocus() if hasattr(self, "server_choice") else None)
 
         # Initialize config manager
         self.config_manager = ConfigManager()

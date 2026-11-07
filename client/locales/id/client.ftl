@@ -100,6 +100,7 @@ login-custom-server-url-prompt = Alamat atau URL server (mis. wss://dev.example.
 login-custom-server-name-prompt = Nama tampilan server (opsional):
 login-use-local-server = Hubungkan ke server pengembangan lokal
 login-server-switched = Sekarang menggunakan: { $server }
+login-server-switched-exit = Memutuskan koneksi untuk mengganti server...
 login-logged-in-as = Masuk sebagai: { $username }
 login-btn-login-now = Masuk sekarang
 login-btn-auto-login = Masuk otomatis lain kali

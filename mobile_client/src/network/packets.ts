@@ -138,7 +138,7 @@ export type DisconnectPacket = {
 };
 
 export type ForceExitPacket = {
-  type: "force_exit";
+  type: "force_exit" | "switch_server";
   reason?: string;
 };
 
