@@ -59,6 +59,7 @@ def main():
         mark_update_ready,
         schedule_update_helper_cleanup,
         server_target_from_arguments,
+        should_bypass_auto_login,
         update_token_from_arguments,
     )
     from update_engine import cleanup_stale_transaction_directories
@@ -67,6 +68,7 @@ def main():
     schedule_update_helper_cleanup(consume_update_helper_cleanup_path())
     is_update_startup = bool(update_token_from_arguments())
     cli_server_url, cli_server_name = server_target_from_arguments()
+    bypass_auto_login = should_bypass_auto_login()
 
     disconnect_message = None
     
@@ -93,11 +95,11 @@ def main():
 
         # Access the detected account from the dialog we just created.
         # If auto-login is set, trust the cached credentials and skip the dialog.
-        # Skip if we came from a failure — user must see the error and act manually.
+        # Skip if we came from a failure or user requested to bypass auto-login.
         # The server will reject bad credentials via on_login_failed, so there is
         # no need for a separate _test_connection round-trip that doubles the
         # number of WebSocket handshakes the user pays for on every startup.
-        if login_dialog.account_id and not came_from_failure:
+        if login_dialog.account_id and not came_from_failure and not bypass_auto_login:
             account = login_dialog.config_manager.get_account_by_id(login_dialog.server_id, login_dialog.account_id)
             if account and account.get("auto_login", False):
                 logging.getLogger("playaural").info("Auto-login: using cached credentials.")
@@ -118,6 +120,7 @@ def main():
                  login_dialog.Destroy()
                  break
 
+        bypass_auto_login = False
         login_dialog.Destroy()
 
         if credentials:

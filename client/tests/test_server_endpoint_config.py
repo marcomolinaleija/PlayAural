@@ -8,7 +8,7 @@ if str(CLIENT_DIR) not in sys.path:
     sys.path.insert(0, str(CLIENT_DIR))
 
 from config_manager import ConfigManager, parse_server_endpoint
-from update_bootstrap import server_target_from_arguments
+from update_bootstrap import server_target_from_arguments, should_bypass_auto_login
 
 
 def test_parse_server_endpoint_full_wss():
@@ -74,4 +74,12 @@ def test_config_manager_add_server_preserves_accounts(tmp_path):
     accounts = mgr.get_server_accounts("srv-1")
     assert len(accounts) == 1
     assert list(accounts.values())[0]["username"] == "alice"
+
+
+def test_should_bypass_auto_login():
+    assert should_bypass_auto_login(["--no-auto-login"]) is True
+    assert should_bypass_auto_login(["--switch-server"]) is True
+    assert should_bypass_auto_login(["--login"]) is True
+    assert should_bypass_auto_login(["--server", "localhost:8000"]) is False
+    assert should_bypass_auto_login([]) is False
 
