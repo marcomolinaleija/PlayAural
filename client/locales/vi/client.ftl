@@ -98,6 +98,11 @@ auth-username-reserved = Tên này được PlayAural dành riêng. Vui lòng ch
 
 login-welcome-title = Chào mừng bạn đến với PlayAural
 login-welcome-info = Vui lòng đăng nhập hoặc đăng ký để tiếp tục.
+login-server-label = Máy chủ:
+login-btn-add-server = Kết nối đến máy chủ khác...
+login-custom-server-title = Thêm máy chủ tùy chỉnh
+login-custom-server-url-prompt = Địa chỉ hoặc URL máy chủ (vd: wss://dev.example.com hoặc ws://127.0.0.1:8000):
+login-custom-server-name-prompt = Tên hiển thị của máy chủ (tùy chọn):
 login-use-local-server = Kết nối tới máy chủ phát triển cục bộ
 login-server-switched = Đang dùng: { $server }
 login-logged-in-as = Đã đăng nhập với tên: { $username }

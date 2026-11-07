@@ -99,6 +99,11 @@ auth-username-reserved = Este nombre está reservado por PlayAural. Elige otro n
 
 login-welcome-title = Bienvenido a PlayAural
 login-welcome-info = Inicia sesión o regístrate para continuar.
+login-server-label = Servidor:
+login-btn-add-server = Conectar a otro servidor...
+login-custom-server-title = Agregar servidor personalizado
+login-custom-server-url-prompt = Dirección o URL del servidor (ej. wss://dev.ejemplo.com o ws://127.0.0.1:8000):
+login-custom-server-name-prompt = Nombre para mostrar del servidor (opcional):
 login-use-local-server = Conectar al servidor de desarrollo local
 login-server-switched = Ahora usando: { $server }
 login-logged-in-as = Sesión iniciada como: { $username }

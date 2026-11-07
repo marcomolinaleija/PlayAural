@@ -58,6 +58,7 @@ def main():
         consume_update_helper_cleanup_path,
         mark_update_ready,
         schedule_update_helper_cleanup,
+        server_target_from_arguments,
         update_token_from_arguments,
     )
     from update_engine import cleanup_stale_transaction_directories
@@ -65,12 +66,17 @@ def main():
     cleanup_stale_update_files()
     schedule_update_helper_cleanup(consume_update_helper_cleanup_path())
     is_update_startup = bool(update_token_from_arguments())
+    cli_server_url, cli_server_name = server_target_from_arguments()
 
     disconnect_message = None
     
     while True:
         # Show login dialog
-        login_dialog = LoginDialog(disconnect_message=disconnect_message)
+        login_dialog = LoginDialog(
+            disconnect_message=disconnect_message,
+            initial_server_url=cli_server_url,
+            initial_server_name=cli_server_name,
+        )
         # Constructing the first interactive window verifies that the packaged
         # UI and its native dependencies load before the updater commits.
         mark_update_ready(client_version=VERSION)

@@ -98,6 +98,11 @@ auth-username-reserved = هذا الاسم محجوز بواسطة PlayAural. ي
 
 login-welcome-title = مرحبًا بك في PlayAural
 login-welcome-info = يرجى تسجيل الدخول أو إنشاء حساب للمتابعة.
+login-server-label = الخادم:
+login-btn-add-server = الاتصال بخادم آخر...
+login-custom-server-title = إضافة خادم مخصص
+login-custom-server-url-prompt = عنوان الخادم أو رابطه (مثال: wss://dev.example.com أو ws://127.0.0.1:8000):
+login-custom-server-name-prompt = الاسم المعروض للخادم (اختياري):
 login-use-local-server = الاتصال بخادم التطوير المحلي
 login-server-switched = يُستخدم الآن: { $server }
 login-logged-in-as = تم تسجيل الدخول باسم: { $username }

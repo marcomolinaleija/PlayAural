@@ -68,6 +68,11 @@ auth-username-taken = این نام کاربری قبلاً انتخاب شده 
 
 login-welcome-title = خوش آمدید به PlayAural
 login-welcome-info = برای ادامه لطفاً وارد شوید یا ثبت‌نام کنید.
+login-server-label = سرور:
+login-btn-add-server = اتصال به سرور دیگر...
+login-custom-server-title = افزودن سرور سفارشی
+login-custom-server-url-prompt = آدرس یا پیوند سرور (مانند: wss://dev.example.com یا ws://127.0.0.1:8000):
+login-custom-server-name-prompt = نام نمایشی سرور (اختیاری):
 login-use-local-server = اتصال به سرور محلی توسعه
 login-server-switched = سرور فعلی: { $server }
 login-logged-in-as = وارد شده با نام: { $username }

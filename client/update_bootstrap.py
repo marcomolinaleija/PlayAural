@@ -70,6 +70,34 @@ def update_token_from_arguments(arguments: Sequence[str] | None = None) -> str:
     return candidate if UPDATE_TOKEN_RE.fullmatch(candidate) else ""
 
 
+def server_target_from_arguments(
+    arguments: Sequence[str] | None = None,
+) -> tuple[str, str]:
+    """Read an optional --server <url> and --server-name <name> from arguments."""
+    values = list(sys.argv[1:] if arguments is None else arguments)
+    server_url = ""
+    server_name = ""
+    if "--server" in values:
+        try:
+            idx = values.index("--server")
+            if idx + 1 < len(values):
+                candidate = values[idx + 1].strip()
+                if not candidate.startswith("-"):
+                    server_url = candidate
+        except ValueError:
+            pass
+    if "--server-name" in values:
+        try:
+            idx = values.index("--server-name")
+            if idx + 1 < len(values):
+                candidate = values[idx + 1].strip()
+                if not candidate.startswith("-"):
+                    server_name = candidate
+        except ValueError:
+            pass
+    return server_url, server_name
+
+
 def temporary_updater_path(
     value: object,
     *,
