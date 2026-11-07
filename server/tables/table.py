@@ -188,6 +188,10 @@ class Table(DataClassJSONMixin):
         default=False,
         metadata={SAVED_TABLE_PROPERTY: "is_private"},
     )  # Private tables are hidden from active tables lists
+    created_at: float = field(
+        default_factory=time.time,
+        metadata={SAVED_TABLE_PROPERTY: "created_at"},
+    )
 
     # These properties follow this table through manual saves and transient
     # server checkpoints. They are not account-global: final table/save

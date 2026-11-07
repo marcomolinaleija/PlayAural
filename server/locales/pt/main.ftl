@@ -901,6 +901,17 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } minutos e { $seconds } segundos
 duration-hours-minutes = { $hours } horas e { $minutes } minutos
+duration-days = { $count ->
+    [one] 1 dia
+   *[other] { $count } dias
+}
+duration-days-hours = { $days ->
+    [one] 1 dia
+   *[other] { $days } dias
+} e { $hours ->
+    [one] 1 hora
+   *[other] { $hours } horas
+}
 server-error-changing-language = Não foi possível alterar o idioma. A interface no idioma anterior continua ativa.
 default-save-name = { $game } - { $date }
 
@@ -1049,6 +1060,20 @@ host-management-pass-host = Passar Host para Outro Jogador
 host-management-kick = Expulsar um Jogador
 host-management-kick-ban = Expulsar e Banir um Jogador
 host-management-restart-game = Reiniciar Jogo
+host-management-table-stats = Estatísticas da mesa
+table-stats-created-at = Data de criação: { $date }
+table-stats-uptime = Tempo no servidor: { $duration }
+table-stats-game = Atividade: { $game }
+table-stats-host = Anfitrião: { $host }
+table-stats-members = Participantes ({ $count }): { $members }
+table-stats-spectators = Espectadores ({ $count }): { $spectators }
+table-stats-spectators-none = Espectadores: Nenhum
+table-stats-privacy = Privacidade: { $privacy }
+table-stats-privacy-private = Privada
+table-stats-privacy-public = Pública
+table-stats-voice = Chat de voz: { $status }
+table-stats-voice-active = Ativo ({ $count } na voz)
+table-stats-voice-inactive = Inativo
 host-management-table-now-private = Esta mesa agora é privada. Apenas jogadores convidados podem entrar.
 host-management-table-now-public = Esta mesa agora é pública.
 host-restart-confirm = Reiniciar o jogo atual e retornar esta mesa para a sala de espera? Os jogadores atuais e o chat de voz continuarão conectados, mas a partida atual será cancelada.

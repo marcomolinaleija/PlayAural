@@ -914,6 +914,17 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } minutes and { $seconds } seconds
 duration-hours-minutes = { $hours } hours and { $minutes } minutes
+duration-days = { $count ->
+    [one] 1 day
+   *[other] { $count } days
+}
+duration-days-hours = { $days ->
+    [one] 1 day
+   *[other] { $days } days
+} and { $hours ->
+    [one] 1 hour
+   *[other] { $hours } hours
+}
 server-error-changing-language = The language could not be changed. Your previous interface remains active.
 default-save-name = { $game } - { $date }
 
@@ -1173,6 +1184,20 @@ host-management-kick = Kick a Player
 host-management-kick-ban = Kick and Ban a Player
 host-management-player-substitution = Player Substitution
 host-management-restart-game = Restart Game
+host-management-table-stats = Table statistics
+table-stats-created-at = Created: { $date }
+table-stats-uptime = Uptime on server: { $duration }
+table-stats-game = Activity: { $game }
+table-stats-host = Host: { $host }
+table-stats-members = Participants ({ $count }): { $members }
+table-stats-spectators = Spectators ({ $count }): { $spectators }
+table-stats-spectators-none = Spectators: None
+table-stats-privacy = Privacy: { $privacy }
+table-stats-privacy-private = Private
+table-stats-privacy-public = Public
+table-stats-voice = Voice chat: { $status }
+table-stats-voice-active = Active ({ $count } in voice)
+table-stats-voice-inactive = Inactive
 host-management-table-now-private = This table is now private. Only invited users can join.
 host-management-table-now-public = This table is now public.
 host-game-switch-current = Current game: { $game }. This table has { $seats } active { $seats ->

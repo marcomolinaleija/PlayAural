@@ -13,6 +13,7 @@ from ..core.server import (
     HOST_GAME_SWITCH_ACTION_PREFIX,
     HOST_GAME_SWITCH_CONFIRM_MENU,
     HOST_GAME_SWITCH_MENU,
+    HOST_TABLE_STATS_MENU,
     VERSION,
     TABLE_MEMBERS_MENU,
     Server,
@@ -88,12 +89,13 @@ async def test_free_table_creation_and_conversation_menu(room, client_type):
         ids = [a.action.id for a in game.get_all_visible_actions(game.get_player_by_id(user.uuid))]
         assert "whos_at_table" in ids and "read_table_presence" in ids
         assert "leave_game" in ids
-        assert not set(ids) & {"start_game", "add_bot", "remove_bot", "check_scores", "save_table", "whose_turn"}
+        assert not set(ids) & {"start_game", "add_bot", "remove_bot", "check_scores", "whose_turn"}
     player = game.get_player_by_id(host.uuid)
-    for action in ("start_game", "add_bot", "remove_bot", "save_table"):
+    for action in ("start_game", "add_bot", "remove_bot"):
         assert game.find_action(player, action) is None
+    assert game.find_action(player, "save_table") is not None
     before = game.to_json()
-    for key in ("enter", "b", "ctrl+s"):
+    for key in ("enter", "b"):
         game.handle_event(player, {"type": "keybind", "key": key})
     assert game.to_json() == before
     with pytest.raises(ValueError, match="only admit people"):
@@ -429,3 +431,108 @@ def test_old_game_saves_gain_w_without_replacing_their_actions(status, spectator
     restored.handle_event(player, {"type": "keybind", "key": "w"})
     assert "1 persona" in host.get_last_spoken()
     assert "El jefe de mesa es LegacyHost" in host.get_last_spoken()
+
+
+@pytest.mark.asyncio
+async def test_free_table_host_management_statistics_and_saving(room):
+    server, host, guest = room
+    # Register host in db for saves
+    rec_host = server._db.create_user(host.username, "password", locale="es")
+    host._uuid = rec_host.uuid
+    rec_guest = server._db.create_user(guest.username, "password", locale="es")
+    guest._uuid = rec_guest.uuid
+
+    table = await create_room(server, host)
+    server._auto_join_table(guest, table, "freetable")
+    table.created_at = 1775563200.0  # 2026-04-07 12:00:00 UTC (07/04/2026)
+
+    # Open host management menu
+    server._open_host_management_from_game(host, table)
+    assert server._user_states[host.username]["menu"] == "host_management_menu"
+    menu_items = host.get_current_menu_items("host_management_menu")
+    menu_ids = [item.id for item in menu_items]
+    assert "save_table" in menu_ids
+    assert "table_stats" in menu_ids
+
+    # View table stats
+    await server._handle_host_management_selection(host, "table_stats", {"table_id": table.table_id})
+    assert server._user_states[host.username]["menu"] == HOST_TABLE_STATS_MENU
+    stats_items = host.get_current_menu_items(HOST_TABLE_STATS_MENU)
+    stats_map = {item.id: item.text for item in stats_items}
+
+    # Verify readable creation date formatted as 07/04/2026
+    assert "stat_created_at" in stats_map
+    assert "07/04/2026" in stats_map["stat_created_at"]
+    assert "stat_uptime" in stats_map
+    assert "stat_game" in stats_map
+    assert "Mesa libre" in stats_map["stat_game"]
+    assert "stat_host" in stats_map
+    assert "Host" in stats_map["stat_host"]
+    assert "stat_members" in stats_map
+    assert "Host" in stats_map["stat_members"] and "Guest" in stats_map["stat_members"]
+    assert "stat_spectators" in stats_map
+    assert "stat_privacy" in stats_map
+    assert "Pública" in stats_map["stat_privacy"]
+    assert "stat_voice" in stats_map
+
+    # Selecting back returns to host management menu
+    await server._handle_table_stats_selection(host, "back", {"table_id": table.table_id})
+    assert server._user_states[host.username]["menu"] == "host_management_menu"
+
+    # Save table from host management menu
+    await server._handle_host_management_selection(host, "save_table", {"table_id": table.table_id})
+    assert server._tables.get_table(table.table_id) is None
+    assert server._user_states[host.username]["menu"] == "main_menu"
+    assert server._user_states[guest.username]["menu"] == "main_menu"
+
+    saved_records = server._db.get_user_saved_tables(host.username)
+    assert len(saved_records) == 1
+    assert saved_records[0].game_type == "freetable"
+
+
+@pytest.mark.asyncio
+async def test_free_table_save_and_restore(room):
+    server, host, guest = room
+    rec_host = server._db.create_user(host.username, "password", locale="es")
+    host._uuid = rec_host.uuid
+    rec_guest = server._db.create_user(guest.username, "password", locale="es")
+    guest._uuid = rec_guest.uuid
+
+    table = await create_room(server, host)
+    server._auto_join_table(guest, table, "freetable")
+    original_created_at = 1775563200.0  # 2026-04-07 12:00:00 UTC
+    table.created_at = original_created_at
+
+    # Host saves table via ctrl+s keybind
+    player = table.game.get_player_by_id(host.uuid)
+    table.game.handle_event(player, {"type": "keybind", "key": "ctrl+s"})
+
+    # Table is destroyed upon save
+    assert server._tables.find_user_table(host.username) is None
+    assert server._tables.find_user_table(guest.username) is None
+
+    # Verify saved record exists in database
+    saved_records = server._db.get_user_saved_tables(host.username)
+    assert len(saved_records) == 1
+    save_id = saved_records[0].id
+    assert saved_records[0].game_type == "freetable"
+
+    # Host restores the saved table
+    await server._restore_saved_table(host, save_id)
+
+    restored_table = server._tables.find_user_table(host.username)
+    assert restored_table is not None
+    assert isinstance(restored_table.game, FreeTable)
+    assert restored_table.game_type == "freetable"
+    assert restored_table.host == host.username
+    assert len(restored_table.members) == 2
+    assert {m.username for m in restored_table.members} == {host.username, guest.username}
+    # Verify created_at is preserved
+    assert restored_table.created_at == original_created_at
+
+    # Check stats on restored table
+    stats_items = server._get_table_stats_items(host, restored_table)
+    stats_map = {item.id: item.text for item in stats_items}
+    assert "07/04/2026" in stats_map["stat_created_at"]
+    assert "Host" in stats_map["stat_host"]
+

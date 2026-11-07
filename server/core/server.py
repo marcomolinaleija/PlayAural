@@ -292,6 +292,7 @@ USER_REPORT_REASON_MENU = "user_report_reason_menu"
 USER_REPORT_CONFIRM_MENU = "user_report_confirm_menu"
 TABLE_MEMBERS_MENU = "table_members_menu"
 TABLE_MEMBER_ACTIONS_MENU = "table_member_actions_menu"
+HOST_TABLE_STATS_MENU = "host_table_stats_menu"
 HOST_VOICE_MANAGEMENT_MENU = "host_voice_management_menu"
 HOST_VOICE_TARGET_MENU = "host_voice_target_menu"
 PERSONAL_VOICE_SETTINGS_MENU = "personal_voice_settings_menu"
@@ -473,6 +474,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
+        HOST_TABLE_STATS_MENU,
         "table_invite_prompt", "game_over",
     }
 
@@ -490,6 +492,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
+        HOST_TABLE_STATS_MENU,
     }
 
     GAMEPLAY_CLIENT_MENU_IDS = {
@@ -3544,6 +3547,7 @@ PlayAural Server
             HOST_VOICE_TARGET_MENU,
             PERSONAL_VOICE_SETTINGS_MENU,
             PERSONAL_VOICE_VOLUME_MENU,
+            HOST_TABLE_STATS_MENU,
         }:
             return
 
@@ -3662,6 +3666,11 @@ PlayAural Server
                 target_uuid,
                 target_name,
                 focus_current=False,
+            )
+        elif current_menu == HOST_TABLE_STATS_MENU:
+            user.update_menu(
+                HOST_TABLE_STATS_MENU,
+                self._get_table_stats_items(user, table),
             )
 
     # Dice keeping style display names
@@ -6483,6 +6492,8 @@ PlayAural Server
             await self.admin_manager.handle_menu_selection(user, selection_id, current_menu, state)
         elif current_menu == "host_management_menu":
             await self._handle_host_management_selection(user, selection_id, state)
+        elif current_menu == HOST_TABLE_STATS_MENU:
+            await self._handle_table_stats_selection(user, selection_id, state)
         elif current_menu == HOST_VOICE_MANAGEMENT_MENU:
             await self._handle_host_voice_management_selection(
                 user, selection_id, state
@@ -10534,6 +10545,11 @@ PlayAural Server
             MenuItem(text=Localization.get(locale, "host-management-pass-host"), id="pass_host"),
             MenuItem(text=Localization.get(locale, "host-management-kick"), id="kick_player"),
             MenuItem(text=Localization.get(locale, "host-management-kick-ban"), id="kick_ban_player"),
+            MenuItem(text=Localization.get(locale, "save-table"), id="save_table"),
+            MenuItem(
+                text=Localization.get(locale, "host-management-table-stats"),
+                id="table_stats",
+            ),
         ]
         if table.game and table.game.status == "playing":
             items.append(
@@ -10686,6 +10702,12 @@ PlayAural Server
                 self._nav_refresh(user, self._show_host_management_menu, table)
                 return
             self._nav_push(user, self._show_host_restart_confirm_menu, table)
+
+        elif selection_id == "save_table":
+            self.on_table_save(table, user.username)
+
+        elif selection_id == "table_stats":
+            self._nav_push(user, self._show_table_stats_menu, table)
 
         elif selection_id == "back":
             self._nav_back(user)
@@ -11102,6 +11124,174 @@ PlayAural Server
                 target_uuid,
                 target_name,
             )
+
+    # --- Table Statistics ---
+
+    def _show_table_stats_menu(self, user: NetworkUser, table: "Table") -> None:
+        """Show table statistics menu."""
+        active_table = self._tables.get_table(table.table_id)
+        if active_table is not table or not self._can_manage_table(user, table):
+            self._return_to_game(user, active_table)
+            return
+        items = self._get_table_stats_items(user, table)
+        user.show_menu(
+            HOST_TABLE_STATS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {
+            "menu": HOST_TABLE_STATS_MENU,
+            "table_id": table.table_id,
+        }
+
+    def _get_table_stats_items(
+        self, user: NetworkUser, table: "Table"
+    ) -> list[MenuItem]:
+        """Build items for the table statistics menu."""
+        locale = user.locale
+        created_dt = datetime.fromtimestamp(table.created_at)
+        formatted_date = created_dt.strftime("%d/%m/%Y, %H:%M")
+
+        elapsed_seconds = max(0, int(time.time() - table.created_at))
+        duration_text = self._format_uptime_duration(locale, elapsed_seconds)
+
+        game_name_key = f"game-name-{table.game_type}"
+        game_name = Localization.get(locale, game_name_key)
+        if game_name == game_name_key and table.game:
+            game_name = table.game.get_name()
+
+        participants = [m.username for m in table.members if not m.is_spectator]
+        spectators = [m.username for m in table.members if m.is_spectator]
+
+        privacy_text = Localization.get(
+            locale,
+            "table-stats-privacy-private" if table.is_private else "table-stats-privacy-public",
+        )
+
+        voice_count = sum(
+            1
+            for p in self._voice_presence_by_user.values()
+            if isinstance(p, dict)
+            and p.get("scope") == "table"
+            and p.get("context_id") == table.table_id
+        )
+        if voice_count > 0:
+            voice_status = Localization.get(locale, "table-stats-voice-active", count=voice_count)
+        else:
+            voice_status = Localization.get(locale, "table-stats-voice-inactive")
+
+        items = [
+            MenuItem(
+                text=Localization.get(locale, "table-stats-created-at", date=formatted_date),
+                id="stat_created_at",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-uptime", duration=duration_text),
+                id="stat_uptime",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-game", game=game_name),
+                id="stat_game",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-host", host=table.host),
+                id="stat_host",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    locale,
+                    "table-stats-members",
+                    count=len(participants),
+                    members=", ".join(participants) if participants else Localization.get(locale, "none"),
+                ),
+                id="stat_members",
+                read_only=True,
+            ),
+            MenuItem(
+                text=(
+                    Localization.get(
+                        locale,
+                        "table-stats-spectators",
+                        count=len(spectators),
+                        spectators=", ".join(spectators),
+                    )
+                    if spectators
+                    else Localization.get(locale, "table-stats-spectators-none")
+                ),
+                id="stat_spectators",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-privacy", privacy=privacy_text),
+                id="stat_privacy",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-voice", status=voice_status),
+                id="stat_voice",
+                read_only=True,
+            ),
+            MenuItem(text=Localization.get(locale, "back"), id="back"),
+        ]
+        return items
+
+    @classmethod
+    def _format_uptime_duration(cls, locale: str, seconds: int) -> str:
+        """Format elapsed seconds into localized human-readable duration."""
+        seconds = max(0, int(seconds))
+        if seconds < 60:
+            return Localization.get(locale, "duration-seconds", count=max(1, seconds))
+        minutes = seconds // 60
+        remaining_seconds = seconds % 60
+        if minutes < 60:
+            if remaining_seconds:
+                return Localization.get(
+                    locale,
+                    "duration-minutes-seconds",
+                    minutes=minutes,
+                    seconds=remaining_seconds,
+                )
+            return Localization.get(locale, "duration-minutes", count=minutes)
+        hours = minutes // 60
+        remaining_minutes = minutes % 60
+        if hours < 24:
+            if remaining_minutes:
+                return Localization.get(
+                    locale,
+                    "duration-hours-minutes",
+                    hours=hours,
+                    minutes=remaining_minutes,
+                )
+            return Localization.get(locale, "duration-hours", count=hours)
+        days = hours // 24
+        remaining_hours = hours % 24
+        if remaining_hours:
+            return Localization.get(
+                locale,
+                "duration-days-hours",
+                days=days,
+                hours=remaining_hours,
+            )
+        return Localization.get(locale, "duration-days", count=days)
+
+    async def _handle_table_stats_selection(
+        self,
+        user: NetworkUser,
+        selection_id: str,
+        state: dict,
+    ) -> None:
+        """Handle selection in table statistics menu."""
+        table = self._tables.get_table(state.get("table_id"))
+        if not table or not self._can_manage_table(user, table):
+            self._return_to_game(user, table)
+            return
+        if selection_id == "back":
+            self._nav_back(user)
 
     # --- Switch Game ---
 
@@ -17416,6 +17606,8 @@ PlayAural Server
                     str(frame.get("target_name") or ""),
                     focus_current=False,
                 )
+            elif menu == HOST_TABLE_STATS_MENU:
+                self._show_table_stats_menu(user, table)
             else:
                 self._return_to_game(user, table)
             if username in self._user_states:
