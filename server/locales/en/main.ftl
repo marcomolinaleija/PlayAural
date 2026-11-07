@@ -1382,3 +1382,22 @@ host-game-switch-confirm-free-table = Switch this table to a free table? Everyon
 free-table-choose-game = Choose a game
 free-table-description = Open a table to talk by text and voice without starting a game.
 free-table-help = Free table help
+
+# Global voice chat
+global-voice-chat = Global Voice Chat
+global-voice-chat-description = Join or view global voice chat with players across the server.
+global-voice-chat-connect = Connect to global voice chat
+global-voice-chat-connect-description = Connect to the server-wide voice chat channel.
+global-voice-chat-disconnect = Disconnect from global voice chat
+global-voice-chat-disconnect-description = Leave the server-wide voice chat channel.
+global-voice-chat-participants-heading = Connected participants ({ $count }):
+global-voice-chat-no-participants = No participants currently connected.
+global-voice-chat-disabled-notice = Global voice chat is currently disabled by the administrators.
+admin-moderation-global-voice-chat-toggle = Global voice chat: { $status }
+admin-moderation-global-voice-chat-toggle-description = Turn voice chat on or off server-wide. This setting persists after the server restarts.
+admin-moderation-global-voice-chat-status-description = Current server-wide state. Only a Developer can change this setting.
+admin-moderation-global-voice-chat-update-failed = The global voice chat setting could not be saved, so no change was made. Please try again.
+global-voice-chat-availability-enabled = Global voice chat has been enabled by the developer.
+global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
+voice-room-global-label = Global Voice Chat
+voice-global-chat-disabled = Global voice chat is currently disabled.

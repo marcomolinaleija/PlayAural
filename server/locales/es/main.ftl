@@ -1396,3 +1396,22 @@ host-game-switch-confirm-free-table = ¿Cambiar esta mesa a una mesa libre? Toda
 free-table-choose-game = Cambiar a un juego
 free-table-description = Abre una mesa para conversar por texto y voz sin iniciar un juego.
 free-table-help = Ayuda de mesa libre
+
+# Chat de voz global
+global-voice-chat = Chat de voz global
+global-voice-chat-description = Únete o consulta el chat de voz global con jugadores de todo el servidor.
+global-voice-chat-connect = Conectarse al chat de voz global
+global-voice-chat-connect-description = Conéctate al canal de chat de voz del servidor.
+global-voice-chat-disconnect = Desconectarse del chat de voz global
+global-voice-chat-disconnect-description = Sal del canal de chat de voz del servidor.
+global-voice-chat-participants-heading = Participantes conectados ({ $count }):
+global-voice-chat-no-participants = No hay participantes conectados actualmente.
+global-voice-chat-disabled-notice = El chat de voz global está desactivado por los administradores.
+admin-moderation-global-voice-chat-toggle = Chat de voz global: { $status }
+admin-moderation-global-voice-chat-toggle-description = Activa o desactiva el chat de voz en todo el servidor. Esta configuración se conserva después de reiniciar el servidor.
+admin-moderation-global-voice-chat-status-description = Estado actual en todo el servidor. Solo un Desarrollador puede cambiar esta configuración.
+admin-moderation-global-voice-chat-update-failed = La configuración del chat de voz global no se pudo guardar, por lo que no se realizó ningún cambio. Inténtalo de nuevo.
+global-voice-chat-availability-enabled = El desarrollador ha activado el chat de voz global.
+global-voice-chat-availability-disabled = El desarrollador ha desactivado temporalmente el chat de voz global.
+voice-room-global-label = Chat de voz global
+voice-global-chat-disabled = El chat de voz global está desactivado.

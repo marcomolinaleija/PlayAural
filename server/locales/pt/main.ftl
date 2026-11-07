@@ -1373,3 +1373,22 @@ game-unranked-removed-you = Seu assento foi removido. Esta partida não será cl
 game-unranked-released = O assento reservado de { $player } foi liberado permanentemente para um bot. Esta partida não será classificatória nem concederá registros de ranking.
 game-unranked-substituted = Outro jogador assumiu o assento de { $player }. Esta partida não será classificatória nem concederá registros de ranking.
 game-unranked-substituted-you = Outro jogador assumiu seu assento. Esta partida não será classificatória nem concederá registros de ranking.
+
+# Chat de voz global
+global-voice-chat = Chat de voz global
+global-voice-chat-description = Conecte-se ou consulte o chat de voz global com jogadores de todo o servidor.
+global-voice-chat-connect = Conectar ao chat de voz global
+global-voice-chat-connect-description = Conecte-se ao canal de chat de voz do servidor.
+global-voice-chat-disconnect = Desconectar do chat de voz global
+global-voice-chat-disconnect-description = Saia do canal de chat de voz do servidor.
+global-voice-chat-participants-heading = Participantes conectados ({ $count }):
+global-voice-chat-no-participants = Nenhum participante conectado no momento.
+global-voice-chat-disabled-notice = O chat de voz global está desativado pelos administradores.
+admin-moderation-global-voice-chat-toggle = Chat de voz global: { $status }
+admin-moderation-global-voice-chat-toggle-description = Ativa ou desativa o chat de voz em todo o servidor. Esta configuração persiste após reiniciar o servidor.
+admin-moderation-global-voice-chat-status-description = Estado atual em todo o servidor. Apenas um Desenvolvedor pode alterar esta configuração.
+admin-moderation-global-voice-chat-update-failed = A configuração do chat de voz global não pôde ser salva, portanto nenhuma alteração foi feita. Tente novamente.
+global-voice-chat-availability-enabled = O desenvolvedor ativou o chat de voz global.
+global-voice-chat-availability-disabled = O desenvolvedor desativou temporariamente o chat de voz global.
+voice-room-global-label = Chat de voz global
+voice-global-chat-disabled = O chat de voz global está desativado.

@@ -1362,3 +1362,22 @@ host-game-switch-confirm-free-table = Chuyển bàn này sang bàn tự do? Mọ
 free-table-choose-game = Chọn trò chơi
 free-table-description = Mở bàn để trò chuyện bằng văn bản và giọng nói mà không bắt đầu trò chơi.
 free-table-help = Trợ giúp bàn tự do
+
+# Trò chuyện thoại chung
+global-voice-chat = Trò chuyện thoại chung
+global-voice-chat-description = Tham gia hoặc xem trò chuyện thoại chung với người chơi trên toàn máy chủ.
+global-voice-chat-connect = Kết nối trò chuyện thoại chung
+global-voice-chat-connect-description = Kết nối vào kênh trò chuyện thoại chung của máy chủ.
+global-voice-chat-disconnect = Ngắt kết nối trò chuyện thoại chung
+global-voice-chat-disconnect-description = Rời khỏi kênh trò chuyện thoại chung của máy chủ.
+global-voice-chat-participants-heading = Người tham gia đang kết nối ({ $count }):
+global-voice-chat-no-participants = Hiện không có người tham gia nào kết nối.
+global-voice-chat-disabled-notice = Trò chuyện thoại chung hiện đang bị tắt bởi quản trị viên.
+admin-moderation-global-voice-chat-toggle = Trò chuyện thoại chung: { $status }
+admin-moderation-global-voice-chat-toggle-description = Bật hoặc tắt trò chuyện thoại trên toàn máy chủ. Thiết lập này vẫn được giữ sau khi máy chủ khởi động lại.
+admin-moderation-global-voice-chat-status-description = Trạng thái toàn máy chủ hiện tại. Chỉ Nhà phát triển mới có thể thay đổi thiết lập này.
+admin-moderation-global-voice-chat-update-failed = Không thể lưu thiết lập trò chuyện thoại chung, chưa có thay đổi nào được thực hiện. Vui lòng thử lại.
+global-voice-chat-availability-enabled = Nhà phát triển đã bật trò chuyện thoại chung.
+global-voice-chat-availability-disabled = Nhà phát triển đã tạm thời tắt trò chuyện thoại chung.
+voice-room-global-label = Trò chuyện thoại chung
+voice-global-chat-disabled = Trò chuyện thoại chung hiện đang bị tắt.
