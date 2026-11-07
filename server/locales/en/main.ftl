@@ -914,6 +914,17 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } minutes and { $seconds } seconds
 duration-hours-minutes = { $hours } hours and { $minutes } minutes
+duration-days = { $count ->
+    [one] 1 day
+   *[other] { $count } days
+}
+duration-days-hours = { $days ->
+    [one] 1 day
+   *[other] { $days } days
+} and { $hours ->
+    [one] 1 hour
+   *[other] { $hours } hours
+}
 server-error-changing-language = The language could not be changed. Your previous interface remains active.
 default-save-name = { $game } - { $date }
 
@@ -1173,6 +1184,17 @@ host-management-kick = Kick a Player
 host-management-kick-ban = Kick and Ban a Player
 host-management-player-substitution = Player Substitution
 host-management-restart-game = Restart Game
+host-management-table-stats = Table statistics
+table-stats-created-at = Created: { $date }
+table-stats-uptime = Table uptime: { $duration }
+table-stats-user-duration = Your time at table: { $duration }
+table-stats-peak = Peak attendance: { $count }
+table-stats-total-visitors = Total visitors: { $count }
+table-stats-game = Activity: { $game }
+table-stats-host = Host: { $host }
+table-stats-members = Participants ({ $count }): { $members }
+table-stats-spectators = Spectators ({ $count }): { $spectators }
+table-stats-spectators-none = Spectators: None
 host-management-table-now-private = This table is now private. Only invited users can join.
 host-management-table-now-public = This table is now public.
 host-game-switch-current = Current game: { $game }. This table has { $seats } active { $seats ->
@@ -1345,3 +1367,37 @@ game-unranked-removed-you = Your seat was removed. This match will not award lea
 game-unranked-released = { $player }'s reserved seat was permanently released to a bot. This match will not award leaderboard records or ratings.
 game-unranked-substituted = A different player has taken over { $player }'s seat. This match will not award leaderboard records or ratings.
 game-unranked-substituted-you = A different player has taken over your seat. This match will not award leaderboard records or ratings.
+
+# Free tables and spoken table presence
+create-free-table = Create a free table
+read-table-presence = Read participants and table host
+free-table-ready = Your free table is open. You can chat by text or join voice chat. Use Host Management to switch to a game.
+free-table-no-match = Free tables have no match to start. Choose a game in Host Management to play.
+table-presence-summary = { $count ->
+    [one] { $count } person is at the table: { $people }. The table host is { $host }.
+   *[other] { $count } people are at the table: { $people }. The table host is { $host }.
+    }
+table-presence-bots = Bots at the table: { $bots }.
+host-game-switch-confirm-free-table = Switch this table to a free table? Everyone still present will keep their playing or spectating role. Bots will be removed and the current match, options, teams, and ready state will be discarded. The host, privacy, bans, and voice chat will stay connected. Pending game invitations will be cancelled.
+free-table-choose-game = Choose a game
+free-table-description = Open a table to talk by text and voice without starting a game.
+free-table-help = Free table help
+
+# Global voice chat
+global-voice-chat = Global Voice Chat
+global-voice-chat-description = Join or view global voice chat with players across the server.
+global-voice-chat-connect = Connect to global voice chat
+global-voice-chat-connect-description = Connect to the server-wide voice chat channel.
+global-voice-chat-disconnect = Disconnect from global voice chat
+global-voice-chat-disconnect-description = Leave the server-wide voice chat channel.
+global-voice-chat-participants-heading = Connected participants ({ $count }):
+global-voice-chat-no-participants = No participants currently connected.
+global-voice-chat-disabled-notice = Global voice chat is currently disabled by the administrators.
+admin-moderation-global-voice-chat-toggle = Global voice chat: { $status }
+admin-moderation-global-voice-chat-toggle-description = Turn voice chat on or off server-wide. This setting persists after the server restarts.
+admin-moderation-global-voice-chat-status-description = Current server-wide state. Only a Developer can change this setting.
+admin-moderation-global-voice-chat-update-failed = The global voice chat setting could not be saved, so no change was made. Please try again.
+global-voice-chat-availability-enabled = Global voice chat has been enabled by the developer.
+global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
+voice-room-global-label = Global Voice Chat
+voice-global-chat-disabled = Global voice chat is currently disabled.

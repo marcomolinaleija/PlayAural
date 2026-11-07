@@ -689,6 +689,17 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } minutos y { $seconds } segundos
 duration-hours-minutes = { $hours } horas y { $minutes } minutos
+duration-days = { $count ->
+    [one] 1 día
+   *[other] { $count } días
+}
+duration-days-hours = { $days ->
+    [one] 1 día
+   *[other] { $days } días
+} y { $hours ->
+    [one] 1 hora
+   *[other] { $hours } horas
+}
 server-error-changing-language = No se pudo cambiar el idioma. Tu interfaz anterior sigue activa.
 default-save-name = { $game } - { $date }
 
@@ -838,6 +849,17 @@ host-management-pass-host = Ceder el anfitrionazgo a otro jugador
 host-management-kick = Expulsar a un jugador
 host-management-kick-ban = Expulsar y banear a un jugador
 host-management-restart-game = Reiniciar partida
+host-management-table-stats = Estadísticas de la mesa
+table-stats-created-at = Fecha de creación: { $date }
+table-stats-uptime = Tiempo de la mesa: { $duration }
+table-stats-user-duration = Tu tiempo en la mesa: { $duration }
+table-stats-peak = Pico de participantes: { $count }
+table-stats-total-visitors = Visitantes totales: { $count }
+table-stats-game = Tipo de actividad: { $game }
+table-stats-host = Anfitrión: { $host }
+table-stats-members = Participantes ({ $count }): { $members }
+table-stats-spectators = Espectadores ({ $count }): { $spectators }
+table-stats-spectators-none = Espectadores: Ninguno
 host-management-table-now-private = Esta mesa ahora es privada. Solo los jugadores invitados pueden unirse.
 host-management-table-now-public = Esta mesa ahora es pública.
 host-restart-confirm = ¿Reiniciar la partida actual y devolver esta mesa a la sala de espera? Los jugadores actuales y el chat de voz seguirán conectados, pero la partida en curso se cancelará.
@@ -1359,3 +1381,37 @@ host-invite-rate-limited = Estás enviando invitaciones de mesa demasiado rápid
    *[other] { $seconds } segundos
 }.
 table-invite-no-longer-available = Esa invitación de mesa ya no está disponible.
+
+# Mesas libres y anuncio de participantes
+create-free-table = Crear mesa libre
+read-table-presence = Escuchar participantes y jefe de mesa
+free-table-ready = Tu mesa libre está abierta. Puedes conversar por texto o entrar al chat de voz. Usa Gestión del anfitrión para cambiar a un juego.
+free-table-no-match = Las mesas libres no tienen una partida que iniciar. Elige un juego en Gestión del anfitrión para jugar.
+table-presence-summary = { $count ->
+    [one] Hay { $count } persona en la mesa: { $people }. El jefe de mesa es { $host }.
+   *[other] Hay { $count } personas en la mesa: { $people }. El jefe de mesa es { $host }.
+    }
+table-presence-bots = Bots en la mesa: { $bots }.
+host-game-switch-confirm-free-table = ¿Cambiar esta mesa a una mesa libre? Todas las personas presentes conservarán su función de jugador o espectador. Se retirarán los bots y se descartarán la partida actual, las opciones, los equipos y el estado de preparación. Se conservarán el jefe de mesa, la privacidad, los baneos y el chat de voz. Se cancelarán las invitaciones pendientes del juego.
+free-table-choose-game = Cambiar a un juego
+free-table-description = Abre una mesa para conversar por texto y voz sin iniciar un juego.
+free-table-help = Ayuda de mesa libre
+
+# Chat de voz global
+global-voice-chat = Chat de voz global
+global-voice-chat-description = Únete o consulta el chat de voz global con jugadores de todo el servidor.
+global-voice-chat-connect = Conectarse al chat de voz global
+global-voice-chat-connect-description = Conéctate al canal de chat de voz del servidor.
+global-voice-chat-disconnect = Desconectarse del chat de voz global
+global-voice-chat-disconnect-description = Sal del canal de chat de voz del servidor.
+global-voice-chat-participants-heading = Participantes conectados ({ $count }):
+global-voice-chat-no-participants = No hay participantes conectados actualmente.
+global-voice-chat-disabled-notice = El chat de voz global está desactivado por los administradores.
+admin-moderation-global-voice-chat-toggle = Chat de voz global: { $status }
+admin-moderation-global-voice-chat-toggle-description = Activa o desactiva el chat de voz en todo el servidor. Esta configuración se conserva después de reiniciar el servidor.
+admin-moderation-global-voice-chat-status-description = Estado actual en todo el servidor. Solo un Desarrollador puede cambiar esta configuración.
+admin-moderation-global-voice-chat-update-failed = La configuración del chat de voz global no se pudo guardar, por lo que no se realizó ningún cambio. Inténtalo de nuevo.
+global-voice-chat-availability-enabled = El desarrollador ha activado el chat de voz global.
+global-voice-chat-availability-disabled = El desarrollador ha desactivado temporalmente el chat de voz global.
+voice-room-global-label = Chat de voz global
+voice-global-chat-disabled = El chat de voz global está desactivado.

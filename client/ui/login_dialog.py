@@ -75,9 +75,8 @@ class LoginDialog(wx.Dialog):
                 self.config_manager.add_server(
                     "Local Dev Server", "localhost", "8000", server_id=self.local_server_id
                 )
-            # Remember the last-used choice across launches (source builds only).
-            if self.config_manager.identities.get("last_server_id") == self.local_server_id:
-                self.server_id = self.local_server_id
+            # Default to local server when running directly from source code
+            self.server_id = self.local_server_id
 
         self.server_url = self.config_manager.get_server_url(self.server_id)
 

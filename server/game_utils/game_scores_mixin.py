@@ -104,6 +104,40 @@ class GameScoresMixin:
             spectator_names = Localization.format_list_and(locale, spectators)
             user.speak_l("table-spectators", buffer="game", spectators=spectator_names)
 
+    def _action_read_table_presence(self, player: "Player", action_id: str) -> None:
+        """Announce people and the authoritative host without changing the menu."""
+        user = self.get_user(player)
+        if not user:
+            return
+        table = getattr(self, "_table", None)
+        server = getattr(table, "_server", None) if table else None
+        if server:
+            rows = server._table_member_rows(table)
+            names = [
+                row["name"] for row in rows
+                if row["kind"] == "user" and row["is_table_member"]
+            ]
+            bots = [row["name"] for row in rows if row["kind"] == "bot"]
+        else:
+            names = [
+                p.replaced_human_name if p.is_bot else p.name
+                for p in self.players if not p.is_bot or p.replaced_human_name
+            ]
+            bots = [p.name for p in self.players if p.is_bot and not p.replaced_human_name]
+        user.speak_l(
+            "table-presence-summary",
+            buffer="game",
+            count=len(names),
+            people=Localization.format_list_and(user.locale, names),
+            host=table.host if table else self.host,
+        )
+        if bots:
+            user.speak_l(
+                "table-presence-bots",
+                buffer="game",
+                bots=Localization.format_list_and(user.locale, bots),
+            )
+
     def _format_table_presence_name(
         self,
         table_player: "Player",
@@ -169,10 +203,7 @@ class GameScoresMixin:
                 lambda _player, live_user: self._detailed_score_lines(live_user.locale),
             )
         else:
-            self.status_box(
-                player,
-                [Localization.get(user.locale, "no-scores-available")],
-            )
+            user.speak_l("no-scores-available", buffer="game")
 
     def _detailed_score_lines(self, locale: str) -> list[str]:
         self._sync_score_display_names()

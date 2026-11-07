@@ -109,7 +109,7 @@ Khán giả có thể dùng các hành động đọc thông tin công khai như
 \* \*\*Shift+A:\*\* Tất tay.
 \* \*\*1 đến 5:\*\* chọn hoặc bỏ chọn lá bài tương ứng trong giai đoạn đổi bài.
 \* \*\*D:\*\* đổi các lá đã chọn hoặc giữ nguyên bài.
-\* \*\*W:\*\* đọc bài trên tay.
+\* \*\*Alt+W:\*\* đọc bài trên tay.
 \* \*\*G:\*\* đọc sức mạnh tay bài.
 \* \*\*P:\*\* kiểm tra hũ.
 \* \*\*N:\*\* kiểm tra số chip cần theo.

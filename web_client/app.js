@@ -748,7 +748,7 @@ class VoiceChatManager {
     if (previous && this.currentTableContextId && previous !== this.currentTableContextId) {
       this.app.audio.stopAll(800);
     }
-    if (!this.currentTableContextId) {
+    if (!this.currentTableContextId && (this.context?.scope || "table") === "table") {
       if (this.state === "connected" || this.state === "connecting") {
         this.cleanup(false, false);
       }
@@ -842,23 +842,21 @@ class VoiceChatManager {
       this.setStatus("voice-chat-unavailable", true);
       return;
     }
-    if (!this.currentTableContextId) {
-      this.setStatus("voice-not-at-table", true);
-      return;
-    }
+    const scope = this.currentTableContextId ? "table" : "global";
+    const contextId = this.currentTableContextId || "lobby";
     if (!window.LivekitClient || !window.LivekitClient.Room) {
       this.setStatus("voice-chat-sdk-missing", true);
       return;
     }
     this.joinGeneration += 1;
-    this.requestedContextId = this.currentTableContextId;
+    this.requestedContextId = contextId;
     this.pendingJoin = true;
     this.state = "connecting";
     this.setStatus("voice-chat-joining", true);
     this.updateUI();
     this.app.send({
       type: "voice_join",
-      scope: "table",
+      scope: scope,
       context_id: this.requestedContextId,
     });
   }
@@ -866,7 +864,12 @@ class VoiceChatManager {
   acceptServerJoin(packet) {
     const scope = packet.scope || "table";
     const contextId = packet.context_id || "";
-    if (scope !== "table" || !contextId || contextId !== this.currentTableContextId) {
+    const invalid = scope === "table"
+      ? (!contextId || contextId !== this.currentTableContextId)
+      : scope === "global"
+        ? !contextId
+        : true;
+    if (invalid) {
       this.app.send({
         type: "voice_leave",
         scope,
@@ -2787,9 +2790,10 @@ class PlayAuralWebApp {
   }
 
   handleVoiceContextClosed(packet) {
+    const packetScope = packet.scope || "table";
     if (
       this.voice.state === "connecting"
-      && (packet.scope || "table") === "table"
+      && (packetScope === "table" || packetScope === "global")
       && (packet.context_id || "") === this.voice.requestedContextId
     ) {
       this.voice.cleanup(false, false);

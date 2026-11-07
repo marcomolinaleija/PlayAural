@@ -1169,7 +1169,10 @@ class TestTableInviteReclaim:
         saved_state = json.loads(record.table_state_json)
         assert saved_state["properties"] == {
             "banned_uuids": [banned.uuid],
+            "created_at": table.created_at,
             "is_private": True,
+            "peak_occupancy": 2,
+            "total_unique_visitors": ["Banned", "Host"],
         }
 
         await self.server._restore_saved_table(host, record.id)

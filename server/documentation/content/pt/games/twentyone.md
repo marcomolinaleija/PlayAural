@@ -346,7 +346,7 @@ Seu oponente sofre 2 de dano (aposta base 1, mais 1 do seu Aumentar um). Ele cai
 
 
 
-* **W:** Ler apostas atuais (anuncia a aposta efetiva para cada jogador após os ajustes de modificadores).
+* **Alt+W:** Ler apostas atuais (anuncia a aposta efetiva para cada jogador após os ajustes de modificadores).
 
 
 

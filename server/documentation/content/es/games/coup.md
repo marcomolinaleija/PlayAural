@@ -102,7 +102,7 @@ El anfitrión puede configurar lo siguiente en la mesa antes de empezar:
 
 \* \*\*P:\*\* Pasar (aceptando no desafiar ni bloquear). Si todos pasan, el temporizador avanza rápido.
 
-\* \*\*W:\*\* Ver Riqueza (lista a todos los jugadores vivos y sus monedas).
+\* \*\*Alt+W:\*\* Ver Riqueza (lista a todos los jugadores vivos y sus monedas).
 
 \* \*\*H:\*\* Ver Mano (te recuerda tus cartas boca abajo actuales).
 

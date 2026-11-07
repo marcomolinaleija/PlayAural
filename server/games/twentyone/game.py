@@ -734,7 +734,7 @@ class TwentyOneGame(ActionGuardMixin, Game):
             state=KeybindState.ACTIVE,
         )
         self.define_keybind(
-            "w",
+            "alt+w",
             Localization.get("en", "twentyone-read-current-bets"),
             ["read_21_bets"],
             state=KeybindState.ACTIVE,

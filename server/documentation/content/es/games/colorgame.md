@@ -108,7 +108,7 @@ Si los jugadores están empatados en el primer lugar, la clasificación se desem
 \* \*\*U:\*\* Abrir el menú de apuesta rápida en azul.
 \* \*\*Y:\*\* Abrir el menú de apuesta rápida en amarillo.
 \* \*\*G:\*\* Abrir el menú de apuesta rápida en verde.
-\* \*\*W:\*\* Abrir el menú de apuesta rápida en blanco.
+\* \*\*Alt+W:\*\* Abrir el menú de apuesta rápida en blanco.
 \* \*\*O:\*\* Abrir el menú de apuesta rápida en naranja.
 \* \*\*C:\*\* Borrar tus apuestas actuales.
 \* \*\*Espacio:\*\* Bloquear tus apuestas de la ronda actual.

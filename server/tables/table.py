@@ -188,6 +188,18 @@ class Table(DataClassJSONMixin):
         default=False,
         metadata={SAVED_TABLE_PROPERTY: "is_private"},
     )  # Private tables are hidden from active tables lists
+    created_at: float = field(
+        default_factory=time.time,
+        metadata={SAVED_TABLE_PROPERTY: "created_at"},
+    )
+    peak_occupancy: int = field(
+        default=1,
+        metadata={SAVED_TABLE_PROPERTY: "peak_occupancy"},
+    )
+    total_unique_visitors: set[str] = field(
+        default_factory=set,
+        metadata={SAVED_TABLE_PROPERTY: "total_unique_visitors"},
+    )
 
     # These properties follow this table through manual saves and transient
     # server checkpoints. They are not account-global: final table/save
@@ -239,6 +251,7 @@ class Table(DataClassJSONMixin):
         self._server = None
         self._db = None
         self._last_menu_state_hash = None
+        self._member_joined_at = {}
         self._member_offline_since = {}
         self._offline_since = None
         self._destroyed = False
@@ -658,6 +671,11 @@ class Table(DataClassJSONMixin):
             ):
                 member.is_spectator = as_spectator
                 self._users[member.username] = user
+                self.total_unique_visitors.add(username)
+                if not hasattr(self, "_member_joined_at") or self._member_joined_at is None:
+                    self._member_joined_at = {}
+                self._member_joined_at.setdefault(username, time.time())
+                self.peak_occupancy = max(self.peak_occupancy, len(self.members))
                 if not as_spectator:
                     self._offline_since = None
                 if self._manager and hasattr(self._manager, "_username_to_table"):
@@ -672,6 +690,11 @@ class Table(DataClassJSONMixin):
 
         self.members.append(TableMember(username=username, is_spectator=as_spectator))
         self._users[username] = user
+        self.total_unique_visitors.add(username)
+        if not hasattr(self, "_member_joined_at") or self._member_joined_at is None:
+            self._member_joined_at = {}
+        self._member_joined_at.setdefault(username, time.time())
+        self.peak_occupancy = max(self.peak_occupancy, len(self.members))
         if not as_spectator:
             self._offline_since = None
         if self._manager and hasattr(self._manager, "_username_to_table"):
@@ -761,6 +784,8 @@ class Table(DataClassJSONMixin):
 
         self.members = [m for m in self.members if m.username != username]
         self._users.pop(username, None)
+        if hasattr(self, "_member_joined_at") and self._member_joined_at:
+            self._member_joined_at.pop(username, None)
         self.clear_voice_listener_settings(removed_account_id)
         if self._manager and hasattr(self._manager, "_username_to_table"):
             self._manager._username_to_table.pop(username, None)
@@ -1225,7 +1250,11 @@ class Table(DataClassJSONMixin):
                     self._game._users.pop(player_id, None)
 
         if self.host in offline_usernames:
-            candidates = [member for member in self.members if not member.is_spectator]
+            candidates = [
+                member for member in self.members
+                if not member.is_spectator
+                or (self._game and self._game.is_social_activity)
+            ]
             if candidates:
                 self.host = candidates[0].username
                 if self._game:
@@ -1257,7 +1286,7 @@ class Table(DataClassJSONMixin):
         """Promote the next eligible human table member to host."""
         candidates = []
         for member in self.members:
-            if member.is_spectator:
+            if member.is_spectator and not (self._game and self._game.is_social_activity):
                 continue
             member_user = self._users.get(member.username)
             if member_user and getattr(member_user, "is_bot", False):
@@ -1318,7 +1347,11 @@ class Table(DataClassJSONMixin):
         # Active-game abandonment is handled before gameplay ticks above.
         if self._server and self.effective_status() == "waiting":
             host_online = self.host in self._server._users
-            if self._game:
+            if self._game and self._game.is_social_activity:
+                any_human_present = any(
+                    member.username in self._server._users for member in self.members
+                )
+            elif self._game:
                 any_human_present = bool(self._online_active_humans())
             else:
                 any_human_present = any(
@@ -1657,6 +1690,8 @@ class Table(DataClassJSONMixin):
             live_members, live_users, seats = self._game_transition_seats()
             if not any(member.username == self.host for member in live_members):
                 return False
+            if not target_class.supports_bots:
+                seats = [seat for seat in seats if not seat.is_bot]
             active_seats = sum(1 for seat in seats if not seat.is_spectator)
             if active_seats > target_class.get_max_players():
                 return False

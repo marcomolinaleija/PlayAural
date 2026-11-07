@@ -102,7 +102,7 @@ O anfitrião pode configurar essas configurações na mesa antes de começar:
 
 * **P:** Passa (concordando em não contestar ou bloquear). Se todos passarem, o cronômetro avança rapidamente.
 
-* **W:** Verifica a Riqueza (lista todos os jogadores vivos e suas moedas).
+* **Alt+W:** Verifica a Riqueza (lista todos os jogadores vivos e suas moedas).
 
 * **H:** Verifica a Mão (lembra você de suas cartas atuais viradas para baixo).
 

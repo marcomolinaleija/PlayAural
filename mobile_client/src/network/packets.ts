@@ -438,7 +438,7 @@ export type SetPreferencePacket = {
 export type VoiceJoinPacket = {
   type: "voice_join";
   context_id?: string;
-  scope: "table";
+  scope: "table" | "global";
 };
 
 export type VoiceLeavePacket = {
@@ -450,7 +450,7 @@ export type VoiceLeavePacket = {
 export type VoicePresencePacket = {
   type: "voice_presence";
   context_id?: string;
-  scope: "table";
+  scope: "table" | "global";
   state: "connected" | "connection_lost";
 };
 

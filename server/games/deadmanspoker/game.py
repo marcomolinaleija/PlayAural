@@ -863,7 +863,7 @@ class DeadMansPokerGame(Game):
         self.define_keybind("f", "Fold", ["fold"], state=KeybindState.ACTIVE)
         self.define_keybind("d", "Switch card", ["switch_card"], state=KeybindState.ACTIVE)
         self.define_keybind("shift+a", "All in", ["all_in"], state=KeybindState.ACTIVE)
-        self.define_keybind("w", "Read hand", ["read_hand"], state=KeybindState.ACTIVE)
+        self.define_keybind("alt+w", "Read hand", ["read_hand"], state=KeybindState.ACTIVE)
         self.define_keybind("g", "Read hand strength", ["read_hand_value"], state=KeybindState.ACTIVE)
         self.define_keybind(
             "e",

@@ -1,6 +1,7 @@
 """Game implementations."""
 
 from .base import Game
+from .freetable.game import FreeTable
 from .registry import GameRegistry, register_game, get_game_class
 
 # Import all games to trigger registration
@@ -59,6 +60,7 @@ from .zombiedice.game import ZombieDiceGame
 
 __all__ = [
     "Game",
+    "FreeTable",
     "GameRegistry",
     "register_game",
     "get_game_class",

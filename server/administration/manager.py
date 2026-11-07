@@ -1141,6 +1141,7 @@ class AdministrationManager:
             statuses=CLOSED_REPORT_STATUSES
         )
         global_chat_enabled = self.server.global_chat_sending_enabled
+        global_voice_chat_enabled = self.server.global_voice_chat_enabled
         items = [
             MenuItem(
                 text=Localization.get(
@@ -1156,6 +1157,23 @@ class AdministrationManager:
                     "admin-moderation-global-chat-toggle-description"
                     if user.trust_level >= DEVELOPER_TRUST_LEVEL
                     else "admin-moderation-global-chat-status-description"
+                ),
+                read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-moderation-global-voice-chat-toggle",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if global_voice_chat_enabled else "option-off",
+                    ),
+                ),
+                id="toggle_global_voice_chat",
+                description_key=(
+                    "admin-moderation-global-voice-chat-toggle-description"
+                    if user.trust_level >= DEVELOPER_TRUST_LEVEL
+                    else "admin-moderation-global-voice-chat-status-description"
                 ),
                 read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
             ),
@@ -2889,22 +2907,46 @@ class AdministrationManager:
     ) -> None:
         """Handle admin menu selection."""
         if selection_id == "account_approval":
+            if self.server.db.count_pending_users() == 0:
+                user.speak_l("no-pending-accounts", buffer="system")
+                return
             self.server._nav_push(user, self._show_account_approval_menu)
         elif selection_id == "moderation":
             self.server._nav_push(user, self._show_moderation_menu)
         elif selection_id == "promote_admin":
+            if self._search_promote_targets("", 1).total == 0:
+                user.speak_l("no-users-to-promote", buffer="system")
+                return
             self.server._nav_push(user, self._show_promote_admin_menu)
         elif selection_id == "demote_admin":
+            if self._search_demote_targets(user, "", 1).total == 0:
+                user.speak_l("no-admins-to-demote", buffer="system")
+                return
             self.server._nav_push(user, self._show_demote_admin_menu)
         elif selection_id == "ban_user":
+            if self._search_ban_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-ban", buffer="system")
+                return
             self.server._nav_push(user, self._show_ban_menu)
         elif selection_id == "unban_user":
+            if self.server.db.count_active_banned_users("") == 0:
+                user.speak_l("no-banned-users", buffer="system")
+                return
             self.server._nav_push(user, self._show_unban_menu)
         elif selection_id == "mute_user":
+            if self._search_mute_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-mute", buffer="system")
+                return
             self.server._nav_push(user, self._show_mute_menu)
         elif selection_id == "unmute_user":
+            if self.server.db.count_active_muted_users("") == 0:
+                user.speak_l("no-muted-users", buffer="system")
+                return
             self.server._nav_push(user, self._show_unmute_menu)
         elif selection_id == "kick_user":
+            if self._search_kick_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-kick", buffer="system")
+                return
             self.server._nav_push(user, self._show_kick_menu)
         elif selection_id == "broadcast_announcement":
             self._show_broadcast_input_menu(user)
@@ -3458,19 +3500,65 @@ class AdministrationManager:
                         recipient,
                         self._show_moderation_menu,
                     )
+        elif selection_id == "toggle_global_voice_chat":
+            if user.trust_level < DEVELOPER_TRUST_LEVEL:
+                user.speak_l("dev-only-action", buffer="system")
+                self.server._nav_refresh(user, self._show_moderation_menu)
+                return
+            enabled = not self.server.global_voice_chat_enabled
+            try:
+                self.server.set_global_voice_chat_enabled(enabled)
+            except Exception:
+                logging.getLogger("playaural").exception(
+                    "Failed to persist the global-voice-chat availability setting"
+                )
+                user.speak_l(
+                    "admin-moderation-global-voice-chat-update-failed",
+                    buffer="system",
+                )
+                return
+            announcement_key = (
+                "global-voice-chat-availability-enabled"
+                if enabled
+                else "global-voice-chat-availability-disabled"
+            )
+            for recipient in tuple(self.server.users.values()):
+                recipient.play_sound_family("notify", buffer="system")
+                recipient.speak_l(announcement_key, buffer="system")
+                recipient_state = self.server.user_states.get(
+                    recipient.username,
+                    {},
+                )
+                if recipient_state.get("menu") == ADMIN_MODERATION_MENU:
+                    self.server._nav_refresh(
+                        recipient,
+                        self._show_moderation_menu,
+                    )
         elif selection_id == "reports_open":
+            if self.server.db.count_moderation_reports(status="open") == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "open"
             )
         elif selection_id == "reports_closed":
+            if self.server.db.count_moderation_reports(statuses=CLOSED_REPORT_STATUSES) == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "closed"
             )
         elif selection_id == "reports_all":
+            if self.server.db.count_moderation_reports() == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "all"
             )
         elif selection_id == "browse_messages":
+            if self.server.db.count_global_chat_messages() == 0:
+                user.speak_l("admin-moderation-message-list-empty", buffer="system")
+                return
             self.server._nav_push(user, self._show_moderation_messages_menu)
         elif selection_id == "find_history":
             self._show_moderation_history_input(user)
@@ -4277,6 +4365,14 @@ class AdministrationManager:
             username = str(value or "").strip()
             if not username:
                 self.server._restore_input_parent(user, state)
+                return True
+            if self.server.db.count_global_chat_sender_identities(username) == 0:
+                self.server._restore_input_parent(user, state)
+                user.speak_l(
+                    "admin-moderation-no-sender-history",
+                    buffer="system",
+                    username=username,
+                )
                 return True
             self.server._nav_push_from_input(
                 user,

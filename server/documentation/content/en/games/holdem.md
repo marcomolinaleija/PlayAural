@@ -112,7 +112,7 @@ At showdown, players with live hands can use the reveal actions to reread their 
 \* \*\*F:\*\* fold.
 \* \*\*R:\*\* raise.
 \* \*\*Shift+A:\*\* all in.
-\* \*\*W:\*\* read your hole cards.
+\* \*\*Alt+W:\*\* read your hole cards.
 \* \*\*G:\*\* read hand strength.
 \* \*\*E:\*\* read community cards.
 \* \*\*P:\*\* check the pot.

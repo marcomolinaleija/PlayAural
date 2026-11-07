@@ -905,6 +905,8 @@ duration-minutes = { $count } phút
 duration-hours = { $count } giờ
 duration-minutes-seconds = { $minutes } phút và { $seconds } giây
 duration-hours-minutes = { $hours } giờ và { $minutes } phút
+duration-days = { $count } ngày
+duration-days-hours = { $days } ngày và { $hours } giờ
 server-error-changing-language = Không thể thay đổi ngôn ngữ. Giao diện bằng ngôn ngữ trước đó vẫn được giữ nguyên.
 default-save-name = { $game } - { $date }
 
@@ -1162,6 +1164,17 @@ host-management-kick = Đuổi người chơi
 host-management-kick-ban = Đuổi và cấm người chơi
 host-management-player-substitution = Thay người chơi
 host-management-restart-game = Khởi động lại ván chơi
+host-management-table-stats = Thống kê bàn chơi
+table-stats-created-at = Tạo lúc: { $date }
+table-stats-uptime = Thời gian hoạt động: { $duration }
+table-stats-user-duration = Thời gian bạn ở bàn: { $duration }
+table-stats-peak = Số người cao nhất: { $count }
+table-stats-total-visitors = Tổng lượt khách: { $count }
+table-stats-game = Hoạt động: { $game }
+table-stats-host = Chủ bàn: { $host }
+table-stats-members = Người tham gia ({ $count }): { $members }
+table-stats-spectators = Khán giả ({ $count }): { $spectators }
+table-stats-spectators-none = Khán giả: Không có
 host-management-table-now-private = Bàn này hiện là riêng tư. Chỉ người được mời mới có thể tham gia.
 host-management-table-now-public = Bàn này hiện là công khai.
 host-game-switch-current = Trò chơi hiện tại: { $game }. { $seats ->
@@ -1334,3 +1347,37 @@ game-unranked-removed-you = Chỗ của bạn đã bị xóa khỏi ván chơi. 
 game-unranked-released = Chỗ giữ cho { $player } đã được chuyển hẳn cho bot. Ván này sẽ không được tính vào bảng xếp hạng hay điểm kỹ năng.
 game-unranked-substituted = Một người chơi khác đã tiếp quản chỗ của { $player }. Ván này sẽ không được tính vào bảng xếp hạng hay điểm kỹ năng.
 game-unranked-substituted-you = Một người chơi khác đã tiếp quản chỗ của bạn. Ván này sẽ không được tính vào bảng xếp hạng hay điểm kỹ năng.
+
+# Bàn tự do và thông báo người tham gia
+create-free-table = Tạo bàn tự do
+read-table-presence = Nghe danh sách người tham gia và chủ bàn
+free-table-ready = Bàn tự do của bạn đã mở. Bạn có thể trò chuyện bằng văn bản hoặc tham gia trò chuyện thoại. Dùng Quản lý bàn để chuyển sang trò chơi.
+free-table-no-match = Bàn tự do không có ván để bắt đầu. Hãy chọn trò chơi trong Quản lý bàn để chơi.
+table-presence-summary = { $count ->
+    [one] Có { $count } người ở bàn: { $people }. Chủ bàn là { $host }.
+   *[other] Có { $count } người ở bàn: { $people }. Chủ bàn là { $host }.
+    }
+table-presence-bots = Bot ở bàn: { $bots }.
+host-game-switch-confirm-free-table = Chuyển bàn này sang bàn tự do? Mọi người vẫn còn ở bàn sẽ giữ nguyên vai trò người chơi hoặc khán giả. Các bot sẽ bị xóa; ván hiện tại, tùy chọn, đội và trạng thái sẵn sàng sẽ bị hủy. Chủ bàn, chế độ riêng tư, danh sách cấm và trò chuyện thoại vẫn được giữ nguyên. Những lời mời trò chơi đang chờ sẽ bị hủy.
+free-table-choose-game = Chọn trò chơi
+free-table-description = Mở bàn để trò chuyện bằng văn bản và giọng nói mà không bắt đầu trò chơi.
+free-table-help = Trợ giúp bàn tự do
+
+# Trò chuyện thoại chung
+global-voice-chat = Trò chuyện thoại chung
+global-voice-chat-description = Tham gia hoặc xem trò chuyện thoại chung với người chơi trên toàn máy chủ.
+global-voice-chat-connect = Kết nối trò chuyện thoại chung
+global-voice-chat-connect-description = Kết nối vào kênh trò chuyện thoại chung của máy chủ.
+global-voice-chat-disconnect = Ngắt kết nối trò chuyện thoại chung
+global-voice-chat-disconnect-description = Rời khỏi kênh trò chuyện thoại chung của máy chủ.
+global-voice-chat-participants-heading = Người tham gia đang kết nối ({ $count }):
+global-voice-chat-no-participants = Hiện không có người tham gia nào kết nối.
+global-voice-chat-disabled-notice = Trò chuyện thoại chung hiện đang bị tắt bởi quản trị viên.
+admin-moderation-global-voice-chat-toggle = Trò chuyện thoại chung: { $status }
+admin-moderation-global-voice-chat-toggle-description = Bật hoặc tắt trò chuyện thoại trên toàn máy chủ. Thiết lập này vẫn được giữ sau khi máy chủ khởi động lại.
+admin-moderation-global-voice-chat-status-description = Trạng thái toàn máy chủ hiện tại. Chỉ Nhà phát triển mới có thể thay đổi thiết lập này.
+admin-moderation-global-voice-chat-update-failed = Không thể lưu thiết lập trò chuyện thoại chung, chưa có thay đổi nào được thực hiện. Vui lòng thử lại.
+global-voice-chat-availability-enabled = Nhà phát triển đã bật trò chuyện thoại chung.
+global-voice-chat-availability-disabled = Nhà phát triển đã tạm thời tắt trò chuyện thoại chung.
+voice-room-global-label = Trò chuyện thoại chung
+voice-global-chat-disabled = Trò chuyện thoại chung hiện đang bị tắt.

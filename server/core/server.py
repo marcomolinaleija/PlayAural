@@ -246,6 +246,8 @@ SUPPORTED_CHAT_CONVERSATIONS = frozenset({"global", *TABLE_CHAT_CONVERSATIONS})
 # Moderation.
 GLOBAL_CHAT_ENABLED_SETTING_KEY = "global_chat_enabled"
 DEFAULT_GLOBAL_CHAT_SENDING_ENABLED = True
+GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY = "global_voice_chat_enabled"
+DEFAULT_GLOBAL_VOICE_CHAT_ENABLED = True
 VOICE_JOIN_AUTHORIZATION_WINDOW_SECONDS = 120
 SESSION_STATE_RETENTION_SECONDS = 300
 PRESENCE_OFFLINE_GRACE_SECONDS = 2.0
@@ -292,6 +294,7 @@ USER_REPORT_REASON_MENU = "user_report_reason_menu"
 USER_REPORT_CONFIRM_MENU = "user_report_confirm_menu"
 TABLE_MEMBERS_MENU = "table_members_menu"
 TABLE_MEMBER_ACTIONS_MENU = "table_member_actions_menu"
+HOST_TABLE_STATS_MENU = "host_table_stats_menu"
 HOST_VOICE_MANAGEMENT_MENU = "host_voice_management_menu"
 HOST_VOICE_TARGET_MENU = "host_voice_target_menu"
 PERSONAL_VOICE_SETTINGS_MENU = "personal_voice_settings_menu"
@@ -473,6 +476,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
+        HOST_TABLE_STATS_MENU, "global_voice_chat_menu",
         "table_invite_prompt", "game_over",
     }
 
@@ -490,6 +494,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
+        HOST_TABLE_STATS_MENU,
     }
 
     GAMEPLAY_CLIENT_MENU_IDS = {
@@ -571,6 +576,7 @@ class Server:
         self._voice = VoiceService.from_env()
         self._voice_context_resolvers = {
             "table": self._resolve_table_voice_context,
+            "global": self._resolve_global_voice_context,
         }
         self._voice_presence_by_user: dict[str, dict[str, str]] = {}
         self._voice_join_authorizations_by_user: dict[
@@ -587,6 +593,7 @@ class Server:
         # startup connects. Keeping a local copy makes the chat hot path
         # synchronous and avoids a settings query for every message.
         self._global_chat_sending_enabled = DEFAULT_GLOBAL_CHAT_SENDING_ENABLED
+        self._global_voice_chat_enabled = DEFAULT_GLOBAL_VOICE_CHAT_ENABLED
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
@@ -626,6 +633,17 @@ class Server:
             )
         )
 
+    @property
+    def global_voice_chat_enabled(self) -> bool:
+        """Return the live server-wide global-voice-chat availability state."""
+        return bool(
+            getattr(
+                self,
+                "_global_voice_chat_enabled",
+                DEFAULT_GLOBAL_VOICE_CHAT_ENABLED,
+            )
+        )
+
     def _load_persistent_server_settings(self) -> None:
         """Load server-wide controls after the database is connected."""
         try:
@@ -640,6 +658,18 @@ class Server:
             enabled = False
         self._global_chat_sending_enabled = enabled
 
+        try:
+            voice_enabled = self._db.get_boolean_server_setting(
+                GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY,
+                default=DEFAULT_GLOBAL_VOICE_CHAT_ENABLED,
+            )
+        except ValueError:
+            logging.getLogger("playaural").exception(
+                "Invalid persisted global-voice-chat setting; global voice chat is disabled"
+            )
+            voice_enabled = False
+        self._global_voice_chat_enabled = voice_enabled
+
     def set_global_chat_sending_enabled(self, enabled: bool) -> None:
         """Persist and apply the server-wide global-chat availability state."""
         if type(enabled) is not bool:
@@ -650,9 +680,31 @@ class Server:
         )
         self._global_chat_sending_enabled = enabled
 
+    def set_global_voice_chat_enabled(self, enabled: bool) -> None:
+        """Persist and apply the server-wide global-voice-chat availability state."""
+        if type(enabled) is not bool:
+            raise TypeError("Global-voice-chat availability requires a bool value")
+        self._db.set_boolean_server_setting(
+            GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY,
+            enabled,
+        )
+        self._global_voice_chat_enabled = enabled
+        if not enabled:
+            for username, presence in list(self._voice_presence_by_user.items()):
+                if presence.get("scope") == "global":
+                    self._schedule_voice_context_close(
+                        username,
+                        message_key="voice-global-chat-disabled",
+                        scope="global",
+                        context_id=str(presence.get("context_id") or "lobby"),
+                    )
+            for username, auth in list(self._voice_join_authorizations_by_user.items()):
+                if auth.get("scope") == "global":
+                    self._clear_voice_join_authorization(username, scope="global")
+
     def _prune_obsolete_game_data(self) -> None:
         """Remove data outside the current registered game/stat schema."""
-        game_classes = GameRegistry.get_all()
+        game_classes = GameRegistry.get_all(include_social=True)
         valid_game_types = {game_class.get_type() for game_class in game_classes}
         supported_stats = {
             game_class.get_type(): StatsExtractor.supported_persisted_stat_keys(
@@ -2807,11 +2859,11 @@ PlayAural Server
                 outro_mode="immediate",
             )
         voice_presence = self._voice_presence_by_user.get(user.username)
-        if voice_presence:
+        if voice_presence and voice_presence.get("scope") == "table":
             self._schedule_voice_context_close(
                 user.username,
                 message_key="voice-status-left-table",
-                scope=str(voice_presence.get("scope") or "table"),
+                scope="table",
                 context_id=str(voice_presence.get("context_id") or ""),
             )
         # Invariant guard: a user must never be in a table while seeing the
@@ -2826,6 +2878,11 @@ PlayAural Server
         items = [
             MenuItem(text=Localization.get(user.locale, "play"), id="play"),
             MenuItem(
+                text=Localization.get(user.locale, "create-free-table"),
+                id="create_free_table",
+                description_key="free-table-description",
+            ),
+            MenuItem(
                 text=Localization.get(user.locale, "view-active-tables"),
                 id="active_tables",
             ),
@@ -2834,6 +2891,11 @@ PlayAural Server
             ),
             MenuItem(
                 text=Localization.get(user.locale, "leaderboards"), id="leaderboards"
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "global-voice-chat"),
+                id="global_voice_chat",
+                description_key="global-voice-chat-description",
             ),
             MenuItem(
                 text=Localization.get(user.locale, "personal-and-options"), id="personal_options"
@@ -2883,12 +2945,16 @@ PlayAural Server
         return counts
 
     def _get_localized_game_list(
-        self, user: NetworkUser, category_filter: str | None = None
+        self,
+        user: NetworkUser,
+        category_filter: str | None = None,
+        *,
+        include_social: bool = False,
     ) -> list[tuple[type, str]]:
         """Return registered games sorted by localized display name."""
         selected_filter = category_filter or CATEGORY_FILTER_ALL
         game_list = []
-        for game_class in GameRegistry.get_all():
+        for game_class in GameRegistry.get_all(include_social=include_social):
             if (
                 selected_filter != CATEGORY_FILTER_ALL
                 and selected_filter not in normalize_categories(game_class.get_categories())
@@ -3535,6 +3601,7 @@ PlayAural Server
             HOST_VOICE_TARGET_MENU,
             PERSONAL_VOICE_SETTINGS_MENU,
             PERSONAL_VOICE_VOLUME_MENU,
+            HOST_TABLE_STATS_MENU,
         }:
             return
 
@@ -3653,6 +3720,11 @@ PlayAural Server
                 target_uuid,
                 target_name,
                 focus_current=False,
+            )
+        elif current_menu == HOST_TABLE_STATS_MENU:
+            user.update_menu(
+                HOST_TABLE_STATS_MENU,
+                self._get_table_stats_items(user, table),
             )
 
     # Dice keeping style display names
@@ -4940,6 +5012,23 @@ PlayAural Server
             },
         )
 
+    def _resolve_global_voice_context(self, user: NetworkUser, packet: dict) -> VoiceContext:
+        if not self.global_voice_chat_enabled:
+            raise VoiceAuthorizationError("voice-global-chat-disabled")
+        mute_error = self._get_voice_mute_error(user.username)
+        if mute_error:
+            raise VoiceAuthorizationError("voice-muted-account")
+        context_id = str(packet.get("context_id") or "lobby").strip() or "lobby"
+        return VoiceContext(
+            scope="global",
+            context_id=context_id,
+            room_label=Localization.get(user.locale, "voice-room-global-label"),
+            metadata={
+                "context_id": context_id,
+                "scope": "global",
+            },
+        )
+
     def _get_voice_mute_error(self, username: str) -> tuple[str, dict[str, str]] | None:
         active_mute = self._db.get_active_mute(username)
         if not active_mute:
@@ -5426,10 +5515,17 @@ PlayAural Server
         self._user_states[user.username] = {"menu": "in_game", "table_id": table_id}
         user.set_table_context(table_id)
 
-    @staticmethod
-    def _prepare_user_for_table_audio(user: NetworkUser) -> None:
+    def _prepare_user_for_table_audio(self, user: NetworkUser) -> None:
         """Relinquish menu/lobby music before any table audio can be replayed."""
         user.stop_music(fade_ms=0)
+        voice_presence = self._voice_presence_by_user.get(user.username)
+        if voice_presence and voice_presence.get("scope") == "global":
+            self._schedule_voice_context_close(
+                user.username,
+                message_key="voice-status-disconnected",
+                scope="global",
+                context_id=str(voice_presence.get("context_id") or "lobby"),
+            )
 
     def _set_game_over_state(self, user: NetworkUser, table_id: str) -> None:
         self._user_states[user.username] = {
@@ -5506,7 +5602,7 @@ PlayAural Server
         """Return whether a paused restored game should still accept the packet."""
         packet_type = str(packet.get("type") or "")
         if packet_type == "keybind":
-            return cls._normalized_keybind_key(packet) == "ctrl+q"
+            return cls._normalized_keybind_key(packet) in {"q", "ctrl+q"}
 
         if packet_type not in {"menu", "escape"}:
             return False
@@ -5887,6 +5983,7 @@ PlayAural Server
                 table,
                 user.username,
                 "voice-status-connected",
+                scope=context.scope,
             )
 
     async def _clear_voice_presence(
@@ -5921,7 +6018,8 @@ PlayAural Server
             context_id=str(presence.get("context_id") or ""),
         )
         self._voice_presence_by_user.pop(username, None)
-        if table is None and presence.get("scope") == "table":
+        scope = str(presence.get("scope") or "table")
+        if table is None and scope == "table":
             table = self._tables.get_table(presence.get("context_id", ""))
         if broadcast and message_key:
             await self._broadcast_voice_presence_event(
@@ -5929,9 +6027,12 @@ PlayAural Server
                 username,
                 message_key,
                 play_sound=play_sound,
+                scope=scope,
             )
         elif table:
             self._refresh_voice_presence_views(table)
+        elif scope == "global":
+            self._refresh_global_voice_views()
         return True
 
     def _voice_presence_matches(
@@ -5986,21 +6087,42 @@ PlayAural Server
                 priority=priority,
             )
 
+    def _get_global_voice_users(self, include_actor: str | None = None) -> list[NetworkUser]:
+        usernames = {
+            uname
+            for uname, p in self._voice_presence_by_user.items()
+            if p.get("scope") == "global"
+        }
+        if include_actor:
+            usernames.add(include_actor)
+        return [
+            u
+            for uname in usernames
+            if (u := self._users.get(uname)) and u.approved
+        ]
+
     def _queue_voice_presence_audio(
         self,
         table,
         message_key: str,
+        *,
+        scope: str = "table",
+        actor_username: str = "",
     ) -> None:
         """Queue the voice cue without coupling it to async TTS delivery."""
-        if not table:
-            return
         is_join = message_key == "voice-status-connected"
         sound_name = VOICE_CHAT_JOIN_SOUND if is_join else VOICE_CHAT_LEAVE_SOUND
-        users = [
-            user
-            for member in table.members
-            if (user := self._users.get(member.username)) and user.approved
-        ]
+        if table:
+            users = [
+                user
+                for member in table.members
+                if (user := self._users.get(member.username)) and user.approved
+            ]
+        elif scope == "global":
+            users = self._get_global_voice_users(include_actor=actor_username)
+        else:
+            return
+
         self.queue_presence_audio(
             users,
             event="join" if is_join else "leave",
@@ -6015,17 +6137,28 @@ PlayAural Server
         message_key: str,
         *,
         play_sound: bool = True,
+        scope: str = "table",
     ) -> None:
-        if not table:
+        if not table and scope != "global":
             return
         if play_sound:
-            self._queue_voice_presence_audio(table, message_key)
-        for member in table.members:
-            user = self._users.get(member.username)
-            if not user or not user.approved:
-                continue
-            user.speak_l(message_key, buffer="system", player=actor_username)
-        self._refresh_voice_presence_views(table)
+            self._queue_voice_presence_audio(
+                table,
+                message_key,
+                scope=scope,
+                actor_username=actor_username,
+            )
+        if table:
+            for member in table.members:
+                user = self._users.get(member.username)
+                if not user or not user.approved:
+                    continue
+                user.speak_l(message_key, buffer="system", player=actor_username)
+            self._refresh_voice_presence_views(table)
+        elif scope == "global":
+            for user in self._get_global_voice_users(include_actor=actor_username):
+                user.speak_l(message_key, buffer="system", player=actor_username)
+            self._refresh_global_voice_views()
 
     def _refresh_voice_presence_views(self, table) -> None:
         """Repaint only open table panels whose rows expose voice presence."""
@@ -6040,6 +6173,15 @@ PlayAural Server
                 self._user_states.get(member.username, {}),
             )
 
+    def _refresh_global_voice_views(self) -> None:
+        """Repaint open global voice menus when global voice presence changes."""
+        for user in tuple(self._users.values()):
+            if not user or not user.approved:
+                continue
+            state = self._user_states.get(user.username, {})
+            if state.get("menu") == "global_voice_chat_menu":
+                self._nav_refresh(user, self._show_global_voice_chat_menu)
+
     async def _broadcast_voice_presence_event(
         self,
         table,
@@ -6047,12 +6189,14 @@ PlayAural Server
         message_key: str,
         *,
         play_sound: bool = True,
+        scope: str = "table",
     ) -> None:
         self._broadcast_voice_presence_event_now(
             table,
             actor_username,
             message_key,
             play_sound=play_sound,
+            scope=scope,
         )
 
     async def _send_voice_context_closed(
@@ -6474,6 +6618,8 @@ PlayAural Server
             await self.admin_manager.handle_menu_selection(user, selection_id, current_menu, state)
         elif current_menu == "host_management_menu":
             await self._handle_host_management_selection(user, selection_id, state)
+        elif current_menu == HOST_TABLE_STATS_MENU:
+            await self._handle_table_stats_selection(user, selection_id, state)
         elif current_menu == HOST_VOICE_MANAGEMENT_MENU:
             await self._handle_host_voice_management_selection(
                 user, selection_id, state
@@ -6526,6 +6672,8 @@ PlayAural Server
             await self._handle_personal_voice_volume_selection(
                 user, selection_id, state
             )
+        elif current_menu == "global_voice_chat_menu":
+            await self._handle_global_voice_chat_selection(user, selection_id)
         elif current_menu == "table_invite_prompt":
             await self._handle_table_invite_selection(user, selection_id, state)
         elif current_menu == "logout_confirm_menu":
@@ -6569,12 +6717,45 @@ PlayAural Server
         """Handle main menu selection."""
         if selection_id == "play":
             self._nav_push(user, self._show_games_list_menu)
+        elif selection_id == "create_free_table":
+            if self._tables.find_user_table(user.username):
+                return
+            await self._handle_tables_selection(
+                user,
+                "create_table",
+                {
+                    "game_type": "freetable",
+                    "game_name": Localization.get(user.locale, "game-name-freetable"),
+                },
+            )
         elif selection_id == "active_tables":
+            all_tables = self._tables.get_all_tables()
+            filter_type = user.preferences.active_tables_filter
+            socially_blocked_ids = self._db.get_socially_blocked_ids(user.uuid)
+            visible_tables = [
+                table
+                for table in all_tables
+                if self._is_visible_active_table(
+                    user,
+                    table,
+                    status_filter=filter_type,
+                    socially_blocked_ids=socially_blocked_ids,
+                )
+            ]
+            if not visible_tables:
+                empty_msg_key = f"no-active-tables-{filter_type}"
+                user.speak_l(empty_msg_key, buffer="system")
+                return
             self._nav_push(user, self._show_active_tables_menu)
         elif selection_id == "saved_tables":
+            if self._db.count_user_saved_tables(user.username) == 0:
+                user.speak_l("no-saved-tables", buffer="system")
+                return
             self._nav_push(user, self._show_saved_tables_menu)
         elif selection_id == "leaderboards":
             self._nav_push(user, self._show_leaderboards_menu)
+        elif selection_id == "global_voice_chat":
+            self._nav_push(user, self._show_global_voice_chat_menu)
         elif selection_id == "personal_options":
             self._nav_push(user, self._show_personal_options_menu)
         elif selection_id == "documentation":
@@ -6584,6 +6765,126 @@ PlayAural Server
                 self._nav_push(user, self.admin_manager._show_admin_menu)
         elif selection_id == "logout":
             self._nav_push(user, self._show_logout_confirm_menu)
+
+    def _show_global_voice_chat_menu(self, user: NetworkUser) -> None:
+        """Show global voice chat status, actions, and participants."""
+        in_voice = (
+            self._voice_presence_by_user.get(user.username, {}).get("scope") == "global"
+        )
+        enabled = self.global_voice_chat_enabled
+        items: list[MenuItem] = []
+        if not enabled:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "global-voice-chat-disabled-notice"),
+                    id="voice_disabled_notice",
+                    read_only=True,
+                )
+            )
+        else:
+            if in_voice:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(user.locale, "global-voice-chat-disconnect"),
+                        id="disconnect_voice",
+                        description_key="global-voice-chat-disconnect-description",
+                    )
+                )
+            else:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(user.locale, "global-voice-chat-connect"),
+                        id="connect_voice",
+                        description_key="global-voice-chat-connect-description",
+                    )
+                )
+
+            participants = [
+                uname
+                for uname, p in self._voice_presence_by_user.items()
+                if p.get("scope") == "global"
+            ]
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "global-voice-chat-participants-heading",
+                        count=len(participants),
+                    ),
+                    id="participants_heading",
+                    read_only=True,
+                )
+            )
+            if participants:
+                for uname in sorted(participants, key=lambda s: s.lower()):
+                    status_desc = Localization.get(
+                        user.locale,
+                        "voice-member-status-connected",
+                    )
+                    items.append(
+                        MenuItem(
+                            text=f"{uname} ({status_desc})",
+                            id=f"voice_participant_{uname}",
+                            read_only=True,
+                        )
+                    )
+            else:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale, "global-voice-chat-no-participants"
+                        ),
+                        id="no_participants",
+                        read_only=True,
+                    )
+                )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            "global_voice_chat_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "global_voice_chat_menu"}
+
+    async def _handle_global_voice_chat_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle interactions inside the global voice chat menu."""
+        if selection_id == "connect_voice":
+            if not self.global_voice_chat_enabled:
+                user.speak_l("voice-global-chat-disabled", buffer="system")
+                self._nav_refresh(user, self._show_global_voice_chat_menu)
+                return
+            mute_error = self._get_voice_mute_error(user.username)
+            if mute_error:
+                message_key, params = mute_error
+                user.speak_l(message_key, buffer="system", **params)
+                self._nav_refresh(user, self._show_global_voice_chat_menu)
+                return
+            if not self._voice_rate_limiter.try_consume(user.username):
+                user.speak_l("voice-rate-limited", buffer="system")
+                self._nav_refresh(user, self._show_global_voice_chat_menu)
+                return
+            joined = await self.force_voice_context_join(
+                user.username,
+                scope="global",
+                context_id="lobby",
+            )
+            if not joined:
+                user.speak_l("voice-unavailable", buffer="system")
+            self._nav_refresh(user, self._show_global_voice_chat_menu)
+        elif selection_id == "disconnect_voice":
+            await self.force_voice_context_leave(
+                user.username,
+                message_key="voice-status-disconnected",
+                scope="global",
+                context_id="lobby",
+            )
+            self._nav_refresh(user, self._show_global_voice_chat_menu)
+        elif selection_id == "back":
+            self._nav_back(user)
 
     def _show_personal_options_menu(self, user: NetworkUser) -> None:
         """Show the personal and options sub-menu."""
@@ -6625,6 +6926,9 @@ PlayAural Server
         elif selection_id == "friends":
             self._nav_push(user, self._show_friends_hub_menu)
         elif selection_id == "my_stats":
+            if not self._db.has_user_played_any_games(user.uuid):
+                user.speak_l("my-stats-no-games", buffer="system")
+                return
             self._nav_push(user, self._show_my_stats_menu)
         elif selection_id == "options":
             self._nav_push(user, self._show_options_menu)
@@ -6684,10 +6988,19 @@ PlayAural Server
     async def _handle_friends_hub_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle selection in friends hub."""
         if selection_id == "my_friends":
+            if not self._db.get_friend_records(user.uuid):
+                user.speak_l("friends-list-empty", buffer="system")
+                return
             self._nav_push(user, self._show_friends_list_menu)
         elif selection_id == "pending_requests":
+            if self._db.count_pending_incoming_requests(user.uuid) == 0:
+                user.speak_l("no-pending-requests", buffer="system")
+                return
             self._nav_push(user, self._show_friend_requests_menu)
         elif selection_id == "sent_requests":
+            if self._db.count_pending_outgoing_requests(user.uuid) == 0:
+                user.speak_l("no-sent-requests", buffer="system")
+                return
             self._nav_push(user, self._show_sent_friend_requests_menu)
         elif selection_id == "send_request":
             user.show_editbox(
@@ -6708,6 +7021,9 @@ PlayAural Server
             )
             self._enter_input_state(user, "report_user_input")
         elif selection_id == "blocked_users":
+            if self._db.count_blocked_users(user.uuid) == 0:
+                user.speak_l("friends-blocked-empty", buffer="system")
+                return
             self._nav_push(user, self._show_blocked_users_menu)
         elif selection_id == "back":
             self._nav_back(user)
@@ -9930,15 +10246,18 @@ PlayAural Server
                             game=local_game_name
                         )
 
-                min_players = game_class.get_min_players()
-                max_players = game_class.get_max_players()
-                user.speak_l(
-                    "waiting-for-players",
-                    buffer="game",
-                    current=len(game.players),
-                    min=min_players,
-                    max=max_players,
-                )
+                if game_class.is_social_activity:
+                    user.speak_l("free-table-ready", buffer="game")
+                else:
+                    min_players = game_class.get_min_players()
+                    max_players = game_class.get_max_players()
+                    user.speak_l(
+                        "waiting-for-players",
+                        buffer="game",
+                        current=len(game.players),
+                        min=min_players,
+                        max=max_players,
+                    )
 
         elif selection_id.startswith("table_"):
             table_id = selection_id[6:]  # Remove "table_" prefix
@@ -10476,6 +10795,11 @@ PlayAural Server
             MenuItem(text=Localization.get(locale, "host-management-pass-host"), id="pass_host"),
             MenuItem(text=Localization.get(locale, "host-management-kick"), id="kick_player"),
             MenuItem(text=Localization.get(locale, "host-management-kick-ban"), id="kick_ban_player"),
+            MenuItem(text=Localization.get(locale, "save-table"), id="save_table"),
+            MenuItem(
+                text=Localization.get(locale, "host-management-table-stats"),
+                id="table_stats",
+            ),
         ]
         if table.game and table.game.status == "playing":
             items.append(
@@ -10496,13 +10820,21 @@ PlayAural Server
         items.append(MenuItem(text=Localization.get(locale, "back"), id="back"))
         return items
 
+    def _can_manage_table(self, user: NetworkUser | None, table: "Table | None") -> bool:
+        """Return True if user is the table host, an admin, or a developer."""
+        if not user or not table:
+            return False
+        if table.host == user.username:
+            return True
+        return getattr(user, "trust_level", USER_TRUST_LEVEL) >= ADMIN_TRUST_LEVEL
+
     def _show_host_management_menu(self, user: NetworkUser, table: "Table") -> None:
         """Show the host management menu."""
         active_table = self._tables.get_table(table.table_id)
         if active_table is not table:
             self._return_to_game(user, active_table)
             return
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
         items = self._get_host_management_menu_items(user, table)
@@ -10539,7 +10871,7 @@ PlayAural Server
         table_id = state.get("table_id")
         table = self._tables.get_table(table_id)
 
-        if not table or table.host != user.username:
+        if not table or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
 
@@ -10552,24 +10884,66 @@ PlayAural Server
             self._nav_refresh(user, self._show_host_management_menu, table)
 
         elif selection_id == "invite_friend":
+            if not self._get_invitable_friends(user, table):
+                user.speak_l("host-invite-no-friends", buffer="system")
+                return
             self._nav_push(user, self._show_host_invite_menu, table)
 
         elif selection_id == "manage_voice":
+            if not self._has_host_voice_management_candidates(user, table):
+                user.speak_l("voice-host-management-no-members", buffer="system")
+                return
             self._nav_push(user, self._show_host_voice_management_menu, table)
 
         elif selection_id == "switch_game":
+            active_seats = len(self._substitutable_player_seats(table))
+            targets = [
+                game_class
+                for game_class, _ in self._get_localized_game_list(user, include_social=True)
+                if game_class.get_type() != table.game_type
+                and game_class.get_max_players() >= active_seats
+            ]
+            if not targets:
+                user.speak_l(
+                    "host-game-switch-no-compatible-games",
+                    buffer="system",
+                    seats=active_seats,
+                )
+                return
             self._nav_push(user, self._show_host_game_switch_menu, table)
 
         elif selection_id == "pass_host":
+            candidates = [
+                row["name"]
+                for row in self._table_member_rows(table)
+                if self._is_host_transfer_candidate(user, table, row)
+            ] if table.game else []
+            if not candidates:
+                user.speak_l("host-pass-no-candidates", buffer="system")
+                return
             self._nav_push(user, self._show_host_pass_menu, table)
 
         elif selection_id == "kick_player":
+            if not self._has_host_kick_candidates(user, table, ban=False):
+                user.speak_l("host-kick-no-candidates", buffer="system")
+                return
             self._nav_push(user, self._show_host_kick_menu, table, ban=False)
 
         elif selection_id == "kick_ban_player":
+            if not self._has_host_kick_candidates(user, table, ban=True):
+                user.speak_l("host-kick-no-candidates", buffer="system")
+                return
             self._nav_push(user, self._show_host_kick_menu, table, ban=True)
 
         elif selection_id == "player_substitution":
+            seats = self._substitutable_player_seats(table)
+            if not seats:
+                user.speak_l("player-substitution-no-seats", buffer="system")
+                return
+            spectators = self._eligible_substitution_spectators(table)
+            if not spectators:
+                user.speak_l("player-substitution-no-spectators", buffer="system")
+                return
             self._nav_push(user, self._show_host_substitution_seat_menu, table)
 
         elif selection_id == "restart_game":
@@ -10579,8 +10953,44 @@ PlayAural Server
                 return
             self._nav_push(user, self._show_host_restart_confirm_menu, table)
 
+        elif selection_id == "save_table":
+            self.on_table_save(table, user.username)
+
+        elif selection_id == "table_stats":
+            self._nav_push(user, self._show_table_stats_menu, table)
+
         elif selection_id == "back":
             self._nav_back(user)
+
+    def _has_host_kick_candidates(
+        self, user: NetworkUser, table: "Table", ban: bool = False
+    ) -> bool:
+        """Return True if there is at least one eligible target for kick or ban."""
+        if not table.game:
+            return False
+        for row in self._table_member_rows(table):
+            if row.get("kind") != "user" or row.get("name") == user.username:
+                continue
+            if not row.get("player"):
+                continue
+            if not ban and not row.get("is_table_member"):
+                continue
+            return True
+        return False
+
+    def _has_host_voice_management_candidates(
+        self, user: NetworkUser, table: "Table"
+    ) -> bool:
+        """Return True if there are any table members for the host to moderate."""
+        for row in self._table_member_rows(table):
+            account_id = str(row.get("account_id") or "")
+            if row.get("kind") != "user" or not account_id:
+                continue
+            host_muted = table.is_voice_host_muted(account_id)
+            if row.get("name") == user.username and not host_muted:
+                continue
+            return True
+        return False
 
     # --- Table Voice Controls ---
 
@@ -10666,7 +11076,7 @@ PlayAural Server
     ) -> None:
         if (
             self._tables.get_table(table.table_id) is not table
-            or table.host != user.username
+            or not self._can_manage_table(user, table)
         ):
             self._return_to_game(user, self._tables.get_table(table.table_id))
             return
@@ -10688,7 +11098,7 @@ PlayAural Server
         state: dict,
     ) -> None:
         table = self._tables.get_table(state.get("table_id"))
-        if not table or table.host != user.username:
+        if not table or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
         if selection_id == "back":
@@ -10720,7 +11130,7 @@ PlayAural Server
     ) -> None:
         if (
             self._tables.get_table(table.table_id) is not table
-            or table.host != user.username
+            or not self._can_manage_table(user, table)
         ):
             self._return_to_game(user, self._tables.get_table(table.table_id))
             return
@@ -10835,7 +11245,7 @@ PlayAural Server
             # desired state only now so two rapid actions cannot both apply the
             # same stale transition.
             table = self._tables.get_table(table_id)
-            if not table or table.host != user.username:
+            if not table or not self._can_manage_table(user, table):
                 self._return_to_game(user, table)
                 return
             row = self._resolve_voice_table_member(
@@ -10965,6 +11375,186 @@ PlayAural Server
                 target_name,
             )
 
+    # --- Table Statistics ---
+
+    def _show_table_stats_menu(self, user: NetworkUser, table: "Table") -> None:
+        """Show table statistics menu."""
+        active_table = self._tables.get_table(table.table_id)
+        if active_table is not table or not self._can_manage_table(user, table):
+            self._return_to_game(user, active_table)
+            return
+        items = self._get_table_stats_items(user, table)
+        user.show_menu(
+            HOST_TABLE_STATS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {
+            "menu": HOST_TABLE_STATS_MENU,
+            "table_id": table.table_id,
+        }
+
+    def _get_table_stats_items(
+        self, user: NetworkUser, table: "Table"
+    ) -> list[MenuItem]:
+        """Build items for the table statistics menu."""
+        locale = user.locale
+        created_dt = datetime.fromtimestamp(table.created_at)
+        formatted_date = created_dt.strftime("%d/%m/%Y, %H:%M")
+
+        elapsed_seconds = max(0, int(time.time() - table.created_at))
+        duration_text = self._format_uptime_duration(locale, elapsed_seconds)
+
+        user_joined = getattr(table, "_member_joined_at", {}).get(user.username, table.created_at)
+        user_duration_text = self._format_uptime_duration(locale, max(0, int(time.time() - user_joined)))
+
+        peak_count = max(1, getattr(table, "peak_occupancy", len(table.members)), len(table.members))
+        visitors = getattr(table, "total_unique_visitors", set())
+        visitors_count = max(len(visitors), len(table.members), 1)
+
+        game_name_key = f"game-name-{table.game_type}"
+        game_name = Localization.get(locale, game_name_key)
+        if game_name == game_name_key and table.game:
+            game_name = table.game.get_name()
+
+        participants = [m.username for m in table.members if not m.is_spectator]
+        participants_with_time = []
+        for m_name in participants:
+            m_joined = getattr(table, "_member_joined_at", {}).get(m_name, table.created_at)
+            m_dur = self._format_uptime_duration(locale, max(0, int(time.time() - m_joined)))
+            participants_with_time.append(f"{m_name} ({m_dur})")
+        participants_text = (
+            ", ".join(participants_with_time)
+            if participants_with_time
+            else Localization.get(locale, "none")
+        )
+
+        spectators = [m.username for m in table.members if m.is_spectator]
+        spectators_with_time = []
+        for s_name in spectators:
+            s_joined = getattr(table, "_member_joined_at", {}).get(s_name, table.created_at)
+            s_dur = self._format_uptime_duration(locale, max(0, int(time.time() - s_joined)))
+            spectators_with_time.append(f"{s_name} ({s_dur})")
+        spectators_text = ", ".join(spectators_with_time)
+
+        items = [
+            MenuItem(
+                text=Localization.get(locale, "table-stats-created-at", date=formatted_date),
+                id="stat_created_at",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-uptime", duration=duration_text),
+                id="stat_uptime",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-user-duration", duration=user_duration_text),
+                id="stat_user_duration",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-peak", count=peak_count),
+                id="stat_peak",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-total-visitors", count=visitors_count),
+                id="stat_total_visitors",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-game", game=game_name),
+                id="stat_game",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-host", host=table.host),
+                id="stat_host",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    locale,
+                    "table-stats-members",
+                    count=len(participants),
+                    members=participants_text,
+                ),
+                id="stat_members",
+                read_only=True,
+            ),
+            MenuItem(
+                text=(
+                    Localization.get(
+                        locale,
+                        "table-stats-spectators",
+                        count=len(spectators),
+                        spectators=spectators_text,
+                    )
+                    if spectators
+                    else Localization.get(locale, "table-stats-spectators-none")
+                ),
+                id="stat_spectators",
+                read_only=True,
+            ),
+            MenuItem(text=Localization.get(locale, "back"), id="back"),
+        ]
+        return items
+
+    @classmethod
+    def _format_uptime_duration(cls, locale: str, seconds: int) -> str:
+        """Format elapsed seconds into localized human-readable duration."""
+        seconds = max(0, int(seconds))
+        if seconds < 60:
+            return Localization.get(locale, "duration-seconds", count=max(1, seconds))
+        minutes = seconds // 60
+        remaining_seconds = seconds % 60
+        if minutes < 60:
+            if remaining_seconds:
+                return Localization.get(
+                    locale,
+                    "duration-minutes-seconds",
+                    minutes=minutes,
+                    seconds=remaining_seconds,
+                )
+            return Localization.get(locale, "duration-minutes", count=minutes)
+        hours = minutes // 60
+        remaining_minutes = minutes % 60
+        if hours < 24:
+            if remaining_minutes:
+                return Localization.get(
+                    locale,
+                    "duration-hours-minutes",
+                    hours=hours,
+                    minutes=remaining_minutes,
+                )
+            return Localization.get(locale, "duration-hours", count=hours)
+        days = hours // 24
+        remaining_hours = hours % 24
+        if remaining_hours:
+            return Localization.get(
+                locale,
+                "duration-days-hours",
+                days=days,
+                hours=remaining_hours,
+            )
+        return Localization.get(locale, "duration-days", count=days)
+
+    async def _handle_table_stats_selection(
+        self,
+        user: NetworkUser,
+        selection_id: str,
+        state: dict,
+    ) -> None:
+        """Handle selection in table statistics menu."""
+        table = self._tables.get_table(state.get("table_id"))
+        if not table or not self._can_manage_table(user, table):
+            self._return_to_game(user, table)
+            return
+        if selection_id == "back":
+            self._nav_back(user)
+
     # --- Switch Game ---
 
     def _get_host_game_switch_menu_items(
@@ -10995,7 +11585,7 @@ PlayAural Server
             ], page_data
         targets = [
             (game_class, name)
-            for game_class, name in self._get_localized_game_list(user)
+            for game_class, name in self._get_localized_game_list(user, include_social=True)
             if game_class.get_type() != table.game_type
             and game_class.get_max_players() >= active_seats
         ]
@@ -11074,7 +11664,7 @@ PlayAural Server
         if (
             self._tables.get_table(table.table_id) is not table
             or not table.game
-            or table.host != user.username
+            or not self._can_manage_table(user, table)
         ):
             self._return_to_game(user, table)
             return
@@ -11121,7 +11711,7 @@ PlayAural Server
         state: dict,
     ) -> None:
         table = self._tables.get_table(str(state.get("table_id") or ""))
-        if not table or not table.game or table.host != user.username:
+        if not table or not table.game or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
 
@@ -11194,7 +11784,7 @@ PlayAural Server
         if (
             self._tables.get_table(table.table_id) is not table
             or not table.game
-            or table.host != user.username
+            or not self._can_manage_table(user, table)
             or not target_class
             or target_game_type == table.game_type
         ):
@@ -11203,7 +11793,11 @@ PlayAural Server
         show_confirmation_menu(
             user,
             HOST_GAME_SWITCH_CONFIRM_MENU,
-            prompt_key="host-game-switch-confirm",
+            prompt_key=(
+                "host-game-switch-confirm-free-table"
+                if target_class.is_social_activity
+                else "host-game-switch-confirm"
+            ),
             prompt_kwargs={
                 "old_game": (
                     Localization.get(user.locale, current_class.get_name_key())
@@ -11230,7 +11824,7 @@ PlayAural Server
         state: dict,
     ) -> None:
         table = self._tables.get_table(str(state.get("table_id") or ""))
-        if not table or not table.game or table.host != user.username:
+        if not table or not table.game or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
         if selection_id == "no":
@@ -11325,7 +11919,7 @@ PlayAural Server
         table_id = state.get("table_id")
         table = self._tables.get_table(table_id)
 
-        if not table or table.host != user.username:
+        if not table or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
 
@@ -11390,7 +11984,7 @@ PlayAural Server
         """Build the first substitution step: choose an active player seat."""
         locale = user.locale
         items: list[MenuItem] = []
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             items.append(
                 MenuItem(
                     text=Localization.get(locale, "host-management-no-longer-host"),
@@ -11468,7 +12062,7 @@ PlayAural Server
             player.id: player for player in self._substitutable_player_seats(table)
         }
         items: list[MenuItem] = []
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             items.append(
                 MenuItem(
                     text=Localization.get(locale, "host-management-no-longer-host"),
@@ -11542,7 +12136,7 @@ PlayAural Server
     ) -> None:
         """Validate a selected seat before showing eligible spectators."""
         table = self._tables.get_table(state.get("table_id"))
-        if not table or not table.game or table.host != user.username:
+        if not table or not table.game or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
         if selection_id == "back":
@@ -11573,7 +12167,7 @@ PlayAural Server
     ) -> None:
         """Initiate consent, then return the host directly to the game."""
         table = self._tables.get_table(state.get("table_id"))
-        if not table or not table.game or table.host != user.username:
+        if not table or not table.game or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
         if selection_id == "back":
@@ -11698,7 +12292,7 @@ PlayAural Server
         )
         if (
             not game
-            or table.host != host_user.username
+            or not self._can_manage_table(host_user, table)
             or self._users.get(host_user.username) is not host_user
             or self._users.get(incoming_name) is not spectator_user
             or table.get_user(incoming_name) is not spectator_user
@@ -12093,14 +12687,17 @@ PlayAural Server
         game = table.game if table else None
         incoming_name = str(request.get("incoming_username") or "")
         incoming_user = self._users.get(incoming_name)
+        manager_name = str(request.get("host_username") or "")
+        manager_user = self._users.get(manager_name)
         if (
             not table
             or not game
             or not incoming_user
+            or not manager_user
+            or manager_user.uuid != request.get("host_uuid")
+            or not self._can_manage_table(manager_user, table)
             or game.status != "playing"
             or id(game) != request.get("game_identity")
-            or table.host != request.get("host_username")
-            or self._table_host_uuid(table) != request.get("host_uuid")
             or incoming_user.uuid != request.get("incoming_uuid")
             or self._tables.find_user_table(incoming_name) is not table
             or self._gameplay_substitution_locked(game)
@@ -12168,7 +12765,7 @@ PlayAural Server
         elif not seat.is_bot:
             return None
 
-        participant_uuids = {host_user.uuid, incoming_user.uuid}
+        participant_uuids = {host_user.uuid, manager_user.uuid, incoming_user.uuid}
         if outgoing_user is not None:
             participant_uuids.add(outgoing_user.uuid)
         if any(
@@ -12474,7 +13071,7 @@ PlayAural Server
             not table
             or self._tables.get_table(table.table_id) is not table
             or not table.game
-            or table.host != host_user.username
+            or not self._can_manage_table(host_user, table)
             or self._users.get(host_user.username) is not host_user
             or self._users.get(invitee_user.username) is not invitee_user
             or host_user.username == invitee_user.username
@@ -12524,7 +13121,7 @@ PlayAural Server
         if (
             not host_user
             or host_user.uuid != invite.get("host_uuid")
-            or table.host != host_name
+            or not self._can_manage_table(host_user, table)
             or table.game_type != invite.get("game_type")
             or self._table_invite_eligibility_error(
                 host_user,
@@ -12586,7 +13183,7 @@ PlayAural Server
 
     def _show_host_invite_menu(self, user: NetworkUser, table: "Table") -> None:
         """Show the invite friends menu."""
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
         items = self._get_host_invite_menu_items(user, table)
@@ -12608,7 +13205,7 @@ PlayAural Server
         table_id = state.get("table_id")
         table = self._tables.get_table(table_id)
 
-        if not table or table.host != user.username:
+        if not table or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
 
@@ -12905,7 +13502,7 @@ PlayAural Server
         """Build items for the pass-host menu."""
         locale = user.locale
         items: list[MenuItem] = []
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             return [
                 MenuItem(
                     text=Localization.get(locale, "host-pass-no-longer-host"),
@@ -12944,7 +13541,7 @@ PlayAural Server
         self, user: NetworkUser, table: "Table", new_host_name: str
     ) -> bool:
         """Transfer host to a valid active human player."""
-        if not table or not table.game or table.host != user.username:
+        if not table or not table.game or not self._can_manage_table(user, table):
             user.speak_l("action-not-host", buffer="system")
             return False
 
@@ -12987,11 +13584,7 @@ PlayAural Server
         table_id = state.get("table_id")
         table = self._tables.get_table(table_id)
 
-        if not table:
-            self._return_to_game(user, table)
-            return
-
-        if table.host != user.username:
+        if not table or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
 
@@ -13017,7 +13610,7 @@ PlayAural Server
         locale = user.locale
         spectator_suffix = Localization.get(locale, "table-spectator-suffix")
         items: list[MenuItem] = []
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             return [
                 MenuItem(
                     text=Localization.get(locale, "host-management-no-longer-host"),
@@ -13059,7 +13652,7 @@ PlayAural Server
 
     def _show_host_kick_menu(self, user: NetworkUser, table: "Table", ban: bool) -> None:
         """Show the kick (or kick-and-ban) player menu."""
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
         items = self._get_host_kick_menu_items(user, table, ban=ban)
@@ -13085,7 +13678,7 @@ PlayAural Server
         is_ban: bool = False,
     ) -> bool:
         """Remove a live member or permanently release a reserved seat."""
-        if not table or not table.game or table.host != user.username:
+        if not table or not table.game or not self._can_manage_table(user, table):
             user.speak_l("action-not-host", buffer="system")
             return False
 
@@ -13200,7 +13793,7 @@ PlayAural Server
         table = self._tables.get_table(table_id)
         is_ban = state.get("ban", False)
 
-        if not table or table.host != user.username:
+        if not table or not self._can_manage_table(user, table):
             self._return_to_game(user, table)
             return
 
@@ -13393,11 +13986,11 @@ PlayAural Server
         account_id = str(row.get("account_id") or "")
         return bool(
             table.game
-            and table.host == user.username
+            and self._can_manage_table(user, table)
             and row.get("kind") == "user"
-            and row.get("name") != user.username
+            and row.get("name") != table.host
             and row.get("is_table_member")
-            and not row.get("is_spectator")
+            and (not row.get("is_spectator") or table.game.is_social_activity)
             and not row.get("is_replaced_by_bot")
             and player
             and account_id
@@ -13577,7 +14170,7 @@ PlayAural Server
         items: list[MenuItem] = []
         target_name = row["name"]
         is_self = target_name == user.username
-        is_host = table.host == user.username
+        is_host = self._can_manage_table(user, table)
         row_account_id = str(row.get("account_id") or "")
         target_record = (
             self._resolve_table_member_account(row)
@@ -14123,7 +14716,7 @@ PlayAural Server
         if not game:
             self._return_to_game(user, table)
             return False
-        if table.host != user.username:
+        if not self._can_manage_table(user, table):
             user.speak_l("action-not-host", buffer="system")
             return False
         if game.status != "waiting":
@@ -14244,7 +14837,7 @@ PlayAural Server
         elif selection_id == "table_offer_substitution":
             seat = row.get("player")
             if (
-                table.host != user.username
+                not self._can_manage_table(user, table)
                 or not seat
                 or not any(
                     candidate is seat
@@ -14916,6 +15509,40 @@ PlayAural Server
         lb_id = selection_id[5:]
         return any(config["id"] == lb_id for config in game_class.get_leaderboard_types())
 
+    def _leaderboard_has_entries(self, game_type: str, selection_id: str) -> bool:
+        """Return whether a leaderboard type selection has any score records."""
+        if selection_id == "type_wins":
+            return bool(self._db.get_top_wins_with_losses(game_type, limit=1))
+        if selection_id == "type_rating":
+            return bool(RatingHelper(self._db, game_type).get_leaderboard(limit=1))
+        if selection_id == "type_total_score":
+            return bool(self._db.get_top_player_game_stats(game_type, "total_score", limit=1))
+        if selection_id == "type_high_score":
+            return bool(self._db.get_top_player_game_stats(game_type, "high_score", limit=1))
+        if selection_id == "type_games_played":
+            return bool(self._db.get_top_player_game_stats(game_type, "games_played", limit=1))
+        if selection_id.startswith("type_"):
+            lb_id = selection_id[5:]
+            game_class = get_game_class(game_type)
+            if not game_class:
+                return False
+            for config in game_class.get_leaderboard_types():
+                if config.get("id") == lb_id:
+                    is_ratio = "numerator" in config and "denominator" in config
+                    is_avg = (config.get("aggregate") == "avg")
+                    if is_ratio or is_avg:
+                        if is_avg:
+                            num_key = f"custom_{lb_id}_sum"
+                            denom_key = f"custom_{lb_id}_count"
+                        else:
+                            num_key = f"custom_{lb_id}_numerator"
+                            denom_key = f"custom_{lb_id}_denominator"
+                        return bool(self._db.get_top_ratio_stats(game_type, num_key, denom_key))
+                    else:
+                        stat_key = f"custom_{lb_id}_high" if config.get("aggregate") == "max" else f"custom_{lb_id}"
+                        return bool(self._db.get_top_player_game_stats(game_type, stat_key, limit=1))
+        return False
+
     def _show_wins_leaderboard(
         self, user: NetworkUser, game_type: str, game_name: str
     ) -> None:
@@ -15312,6 +15939,14 @@ PlayAural Server
             return
 
         if self._leaderboard_selection_exists(game_type, selection_id):
+            if not self._leaderboard_has_entries(game_type, selection_id):
+                key = (
+                    "leaderboard-no-ratings"
+                    if selection_id == "type_rating"
+                    else "leaderboard-no-data"
+                )
+                user.speak_l(key, buffer="system")
+                return
             self._nav_push(
                 user,
                 self._show_leaderboard_for_selection,
@@ -17233,6 +17868,8 @@ PlayAural Server
                     str(frame.get("target_name") or ""),
                     focus_current=False,
                 )
+            elif menu == HOST_TABLE_STATS_MENU:
+                self._show_table_stats_menu(user, table)
             else:
                 self._return_to_game(user, table)
             if username in self._user_states:
@@ -17278,6 +17915,8 @@ PlayAural Server
             self._show_notifications_submenu(user)
         elif menu == "global_chat_channel_menu":
             self._show_global_chat_channel_menu(user)
+        elif menu == "global_voice_chat_menu":
+            self._show_global_voice_chat_menu(user)
         elif menu == "game_options_menu":
             self._show_game_options_menu(user)
         elif menu == "pref_category_menu":

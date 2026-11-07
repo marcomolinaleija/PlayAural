@@ -124,7 +124,7 @@ Aturan penukaran kartu menentukan apakah pemain boleh menukar hingga 3 kartu, at
 
 Tombol 1 hingga 5 memilih atau membatalkan pilihan kartu saat tahap penukaran. \*\*D\*\* menukar kartu yang dipilih, atau menyimpan semua kartu jika tidak ada yang dipilih.
 
-\*\*W\*\* untuk membaca kartu Anda. \*\*G\*\* untuk membaca kekuatan kombinasi.
+\*\*Alt+W\*\* untuk membaca kartu Anda. \*\*G\*\* untuk membaca kekuatan kombinasi.
 
 \*\*P\*\* untuk memeriksa pot. \*\*N\*\* untuk memeriksa jumlah untuk call. \*\*M\*\* untuk memeriksa rentang raise yang tersedia. \*\*H\*\* untuk memeriksa pemain dalam ronde.
 

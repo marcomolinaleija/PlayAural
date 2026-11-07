@@ -151,6 +151,17 @@ class ActionSetCreationMixin:
         )
         action_set.add(
             Action(
+                id="toggle_privacy",
+                label=Localization.get(locale, "host-management-set-private"),
+                handler="_action_toggle_privacy",
+                is_enabled="_is_toggle_privacy_enabled",
+                is_hidden="_is_toggle_privacy_hidden",
+                show_in_actions_menu=False,
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
                 id="leave_game",
                 label=Localization.get(locale, "leave-table"),
                 handler="_action_leave_game",
@@ -211,6 +222,7 @@ class ActionSetCreationMixin:
                 include_spectators=True,
             )
         )
+        action_set.add(self._create_table_presence_action(player))
         action_set.add(
             Action(
                 id="check_scores",
@@ -252,6 +264,24 @@ class ActionSetCreationMixin:
             )
         )
         return action_set
+
+    def _create_table_presence_action(self, player: "Player") -> Action:
+        """Build the shared spoken roster for new and restored participants."""
+        user = self.get_user(player)
+        return Action(
+            id="read_table_presence",
+            label=Localization.get(user.locale if user else "en", "read-table-presence"),
+            handler="_action_read_table_presence",
+            is_enabled="_is_whos_at_table_enabled",
+            is_hidden="_is_read_table_presence_hidden",
+            include_spectators=True,
+        )
+
+    def _ensure_table_presence_action(self, player: "Player") -> None:
+        """Upgrade an older serialized action set without replacing game-owned actions."""
+        standard = self.get_action_set(player, "standard")
+        if standard is not None and standard.get_action("read_table_presence") is None:
+            standard.add(self._create_table_presence_action(player))
 
     def _order_touch_standard_actions(
         self, action_set: ActionSet, target_order: list[str]
@@ -304,6 +334,20 @@ class ActionSetCreationMixin:
             include_spectators=True,
         )
         self.define_keybind(
+            "ctrl+p",
+            "Toggle table privacy",
+            ["toggle_privacy"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "q",
+            "Leave table",
+            ["leave_game"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
             "ctrl+q",
             "Leave table",
             ["leave_game"],
@@ -334,6 +378,20 @@ class ActionSetCreationMixin:
             "ctrl+u",
             "Who's at the table",
             ["whos_at_table"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "ctrl+w",
+            "Who's at the table",
+            ["whos_at_table"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "w",
+            "Read table participants and host",
+            ["read_table_presence"],
             state=KeybindState.ALWAYS,
             include_spectators=True,
         )

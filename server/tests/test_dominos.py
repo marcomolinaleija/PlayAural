@@ -411,7 +411,7 @@ def test_custom_dominos_keybinds_avoid_reserved_keys() -> None:
         if any(action in custom_actions for action in bind.actions)
     }
 
-    assert custom_keys == {"space", "p", "v", "c", "e", "w"}
+    assert custom_keys == {"space", "p", "v", "c", "e", "alt+w"}
     assert custom_keys.isdisjoint({"s", "t", "escape", "enter"})
 
 

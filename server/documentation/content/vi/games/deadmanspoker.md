@@ -180,7 +180,7 @@ Poker Tử Thần hiện dùng luật cố định. Chủ bàn không có tùy c
 \* \*\*F:\*\* Bỏ bài, hoặc Bỏ non khi đó là ngữ cảnh bỏ bài hiện tại.
 \* \*\*D:\*\* Đổi bài.
 \* \*\*Shift+A:\*\* Tất tay, hoặc Theo tất tay khi đang phản ứng với tất tay.
-\* \*\*W:\*\* Đọc bài riêng.
+\* \*\*Alt+W:\*\* Đọc bài riêng.
 \* \*\*G:\*\* Đọc sức mạnh tay bài.
 \* \*\*E:\*\* Đọc bài chung.
 \* \*\*V:\*\* Đọc đầy đủ tình hình bàn.
