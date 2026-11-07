@@ -6,6 +6,8 @@ A free table is a place to talk by text and voice without starting a game. There
 
 Choose Create a free table in the main menu to become its host. Other people can find a public table in Active tables, or join by invitation. Choose Leave table to leave. When the host leaves, another person at the table becomes host; the table closes when nobody remains.
 
+The main area is blank and can receive focus. Press Escape to open the table actions, or use the Actions control on touch clients. Keyboard shortcuts remain available from the blank area.
+
 \*\*Participants and Voice\*\*
 
 Use Who's at the table to open the participants menu. Read participants and table host announces how many people are present, their names, and the host. Spectators carried over from a game are included. Bots in a game are announced separately and are not counted as people.

@@ -6,7 +6,9 @@ from typing import ClassVar
 from ..base import Game, Player
 from ..registry import register_game
 from ...game_utils.actions import Action, ActionSet, Visibility
+from ...game_utils.menu_management_mixin import MenuBuild
 from ...messages.localization import Localization
+from ...users.base import MenuItem, User
 
 
 @register_game
@@ -37,6 +39,10 @@ class FreeTable(Game):
         if is_bot:
             raise ValueError("Free tables only admit people")
         return Player(id=player_id, name=name)
+
+    def build_menu_items(self, player: Player, user: User) -> MenuBuild:
+        # Keep a stable, focusable surface without duplicating the Escape menu.
+        return MenuBuild(items=[MenuItem(text="", id="free_table_space", read_only=True)])
 
     def create_lobby_action_set(self, player: Player) -> ActionSet:
         actions = super().create_lobby_action_set(player)
