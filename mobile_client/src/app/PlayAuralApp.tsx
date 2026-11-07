@@ -254,7 +254,7 @@ type VoiceCapability = {
 
 type VoiceContextState = {
   contextId: string;
-  scope: "table";
+  scope: "table" | "global";
 };
 
 type DialogAction = {
@@ -2833,7 +2833,7 @@ export function PlayAuralApp() {
           if (serverRequested && !voice.supported) {
             connectionRef.current?.send({
               context_id: packetContextId,
-              scope: "table",
+              scope: packetScope,
               type: "voice_leave",
             });
             voiceJoinPendingRef.current = false;
@@ -2851,7 +2851,7 @@ export function PlayAuralApp() {
           voiceJoinPendingRef.current = false;
           updateVoiceContext({
             contextId: packetContextId,
-            scope: "table",
+            scope: packetScope === "global" ? "global" : "table",
           });
           setVoiceRequestedContextId("");
           if (voicePacket.settings) {
