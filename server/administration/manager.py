@@ -2889,6 +2889,9 @@ class AdministrationManager:
     ) -> None:
         """Handle admin menu selection."""
         if selection_id == "account_approval":
+            if self.server.db.count_pending_users() == 0:
+                user.speak_l("no-pending-accounts", buffer="system")
+                return
             self.server._nav_push(user, self._show_account_approval_menu)
         elif selection_id == "moderation":
             self.server._nav_push(user, self._show_moderation_menu)
@@ -3459,14 +3462,23 @@ class AdministrationManager:
                         self._show_moderation_menu,
                     )
         elif selection_id == "reports_open":
+            if self.server.db.count_moderation_reports(status="open") == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "open"
             )
         elif selection_id == "reports_closed":
+            if self.server.db.count_moderation_reports(statuses=CLOSED_REPORT_STATUSES) == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "closed"
             )
         elif selection_id == "reports_all":
+            if self.server.db.count_moderation_reports() == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "all"
             )

@@ -6592,6 +6592,9 @@ PlayAural Server
         elif selection_id == "active_tables":
             self._nav_push(user, self._show_active_tables_menu)
         elif selection_id == "saved_tables":
+            if self._db.count_user_saved_tables(user.username) == 0:
+                user.speak_l("no-saved-tables", buffer="system")
+                return
             self._nav_push(user, self._show_saved_tables_menu)
         elif selection_id == "leaderboards":
             self._nav_push(user, self._show_leaderboards_menu)
@@ -6645,6 +6648,9 @@ PlayAural Server
         elif selection_id == "friends":
             self._nav_push(user, self._show_friends_hub_menu)
         elif selection_id == "my_stats":
+            if not self._db.has_user_played_any_games(user.uuid):
+                user.speak_l("my-stats-no-games", buffer="system")
+                return
             self._nav_push(user, self._show_my_stats_menu)
         elif selection_id == "options":
             self._nav_push(user, self._show_options_menu)
@@ -6704,10 +6710,19 @@ PlayAural Server
     async def _handle_friends_hub_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle selection in friends hub."""
         if selection_id == "my_friends":
+            if not self._db.get_friend_records(user.uuid):
+                user.speak_l("friends-list-empty", buffer="system")
+                return
             self._nav_push(user, self._show_friends_list_menu)
         elif selection_id == "pending_requests":
+            if self._db.count_pending_incoming_requests(user.uuid) == 0:
+                user.speak_l("no-pending-requests", buffer="system")
+                return
             self._nav_push(user, self._show_friend_requests_menu)
         elif selection_id == "sent_requests":
+            if self._db.count_pending_outgoing_requests(user.uuid) == 0:
+                user.speak_l("no-sent-requests", buffer="system")
+                return
             self._nav_push(user, self._show_sent_friend_requests_menu)
         elif selection_id == "send_request":
             user.show_editbox(
@@ -6728,6 +6743,9 @@ PlayAural Server
             )
             self._enter_input_state(user, "report_user_input")
         elif selection_id == "blocked_users":
+            if self._db.count_blocked_users(user.uuid) == 0:
+                user.speak_l("friends-blocked-empty", buffer="system")
+                return
             self._nav_push(user, self._show_blocked_users_menu)
         elif selection_id == "back":
             self._nav_back(user)
@@ -10583,24 +10601,66 @@ PlayAural Server
             self._nav_refresh(user, self._show_host_management_menu, table)
 
         elif selection_id == "invite_friend":
+            if not self._get_invitable_friends(user, table):
+                user.speak_l("host-invite-no-friends", buffer="system")
+                return
             self._nav_push(user, self._show_host_invite_menu, table)
 
         elif selection_id == "manage_voice":
+            if not self._has_host_voice_management_candidates(user, table):
+                user.speak_l("voice-host-management-no-members", buffer="system")
+                return
             self._nav_push(user, self._show_host_voice_management_menu, table)
 
         elif selection_id == "switch_game":
+            active_seats = len(self._substitutable_player_seats(table))
+            targets = [
+                game_class
+                for game_class, _ in self._get_localized_game_list(user, include_social=True)
+                if game_class.get_type() != table.game_type
+                and game_class.get_max_players() >= active_seats
+            ]
+            if not targets:
+                user.speak_l(
+                    "host-game-switch-no-compatible-games",
+                    buffer="system",
+                    seats=active_seats,
+                )
+                return
             self._nav_push(user, self._show_host_game_switch_menu, table)
 
         elif selection_id == "pass_host":
+            candidates = [
+                row["name"]
+                for row in self._table_member_rows(table)
+                if self._is_host_transfer_candidate(user, table, row)
+            ] if table.game else []
+            if not candidates:
+                user.speak_l("host-pass-no-candidates", buffer="system")
+                return
             self._nav_push(user, self._show_host_pass_menu, table)
 
         elif selection_id == "kick_player":
+            if not self._has_host_kick_candidates(user, table, ban=False):
+                user.speak_l("host-kick-no-candidates", buffer="system")
+                return
             self._nav_push(user, self._show_host_kick_menu, table, ban=False)
 
         elif selection_id == "kick_ban_player":
+            if not self._has_host_kick_candidates(user, table, ban=True):
+                user.speak_l("host-kick-no-candidates", buffer="system")
+                return
             self._nav_push(user, self._show_host_kick_menu, table, ban=True)
 
         elif selection_id == "player_substitution":
+            seats = self._substitutable_player_seats(table)
+            if not seats:
+                user.speak_l("player-substitution-no-seats", buffer="system")
+                return
+            spectators = self._eligible_substitution_spectators(table)
+            if not spectators:
+                user.speak_l("player-substitution-no-spectators", buffer="system")
+                return
             self._nav_push(user, self._show_host_substitution_seat_menu, table)
 
         elif selection_id == "restart_game":
@@ -10612,6 +10672,36 @@ PlayAural Server
 
         elif selection_id == "back":
             self._nav_back(user)
+
+    def _has_host_kick_candidates(
+        self, user: NetworkUser, table: "Table", ban: bool = False
+    ) -> bool:
+        """Return True if there is at least one eligible target for kick or ban."""
+        if not table.game:
+            return False
+        for row in self._table_member_rows(table):
+            if row.get("kind") != "user" or row.get("name") == user.username:
+                continue
+            if not row.get("player"):
+                continue
+            if not ban and not row.get("is_table_member"):
+                continue
+            return True
+        return False
+
+    def _has_host_voice_management_candidates(
+        self, user: NetworkUser, table: "Table"
+    ) -> bool:
+        """Return True if there are any table members for the host to moderate."""
+        for row in self._table_member_rows(table):
+            account_id = str(row.get("account_id") or "")
+            if row.get("kind") != "user" or not account_id:
+                continue
+            host_muted = table.is_voice_host_muted(account_id)
+            if row.get("name") == user.username and not host_muted:
+                continue
+            return True
+        return False
 
     # --- Table Voice Controls ---
 
@@ -14950,6 +15040,40 @@ PlayAural Server
         lb_id = selection_id[5:]
         return any(config["id"] == lb_id for config in game_class.get_leaderboard_types())
 
+    def _leaderboard_has_entries(self, game_type: str, selection_id: str) -> bool:
+        """Return whether a leaderboard type selection has any score records."""
+        if selection_id == "type_wins":
+            return bool(self._db.get_top_wins_with_losses(game_type, limit=1))
+        if selection_id == "type_rating":
+            return bool(RatingHelper(self._db, game_type).get_leaderboard(limit=1))
+        if selection_id == "type_total_score":
+            return bool(self._db.get_top_player_game_stats(game_type, "total_score", limit=1))
+        if selection_id == "type_high_score":
+            return bool(self._db.get_top_player_game_stats(game_type, "high_score", limit=1))
+        if selection_id == "type_games_played":
+            return bool(self._db.get_top_player_game_stats(game_type, "games_played", limit=1))
+        if selection_id.startswith("type_"):
+            lb_id = selection_id[5:]
+            game_class = get_game_class(game_type)
+            if not game_class:
+                return False
+            for config in game_class.get_leaderboard_types():
+                if config.get("id") == lb_id:
+                    is_ratio = "numerator" in config and "denominator" in config
+                    is_avg = (config.get("aggregate") == "avg")
+                    if is_ratio or is_avg:
+                        if is_avg:
+                            num_key = f"custom_{lb_id}_sum"
+                            denom_key = f"custom_{lb_id}_count"
+                        else:
+                            num_key = f"custom_{lb_id}_numerator"
+                            denom_key = f"custom_{lb_id}_denominator"
+                        return bool(self._db.get_top_ratio_stats(game_type, num_key, denom_key))
+                    else:
+                        stat_key = f"custom_{lb_id}_high" if config.get("aggregate") == "max" else f"custom_{lb_id}"
+                        return bool(self._db.get_top_player_game_stats(game_type, stat_key, limit=1))
+        return False
+
     def _show_wins_leaderboard(
         self, user: NetworkUser, game_type: str, game_name: str
     ) -> None:
@@ -15346,6 +15470,14 @@ PlayAural Server
             return
 
         if self._leaderboard_selection_exists(game_type, selection_id):
+            if not self._leaderboard_has_entries(game_type, selection_id):
+                key = (
+                    "leaderboard-no-ratings"
+                    if selection_id == "type_rating"
+                    else "leaderboard-no-data"
+                )
+                user.speak_l(key, buffer="system")
+                return
             self._nav_push(
                 user,
                 self._show_leaderboard_for_selection,
