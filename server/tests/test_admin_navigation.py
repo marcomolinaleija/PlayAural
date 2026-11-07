@@ -1538,6 +1538,8 @@ async def test_admin_unmute_menu_shows_penalty_details(tmp_path) -> None:
 async def test_admin_submenu_back_restores_admin_focus_and_outer_stack(tmp_path) -> None:
     server, admin = _make_admin_server(tmp_path)
     try:
+        target = MockUser("KickTarget", uuid="uuid-target")
+        server._users[target.username] = target
         await _select(server, admin, "main_menu", "administration")
         assert _current_menu(server, admin.username) == "admin_menu"
 
