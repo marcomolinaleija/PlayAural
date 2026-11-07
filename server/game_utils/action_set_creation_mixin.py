@@ -156,6 +156,7 @@ class ActionSetCreationMixin:
                 handler="_action_toggle_privacy",
                 is_enabled="_is_toggle_privacy_enabled",
                 is_hidden="_is_toggle_privacy_hidden",
+                show_in_actions_menu=False,
                 include_spectators=True,
             )
         )
