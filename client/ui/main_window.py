@@ -586,8 +586,18 @@ class MainWindow(wx.Frame):
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("C"), self.ID_FOCUS_CHAT),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("V"), self.ID_TOGGLE_VOICE_CHAT),
             wx.AcceleratorEntry(
+                wx.ACCEL_CTRL | wx.ACCEL_SHIFT,
+                ord("V"),
+                self.ID_TOGGLE_VOICE_CHAT,
+            ),
+            wx.AcceleratorEntry(
                 wx.ACCEL_ALT | wx.ACCEL_SHIFT,
                 ord("V"),
+                self.ID_TOGGLE_VOICE_MIC,
+            ),
+            wx.AcceleratorEntry(
+                wx.ACCEL_CTRL | wx.ACCEL_SHIFT,
+                ord("M"),
                 self.ID_TOGGLE_VOICE_MIC,
             ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("H"), self.ID_FOCUS_HISTORY),

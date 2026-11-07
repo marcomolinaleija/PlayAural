@@ -2889,22 +2889,46 @@ class AdministrationManager:
     ) -> None:
         """Handle admin menu selection."""
         if selection_id == "account_approval":
+            if self.server.db.count_pending_users() == 0:
+                user.speak_l("no-pending-accounts", buffer="system")
+                return
             self.server._nav_push(user, self._show_account_approval_menu)
         elif selection_id == "moderation":
             self.server._nav_push(user, self._show_moderation_menu)
         elif selection_id == "promote_admin":
+            if self._search_promote_targets("", 1).total == 0:
+                user.speak_l("no-users-to-promote", buffer="system")
+                return
             self.server._nav_push(user, self._show_promote_admin_menu)
         elif selection_id == "demote_admin":
+            if self._search_demote_targets(user, "", 1).total == 0:
+                user.speak_l("no-admins-to-demote", buffer="system")
+                return
             self.server._nav_push(user, self._show_demote_admin_menu)
         elif selection_id == "ban_user":
+            if self._search_ban_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-ban", buffer="system")
+                return
             self.server._nav_push(user, self._show_ban_menu)
         elif selection_id == "unban_user":
+            if self.server.db.count_active_banned_users("") == 0:
+                user.speak_l("no-banned-users", buffer="system")
+                return
             self.server._nav_push(user, self._show_unban_menu)
         elif selection_id == "mute_user":
+            if self._search_mute_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-mute", buffer="system")
+                return
             self.server._nav_push(user, self._show_mute_menu)
         elif selection_id == "unmute_user":
+            if self.server.db.count_active_muted_users("") == 0:
+                user.speak_l("no-muted-users", buffer="system")
+                return
             self.server._nav_push(user, self._show_unmute_menu)
         elif selection_id == "kick_user":
+            if self._search_kick_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-kick", buffer="system")
+                return
             self.server._nav_push(user, self._show_kick_menu)
         elif selection_id == "broadcast_announcement":
             self._show_broadcast_input_menu(user)
@@ -3459,18 +3483,30 @@ class AdministrationManager:
                         self._show_moderation_menu,
                     )
         elif selection_id == "reports_open":
+            if self.server.db.count_moderation_reports(status="open") == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "open"
             )
         elif selection_id == "reports_closed":
+            if self.server.db.count_moderation_reports(statuses=CLOSED_REPORT_STATUSES) == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "closed"
             )
         elif selection_id == "reports_all":
+            if self.server.db.count_moderation_reports() == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "all"
             )
         elif selection_id == "browse_messages":
+            if self.server.db.count_global_chat_messages() == 0:
+                user.speak_l("admin-moderation-message-list-empty", buffer="system")
+                return
             self.server._nav_push(user, self._show_moderation_messages_menu)
         elif selection_id == "find_history":
             self._show_moderation_history_input(user)
@@ -4277,6 +4313,14 @@ class AdministrationManager:
             username = str(value or "").strip()
             if not username:
                 self.server._restore_input_parent(user, state)
+                return True
+            if self.server.db.count_global_chat_sender_identities(username) == 0:
+                self.server._restore_input_parent(user, state)
+                user.speak_l(
+                    "admin-moderation-no-sender-history",
+                    buffer="system",
+                    username=username,
+                )
                 return True
             self.server._nav_push_from_input(
                 user,

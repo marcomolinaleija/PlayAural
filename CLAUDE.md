@@ -495,7 +495,7 @@ conflicting, as UNO does. Likewise, `enter` can start the game while idle and
 select a grid cell while active.
 
 Base/client bindings to respect include `enter`, `escape`, `b`, `shift+b`,
-`f3`, `t`, `s`, `shift+s`, `ctrl+m`, `ctrl+q`, `ctrl+u`, `ctrl+w`, `w`, `ctrl+s`,
+`f3`, `t`, `s`, `shift+s`, `ctrl+m`, `q`, `ctrl+q`, `ctrl+p`, `ctrl+u`, `ctrl+w`, `w`, `ctrl+s`,
 `ctrl+i`, `f1`, and `ctrl+f1`. Plain `F1` is the client-owned
 focused-menu-description command and sends `menu_description`, never a game
 keybind; `Ctrl+F1` remains How to Play. Do not reuse `ALWAYS` bindings or

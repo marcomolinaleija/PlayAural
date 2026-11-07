@@ -203,10 +203,7 @@ class GameScoresMixin:
                 lambda _player, live_user: self._detailed_score_lines(live_user.locale),
             )
         else:
-            self.status_box(
-                player,
-                [Localization.get(user.locale, "no-scores-available")],
-            )
+            user.speak_l("no-scores-available", buffer="game")
 
     def _detailed_score_lines(self, locale: str) -> list[str]:
         self._sync_score_display_names()

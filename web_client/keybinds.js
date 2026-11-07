@@ -104,14 +104,26 @@ export function installKeybinds({
 
     if (
       connected
-      && event.altKey
+      && (
+        (event.altKey && event.shiftKey && !event.ctrlKey && !event.metaKey && event.key.toLowerCase() === "v")
+        || (event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey && event.key.toLowerCase() === "m")
+      )
+    ) {
+      event.preventDefault();
+      onToggleVoiceMic?.();
+      return;
+    }
+
+    if (
+      connected
+      && event.ctrlKey
       && event.shiftKey
-      && !event.ctrlKey
+      && !event.altKey
       && !event.metaKey
       && event.key.toLowerCase() === "v"
     ) {
       event.preventDefault();
-      onToggleVoiceMic?.();
+      onToggleVoiceChat?.();
       return;
     }
 
@@ -271,6 +283,29 @@ export function installKeybinds({
       const currentItem = menu.items[menu.selection] || null;
       sendKeybind({
         key: "w",
+        control: true,
+        alt: false,
+        shift: event.shiftKey,
+        menu_id: menu.menuId,
+        menu_index: menuIndex,
+        menu_item_id: actionableMenuItemId(currentItem),
+      });
+      return;
+    }
+
+    if (
+      connected
+      && (event.key === "p" || event.key === "P")
+      && event.ctrlKey
+      && !event.altKey
+      && !event.metaKey
+      && !editing
+    ) {
+      event.preventDefault();
+      const menuIndex = menu.items.length ? menu.selection + 1 : null;
+      const currentItem = menu.items[menu.selection] || null;
+      sendKeybind({
+        key: "p",
         control: true,
         alt: false,
         shift: event.shiftKey,

@@ -6365,6 +6365,20 @@ class Database:
         )
         return {row["stat_key"]: row["stat_value"] for row in cursor.fetchall()}
 
+    def has_user_played_any_games(self, player_id: str) -> bool:
+        """Return True if the user has recorded stats for any game with games_played > 0."""
+        cursor = self._conn.cursor()
+        cursor.execute(
+            """
+            SELECT 1
+            FROM player_game_stats
+            WHERE player_id = ? AND stat_key = 'games_played' AND stat_value > 0
+            LIMIT 1
+            """,
+            (player_id,)
+        )
+        return cursor.fetchone() is not None
+
     # Server Setting Operations
 
     @staticmethod
