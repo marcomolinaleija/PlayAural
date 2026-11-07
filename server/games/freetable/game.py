@@ -67,7 +67,7 @@ class FreeTable(Game):
     def _action_switch_game(self, player: Player, action_id: str) -> None:
         user = self.get_user(player)
         table = self._table
-        if user and table and table._server and table.host == user.username:
+        if user and table and table._server and self._is_host_or_admin(player):
             table._server._nav_push(
                 user,
                 table._server._show_host_game_switch_menu,
@@ -100,7 +100,7 @@ class FreeTable(Game):
         return actions
 
     def _is_host_management_hidden(self, player: Player) -> Visibility:
-        return Visibility.VISIBLE if player.name == self.host else Visibility.HIDDEN
+        return Visibility.VISIBLE if self._is_host_or_admin(player) else Visibility.HIDDEN
 
     def _is_leave_game_hidden(self, player: Player) -> Visibility:
         return Visibility.VISIBLE
