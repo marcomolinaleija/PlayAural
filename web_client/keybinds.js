@@ -379,44 +379,59 @@ export function installKeybinds({
         menuView.handleTypeNavigation(typedChar);
         return;
       }
+    }
 
-      if (!event.ctrlKey && !event.altKey && !event.metaKey) {
-        if (event.key === "[") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onFirstBuffer?.();
-          } else {
-            onPreviousBuffer?.();
-          }
-          return;
+    if (
+      (menuFocused || (connected && !editing && activeElement?.tagName !== "SELECT"))
+      && !event.ctrlKey
+      && !event.altKey
+      && !event.metaKey
+    ) {
+      if (event.key === "[" || event.key === "{" || event.code === "BracketLeft") {
+        event.preventDefault();
+        if (event.shiftKey || event.key === "{") {
+          onFirstBuffer?.();
+        } else {
+          onPreviousBuffer?.();
         }
-        if (event.key === "]") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onLastBuffer?.();
-          } else {
-            onNextBuffer?.();
-          }
-          return;
+        return;
+      }
+      if (event.key === "]" || event.key === "}" || event.code === "BracketRight") {
+        event.preventDefault();
+        if (event.shiftKey || event.key === "}") {
+          onLastBuffer?.();
+        } else {
+          onNextBuffer?.();
         }
-        if (event.key === "," || event.key === "<") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onOldestMessage?.();
-          } else {
-            onOlderMessage?.();
-          }
-          return;
+        return;
+      }
+      if (
+        event.key === ","
+        || event.key === "<"
+        || (event.shiftKey && event.key === ";")
+        || event.code === "Comma"
+      ) {
+        event.preventDefault();
+        if (event.shiftKey || event.key === "<" || event.key === ";") {
+          onOldestMessage?.();
+        } else {
+          onOlderMessage?.();
         }
-        if (event.key === "." || event.key === ">") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onNewestMessage?.();
-          } else {
-            onNewerMessage?.();
-          }
-          return;
+        return;
+      }
+      if (
+        event.key === "."
+        || event.key === ">"
+        || (event.shiftKey && event.key === ":")
+        || event.code === "Period"
+      ) {
+        event.preventDefault();
+        if (event.shiftKey || event.key === ">" || event.key === ":") {
+          onNewestMessage?.();
+        } else {
+          onNewerMessage?.();
         }
+        return;
       }
     }
 

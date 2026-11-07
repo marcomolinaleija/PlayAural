@@ -283,9 +283,17 @@ test("message-history punctuation shortcuts keep their established dispatch", ()
     onNewestMessage: () => calls.push("newest"),
   });
 
-  for (const [key, shiftKey] of [[",", false], [".", false], ["<", true], [">", true]]) {
+  for (const [key, shiftKey, code] of [
+    [",", false, "Comma"],
+    [".", false, "Period"],
+    ["<", true, "Comma"],
+    [">", true, "Period"],
+    [";", true, "Comma"],
+    [":", true, "Period"],
+  ]) {
     keydown({
       key,
+      code,
       altKey: false,
       ctrlKey: false,
       shiftKey,
@@ -294,7 +302,7 @@ test("message-history punctuation shortcuts keep their established dispatch", ()
     });
   }
 
-  assert.deepEqual(calls, ["older", "newer", "oldest", "newest"]);
+  assert.deepEqual(calls, ["older", "newer", "oldest", "newest", "oldest", "newest"]);
 });
 
 test("large grids retain accessible cells and pan on both axes", async () => {
