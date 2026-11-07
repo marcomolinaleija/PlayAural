@@ -11156,30 +11156,37 @@ PlayAural Server
         elapsed_seconds = max(0, int(time.time() - table.created_at))
         duration_text = self._format_uptime_duration(locale, elapsed_seconds)
 
+        user_joined = getattr(table, "_member_joined_at", {}).get(user.username, table.created_at)
+        user_duration_text = self._format_uptime_duration(locale, max(0, int(time.time() - user_joined)))
+
+        peak_count = max(1, getattr(table, "peak_occupancy", len(table.members)), len(table.members))
+        visitors = getattr(table, "total_unique_visitors", set())
+        visitors_count = max(len(visitors), len(table.members), 1)
+
         game_name_key = f"game-name-{table.game_type}"
         game_name = Localization.get(locale, game_name_key)
         if game_name == game_name_key and table.game:
             game_name = table.game.get_name()
 
         participants = [m.username for m in table.members if not m.is_spectator]
+        participants_with_time = []
+        for m_name in participants:
+            m_joined = getattr(table, "_member_joined_at", {}).get(m_name, table.created_at)
+            m_dur = self._format_uptime_duration(locale, max(0, int(time.time() - m_joined)))
+            participants_with_time.append(f"{m_name} ({m_dur})")
+        participants_text = (
+            ", ".join(participants_with_time)
+            if participants_with_time
+            else Localization.get(locale, "none")
+        )
+
         spectators = [m.username for m in table.members if m.is_spectator]
-
-        privacy_text = Localization.get(
-            locale,
-            "table-stats-privacy-private" if table.is_private else "table-stats-privacy-public",
-        )
-
-        voice_count = sum(
-            1
-            for p in self._voice_presence_by_user.values()
-            if isinstance(p, dict)
-            and p.get("scope") == "table"
-            and p.get("context_id") == table.table_id
-        )
-        if voice_count > 0:
-            voice_status = Localization.get(locale, "table-stats-voice-active", count=voice_count)
-        else:
-            voice_status = Localization.get(locale, "table-stats-voice-inactive")
+        spectators_with_time = []
+        for s_name in spectators:
+            s_joined = getattr(table, "_member_joined_at", {}).get(s_name, table.created_at)
+            s_dur = self._format_uptime_duration(locale, max(0, int(time.time() - s_joined)))
+            spectators_with_time.append(f"{s_name} ({s_dur})")
+        spectators_text = ", ".join(spectators_with_time)
 
         items = [
             MenuItem(
@@ -11190,6 +11197,21 @@ PlayAural Server
             MenuItem(
                 text=Localization.get(locale, "table-stats-uptime", duration=duration_text),
                 id="stat_uptime",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-user-duration", duration=user_duration_text),
+                id="stat_user_duration",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-peak", count=peak_count),
+                id="stat_peak",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-stats-total-visitors", count=visitors_count),
+                id="stat_total_visitors",
                 read_only=True,
             ),
             MenuItem(
@@ -11207,7 +11229,7 @@ PlayAural Server
                     locale,
                     "table-stats-members",
                     count=len(participants),
-                    members=", ".join(participants) if participants else Localization.get(locale, "none"),
+                    members=participants_text,
                 ),
                 id="stat_members",
                 read_only=True,
@@ -11218,22 +11240,12 @@ PlayAural Server
                         locale,
                         "table-stats-spectators",
                         count=len(spectators),
-                        spectators=", ".join(spectators),
+                        spectators=spectators_text,
                     )
                     if spectators
                     else Localization.get(locale, "table-stats-spectators-none")
                 ),
                 id="stat_spectators",
-                read_only=True,
-            ),
-            MenuItem(
-                text=Localization.get(locale, "table-stats-privacy", privacy=privacy_text),
-                id="stat_privacy",
-                read_only=True,
-            ),
-            MenuItem(
-                text=Localization.get(locale, "table-stats-voice", status=voice_status),
-                id="stat_voice",
                 read_only=True,
             ),
             MenuItem(text=Localization.get(locale, "back"), id="back"),

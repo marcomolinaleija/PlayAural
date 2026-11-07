@@ -464,6 +464,11 @@ async def test_free_table_host_management_statistics_and_saving(room):
     assert "stat_created_at" in stats_map
     assert "07/04/2026" in stats_map["stat_created_at"]
     assert "stat_uptime" in stats_map
+    assert "stat_user_duration" in stats_map
+    assert "stat_peak" in stats_map
+    assert "2" in stats_map["stat_peak"]
+    assert "stat_total_visitors" in stats_map
+    assert "2" in stats_map["stat_total_visitors"]
     assert "stat_game" in stats_map
     assert "Mesa libre" in stats_map["stat_game"]
     assert "stat_host" in stats_map
@@ -471,9 +476,9 @@ async def test_free_table_host_management_statistics_and_saving(room):
     assert "stat_members" in stats_map
     assert "Host" in stats_map["stat_members"] and "Guest" in stats_map["stat_members"]
     assert "stat_spectators" in stats_map
-    assert "stat_privacy" in stats_map
-    assert "Pública" in stats_map["stat_privacy"]
-    assert "stat_voice" in stats_map
+    # Confirm modifiers (voice and privacy) are removed
+    assert "stat_privacy" not in stats_map
+    assert "stat_voice" not in stats_map
 
     # Selecting back returns to host management menu
     await server._handle_table_stats_selection(host, "back", {"table_id": table.table_id})
@@ -535,4 +540,9 @@ async def test_free_table_save_and_restore(room):
     stats_map = {item.id: item.text for item in stats_items}
     assert "07/04/2026" in stats_map["stat_created_at"]
     assert "Host" in stats_map["stat_host"]
+    assert "stat_peak" in stats_map
+    assert "stat_total_visitors" in stats_map
+    assert "stat_user_duration" in stats_map
+    assert "stat_privacy" not in stats_map
+    assert "stat_voice" not in stats_map
 
