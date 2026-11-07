@@ -98,6 +98,14 @@ def server_target_from_arguments(
     return server_url, server_name
 
 
+def should_bypass_auto_login(
+    arguments: Sequence[str] | None = None,
+) -> bool:
+    """Return True if auto-login should be bypassed via CLI flag."""
+    values = set(sys.argv[1:] if arguments is None else arguments)
+    return bool(values.intersection({"--no-auto-login", "--switch-server", "--login"}))
+
+
 def temporary_updater_path(
     value: object,
     *,
