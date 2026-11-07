@@ -122,7 +122,7 @@ def test_complete_private_board_and_geographic_membership():
     assert MEXICO_BOARD.space("tijuana").group_id == "brown"
     for position, identifier in {**METRO_STATIONS, **AIRPORTS}.items():
         assert MEXICO_BOARD.spaces[position].id == identifier
-    assert len(MEXICO_BOARD.chance_cards) == 26 and len(MEXICO_BOARD.community_cards) == 32
+    assert len(MEXICO_BOARD.chance_cards) == 26 and len(MEXICO_BOARD.community_cards) == 40
 
 
 def test_cards_keep_effects_but_own_their_text_and_destinations():
