@@ -5515,7 +5515,7 @@ PlayAural Server
         """Return whether a paused restored game should still accept the packet."""
         packet_type = str(packet.get("type") or "")
         if packet_type == "keybind":
-            return cls._normalized_keybind_key(packet) == "ctrl+q"
+            return cls._normalized_keybind_key(packet) in {"q", "ctrl+q"}
 
         if packet_type not in {"menu", "escape"}:
             return False

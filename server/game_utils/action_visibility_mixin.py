@@ -272,6 +272,16 @@ class ActionVisibilityMixin:
         """Host management is always hidden (actions menu / Ctrl+M only)."""
         return Visibility.HIDDEN
 
+    def _is_toggle_privacy_enabled(self, player: "Player") -> str | None:
+        """Check if toggle_privacy action is enabled (host or admin/dev)."""
+        if not self._is_host_or_admin(player):
+            return "action-not-host"
+        return None
+
+    def _is_toggle_privacy_hidden(self, player: "Player") -> Visibility:
+        """Toggle privacy is always hidden (Ctrl+P keybind only)."""
+        return Visibility.HIDDEN
+
     def _is_leave_game_enabled(self, player: "Player") -> str | None:
         """Leave game is always enabled."""
         return None

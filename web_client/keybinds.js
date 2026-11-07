@@ -293,6 +293,29 @@ export function installKeybinds({
       return;
     }
 
+    if (
+      connected
+      && (event.key === "p" || event.key === "P")
+      && event.ctrlKey
+      && !event.altKey
+      && !event.metaKey
+      && !editing
+    ) {
+      event.preventDefault();
+      const menuIndex = menu.items.length ? menu.selection + 1 : null;
+      const currentItem = menu.items[menu.selection] || null;
+      sendKeybind({
+        key: "p",
+        control: true,
+        alt: false,
+        shift: event.shiftKey,
+        menu_id: menu.menuId,
+        menu_index: menuIndex,
+        menu_item_id: actionableMenuItemId(currentItem),
+      });
+      return;
+    }
+
     if (menuFocused) {
       // Alt+Arrow: jump to grid row/column edges
       if (event.altKey && !event.ctrlKey && !event.metaKey && menu.gridEnabled && menu.gridWidth > 1) {

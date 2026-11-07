@@ -151,6 +151,16 @@ class ActionSetCreationMixin:
         )
         action_set.add(
             Action(
+                id="toggle_privacy",
+                label=Localization.get(locale, "host-management-set-private"),
+                handler="_action_toggle_privacy",
+                is_enabled="_is_toggle_privacy_enabled",
+                is_hidden="_is_toggle_privacy_hidden",
+                include_spectators=True,
+            )
+        )
+        action_set.add(
+            Action(
                 id="leave_game",
                 label=Localization.get(locale, "leave-table"),
                 handler="_action_leave_game",
@@ -319,6 +329,20 @@ class ActionSetCreationMixin:
             "ctrl+m",
             "Host Management",
             ["host_management"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "ctrl+p",
+            "Toggle table privacy",
+            ["toggle_privacy"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
+        self.define_keybind(
+            "q",
+            "Leave table",
+            ["leave_game"],
             state=KeybindState.ALWAYS,
             include_spectators=True,
         )

@@ -47,7 +47,7 @@ class FreeTable(Game):
     def create_lobby_action_set(self, player: Player) -> ActionSet:
         actions = super().create_lobby_action_set(player)
         for action_id in list(actions._order):
-            if action_id != "host_management":
+            if action_id not in {"host_management", "toggle_privacy"}:
                 actions.remove(action_id)
         user = self.get_user(player)
         actions.add(

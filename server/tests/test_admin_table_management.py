@@ -205,3 +205,53 @@ def test_lobby_actions_enabled_for_admin():
 
     assert game._is_save_table_enabled(p_bob) is None
     assert game._is_save_table_enabled(p_charlie) == "action-not-host"
+
+
+@pytest.mark.asyncio
+async def test_leave_game_keybind_q_and_ctrl_q():
+    server, table, game, alice, bob, charlie = _make_test_table()
+
+    # Alice presses 'q' to leave table
+    await server._handle_keybind(alice, {"type": "keybind", "key": "q"})
+    assert "leave_game_confirm" in alice.menus
+
+    # Bob presses 'ctrl+q' to leave table (backwards compatibility)
+    await server._handle_keybind(bob, {"type": "keybind", "key": "ctrl+q"})
+    assert "leave_game_confirm" in bob.menus
+
+
+@pytest.mark.asyncio
+async def test_ctrl_p_toggles_privacy_for_host_and_admin():
+    server, table, game, alice, bob, charlie = _make_test_table()
+    bob.trust_level = ADMIN_TRUST_LEVEL
+    charlie.trust_level = USER_TRUST_LEVEL
+
+    assert table.is_private is False
+
+    # Alice (host) presses 'ctrl+p' to toggle privacy
+    await server._handle_keybind(alice, {"type": "keybind", "key": "ctrl+p"})
+    assert table.is_private is True
+
+    # Charlie (regular non-host) presses 'ctrl+p' -> rejected
+    await server._handle_keybind(charlie, {"type": "keybind", "key": "ctrl+p"})
+    assert table.is_private is True
+
+    # Bob (Admin non-host) presses 'ctrl+p' -> toggles back to public
+    await server._handle_keybind(bob, {"type": "keybind", "key": "ctrl+p"})
+    assert table.is_private is False
+
+
+@pytest.mark.asyncio
+async def test_freetable_keybinds_q_and_ctrl_p():
+    server, table, game, alice, bob, charlie = _make_test_table(game_type="freetable")
+    bob.trust_level = ADMIN_TRUST_LEVEL
+
+    # 'q' leaves table in FreeTable
+    await server._handle_keybind(alice, {"type": "keybind", "key": "q"})
+    assert "leave_game_confirm" in alice.menus
+
+    # 'ctrl+p' toggles privacy in FreeTable
+    assert table.is_private is False
+    await server._handle_keybind(bob, {"type": "keybind", "key": "ctrl+p"})
+    assert table.is_private is True
+

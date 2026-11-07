@@ -920,6 +920,24 @@ class LobbyActionsMixin:
                 return_focus_id=self._get_action_return_focus_id(player, action_id),
             )
 
+    def _action_toggle_privacy(self, player: "Player", action_id: str) -> None:
+        """Toggle table privacy between private and public (host or admin/dev)."""
+        if not self._is_host_or_admin(player):
+            return
+        table = getattr(self, "_table", None)
+        if not table:
+            return
+        table.is_private = not table.is_private
+        key = (
+            "host-management-table-now-private"
+            if table.is_private
+            else "host-management-table-now-public"
+        )
+        self.broadcast_l(key, buffer="system")
+        server = getattr(table, "_server", None)
+        if server and hasattr(server, "on_tables_changed"):
+            server.on_tables_changed()
+
     def _action_save_table(self, player: "Player", action_id: str) -> None:
         """Save the current table state (host only). This destroys the table."""
         if self._table:
