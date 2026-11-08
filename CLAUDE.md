@@ -1124,17 +1124,17 @@ and cleanup rules required for genuinely persistent data.
   concatenate pronouns in Python. Missing contextual forms fall back to shared
   forms and unspecified/non-binary values fall back to the locale's neutral
   form.
-- PlayAural ships English and Vietnamese, and — unlike upstream PlayPalace,
-  where translators own everything but `en` — here the agent authors **both**.
-  A new or changed `en` key must land with its `vi` counterpart, kept in
-  structural parity: same keys, same data-bearing `$variables`, and matching
-  plural/select arms. A locale may omit a variable used only as the first
-  argument to `GENDER_TERM(...)` when its natural sentence does not need
+- Spanish (ES) is the sole mandatory language in PlayAural for all new strings,
+  options, features, and documentation. English (EN), Vietnamese (VI), and other
+  community locales are optional.
+- All new or updated keys and data-bearing variables must be authored in Spanish
+  (`es`). Adding translations in `en`, `vi`, or other languages is optional. When
+  translating, maintain structural parity: same keys, same data-bearing `$variables`,
+  and matching plural/select arms. A locale may omit a variable used only as the
+  first argument to `GENDER_TERM(...)` when its natural sentence does not need
   gender; if the selector is used, its name must match the source key. Never
   omit names, counts, scores, formatted values, or other player/game data.
-- Agent-authored Vietnamese is provisional: write it and keep parity, but flag
-  it for native review rather than treating it as final.
-- Prefer writing the `en` strings before the game/feature code — it forces the
+- Prefer writing the `es` strings before the game/feature code — it forces the
   flow to be planned and every announcement to be enumerated up front.
 - Locale discovery, language selection, and fallback must remain dynamic. Do
   not hardcode feature branches for specific language codes; add new languages
@@ -1194,7 +1194,7 @@ reachable state. This is part of the feature work, not optional cleanup.
   change or what action is available next. Avoid generic feedback such as
   "Invalid action", "Not allowed", or "You cannot do that" when a precise
   situational explanation can be provided.
-- Maintain EN/VI key, variable, plural, and select-arm parity. Add regression
+- Ensure ES key, variable, plural, and select-arm accuracy. Add regression
   coverage for actor and observer forms, listener-specific rendering, and the
   important success, failure, edge, and validation branches introduced or
   changed by the work.
@@ -1216,9 +1216,10 @@ game experience, not a developer changelog.
 - Never write manuals like changelogs, patch notes, design notes, or
   implementation summaries. Do not include unnecessary technical development
   details, justifications, or rationale that do not help someone play.
-- Keep EN and VI documentation synchronized in structure, meaning, terminology,
-  and attribution. Vietnamese manuals should be natural, friendly, and aligned
-  with the matching `.ftl` terminology.
+- Spanish (ES) documentation is mandatory for all new games and features.
+  English and Vietnamese manuals are optional; keep them synchronized in
+  structure, meaning, and terminology when authored. Vietnamese manuals should be
+  natural, friendly, and aligned with the matching `.ftl` terminology.
 - Community translation work must follow `TRANSLATING.md`: preserve variables,
   maintain first-person/third-person key parity, keep documentation
   player-facing, and update language contributor metadata.
@@ -1349,6 +1350,6 @@ The server currently registers **52 games**:
 - Desktop: `wxPython`, `accessible-output2`, `Cosmos` (miniaudio and Steam Audio), `keyring`, `livekit`, `sounddevice`
 - Mobile: `expo`, `react-native`, `expo-audio`, `expo-speech`, `@react-native-async-storage/async-storage`, `expo-secure-store`
 - Package manager: `uv` for Python components, `npm` for the mobile client
-- Languages: English and Vietnamese are official defaults; partial community translations fall back to English
+- Languages: Spanish is the official mandatory language; English, Vietnamese, and other community translations are optional
 
 Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W and Ctrl+U open the interactive roster, and displaced game-specific W bindings use Alt+W.

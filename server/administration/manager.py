@@ -252,8 +252,6 @@ class AdministrationManager:
         """Return metadata-driven required and optional editor locales."""
         languages = Localization.get_available_languages(display_locale)
         official_codes = set(Localization.official_locale_codes())
-        if DEFAULT_LOCALE in languages:
-            official_codes.add(DEFAULT_LOCALE)
         official = [
             (code, name) for code, name in languages.items() if code in official_codes
         ]
@@ -293,7 +291,7 @@ class AdministrationManager:
         if not self._require_localized_text_access(user, spec):
             return
         official, community = self._localized_text_locale_groups(user.locale)
-        if not official or not any(code == DEFAULT_LOCALE for code, _ in official):
+        if not official:
             user.speak_l("error-no-languages", buffer="system")
             self.server._nav_back(user)
             return
@@ -305,14 +303,14 @@ class AdministrationManager:
         )
         editor_context = dict(context or {})
         subject = Localization.get(user.locale, spec.subject_key)
-        default_name = dict(official).get(DEFAULT_LOCALE, DEFAULT_LOCALE)
+        fallback_name = official[0][1] if official else DEFAULT_LOCALE
         items = [
             MenuItem(
                 text=Localization.get(
                     user.locale,
                     "admin-localized-text-instructions",
                     subject=subject,
-                    fallback=default_name,
+                    fallback=fallback_name,
                 ),
                 id="",
             )

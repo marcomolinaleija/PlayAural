@@ -123,18 +123,18 @@ hello = Hola
 
     Localization.init(locales_dir)
 
-    assert list(Localization.get_available_languages("fr")) == ["en", "vi", "es", "fr"]
+    assert list(Localization.get_available_languages("fr")) == ["es", "en", "fr", "vi"]
     assert Localization.get_available_languages("fr") == {
-        "en": "English",
-        "vi": "Vietnamese",
         "es": "Espanol",
+        "en": "English",
         "fr": "Francais",
+        "vi": "Vietnamese",
     }
     assert Localization.get_available_languages() == {
-        "en": "English",
-        "vi": "Tieng Viet",
         "es": "Espanol",
+        "en": "English",
         "fr": "Francais",
+        "vi": "Tieng Viet",
     }
     metadata = Localization.get_locale_metadata("es")
     assert metadata.available is True
@@ -159,12 +159,12 @@ def test_locale_catalog_cache_refreshes_explicitly_and_on_init(tmp_path):
     assert Localization.resolve_locale("fr") == "en"
 
     Localization.refresh_locale_catalog()
-    assert Localization.available_locale_codes() == ["en", "vi", "fr"]
+    assert Localization.available_locale_codes() == ["en", "fr", "vi"]
     assert Localization.resolve_locale("fr") == "fr"
 
     _write(locales_dir / "es" / "main.ftl", "hello = Hola")
     Localization.init(locales_dir)
-    assert Localization.available_locale_codes() == ["en", "vi", "es", "fr"]
+    assert Localization.available_locale_codes() == ["es", "en", "fr", "vi"]
 
 
 def test_locale_resolution_cache_is_bounded_for_untrusted_locale_values(tmp_path):
@@ -322,9 +322,11 @@ def test_language_menu_pins_defaults_and_displays_translator_metadata():
     rows = {item.id: item.text for item in items if hasattr(item, "id")}
     ids = [item.id for item in items if hasattr(item, "id")]
 
-    assert ids[:2] == ["lang_en", "lang_vi"]
+    assert ids[0] == "lang_es"
+    assert "Official PlayAural language" in rows["lang_es"]
+    assert "Translators: UnDuende and Tadeu Junior" in rows["lang_es"]
     assert rows["lang_en"].startswith("Current: English.")
-    assert "Official PlayAural language" in rows["lang_en"]
+    assert "Official PlayAural language" not in rows["lang_en"]
     assert "Translators: PlayAural core team" in rows["lang_en"]
     assert rows["lang_vi"].startswith("Vietnamese (Tiếng Việt).")
     assert "Translators: Trung and PlayAural core team" in rows["lang_vi"]
