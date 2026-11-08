@@ -124,8 +124,20 @@ def test_escape_exits_table_when_not_watching(table_fixture):
     guest_player = game.get_player_by_id(guest.uuid)
     assert guest_player.is_watching is False
 
-    # Pressing escape while not watching leaves the table immediately
+    # Pressing escape while not watching opens leave confirmation
     game.handle_event(guest_player, {"type": "keybind", "key": "escape"})
+    assert guest_player.id in game._pending_actions
+    assert game._pending_actions[guest_player.id] == "leave_game_confirm"
+    assert "leave_game_confirm" in guest.menus
+
+    # Declining keeps the user in table
+    game.handle_event(guest_player, {"type": "menu", "menu_id": "leave_game_confirm", "selection_id": "no"})
+    assert guest_player.id not in game._pending_actions
+    assert any(m.username == guest.username for m in table.members)
+
+    # Pressing escape again and confirming with "yes" leaves the table
+    game.handle_event(guest_player, {"type": "keybind", "key": "escape"})
+    game.handle_event(guest_player, {"type": "menu", "menu_id": "leave_game_confirm", "selection_id": "yes"})
     assert not any(m.username == guest.username for m in table.members)
     assert game.get_player_by_id(guest.uuid) is None
 
@@ -160,10 +172,12 @@ def test_spectator_escape_stops_watching_and_enter_resumes(table_fixture):
     assert guest_player.is_watching is True
     assert any("Viendo la partida" in msg for msg in guest.get_spoken_messages())
 
-    # Stop watching again, then escape to exit table ("escape solo sale")
+    # Stop watching again, then escape to exit table with confirmation
     game.handle_event(guest_player, {"type": "keybind", "key": "escape"})
     assert guest_player.is_watching is False
     game.handle_event(guest_player, {"type": "keybind", "key": "escape"})
+    assert "leave_game_confirm" in guest.menus
+    game.handle_event(guest_player, {"type": "menu", "menu_id": "leave_game_confirm", "selection_id": "yes"})
     assert not any(m.username == guest.username for m in table.members)
 
 

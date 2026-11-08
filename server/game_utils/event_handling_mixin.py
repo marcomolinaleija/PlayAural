@@ -42,7 +42,11 @@ class EventHandlingMixin:
         selection_id = event.get("selection_id")
         menu_id = event.get("menu_id")
 
-        if getattr(self, "status", "") == "playing" and not getattr(player, "is_watching", True):
+        if (
+            getattr(self, "status", "") == "playing"
+            and not getattr(player, "is_watching", True)
+            and player.id not in self._pending_actions
+        ):
             if (
                 (event_type == "keybind" and key == "enter")
                 or (event_type == "menu" and (selection_id == "watch_game" or menu_id == "turn_menu"))
@@ -57,9 +61,12 @@ class EventHandlingMixin:
                 or (event_type == "keybind" and key == "escape")
                 or (event_type == "menu" and selection_id == "back")
             ):
-                handler = getattr(self, "_perform_leave_game", None)
-                if handler:
-                    handler(player)
+                if hasattr(self, "_action_leave_game"):
+                    self._action_leave_game(player, "leave_game")
+                else:
+                    handler = getattr(self, "_perform_leave_game", None)
+                    if handler:
+                        handler(player)
                 self.flush_menus()
                 return
 
