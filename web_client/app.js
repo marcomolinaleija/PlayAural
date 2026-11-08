@@ -3095,6 +3095,7 @@ class PlayAuralWebApp {
   }
 
   activateMenuItem(item, index) {
+    this.audio.stopHandle?.("menu_item_preview");
     if (!isMenuItemActionable(item)) {
       return;
     }
@@ -3125,8 +3126,9 @@ class PlayAuralWebApp {
 
   playSelectionSound(item) {
     if (item?.sound) {
-      this.audio.playSound({ asset: item.sound });
+      this.audio.playSound({ asset: item.sound, handle: "menu_item_preview" });
     } else {
+      this.audio.stopHandle?.("menu_item_preview");
       this.audio.playSound({ asset: "menuclick.ogg", volume: 50 });
     }
     if (this.preferences.speech_mode === "web_speech" && item?.text) {
@@ -3135,6 +3137,7 @@ class PlayAuralWebApp {
   }
 
   sendEscape() {
+    this.audio.stopHandle?.("menu_item_preview");
     if (!this.isConnected()) {
       return;
     }

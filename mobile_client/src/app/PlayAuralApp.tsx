@@ -4074,7 +4074,18 @@ export function PlayAuralApp() {
   // Match desktop: an item-specific highlight sound replaces the generic click.
   const playMenuMoveSound = (item?: FocusableMenuItem | null) => {
     if (item?.sound) {
-      void audio.playSound(item.sound);
+      void audio.handleAudioCommand({
+        type: "audio",
+        version: 3,
+        command: "play",
+        kind: "sfx",
+        asset: item.sound,
+        handle: "menu_item_preview",
+        priority: 100,
+        volume: 100,
+        pitch: 100,
+        pan: 0,
+      });
       return;
     }
     void audio.playSound("menuclick.ogg", { volume: 0.5 });

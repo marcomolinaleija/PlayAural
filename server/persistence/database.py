@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from ..chat_channels import MAX_CHAT_MESSAGE_LENGTH, normalize_global_chat_channel
 from ..messages.localization import DEFAULT_LOCALE, Localization
@@ -6421,6 +6422,47 @@ class Database:
         key = self._validate_server_setting_key(setting_key)
         if type(value) is not bool:
             raise TypeError("Boolean server settings require a bool value")
+        updated_at_utc = datetime.now(timezone.utc).isoformat(
+            timespec="microseconds"
+        )
+        self._conn.execute(
+            """
+            INSERT INTO server_settings (
+                setting_key, value_json, updated_at_utc
+            ) VALUES (?, ?, ?)
+            ON CONFLICT(setting_key) DO UPDATE SET
+                value_json = excluded.value_json,
+                updated_at_utc = excluded.updated_at_utc
+            """,
+            (key, json.dumps(value), updated_at_utc),
+        )
+
+    def get_json_server_setting(
+        self,
+        setting_key: str,
+        *,
+        default: Any = None,
+    ) -> Any:
+        """Read one persistent JSON setting with a fallback default."""
+        key = self._validate_server_setting_key(setting_key)
+        row = self._conn.execute(
+            "SELECT value_json FROM server_settings WHERE setting_key = ?",
+            (key,),
+        ).fetchone()
+        if row is None:
+            return default
+        try:
+            return json.loads(str(row["value_json"]))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return default
+
+    def set_json_server_setting(
+        self,
+        setting_key: str,
+        value: Any,
+    ) -> None:
+        """Atomically insert or replace one persistent JSON setting."""
+        key = self._validate_server_setting_key(setting_key)
         updated_at_utc = datetime.now(timezone.utc).isoformat(
             timespec="microseconds"
         )

@@ -3601,6 +3601,8 @@ class MainWindow(wx.Frame):
         in place of the generic menuclick. Indices must match the current
         list contents, so this is called after the menu is fully built.
         """
+        if hasattr(self.sound_manager, "stop_sound"):
+            self.sound_manager.stop_sound("menu_item_preview")
         for i in range(self.menu_list.GetCount()):
             sound = item_sounds[i] if i < len(item_sounds) else None
             self.menu_list.SetClientData(i, {"sound": sound} if sound else None)

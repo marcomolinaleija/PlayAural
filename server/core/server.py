@@ -59,8 +59,11 @@ from ..administration.manager import (
     ADMIN_MODERATION_REPORT_DETAIL_MENU,
     ADMIN_MODERATION_REPORTS_MENU,
     ADMIN_MODERATION_SENDER_RESULTS_MENU,
+    ADMIN_SOUND_EVENTS_MENU,
+    ADMIN_SOUND_PICKER_MENU,
     AdministrationManager,
 )
+from .sound_events import AVAILABLE_SOUND_ASSETS, SOUND_EVENTS
 from ..network.websocket_server import WebSocketServer, ClientConnection
 from ..persistence.database import Database, UserRecord
 from ..auth.auth import AuthManager, is_valid_email
@@ -258,6 +261,8 @@ GLOBAL_CHAT_ENABLED_SETTING_KEY = "global_chat_enabled"
 DEFAULT_GLOBAL_CHAT_SENDING_ENABLED = True
 GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY = "global_voice_chat_enabled"
 DEFAULT_GLOBAL_VOICE_CHAT_ENABLED = True
+ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY = "account_approval_required"
+DEFAULT_ACCOUNT_APPROVAL_REQUIRED = False
 VOICE_JOIN_AUTHORIZATION_WINDOW_SECONDS = 120
 SESSION_STATE_RETENTION_SECONDS = 300
 PRESENCE_OFFLINE_GRACE_SECONDS = 2.0
@@ -610,6 +615,8 @@ class Server:
         self._global_voice_chat_enabled = DEFAULT_GLOBAL_VOICE_CHAT_ENABLED
         self.global_voice_quality: str = "high"
         self.global_voice_spatial_audio: bool = True
+        self._sound_event_mappings: dict[str, str] = {}
+        self._account_approval_required = DEFAULT_ACCOUNT_APPROVAL_REQUIRED
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
@@ -686,6 +693,60 @@ class Server:
             voice_enabled = False
         self._global_voice_chat_enabled = voice_enabled
 
+        try:
+            approval_required = self._db.get_boolean_server_setting(
+                ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY,
+                default=DEFAULT_ACCOUNT_APPROVAL_REQUIRED,
+            )
+        except ValueError:
+            logging.getLogger("playaural").exception(
+                "Invalid persisted account-approval-required setting; defaulting to false"
+            )
+            approval_required = False
+        self._account_approval_required = approval_required
+
+        self._load_sound_event_mappings()
+
+    def _load_sound_event_mappings(self) -> None:
+        """Load configured sound event mappings from the database."""
+        try:
+            mappings = self._db.get_json_server_setting(
+                "sound_event_mappings", default={}
+            )
+            if isinstance(mappings, dict):
+                self._sound_event_mappings = {
+                    k: v for k, v in mappings.items()
+                    if isinstance(k, str) and isinstance(v, str) and k in SOUND_EVENTS and v in AVAILABLE_SOUND_ASSETS
+                }
+            else:
+                self._sound_event_mappings = {}
+        except Exception:
+            logging.getLogger("playaural").exception(
+                "Failed to load sound event mappings from database"
+            )
+            self._sound_event_mappings = {}
+
+    def get_sound_for_event(self, event_id: str) -> str:
+        """Return the active sound asset name for a sound event."""
+        custom = self._sound_event_mappings.get(event_id)
+        if custom and custom in AVAILABLE_SOUND_ASSETS:
+            return custom
+        event_def = SOUND_EVENTS.get(event_id)
+        if event_def:
+            return event_def.default_sound
+        return ""
+
+    def set_sound_for_event(self, event_id: str, sound_name: str) -> None:
+        """Set and persist a sound asset for a sound event."""
+        if event_id not in SOUND_EVENTS:
+            raise ValueError(f"Unknown sound event: {event_id!r}")
+        if sound_name not in AVAILABLE_SOUND_ASSETS:
+            raise ValueError(f"Unknown sound asset: {sound_name!r}")
+        self._sound_event_mappings[event_id] = sound_name
+        self._db.set_json_server_setting(
+            "sound_event_mappings", self._sound_event_mappings
+        )
+
     def set_global_chat_sending_enabled(self, enabled: bool) -> None:
         """Persist and apply the server-wide global-chat availability state."""
         if type(enabled) is not bool:
@@ -717,6 +778,21 @@ class Server:
             for username, auth in list(self._voice_join_authorizations_by_user.items()):
                 if auth.get("scope") == "global":
                     self._clear_voice_join_authorization(username, scope="global")
+
+    @property
+    def account_approval_required(self) -> bool:
+        """Return whether newly registered accounts require manual admin approval."""
+        return self._account_approval_required
+
+    def set_account_approval_required(self, required: bool) -> None:
+        """Persist and update the account approval requirement state."""
+        if type(required) is not bool:
+            raise TypeError("Account approval requirement requires a bool value")
+        self._db.set_boolean_server_setting(
+            ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY,
+            required,
+        )
+        self._account_approval_required = required
 
     def _prune_obsolete_game_data(self) -> None:
         """Remove data outside the current registered game/stat schema."""
@@ -2532,7 +2608,7 @@ PlayAural Server
 
             if etype == "friend_request_received":
                 user.speak_l("friends-grouped-requests", buffer="system", usernames=formatted_names)
-                user.play_sound("friend_request_received.ogg")
+                user.play_sound(self.get_sound_for_event("friend_request"))
             elif etype == "friend_accepted":
                 user.speak_l("friends-grouped-accepted", buffer="system", usernames=formatted_names)
                 user.play_sound("friend_accepted.ogg")
@@ -2846,14 +2922,34 @@ PlayAural Server
             return
 
         # Try to register the user
-        reg_result = self._auth.register(username, password, locale=locale, email=email, bio=bio)
+        approved = not self._account_approval_required
+        reg_result = self._auth.register(
+            username,
+            password,
+            locale=locale,
+            email=email,
+            bio=bio,
+            approved=approved,
+        )
         if reg_result == "ok":
             self._rate_limiter.record_registration(client.ip_address)
+            if not approved:
+                self._notify_admins(
+                    "admin-new-account-request",
+                    "accountrequest.ogg",
+                    username=username,
+                )
+                self.admin_manager.refresh_account_approval_menus()
             await client.send({
                 "type": "register_response",
                 "status": "success",
-                "text": Localization.get(locale, "auth-registration-success"), # Fallback text
-                "locale": locale
+                "text": Localization.get(
+                    locale,
+                    "auth-registration-pending-approval"
+                    if not approved
+                    else "auth-registration-success",
+                ),
+                "locale": locale,
             })
         elif reg_result == "username_taken":
             await client.send({
@@ -8141,7 +8237,7 @@ PlayAural Server
                     buffer="system",
                     username=user.username,
                 )
-                target_user.play_sound("friend_request_received.ogg")
+                target_user.play_sound(self.get_sound_for_event("friend_request"))
             else:
                 self._db.add_notification(
                     target_record.uuid,
@@ -10486,7 +10582,7 @@ PlayAural Server
                         and u.preferences.notify_table_created
                     ):
                         local_game_name = Localization.get(u.locale, name_key)
-                        u.play_sound(TABLE_CREATED_NOTIFICATION_SOUND)
+                        u.play_sound(self.get_sound_for_event("table_created"))
                         u.speak_l(
                             "table-created-broadcast", 
                             buffer="system",
@@ -13649,7 +13745,7 @@ PlayAural Server
         }
         if self._user_has_blocking_modal_state(invitee_name):
             self._pending_invites[invitee_name]["deferred"] = True
-            invitee_user.play_sound(TABLE_INVITE_NOTIFICATION_SOUND)
+            invitee_user.play_sound(self.get_sound_for_event("table_invite"))
             invitee_user.speak_l(
                 "table-invite-queued",
                 buffer="system",
@@ -13694,7 +13790,7 @@ PlayAural Server
             "prev_state": prev_state,
         }
 
-        invitee_user.play_sound(TABLE_INVITE_NOTIFICATION_SOUND)
+        invitee_user.play_sound(self.get_sound_for_event("table_invite"))
         show_confirmation_menu(
             invitee_user,
             "table_invite_prompt",
@@ -17193,7 +17289,9 @@ PlayAural Server
             username=sender.username,
             message=message,
         )
-        target_user.play_sound("pm.ogg", buffer="private")
+        target_user.play_sound(
+            self.get_sound_for_event("private_message"), buffer="private"
+        )
 
         sender.speak_l(
             "pm-sent-content",
@@ -17201,7 +17299,9 @@ PlayAural Server
             username=target_user.username,
             message=message,
         )
-        sender.play_sound("pm.ogg", buffer="private")
+        sender.play_sound(
+            self.get_sound_for_event("private_message"), buffer="private"
+        )
 
     def _submit_automated_spam_report(
         self,
@@ -18697,6 +18797,12 @@ PlayAural Server
             self.admin_manager._show_smtp_settings_menu(user)
         elif menu == "smtp_encryption_menu":
             self.admin_manager._show_smtp_encryption_menu(user)
+        elif menu == ADMIN_SOUND_EVENTS_MENU:
+            self.admin_manager._show_sound_events_menu(user)
+        elif menu == ADMIN_SOUND_PICKER_MENU:
+            self.admin_manager._show_sound_picker_menu(
+                user, str(frame.get("sound_event_id", "") or "")
+            )
         else:
             table = self._tables.find_user_table(username)
             if table:

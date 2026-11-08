@@ -865,6 +865,13 @@ class GameSoundMixin:
         spec = TABLE_PRESENCE_SOUND_SPECS.get(event)
         if spec is None:
             raise ValueError(f"Unknown table presence event: {event!r}")
+        table = getattr(self, "_table", None)
+        server = getattr(table, "_server", None) if table else None
+        if server and hasattr(server, "get_sound_for_event") and not is_spectator:
+            if event == "join":
+                return server.get_sound_for_event("table_joined")
+            if event == "leave":
+                return server.get_sound_for_event("table_left")
         role = "spectator" if is_spectator else "player"
         return spec[role]
 
