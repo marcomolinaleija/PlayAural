@@ -173,6 +173,17 @@ class GameSoundMixin:
                 candidate_id = str(getattr(candidate, "uuid", ""))
                 if any(player.id == candidate_id for player in self.players):
                     player_id = candidate_id
+            player = (
+                self.get_player_by_id(player_id)
+                if player_id and hasattr(self, "get_player_by_id")
+                else (candidate if isinstance(candidate, Player) else None)
+            )
+            if (
+                player
+                and getattr(self, "status", "") == "playing"
+                and not getattr(player, "is_watching", True)
+            ):
+                continue
             if (
                 not public_audience
                 and player_id

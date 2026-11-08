@@ -38,6 +38,56 @@ class EventHandlingMixin:
         timers — are flushed once per server tick instead.)
         """
         event_type = event.get("type")
+        key = event.get("key", "").lower()
+        selection_id = event.get("selection_id")
+        menu_id = event.get("menu_id")
+
+        if getattr(self, "status", "") == "playing" and not getattr(player, "is_watching", True):
+            if (
+                (event_type == "keybind" and key == "enter")
+                or (event_type == "menu" and (selection_id == "watch_game" or menu_id == "turn_menu"))
+            ):
+                if hasattr(self, "_start_watching_game"):
+                    self._start_watching_game(player)
+                self.flush_menus()
+                return
+
+            if (
+                event_type == "escape"
+                or (event_type == "keybind" and key == "escape")
+                or (event_type == "menu" and selection_id == "back")
+            ):
+                handler = getattr(self, "_perform_leave_game", None)
+                if handler:
+                    handler(player)
+                self.flush_menus()
+                return
+
+            # While not watching, ignore other gameplay inputs
+            return
+
+        if (
+            getattr(self, "status", "") == "playing"
+            and getattr(player, "is_watching", True)
+            and (
+                getattr(player, "is_spectator", False)
+                or (hasattr(self, "is_player_eliminated") and self.is_player_eliminated(player))
+            )
+        ):
+            if (
+                event_type == "escape"
+                or (event_type == "keybind" and key == "escape")
+                or (event_type == "menu" and selection_id == "back" and menu_id == "turn_menu")
+            ):
+                if (
+                    player.id not in getattr(self, "_status_box_open", set())
+                    and player.id not in self._pending_actions
+                    and menu_id not in ("status_box", "action_input_menu", "action_input_editbox", "leave_game_confirm")
+                ):
+                    if hasattr(self, "_stop_watching_game"):
+                        self._stop_watching_game(player)
+                    self.flush_menus()
+                    return
 
         pending_action_id = self._pending_actions.get(player.id)
         if pending_action_id:

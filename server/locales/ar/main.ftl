@@ -111,6 +111,9 @@ player-replaced-by-bot = { $bot } يلعب الآن نيابةً عن { $player 
 player-reclaimed-from-bot = عاد { $player } واستعاد المقعد { GENDER_TERM($player_gender, "possessive-determiner") } من { $bot }.
 player-reclaimed-from-bot-you = عدت واستعدت مقعدك من { $bot }.
 spectator-joined = انضممتَ إلى طاولة { $host } كمتفرّج.
+table-game-in-progress = اللعبة قيد التقدم.
+spectator-watching-game = مشاهدة اللعبة.
+spectator-stopped-watching = توقفت عن مشاهدة اللعبة.
 
 spectate = المشاهدة
 now-playing = { $player } يلعب الآن.

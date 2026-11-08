@@ -121,6 +121,9 @@ game-cancelled-no-controller = Match cancelled and table closed: no player or ho
 player-reclaimed-from-bot = { $player } has returned and taken { GENDER_TERM($player_gender, "possessive-determiner") } seat back from { $bot }.
 player-reclaimed-from-bot-you = You have returned and taken your seat back from { $bot }.
 spectator-joined = Joined { $host }'s table as a spectator.
+table-game-in-progress = Game in progress.
+spectator-watching-game = Watching game.
+spectator-stopped-watching = Stopped watching game.
 
 spectate = Spectate
 now-playing = { $player } is now playing.

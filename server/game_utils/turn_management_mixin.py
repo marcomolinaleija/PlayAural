@@ -130,7 +130,7 @@ class TurnManagementMixin:
     ) -> None:
         """Speak the current turn to one listener with the correct perspective."""
         user = self.get_user(listener)
-        if not user:
+        if not user or (buffer == "game" and not getattr(listener, "is_watching", True)):
             return
 
         turn_player = current if current is not None else self.current_player

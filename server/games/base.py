@@ -23,7 +23,7 @@ from ..game_utils.options import (
 )
 from ..game_utils.teams import TeamManager
 from ..game_utils.game_sound_mixin import GameSoundMixin
-from ..audio import AudioPlaybackState
+from ..audio import AudioCommand, AudioPlaybackState
 from ..game_utils.game_communication_mixin import GameCommunicationMixin
 from ..game_utils.game_result_mixin import GameResultMixin
 from ..game_utils.game_scores_mixin import GameScoresMixin
@@ -1097,14 +1097,15 @@ class Game(
         player = self.get_player_by_id(player_id)
         if player is not None and not player.is_bot:
             self._ensure_table_presence_action(player)
-        # Play current music/ambience for the joining user
-        for state in self.active_audio.values():
-            if state.recipient_ids and player_id not in state.recipient_ids:
-                continue
-            for command in state.replay_commands():
-                user.send_audio_command(command)
-            if state.paused and state.kind == "music":
-                user.pause_music(handle=state.handle, fade_ms=0)
+        # Play current music/ambience for the joining user (if watching)
+        if player is None or getattr(player, "is_watching", True):
+            for state in self.active_audio.values():
+                if state.recipient_ids and player_id not in state.recipient_ids:
+                    continue
+                for command in state.replay_commands():
+                    user.send_audio_command(command)
+                if state.paused and state.kind == "music":
+                    user.pause_music(handle=state.handle, fade_ms=0)
         # Check for game resume (if this was a paused-table reconnect scenario).
         if self.status == "playing":
             player = self.get_player_by_id(player_id)
@@ -1247,3 +1248,51 @@ class Game(
     def team_manager(self) -> TeamManager:
         """Get the team manager for this game."""
         return self._team_manager
+
+    def is_player_eliminated(self, player: Player) -> bool:
+        """Return whether this seated player has been eliminated from active play."""
+        if getattr(player, "is_spectator", False):
+            return False
+        if getattr(player, "eliminated", False):
+            return True
+        if getattr(player, "bankrupt", False):
+            return True
+        if hasattr(player, "hp") and getattr(player, "hp") <= 0:
+            return True
+        if hasattr(player, "lives") and getattr(player, "lives") <= 0:
+            return True
+        if hasattr(self, "_is_eliminated_player"):
+            try:
+                return bool(self._is_eliminated_player(player))
+            except Exception:
+                pass
+        return False
+
+    def _start_watching_game(self, player: Player) -> None:
+        """Switch a spectator or eliminated player into watching mode."""
+        player.is_watching = True
+        user = self.get_user(player)
+        if user:
+            user.speak_l("spectator-watching-game", buffer="system")
+            for state in getattr(self, "active_audio", {}).values():
+                if state.recipient_ids and player.id not in state.recipient_ids:
+                    continue
+                for command in state.replay_commands():
+                    user.send_audio_command(command)
+                if state.paused and state.kind == "music":
+                    user.pause_music(handle=state.handle, fade_ms=0)
+        if player.is_spectator:
+            self.broadcast_l("now-spectating", buffer="system", player=player.name, exclude=player)
+            self.play_table_join_sound(player, is_spectator=True)
+        self.refresh_menus(player)
+
+    def _stop_watching_game(self, player: Player) -> None:
+        """Switch a spectator or eliminated player out of watching mode."""
+        player.is_watching = False
+        self._actions_menu_open.discard(player.id)
+        self._actions_menu_return_focus.pop(player.id, None)
+        user = self.get_user(player)
+        if user:
+            user.send_audio_command(AudioCommand(command="stop_all"))
+            user.speak_l("spectator-stopped-watching", buffer="system")
+        self.refresh_menus(player)

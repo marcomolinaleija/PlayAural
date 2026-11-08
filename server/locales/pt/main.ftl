@@ -120,6 +120,9 @@ player-replaced-by-bot = { $bot } está jogando no lugar de { $player }.
 player-reclaimed-from-bot = { $player } retornou e reassumiu o lugar { GENDER_TERM($player_gender, "possessive-determiner") } que estava com { $bot }.
 player-reclaimed-from-bot-you = Você retornou e retomou seu lugar que era ocupado por { $bot }.
 spectator-joined = Entrou na mesa de { $host } como espectador.
+table-game-in-progress = Partida em andamento.
+spectator-watching-game = Assistindo à partida.
+spectator-stopped-watching = Parou de assistir à partida.
 
 spectate = Assistir
 now-playing = { $player } agora está jogando.
