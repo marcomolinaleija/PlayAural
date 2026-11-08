@@ -1100,6 +1100,41 @@ class TestTableInviteReclaim:
         assert self.db.get_saved_table(record.id) is None
 
     @pytest.mark.asyncio
+    async def test_saved_table_restore_with_offline_replaced_human_continues_with_bot(self):
+        restorer = self._create_online_user("Restorer")
+        guest = self._create_online_user("Guest")
+        record = self._save_pig_game(restorer, guest, replace=guest)
+
+        # Guest goes offline before restore
+        self.server._users.pop(guest.username)
+
+        restorer.clear_messages()
+        await self.server._restore_saved_table(restorer, record.id)
+
+        table = self.server._tables.find_user_table(restorer.username)
+        assert table is not None
+        assert self.server._tables.find_user_table(guest.username) is None
+        restored = table.game.get_player_by_id(guest.uuid)
+        assert restored is not None
+        assert restored.is_bot is True
+        assert restored.replaced_human is True
+        assert restored.replaced_human_name == guest.username
+        assert self.db.get_saved_table(record.id) is None
+        assert restorer.get_last_spoken() == Localization.get(
+            restorer.locale,
+            "table-restored",
+        )
+
+        # When guest returns and rejoins later, they can reclaim the seat
+        self.server._users[guest.username] = guest
+        self.server._auto_join_table(guest, table, table.game_type)
+        assert self.server._tables.find_user_table(guest.username) is table
+        reclaimed = table.game.get_player_by_id(guest.uuid)
+        assert reclaimed.is_bot is False
+        assert reclaimed.replaced_human is False
+        assert reclaimed.name == guest.username
+
+    @pytest.mark.asyncio
     async def test_saved_humanity_table_restore_replays_music_after_menu_stop(self):
         host = self._create_online_user("Host")
         guest = self._create_online_user("Guest")

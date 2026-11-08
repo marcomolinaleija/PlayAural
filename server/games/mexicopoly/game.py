@@ -219,10 +219,46 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         )
         self.define_keybind(
             "x",
-            "Vandalize opponent property",
+            "Vandalizar propiedad ajena",
             ["vandalize_property"],
             state=KeybindState.ACTIVE,
         )
+
+    def _locale(self, player: Player) -> str:
+        user = self.get_user(player)
+        if user and getattr(user, "locale", None):
+            return user.locale
+        table = getattr(self, "_table", None)
+        if table and hasattr(table, "_users"):
+            for table_user in table._users.values():
+                if getattr(table_user, "locale", None):
+                    return table_user.locale
+        return "es"
+
+    def _get_quick_management_label(self, player: Player, action_id: str) -> str:
+        key = f"mexicopoly-action-{action_id.replace('_', '-')}"
+        return Localization.get(self._locale(player), key)
+
+    def _get_quick_management_description(self, player: Player, action_id: str) -> str | None:
+        key = f"mexicopoly-desc-{action_id.replace('_', '-')}"
+        return Localization.get(self._locale(player), key)
+
+    def before_menu_build(self, player: Player) -> None:
+        super().before_menu_build(player)
+        standard = self.get_action_set(player, "standard")
+        if standard:
+            for action_id in (
+                "quick_buy_house",
+                "quick_sell_house",
+                "quick_mortgage",
+                "quick_unmortgage",
+            ):
+                act = standard.get_action(action_id)
+                if act:
+                    act.get_label = "_get_quick_management_label"
+                    act.get_description = "_get_quick_management_description"
+                    act.label = self._get_quick_management_label(player, action_id)
+                    act.description = self._get_quick_management_description(player, action_id)
 
     def rebuild_runtime_state(self):
         super().rebuild_runtime_state()
@@ -247,8 +283,14 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             if standard_set is not None:
                 fresh_standard = self.create_standard_action_set(player)
                 for action in fresh_standard._actions.values():
-                    if not standard_set.get_action(action.id):
+                    existing = standard_set.get_action(action.id)
+                    if not existing:
                         standard_set.add(action)
+                    elif action.id.startswith("quick_"):
+                        existing.get_label = action.get_label
+                        existing.get_description = action.get_description
+                        existing.label = action.label
+                        existing.description = action.description
                 self._apply_standard_action_order(standard_set, player)
 
     def create_standard_action_set(self, player: Player) -> ActionSet:
@@ -265,6 +307,8 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 "_is_quick_buy_enabled",
                 "_is_quick_management_hidden",
                 description_key="mexicopoly-desc-quick-buy-house",
+                get_label="_get_quick_management_label",
+                get_description="_get_quick_management_description",
                 input_request=MenuInput(
                     prompt="mexicopoly-prompt-quick-buy-house",
                     options="_build_property_options",
@@ -285,6 +329,8 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 "_is_quick_sell_enabled",
                 "_is_quick_management_hidden",
                 description_key="mexicopoly-desc-quick-sell-house",
+                get_label="_get_quick_management_label",
+                get_description="_get_quick_management_description",
                 input_request=MenuInput(
                     prompt="mexicopoly-prompt-quick-sell-house",
                     options="_sell_property_options",
@@ -305,6 +351,8 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 "_is_quick_mortgage_enabled",
                 "_is_quick_management_hidden",
                 description_key="mexicopoly-desc-quick-mortgage",
+                get_label="_get_quick_management_label",
+                get_description="_get_quick_management_description",
                 input_request=MenuInput(
                     prompt="mexicopoly-prompt-quick-mortgage",
                     options="_mortgage_property_options",
@@ -325,6 +373,8 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 "_is_quick_unmortgage_enabled",
                 "_is_quick_management_hidden",
                 description_key="mexicopoly-desc-quick-unmortgage",
+                get_label="_get_quick_management_label",
+                get_description="_get_quick_management_description",
                 input_request=MenuInput(
                     prompt="mexicopoly-prompt-quick-unmortgage",
                     options="_unmortgage_property_options",

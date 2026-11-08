@@ -12,6 +12,7 @@ import sys
 import time
 import weakref
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -156,6 +157,15 @@ from ..game_utils.client_types import (
 )
 from ..game_utils.game_result import GameResult
 from ..audio import SameTurnAudioBatcher
+
+
+@dataclass(slots=True)
+class _RestoredMember:
+    player: Any
+    serialized_name: str
+    is_bot: bool
+    replaced_human: bool
+    human_name: str | None
 
 
 VERSION = "1.0.5.3+marco.1"
@@ -15342,7 +15352,7 @@ PlayAural Server
                 game._users.pop(spectator_id, None)
             game.rebuild_runtime_state()
 
-            resolved_members: list[tuple[Any, str, bool]] = []
+            resolved_members: list[_RestoredMember] = []
             resolved_player_ids: set[str] = set()
             for member in members_data:
                 if not isinstance(member, dict):
@@ -15375,7 +15385,13 @@ PlayAural Server
                     raise ValueError("saved table contains a duplicate player")
                 resolved_player_ids.add(normalized_player_id)
                 resolved_members.append(
-                    (player, human_name or serialized_name, human_name is None)
+                    _RestoredMember(
+                        player=player,
+                        serialized_name=serialized_name,
+                        is_bot=is_bot,
+                        replaced_human=replaced_human,
+                        human_name=human_name,
+                    )
                 )
 
             active_player_ids = {str(player.id) for player in game.players}
@@ -15393,30 +15409,40 @@ PlayAural Server
             return
 
         # Resolve persistent account identities before checking live
-        # availability. This makes an actionable block error take precedence
-        # even when the affected participant is currently offline.
-        human_accounts: list[tuple[Any, Any]] = []
+        # availability. Mandatory human participants (who were active human seats
+        # at save time) must be validated strictly: an actionable block error or
+        # missing account aborts restoration. Replaced humans (whose seats were
+        # already played by bots at save time) are validated opportunistically:
+        # if online, free, and socially permitted, they reclaim the seat;
+        # otherwise the seat continues with the bot without failing restore.
+        mandatory_human_accounts: list[tuple[Any, Any]] = []
+        reclaimable_human_accounts: list[tuple[Any, Any]] = []
         missing_accounts: list[str] = []
-        for player, participant_name, is_bot in resolved_members:
-            if is_bot:
+        for member in resolved_members:
+            if member.human_name is None:
                 continue
-            participant_record = self._db.get_user(participant_name)
+            participant_record = self._db.get_user(member.human_name)
             if not participant_record:
-                missing_accounts.append(participant_name)
+                if not member.is_bot:
+                    missing_accounts.append(member.human_name)
                 continue
-            if str(player.id) != participant_record.uuid:
+            if str(member.player.id) != participant_record.uuid:
                 user.speak_l("saved-table-invalid", buffer="system")
                 self._nav_back(user)
                 return
-            human_accounts.append((player, participant_record))
+            if not member.is_bot:
+                mandatory_human_accounts.append((member.player, participant_record))
+            else:
+                reclaimable_human_accounts.append((member.player, participant_record))
 
-        if not any(account.uuid == user.uuid for _, account in human_accounts):
+        all_human_accounts = mandatory_human_accounts + reclaimable_human_accounts
+        if not any(account.uuid == user.uuid for _, account in all_human_accounts):
             user.speak_l("saved-table-invalid", buffer="system")
             self._nav_back(user)
             return
 
         banned_uuids = table_state.get("_banned_uuids", set())
-        if any(account.uuid in banned_uuids for _, account in human_accounts):
+        if any(account.uuid in banned_uuids for _, account in mandatory_human_accounts):
             user.speak_l("saved-table-invalid", buffer="system")
             self._nav_back(user)
             return
@@ -15429,13 +15455,13 @@ PlayAural Server
         blocked_by_user_ids = set(self._db.get_blocked_users(user.uuid))
         blocked_by_user = [
             account.username
-            for _, account in human_accounts
+            for _, account in mandatory_human_accounts
             if account.uuid != user.uuid
             and account.uuid in blocked_by_user_ids
         ]
         otherwise_unavailable = [
             account.username
-            for _, account in human_accounts
+            for _, account in mandatory_human_accounts
             if account.uuid != user.uuid
             and account.uuid in socially_blocked_ids
             and account.uuid not in blocked_by_user_ids
@@ -15474,7 +15500,7 @@ PlayAural Server
 
         human_entries: list[tuple[Any, NetworkUser]] = []
         missing_players = list(missing_accounts)
-        for player, account in human_accounts:
+        for player, account in mandatory_human_accounts:
             participant = self._users.get(account.username)
             if (
                 not participant
@@ -15493,6 +15519,20 @@ PlayAural Server
             )
             self._nav_back(user)
             return
+
+        # Attempt to reclaim eligible replacement bot seats whose former human is online,
+        # available, and socially permitted.
+        for player, account in reclaimable_human_accounts:
+            if account.uuid in banned_uuids or account.uuid in socially_blocked_ids:
+                continue
+            participant = self._users.get(account.username)
+            if (
+                not participant
+                or participant.uuid != account.uuid
+                or self._tables.find_user_table(account.username)
+            ):
+                continue
+            human_entries.append((player, participant))
 
         try:
             # Every risky persisted-data operation has succeeded. Only now
@@ -15513,15 +15553,20 @@ PlayAural Server
                 for player, participant in human_entries
             }
             reclaimed_slots: list[tuple[str, str]] = []
-            for player, _participant_name, is_bot in resolved_members:
-                if is_bot:
+            for member in resolved_members:
+                player = member.player
+                participant = human_users_by_id.get(str(player.id))
+                if not participant:
+                    if member.replaced_human:
+                        player.is_bot = True
+                        player.replaced_human = True
+                        player.replaced_human_name = member.human_name or ""
                     game.attach_user(
                         player.id,
                         Bot(player.name, uuid=player.id),
                     )
                     continue
 
-                participant = human_users_by_id[str(player.id)]
                 replacement_bot_name = (
                     player.name
                     if getattr(player, "is_bot", False)
@@ -15558,6 +15603,9 @@ PlayAural Server
             game.setup_keybinds()
             for _, participant in human_entries:
                 self._set_in_game_state(participant, table.table_id)
+                seat_player = game.get_player_by_id(participant.uuid)
+                if seat_player:
+                    game.on_player_locale_changed(seat_player)
             for bot_name, human_name in reclaimed_slots:
                 game._on_replacement_slot_reclaimed(bot_name, human_name)
             game.ensure_bot_display_names(user.locale)
