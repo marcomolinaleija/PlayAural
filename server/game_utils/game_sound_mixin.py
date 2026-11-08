@@ -179,12 +179,6 @@ class GameSoundMixin:
                 else (candidate if isinstance(candidate, Player) else None)
             )
             if (
-                player
-                and getattr(self, "status", "") == "playing"
-                and not getattr(player, "is_watching", True)
-            ):
-                continue
-            if (
                 not public_audience
                 and player_id
                 and str(player_id) not in seen_players
@@ -192,6 +186,13 @@ class GameSoundMixin:
                 normalized_player_id = str(player_id)
                 seen_players.add(normalized_player_id)
                 player_ids.append(normalized_player_id)
+
+            if (
+                player
+                and getattr(self, "status", "") == "playing"
+                and not getattr(player, "is_watching", True)
+            ):
+                continue
 
             user = (
                 candidate

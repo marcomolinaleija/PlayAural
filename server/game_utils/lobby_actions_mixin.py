@@ -1011,14 +1011,12 @@ class LobbyActionsMixin:
         name: str,
         user: "User",
         *,
-        is_watching: bool | None = None,
+        is_watching: bool = True,
     ) -> "Player":
         """Add a spectator to the game."""
         self.prepare_human_name_for_roster(name)
         player = self.create_player(user.uuid, name, is_bot=False)
         player.is_spectator = True
-        if is_watching is None:
-            is_watching = (self.status != "playing")
         player.is_watching = is_watching
         self.players.append(player)
         self.attach_user(player.id, user)
