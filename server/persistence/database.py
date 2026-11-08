@@ -5151,7 +5151,7 @@ class Database:
             Localization.normalize_locale_code(language) or DEFAULT_LOCALE
         )
         candidates = dict.fromkeys(
-            (requested, requested.split("-", 1)[0], DEFAULT_LOCALE)
+            (requested, requested.split("-", 1)[0], "es", DEFAULT_LOCALE)
         )
         for candidate in candidates:
             cursor.execute(

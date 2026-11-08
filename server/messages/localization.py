@@ -17,7 +17,7 @@ from ..gender import normalize_gender
 
 
 DEFAULT_LOCALE = "en"
-PINNED_LOCALES = (DEFAULT_LOCALE, "vi")
+PINNED_LOCALES = ("es",)
 LOCALE_METADATA_FILENAME = "metadata.json"
 LOCALE_RESOLUTION_CACHE_SIZE = 128
 GENDER_TERM_FORMS = frozenset(

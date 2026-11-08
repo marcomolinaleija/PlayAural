@@ -53,7 +53,7 @@ def localized_text_for_locale(
     """Resolve translated content with the configured source-locale fallback."""
     values = translations or {}
     resolved = Localization.resolve_locale(locale)
-    value = values.get(resolved) or values.get(DEFAULT_LOCALE)
+    value = values.get(resolved) or values.get("es") or values.get(DEFAULT_LOCALE)
     if isinstance(value, str) and value.strip():
         return value
     return default
@@ -87,7 +87,7 @@ def decode_localized_custom_text(value: str | None) -> dict[str, str] | None:
         }
     if raw.startswith(LEGACY_CUSTOM_PREFIX):
         legacy = raw[len(LEGACY_CUSTOM_PREFIX) :].strip()
-        return {DEFAULT_LOCALE: legacy} if legacy else {}
+        return {"es": legacy, DEFAULT_LOCALE: legacy} if legacy else {}
     return None
 
 

@@ -336,7 +336,7 @@ keep the scope explicit and add coverage for the intended separation.
 Use declarative `GameOptions` with `option_field()`.
 
 - Every option must have working logic; no dead options.
-- Every option needs a localized `change_msg` in EN and VI.
+- Every option needs a localized `change_msg` in ES (Spanish is the sole mandatory language; EN, VI, and other locales are optional).
 - `MenuOption` needs `choice_labels` for every raw value.
 - `TeamModeOption` uses shared team-mode helpers.
 - The framework keeps `start_game` visible throughout the waiting lobby.
@@ -553,18 +553,20 @@ participants; do not reuse game-player error strings for account lookups.
   vocabulary, an allowlisted context backed by
   `<context>-gender-term-<form>`. Unspecified and non-binary values use the
   locale's neutral fallback.
-- Maintain EN/VI parity: same keys, data-bearing variables, and plural/select
-  arms. A locale may omit a variable used only as a `GENDER_TERM(...)`
-  selector when its natural sentence does not need gender; if used, the
-  selector name must still match the source key.
-- Agents author both EN and VI strings in this repo, but Vietnamese is
-  provisional and should be flagged for native review when quality matters.
-- Prefer writing locale keys before feature code so every announcement path is
+- Spanish (ES) is the sole mandatory language for all new strings, options,
+  features, and documentation. English (EN), Vietnamese (VI), and other community
+  locales are optional.
+- Agents author strings in Spanish (ES). Adding translations in EN, VI, or other
+  languages is optional. When translating, maintain parity: same keys, data-bearing
+  variables, and plural/select arms. A locale may omit a variable used only as a
+  `GENDER_TERM(...)` selector when its natural sentence does not need gender; if
+  used, the selector name must still match the source key.
+- Prefer writing ES locale keys before feature code so every announcement path is
   planned.
 - Locale discovery and fallback must stay dynamic. Do not hardcode language
   branches in feature code; new languages should be added through locale files
   and metadata/registry layers. Missing translated strings or documentation
-  must fall back to English rather than exposing raw keys to players.
+  must fall back gracefully rather than exposing raw keys to players.
 - A live language change updates client-owned chrome before later localized
   packets, rebuilds that player's locale-bound action sets, and restores the
   semantic parent menu/focus. Browser clients must serialize their asynchronous
@@ -593,7 +595,7 @@ string changes, perform a complete string and broadcast-context audit.
   resulting condition, and the state values needed to understand what happened
   and what the player can do next. Avoid generic messages such as "You cannot
   do that" when a contextual explanation is available.
-- Keep EN/VI keys and variables structurally synchronized, localize
+- Keep ES keys and variables properly localized, localize
   listener-dependent values per recipient, and add tests for both actor and
   observer wording plus important contextual and error branches.
 
@@ -611,9 +613,11 @@ player-facing tone.
   that do not help a player understand the game.
 - Keep vocabulary plain and concrete. Explain game terms before relying on
   them, especially for custom games or mechanics that may be unfamiliar.
-- Keep EN/VI documentation synchronized in structure, meaning, terminology, and
-  attribution. Vietnamese docs should be natural and friendly, with terminology
-  aligned to the matching `.ftl` strings.
+- Spanish (ES) documentation is mandatory for all new features and games.
+  English and Vietnamese documentation are optional. Keep documentation synchronized
+  in structure, meaning, terminology, and attribution when providing translations.
+  Vietnamese docs should be natural and friendly, with terminology aligned to the
+  matching `.ftl` strings.
 - Community translation work must follow `TRANSLATING.md`, including variable
   preservation, perspective-key parity, documentation fallback, and contributor
   credit metadata.
