@@ -416,3 +416,77 @@ mexicopoly-desc-quick-unmortgage = Chọn một bất động sản đang thế 
 mexicopoly-prompt-quick-unmortgage = Chọn bất động sản cần giải chấp:
 
 mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: tiền { $cash }, tài sản { $net_worth }
+
+# Tòa án quận & Tư pháp
+mexicopoly-space-juzgado = Tòa án quận
+mexicopoly-group-juzgado = Tư pháp
+mexicopoly-action-issue-amparo = Ban hành lệnh tha bổng
+mexicopoly-desc-issue-amparo = Ban hành lệnh tha bổng ra tù hợp pháp (phí $100 MXN) để bán hoặc sử dụng.
+mexicopoly-action-buy-juzgado-amparo = Mua lệnh tha bổng từ { $owner }
+mexicopoly-desc-buy-juzgado-amparo = Mua lệnh tha bổng ra tù từ chủ sở hữu Tòa án với giá $200 MXN.
+mexicopoly-you-issue-amparo = Bạn đã ban hành lệnh tha bổng tại Tòa án quận với phí { $cost }. Hiện bạn có { $count } lệnh tha bổng.
+mexicopoly-player-issues-amparo = { $player } đã ban hành lệnh tha bổng tại Tòa án quận với phí { $cost }.
+mexicopoly-you-buy-juzgado-amparo = Bạn đã mua lệnh tha bổng từ { $owner } với giá { $amount } và được trả tự do ngay lập tức.
+mexicopoly-player-buys-juzgado-amparo = { $player } đã mua lệnh tha bổng từ { $owner } với giá { $amount } và được trả tự do ngay lập tức.
+mexicopoly-you-juzgado-fee = Bạn trình diện tại Tòa án quận của { $owner } và trả { $amount } án phí cùng thù lao luật sư. Bạn còn { $cash }.
+mexicopoly-player-juzgado-fee = { $player } trình diện tại Tòa án quận của { $owner } và trả { $amount } án phí.
+mexicopoly-you-juzgado-welcome = Bạn ghé thăm Tòa án quận của mình. Các thư ký và thẩm phán đang làm việc trật tự.
+mexicopoly-player-juzgado-welcome = { $player } ghé thăm Tòa án quận của mình; mọi hoạt động pháp lý đều ổn định.
+mexicopoly-you-juzgado-mortgaged-visit = Bạn ghé thăm Tòa án của { $owner }, nhưng nơi này đang thế chấp và đình chỉ hoạt động; không phải nộp phí.
+mexicopoly-player-juzgado-mortgaged-visit = { $player } ghé thăm Tòa án của { $owner }, nhưng nơi này đang thế chấp và đình chỉ hoạt động.
+mexicopoly-debt-juzgado-fee = án phí Tòa án quận
+mexicopoly-error-not-juzgado-owner = Bạn không phải là chủ sở hữu Tòa án quận.
+mexicopoly-error-juzgado-mortgaged = Tòa án quận đang thế chấp và tạm dừng các hoạt động tư pháp.
+mexicopoly-error-amparo-limit = Bạn đã có 2 lệnh tha bổng còn hiệu lực. Hãy dùng hoặc bán trước khi ban hành thêm.
+mexicopoly-error-amparo-cooldown = Bạn đã ban hành lệnh tha bổng trong lượt này. Hãy chờ đến lượt kế tiếp.
+
+# Cửa hàng Mexipoly
+mexicopoly-action-open-shop = Cửa hàng Mexipoly
+mexicopoly-desc-open-shop = Mở cửa hàng Mexipoly để mua phương tiện, nhiên liệu hoặc thiết bị đặc biệt.
+mexicopoly-prompt-shop = Chọn một vật phẩm từ cửa hàng để mua:
+mexicopoly-shop-item-airplane = Máy bay riêng ({ $price })
+mexicopoly-shop-item-airplane-locked = Máy bay riêng ({ $price }) [Đã khóa: cần đi qua tất cả sân bay ({ $visited }/{ $total })]
+mexicopoly-shop-item-airplane-owned = Máy bay riêng (Đã sở hữu)
+mexicopoly-desc-shop-airplane = Cho phép bay trực tiếp đến bất kỳ sân bay quốc gia nào.
+mexicopoly-shop-item-car = Xe ô tô riêng ({ $price }, gồm 4 lượt đổ 3 xúc xắc)
+mexicopoly-shop-item-car-owned = Xe ô tô riêng (Đã sở hữu)
+mexicopoly-desc-shop-car = Cho phép bạn đổ 3 xúc xắc trong các lượt khi còn xăng.
+mexicopoly-shop-item-fuel = Xăng xe ({ $price }, còn { $current }/{ $max } lượt)
+mexicopoly-shop-item-fuel-no-car = Xăng xe (Yêu cầu phải có xe ô tô)
+mexicopoly-shop-item-fuel-full = Xăng xe (Đầy bình: 4/4 lượt)
+mexicopoly-desc-shop-fuel = Bơm đầy bình xăng cho xe của bạn để có 4 lượt đổ 3 xúc xắc.
+mexicopoly-error-airplane-locked = Máy bay đang bị khóa. Bạn phải đi qua tất cả sân bay trên bàn cờ để mở khóa.
+
+# Hệ thống Chuyến bay và Sân bay
+mexicopoly-airports-unlocked-airplane = Bạn đã đi qua mọi sân bay ở Mexico! Máy bay riêng hiện có sẵn trong Cửa hàng Mexipoly (phím B).
+mexicopoly-airports-unlocked-airplane-player = { $player } đã đi qua mọi sân bay ở Mexico và mở khóa Máy bay trong Cửa hàng!
+mexicopoly-you-bought-airplane = Bạn đã mua máy bay riêng với giá { $price } tại Cửa hàng. Bạn còn { $cash }. Bay đến bất kỳ sân bay nào bằng phím A.
+mexicopoly-player-bought-airplane = { $player } đã mua máy bay riêng với giá { $price } tại Cửa hàng Mexipoly!
+mexicopoly-action-fly-airplane = Bay bằng máy bay
+mexicopoly-desc-fly-airplane = Lên máy bay riêng và bay đến bất kỳ sân bay nào tại Mexico.
+mexicopoly-prompt-fly-airplane = Chọn sân bay đích cho chuyến bay:
+mexicopoly-flight-option-own = { $airport } (Khoảng cách: { $distance } ô, quá cảnh: { $turns } lượt, của bạn: miễn phí)
+mexicopoly-flight-option-other = { $airport } (Khoảng cách: { $distance } ô, quá cảnh: { $turns } lượt, của { $owner }: TUA { $tua } + thuê { $rent })
+mexicopoly-flight-option-unowned = { $airport } (Khoảng cách: { $distance } ô, quá cảnh: { $turns } lượt, vô chủ: TUA { $tua })
+mexicopoly-you-fly-own = Bạn lên máy bay riêng và bay đến { $airport }. Do bạn sở hữu, không mất phí TUA hay tiền thuê. Bạn mất { $turns } lượt quá cảnh.
+mexicopoly-player-flies-own = { $player } bay máy bay riêng đến { $airport } của mình; không mất phí và mất { $turns } lượt quá cảnh.
+mexicopoly-you-fly-other = Bạn bay đến { $airport } của { $owner }. Bạn trả { $tua } TUA và { $rent } tiền thuê (tổng { $total }). Bạn còn { $cash }. Mất { $turns } lượt quá cảnh.
+mexicopoly-player-flies-other = { $player } bay đến { $airport } của { $owner }, trả { $tua } TUA cùng { $rent } tiền thuê (tổng { $total }). Mất { $turns } lượt quá cảnh.
+mexicopoly-you-fly-unowned = Bạn bay đến { $airport }. Bạn trả { $tua } TUA vào Quỹ và mất { $turns } lượt quá cảnh.
+mexicopoly-player-flies-unowned = { $player } bay đến { $airport }, trả { $tua } TUA vào Quỹ và mất { $turns } lượt quá cảnh.
+mexicopoly-you-flight-delay = Bạn đang trong thời gian quá cảnh chuyến bay. Còn lại { $turns } lượt.
+mexicopoly-player-flight-delay = { $player } đang trong thời gian quá cảnh chuyến bay; còn lại { $turns } lượt.
+mexicopoly-you-flight-arrived = Bạn đã hoàn thành quá cảnh và hạ cánh an toàn! Sẵn sàng chơi ở lượt tiếp theo.
+mexicopoly-player-flight-arrived = { $player } đã hoàn thành quá cảnh và hạ cánh an toàn.
+
+# Hệ thống Xe ô tô và Xăng
+mexicopoly-you-bought-car = Bạn đã mua một chiếc xe ô tô với giá { $price } tại Cửa hàng Mexipoly, bao gồm bình xăng đầy ({ $fuel } lượt đổ 3 xúc xắc). Bạn còn { $cash }.
+mexicopoly-player-bought-car = { $player } đã mua xe ô tô với giá { $price } kèm bình xăng đầy ({ $fuel } lượt đổ 3 xúc xắc)!
+mexicopoly-you-bought-fuel = Bạn đã nạp đầy bình xăng cho xe với giá { $price } ({ $fuel } lượt sẵn sàng). Bạn còn { $cash }.
+mexicopoly-player-bought-fuel = { $player } đã nạp xăng cho xe với giá { $price } ({ $fuel } lượt đổ 3 xúc xắc).
+mexicopoly-action-roll-car = Đổ xúc xắc bằng xe (3 xúc xắc, còn { $fuel } lượt)
+mexicopoly-desc-roll-car = Đạp ga xe ô tô và đổ 3 xúc xắc, tiêu tốn 1 lượt xăng.
+mexicopoly-you-roll-car = Bạn đạp ga xe ô tô và đổ 3 xúc xắc: { $die1 }, { $die2 }, và { $die3 } (tổng { $total }). Bạn còn { $fuel } lượt xăng.
+mexicopoly-player-rolls-car = { $player } tăng tốc xe ô tô và đổ 3 xúc xắc: { $die1 }, { $die2 }, và { $die3 } (tổng { $total }), còn lại { $fuel } lượt xăng.
+mexicopoly-error-no-gasoline = Xe của bạn đã hết xăng. Hãy mua nạp lại tại Cửa hàng Mexipoly bằng phím B.
+mexicopoly-error-hoy-no-circula = Chương trình Ngày không lái xe (Hoy No Circula) nghiêm cấm việc lái xe và bay riêng vào thời điểm này.

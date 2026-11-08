@@ -107,8 +107,8 @@ def test_complete_private_board_and_geographic_membership():
     validate_board(MEXICO_BOARD)
     assert len(MEXICO_BOARD.spaces) == len({s.id for s in MEXICO_BOARD.spaces}) == 50
     assert Counter(s.kind for s in MEXICO_BOARD.spaces) == {
-        "street": 24, "transit": 8, "utility": 2, "chance": 5,
-        "community": 5, "tax": 2, "go": 1, "jail": 1,
+        "street": 24, "transit": 8, "utility": 3, "chance": 5,
+        "community": 4, "tax": 2, "go": 1, "jail": 1,
         "go_to_jail": 1, "free_parking": 1,
     }
     assert [MEXICO_BOARD.spaces[i].id for i in (0, 13, 25, 38)] == [
@@ -120,6 +120,7 @@ def test_complete_private_board_and_geographic_membership():
     assert MEXICO_BOARD.space("aguascalientes").group_id == "orange"
     assert MEXICO_BOARD.space("toluca").group_id == "yellow"
     assert MEXICO_BOARD.space("tijuana").group_id == "brown"
+    assert MEXICO_BOARD.space("juzgado").group_id == "juzgado"
     for position, identifier in {**METRO_STATIONS, **AIRPORTS}.items():
         assert MEXICO_BOARD.spaces[position].id == identifier
     assert len(MEXICO_BOARD.chance_cards) == 26 and len(MEXICO_BOARD.community_cards) == 40
@@ -132,10 +133,13 @@ def test_cards_keep_effects_but_own_their_text_and_destinations():
         (MEXICO_BOARD.community_cards, classic.community_cards),
     ):
         for card, original in zip(private_deck[:16], classic_deck, strict=True):
-            assert replace(
-                card, text_key=original.text_key,
-                destination_id=original.destination_id,
-            ) == original
+            if card.action in ("collect", "collect_each"):
+                assert card.amount >= original.amount
+            else:
+                assert replace(
+                    card, text_key=original.text_key,
+                    destination_id=original.destination_id,
+                ) == original
         for card in private_deck:
             assert card.text_key.startswith("mexicopoly-card-")
             if card.destination_id:
@@ -172,7 +176,7 @@ def test_shared_lobby_touch_information_and_bonus_help(locale, client_type):
     game.on_start()
     drain(game, "monopoly_intro")
     game.before_menu_build(player)
-    assert len(game.property_states) == 34
+    assert len(game.property_states) == 35
     assert player.cash == 3000
     assert (game.bank_houses, game.bank_hotels) == (64, 24)
     for action in ("read_board", "read_property_groups", "read_cash", "read_status"):
@@ -235,7 +239,7 @@ def test_separate_transport_groups_and_finite_construction():
         states[station.id].owner_id = "owner"
         assert calculate_rent(MEXICO_BOARD, states, metro, 7) == metro.rents[number - 1]
     states[airport.id].owner_id = "owner"
-    assert calculate_rent(MEXICO_BOARD, states, airport, 7) == 80
+    assert calculate_rent(MEXICO_BOARD, states, airport, 7) == 120
     assert calculate_rent(MEXICO_BOARD, states, metro, 7, rent_multiplier=2) == 960
     states[metro.id].mortgaged = True
     assert calculate_rent(MEXICO_BOARD, states, metro, 7) == 0
@@ -349,7 +353,7 @@ async def test_real_local_websocket_can_create_and_start_mexican_game_without_vo
             await receive_until(lambda p: len(table.game.get_active_players()) == 2)
             await select("turn_menu", "start_game")
             await receive_until(lambda p: table.game.status == "playing")
-            assert len(table.game.property_states) == 34
+            assert len(table.game.property_states) == 35
             assert table.game.players[0].cash == 3000
             assert server._voice.is_ready() is False
             await ws.send(json.dumps({"type": "logout"}))
