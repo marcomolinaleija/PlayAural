@@ -427,9 +427,19 @@ def test_escalating_jail_fine_and_concise_jail_actions(monkeypatch):
     game._action_roll_dice(actor, "roll_dice")
     drain(game, "monopoly_roll")
     assert not actor.in_jail
+    # Verify jail fine escalation is strictly per player / per user, never general:
+    p2 = game.players[1]
+    assert game._jail_fine(p2) == 100
+    game._send_to_jail(p2)
+    assert game._jail_fine(p2) == 100
+    assert game._jail_fine(actor) == 800
+    game._send_to_jail(p2)
+    assert game._jail_fine(p2) == 200
+    assert game._jail_fine(actor) == 800
     restored = MexicopolyGame.from_json(game.to_json())
     restored.rebuild_runtime_state()
     assert restored.jail_counts[actor.id] == 4
+    assert restored.jail_counts[p2.id] == 2
     for action_id in ("roll_dice", "roll_shortcut", "jail_roll"):
         action = restored.find_action(restored.players[0], action_id)
         assert action.description is None and action.get_description is None
@@ -667,7 +677,8 @@ def test_vandalize_property_and_denounce_correct_false_and_skip():
         game.property_states[city].owner_id = p2.id
         game.property_states[city].buildings = 1
 
-    # Scenario 1: p1 vandalizes p2's Tijuana, and p2 FALSELY accuses p3
+    # Scenario 1: p1 secretly vandalizes p2's Tijuana. It is NOT instantaneous:
+    # It does not show in vandalized_turns yet, p1's turn is not interrupted, and p2 receives no alert.
     force_actor(game)
     tijuana = game.board.space("tijuana")
     cost = game._vandalism_cost(tijuana, game.property_states["tijuana"])
@@ -677,11 +688,24 @@ def test_vandalize_property_and_denounce_correct_false_and_skip():
     u2.clear_messages()
     game._action_vandalize_property(p1, "tijuana", "vandalize_property")
     assert p1.cash == 3000 - cost
+    assert "tijuana" not in game.vandalized_turns
+    assert game.phase == PHASE_AWAIT_ROLL
+    assert game.decision_player_id == p1.id
+    assert not any(m.type == "speak" for m in u2.messages)
+    # Culprit p1 received private confirmation
+    p1_spoken = " ".join(m.data["text"] for m in u1.messages if m.type == "speak")
+    assert "secreto" in p1_spoken
+
+    # Now p1 finishes their turn:
+    game._finish_turn()
+    # It becomes p2's turn. On p2's turn start, p2 discovers the vandalism!
+    assert game.current_player.id == p2.id
     assert game.vandalized_turns.get("tijuana") == 3
     assert game.phase == "vandalism_decision"
     assert game.decision_player_id == p2.id
-    # Victim's message does NOT reveal p1's name
     victim_spoken = " ".join(m.data["text"] for m in u2.messages if m.type == "speak")
+    assert "Han vandalizado tu propiedad" in victim_spoken
+    # Victim's message does NOT reveal who did it:
     assert p1.name not in victim_spoken
 
     # p2 falsely accuses p3 -> p2 pays false_penalty to p3, and Tijuana remains vandalized
@@ -691,8 +715,9 @@ def test_vandalize_property_and_denounce_correct_false_and_skip():
     assert p2.cash == p2_before - false_penalty
     assert p3.cash == p3_before + false_penalty
     assert game.vandalized_turns.get("tijuana") == 3
+    # After decision, p2 resumes their turn:
     assert game.phase == PHASE_AWAIT_ROLL
-    assert game.decision_player_id == p1.id
+    assert game.decision_player_id == p2.id
 
     # While Tijuana is vandalized:
     # 1) Building on Tijuana is blocked
@@ -701,16 +726,18 @@ def test_vandalize_property_and_denounce_correct_false_and_skip():
         {"turns": 3},
     )
     # 2) Landing on Tijuana charges only 50% rent (1 house rent on Tijuana is 60 -> 30)
-    p1.position = game.board.space_index("tijuana")
-    p1_before_rent = p1.cash
+    p3.position = game.board.space_index("tijuana")
+    p3_before_rent = p3.cash
     p2_before_rent = p2.cash
-    game._resolve_landing(p1)
-    assert p1.cash == p1_before_rent - 30
+    game._resolve_landing(p3)
+    assert p3.cash == p3_before_rent - 30
     assert p2.cash == p2_before_rent + 30
 
-    # Scenario 2: Next turn, p1 vandalizes p2's Mexicali, and p2 CORRECTLY denounces p1
+    # Scenario 2: Next turn, p1 secretly vandalizes p2's Mexicali, and p2 CORRECTLY denounces p1 on p2's turn
     game.vandalized_this_turn = False
-    force_actor(game)
+    game.current_player = p1
+    game.decision_player_id = p1.id
+    game.phase = PHASE_AWAIT_ROLL
     mexicali = game.board.space("mexicali")
     cost_m = game._vandalism_cost(mexicali, game.property_states["mexicali"])
     caught_penalty = game._vandalism_caught_penalty(
@@ -720,6 +747,10 @@ def test_vandalize_property_and_denounce_correct_false_and_skip():
     p2_before = p2.cash
     game._action_vandalize_property(p1, "mexicali", "vandalize_property")
     assert p1.cash == p1_before - cost_m
+    assert "mexicali" not in game.vandalized_turns
+    # Advance to p2's turn:
+    game._finish_turn()
+    assert game.current_player.id == p2.id
     assert game.vandalized_turns.get("mexicali") == 3
     assert game.phase == "vandalism_decision"
 
@@ -728,13 +759,19 @@ def test_vandalize_property_and_denounce_correct_false_and_skip():
     assert p1.cash == p1_before - cost_m - caught_penalty
     assert p2.cash == p2_before + caught_penalty
     assert game.phase == PHASE_AWAIT_ROLL
-    assert game.decision_player_id == p1.id
+    assert game.decision_player_id == p2.id
 
     # Scenario 3: Skipping denunciation keeps La Paz vandalized for 3 turns and then repairs it
     game.vandalized_this_turn = False
-    force_actor(game)
+    game.current_player = p1
+    game.decision_player_id = p1.id
+    game.phase = PHASE_AWAIT_ROLL
     game._action_vandalize_property(p1, "la_paz", "vandalize_property")
+    assert "la_paz" not in game.vandalized_turns
+    game._finish_turn()
+    assert game.current_player.id == p2.id
     assert game.vandalized_turns.get("la_paz") == 3
+    assert game.phase == "vandalism_decision"
     game._action_skip_vandalism_denounce(p2, "skip_vandalism_denounce")
     assert game.vandalized_turns.get("la_paz") == 3
     assert game.phase == PHASE_AWAIT_ROLL
@@ -855,6 +892,68 @@ def test_community_movement_cards_hotel_cost_premium_and_group_rent_bonuses():
     game._apply_build(owner, "tijuana", announce=False)
     assert game.property_states["tijuana"].buildings == 6
     assert owner.cash == 640 - 180 == 460
+
+
+def test_marina_operativo_card_has_sequence_pause():
+    game = make_game(locale="es")
+    actor = force_actor(game)
+    game.cobro_de_piso_active = True
+    # Place marina operativo card at top of chance deck
+    game.chance_deck.insert(0, "chance_marina_operativo")
+    game._draw_card(actor, "chance")
+    assert any(s.tag == "monopoly_card" for s in game.active_sequences)
+    card_seq = next(s for s in game.active_sequences if s.tag == "monopoly_card")
+    # Verify the sequence has the 18-tick pause beat before card audio/resolution
+    # so dice roll announcements do not collide
+    pause_beats = [b for b in card_seq.beats if b.delay_after_ticks >= 18 and not b.ops]
+    assert len(pause_beats) >= 1
+    drain(game, "monopoly_card")
+    assert not game.cobro_de_piso_active
+
+
+def test_multiple_vandalisms_queued_discovered_in_order():
+    game = make_game(count=3, locale="es")
+    p1, p2, p3 = game.players
+    # Give p3 two properties
+    game.property_states["tijuana"].owner_id = p3.id
+    game.property_states["mexicali"].owner_id = p3.id
+
+    # p1 secretly vandalizes Tijuana on p1's turn
+    game.current_player = p1
+    game.decision_player_id = p1.id
+    game.phase = PHASE_AWAIT_ROLL
+    game._action_vandalize_property(p1, "tijuana", "vandalize_property")
+
+    # p2 secretly vandalizes Mexicali on p2's turn
+    game.vandalized_this_turn = False
+    game.current_player = p2
+    game.decision_player_id = p2.id
+    game.phase = PHASE_AWAIT_ROLL
+    game._action_vandalize_property(p2, "mexicali", "vandalize_property")
+
+    assert len(game.unannounced_vandalisms) == 2
+    assert "tijuana" not in game.vandalized_turns
+    assert "mexicali" not in game.vandalized_turns
+
+    # Now p3's turn begins: p3 discovers the first vandalism (Tijuana)
+    game._finish_turn()
+    assert game.current_player.id == p3.id
+    assert game.phase == "vandalism_decision"
+    assert game.decision_player_id == p3.id
+    assert game.vandalized_turns.get("tijuana") == 3
+    assert "mexicali" not in game.vandalized_turns
+
+    # p3 skips denouncing Tijuana -> immediately discovers second vandalism (Mexicali)
+    game._action_skip_vandalism_denounce(p3, "skip_vandalism_denounce")
+    assert game.phase == "vandalism_decision"
+    assert game.decision_player_id == p3.id
+    assert game.vandalized_turns.get("mexicali") == 3
+
+    # p3 skips denouncing Mexicali -> now all discoveries done, resumes normal turn
+    game._action_skip_vandalism_denounce(p3, "skip_vandalism_denounce")
+    assert game.phase == PHASE_AWAIT_ROLL
+    assert game.decision_player_id == p3.id
+
 
 
 

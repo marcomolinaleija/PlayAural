@@ -20,8 +20,9 @@ from ..monopoly.game import (
     PHASE_MORTGAGE_TRANSFER, PHASE_ENTRY_ACTIONS,
 )
 from ..monopoly.models import (
-    BoardDefinition, BoardSpaceDefinition, CardDefinition, OWNABLE_SPACE_KINDS,
-    PropertyState, SPACE_STREET, SPACE_TAX, SPACE_TRANSIT, SPACE_UTILITY,
+    BoardDefinition, BoardSpaceDefinition, CardDefinition, CARD_JAIL_FREE,
+    OWNABLE_SPACE_KINDS, PropertyState, SPACE_STREET, SPACE_TAX,
+    SPACE_TRANSIT, SPACE_UTILITY,
 )
 from ..monopoly.rules import can_build, liquid_assets, owns_group
 from ...game_utils.sequence_runner_mixin import SequenceBeat, SequenceOperation
@@ -144,6 +145,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     vandalism_pending: dict[str, Any] = field(default_factory=dict)
     vandalism_resume_phase: str = ""
     vandalism_resume_actor_id: str = ""
+    unannounced_vandalisms: list[dict[str, Any]] = field(default_factory=list)
     active_special_event: str = ""
     special_event_turns: int = 0
     special_event_group_id: str = ""
@@ -354,6 +356,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         self.vandalism_pending.clear()
         self.vandalism_resume_phase = ""
         self.vandalism_resume_actor_id = ""
+        self.unannounced_vandalisms.clear()
         self.active_special_event = ""
         self.special_event_turns = 0
         self.special_event_group_id = ""
@@ -576,6 +579,10 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
 
     def _eliminate_player(self, player: MonopolyPlayer) -> None:
         self.sat_jail_turns.pop(player.id, None)
+        self.unannounced_vandalisms = [
+            v for v in self.unannounced_vandalisms
+            if v.get("owner_id") != player.id and v.get("culprit_id") != player.id
+        ]
         super()._eliminate_player(player)
 
     def _extortion_percent(
@@ -849,6 +856,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 or owner.id == player.id
                 or state.mortgaged
                 or self.vandalized_turns.get(space.id, 0) > 0
+                or any(v.get("property_id") == space.id for v in self.unannounced_vandalisms)
             ):
                 continue
             options.append(space.id)
@@ -913,12 +921,10 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             )
         return None
 
-    def _announce_vandalism_attack(
+    def _announce_vandalism_discovery(
         self,
-        culprit: MonopolyPlayer,
         victim: MonopolyPlayer,
         space: BoardSpaceDefinition,
-        cost: int,
     ) -> None:
         for listener in self.players:
             user = self.get_user(listener)
@@ -927,22 +933,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             locale = user.locale
             is_brief = self._wants_brief(user)
             prop_name = self._space_name(locale, space)
-            if listener.id == culprit.id:
-                key = (
-                    "mexicopoly-you-vandalize-property-brief"
-                    if is_brief
-                    else "mexicopoly-you-vandalize-property"
-                )
-                user.speak_l(
-                    key,
-                    buffer="game",
-                    property=prop_name,
-                    owner=victim.name,
-                    cost=self._money(locale, cost),
-                    cash=self._money(locale, culprit.cash),
-                    turns=VANDALISM_DURATION_TURNS,
-                )
-            elif listener.id == victim.id:
+            if listener.id == victim.id:
                 key = (
                     "mexicopoly-your-property-vandalized-brief"
                     if is_brief
@@ -1002,29 +993,66 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         if self.options.free_parking_cash:
             self.free_parking_pot += cost
         self.vandalized_this_turn = True
-        self.vandalized_turns[space.id] = VANDALISM_DURATION_TURNS
         alibi_holds = (
             random.random() < 0.45  # nosec B311
             if len(self.alive_players) <= 2
             else False
         )
+        self.unannounced_vandalisms.append(
+            {
+                "property_id": space.id,
+                "owner_id": victim.id,
+                "culprit_id": player.id,
+                "cost": cost,
+                "alibi_holds": alibi_holds,
+            }
+        )
+        user = self.get_user(player)
+        if user:
+            locale = user.locale
+            is_brief = self._wants_brief(user)
+            prop_name = self._space_name(locale, space)
+            key = (
+                "mexicopoly-you-vandalize-property-brief"
+                if is_brief
+                else "mexicopoly-you-vandalize-property"
+            )
+            user.speak_l(
+                key,
+                buffer="game",
+                property=prop_name,
+                owner=victim.name,
+                cost=self._money(locale, cost),
+                cash=self._money(locale, player.cash),
+                turns=VANDALISM_DURATION_TURNS,
+            )
+        self.refresh_menus(player)
+
+    def _check_and_trigger_vandalism_discovery(
+        self, player: MonopolyPlayer
+    ) -> bool:
+        matching = [
+            v for v in self.unannounced_vandalisms
+            if v.get("owner_id") == player.id
+        ]
+        if not matching:
+            return False
+        pending = matching[0]
+        self.unannounced_vandalisms.remove(pending)
+        prop_id = str(pending.get("property_id", ""))
+        self.vandalized_turns[prop_id] = VANDALISM_DURATION_TURNS
+        self.vandalism_pending = dict(pending)
         self.vandalism_resume_phase = self.phase
-        self.vandalism_resume_actor_id = self.decision_player_id
-        self.vandalism_pending = {
-            "property_id": space.id,
-            "owner_id": victim.id,
-            "culprit_id": player.id,
-            "cost": cost,
-            "resume_phase": self.phase,
-            "resume_actor_id": self.decision_player_id,
-            "alibi_holds": alibi_holds,
-        }
+        self.vandalism_resume_actor_id = player.id
         self.phase = PHASE_VANDALISM_DECISION
-        self.decision_player_id = victim.id
-        self._announce_vandalism_attack(player, victim, space, cost)
+        self.decision_player_id = player.id
+        if prop_id in self.property_states:
+            space = self.board.space(prop_id)
+            self._announce_vandalism_discovery(player, space)
         self.play_sound(game_audio.SOUND_DEBT_WARNING)
-        self._focus_after_user_transition(victim)
+        self._focus_after_user_transition(player)
         self.refresh_menus()
+        return True
 
     def _is_vandalism_response_hidden(self, player: MonopolyPlayer) -> Visibility:
         return self._visible_for_actor(player, PHASE_VANDALISM_DECISION)
@@ -1185,13 +1213,16 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         self.vandalism_resume_actor_id = ""
         self.vandalism_pending.clear()
         actor = self._alive_player_by_id(resume_actor_id)
-        if not actor:
+        if not actor or actor.bankrupt:
             current = self.current_player
             if isinstance(current, MonopolyPlayer) and not current.bankrupt:
                 actor = current
             else:
                 self._start_turn(announce=True)
                 return
+        if self._check_and_trigger_vandalism_discovery(actor):
+            self.vandalism_resume_phase = resume_phase
+            return
         self._restore_interrupted_phase(resume_phase, actor.id)
         self._focus_after_user_transition(actor)
 
@@ -1525,6 +1556,49 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             )
         return super()._card_text(locale, card)
 
+    def _draw_card(self, player: MonopolyPlayer, deck_id: str) -> None:
+        deck = self.chance_deck if deck_id == "chance" else self.community_deck
+        if not deck:
+            raise RuntimeError(f"Monopoly {deck_id} deck is unexpectedly empty")
+        card_id = deck.pop(0)
+        card = self.board.card(deck_id, card_id)
+        if card.action != CARD_JAIL_FREE:
+            deck.append(card_id)
+        draw_sound = random.choice(game_audio.SOUND_CARD_DRAWS)  # nosec B311
+        beats: list[SequenceBeat] = []
+        if card_id in MARINA_OPERATIVO_CARDS:
+            beats.append(SequenceBeat.pause(18))
+        beats.extend(
+            [
+                SequenceBeat.after_audio(
+                    game_audio.sound_ticks(draw_sound),
+                    ops=[SequenceOperation.sound_op(draw_sound)],
+                ),
+                SequenceBeat(
+                    ops=[
+                        SequenceOperation.callback_op(
+                            "resolve_drawn_card",
+                            {
+                                "player_id": player.id,
+                                "deck_id": deck_id,
+                                "card_id": card_id,
+                            },
+                        )
+                    ]
+                ),
+            ]
+        )
+        self.start_sequence(
+            (
+                f"monopoly_draw_card_{self.turn_number}_{deck_id}_"
+                f"{card_id}_{self.sound_scheduler_tick}"
+            ),
+            beats,
+            tag="monopoly_card",
+            lock_scope=self.SEQUENCE_LOCK_GAMEPLAY,
+            pause_bots=True,
+        )
+
     def _resolve_card(self, player: MonopolyPlayer, card: CardDefinition) -> None:
         if card.id == "chance_sat_audit":
             penalty = max(card.amount, (player.cash * SAT_AUDIT_PERCENT) // 100)
@@ -1547,7 +1621,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             )
             return
         if card.id in MARINA_OPERATIVO_CARDS:
-            self._deactivate_cobro_de_piso(announce=True, play_sound=True)
+            self._deactivate_cobro_de_piso(announce=False, play_sound=True)
             super()._resolve_card(player, card)
             return
         super()._resolve_card(player, card)
@@ -1897,6 +1971,10 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         self.response_timer.clear()
         self.response_timer_context = ""
         self.start_turn_timer()
+        if announce and self.status == "playing":
+            current = self.current_player
+            if isinstance(current, MonopolyPlayer) and not current.bankrupt:
+                self._check_and_trigger_vandalism_discovery(current)
 
     def _can_interrupt(self, player):
         # Optional management/trades belong to the acting player's own turn.
