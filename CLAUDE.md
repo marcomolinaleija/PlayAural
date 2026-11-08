@@ -25,6 +25,21 @@ before integration. Automated upstream integration advances `develop` only;
 publication uses exact human-approved `main` commits. Never publish development
 branches or silently add pending upstream changes to a release.
 
+### Agent Workflow & Conventions
+
+- **Commit Messages**: All git commit messages must be written in Spanish
+  following Conventional Commits formatting: `<tipo>(<ámbito>): <descripción>`
+  (e.g., `feat(voice): agregar soporte de audio espacial`, `fix(ui): corregir foco en menú`).
+- **Feature Branch Isolation**: Never develop or experiment directly on `develop`
+  or `main`. Create isolated `feature/<name>` branches for spikes, prototypes, or
+  new capabilities. Only integrate into `develop` when verified and explicitly requested.
+- **Verification Before Integration**: Always run relevant automated test suites
+  via `uv run --project server --extra dev python -m pytest ...` before committing
+  or concluding changes.
+- **Clean Environment Teardown**: Terminate all background daemons (LiveKit, test
+  servers, sidecars) and remove temporary spike scripts, wave recordings, and
+  scratch artifacts before switching branches or completing a task.
+
 ## Commands
 
 ### Server
@@ -177,6 +192,31 @@ disconnected human's account UUID and reclaim metadata. Reconcile labels across
 joins, leaves, replacements, reconnects, and save/load. Never reserve localized
 bot bases from registration, infer bot status from text, or route an action by
 an unqualified base name.
+
+### Screen Reader & Accessibility Doctrine
+
+PlayAural is designed from the ground up as an audio-first platform for blind
+and low-vision users utilizing screen readers (NVDA, JAWS, VoiceOver, TalkBack).
+Visual presentation is strictly secondary chrome; no feature or interaction may
+require sight, mouse hovering, or visual-only cues.
+
+Core Accessibility Mandates:
+- **Complete Keyboard & Gesture Parity**: Every action, menu, and state query
+  must be operable entirely via keyboard (desktop/web) or screen-reader-compatible
+  touch gestures (mobile/web touch). Mouse coordinates or drag-and-drop are forbidden.
+- **Dual Auditory Modality**: Every important state change (turn changes, rolls,
+  deals, plays, reveals, captures, errors, leaves, joins) must be conveyed through
+  clear localized TTS speech and/or unambiguous earcons/SFX. Never leave a player
+  in silence wondering what happened or whose turn it is.
+- **Predictable Focus Anchoring**: Screen readers rely on stable focus. Never steal
+  or reset focus without deliberate action intent. Preserve item focus across
+  dynamic menu updates using stable semantic IDs, and ensure Escape / Back reliably
+  returns to the parent context without trapping focus.
+- **Informative, Actionable Feedback**: Reject generic error messages (e.g., "Cannot do that").
+  Always explain what was attempted, why it failed, and what valid actions remain.
+- **TTS Buffer Categorization & Non-Interference**: Spoken messages must use explicit
+  buffers (`chat`, `private`, `game`, `system`, `misc`) so players can tune volumes,
+  mute non-essential channels, or review history without speech collisons.
 
 ### Audio Control Protocol
 
