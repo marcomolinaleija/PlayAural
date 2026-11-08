@@ -305,3 +305,69 @@ def test_shop_and_flight_via_execute_action():
     game.execute_action(p1, "fly_airplane", target_airport)
     assert p1.position == target_idx
 
+
+def test_bankruptcy_with_juzgado_amparo_does_not_loop_or_crash():
+    """Verify that a player holding a Juzgado amparo can declare bankruptcy to bank without KeyError loop."""
+    game = make_game(start=True)
+    p1 = force_actor(game)
+    other = next(p for p in game.players if p.id != p1.id)
+
+    # Issue an amparo to p1
+    game.juzgado_amparos_issued[p1.id] = 1
+    amparo_id = f"juzgado_amparo_{p1.id}_9999"
+    p1.jail_card_ids.append(amparo_id)
+    p1.cash = 0
+
+    # Trigger bankruptcy to the bank
+    game._bankrupt_to_bank(p1, "finish_landing")
+
+    # p1 is eliminated, amparo tracking decremented, no KeyError raised
+    assert p1.bankrupt is True
+    assert len(p1.jail_card_ids) == 0
+    assert game.juzgado_amparos_issued.get(p1.id, 0) == 0
+    # Winner checked and game terminates properly
+    assert game.status == "finished"
+    assert game.winner_id == other.id
+
+
+def test_bankruptcy_to_creditor_and_then_to_bank_with_amparo():
+    """Verify that an amparo transferred to a creditor can later be bankrupted to bank cleanly."""
+    game = make_game(start=True)
+    p1 = force_actor(game)
+    creditor = next(p for p in game.players if p.id != p1.id)
+
+    amparo_id = f"juzgado_amparo_{p1.id}_8888"
+    p1.jail_card_ids.append(amparo_id)
+    p1.cash = 0
+
+    # Bankrupt p1 to creditor
+    game._bankrupt_to_player(p1, creditor, "finish_landing")
+    assert p1.bankrupt is True
+    assert amparo_id in creditor.jail_card_ids
+
+    # Creditor bankrupts to bank
+    creditor.cash = 0
+    game._bankrupt_to_bank(creditor, "finish_landing")
+    assert creditor.bankrupt is True
+    assert len(creditor.jail_card_ids) == 0
+
+
+def test_action_jail_card_prefers_and_consumes_amparo():
+    """Verify _action_jail_card consumes amparo cleanly while leaving standard card intact."""
+    game = make_game(start=True)
+    p1 = force_actor(game)
+    p1.in_jail = True
+    p1.position = 13
+
+    chance_jail = next(c.id for c in MEXICO_BOARD.chance_cards if c.action == "jail_free")
+    amparo_id = f"juzgado_amparo_{p1.id}_7777"
+    game.juzgado_amparos_issued[p1.id] = 1
+    p1.jail_card_ids = [chance_jail, amparo_id]
+
+    game._action_jail_card(p1, "jail_card")
+
+    assert p1.in_jail is False
+    assert p1.jail_card_ids == [chance_jail]
+    assert game.juzgado_amparos_issued[p1.id] == 0
+
+
