@@ -2534,6 +2534,20 @@ class AdministrationManager:
                 id="account_approval",
             ),
             MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-account-approval-toggle",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on"
+                        if self.server.account_approval_required
+                        else "option-off",
+                    ),
+                ),
+                id="toggle_account_approval",
+                description_key="admin-desc-account-approval-toggle",
+            ),
+            MenuItem(
                 text=Localization.get(user.locale, "promote-admin"),
                 id="promote_admin",
             ),
@@ -2934,6 +2948,20 @@ class AdministrationManager:
                 user.speak_l("no-pending-accounts", buffer="system")
                 return
             self.server._nav_push(user, self._show_account_approval_menu)
+        elif selection_id == "toggle_account_approval":
+            new_value = not self.server.account_approval_required
+            self.server.set_account_approval_required(new_value)
+            status_text = Localization.get(
+                user.locale,
+                "option-on" if new_value else "option-off",
+            )
+            user.speak_l(
+                "admin-account-approval-toggle-feedback",
+                buffer="system",
+                status=status_text,
+            )
+            user.play_sound("menuenter.ogg")
+            self._show_admin_menu(user)
         elif selection_id == "moderation":
             self.server._nav_push(user, self._show_moderation_menu)
         elif selection_id == "promote_admin":

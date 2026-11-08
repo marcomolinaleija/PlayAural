@@ -261,6 +261,8 @@ GLOBAL_CHAT_ENABLED_SETTING_KEY = "global_chat_enabled"
 DEFAULT_GLOBAL_CHAT_SENDING_ENABLED = True
 GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY = "global_voice_chat_enabled"
 DEFAULT_GLOBAL_VOICE_CHAT_ENABLED = True
+ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY = "account_approval_required"
+DEFAULT_ACCOUNT_APPROVAL_REQUIRED = False
 VOICE_JOIN_AUTHORIZATION_WINDOW_SECONDS = 120
 SESSION_STATE_RETENTION_SECONDS = 300
 PRESENCE_OFFLINE_GRACE_SECONDS = 2.0
@@ -614,6 +616,7 @@ class Server:
         self.global_voice_quality: str = "high"
         self.global_voice_spatial_audio: bool = True
         self._sound_event_mappings: dict[str, str] = {}
+        self._account_approval_required = DEFAULT_ACCOUNT_APPROVAL_REQUIRED
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
@@ -689,6 +692,19 @@ class Server:
             )
             voice_enabled = False
         self._global_voice_chat_enabled = voice_enabled
+
+        try:
+            approval_required = self._db.get_boolean_server_setting(
+                ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY,
+                default=DEFAULT_ACCOUNT_APPROVAL_REQUIRED,
+            )
+        except ValueError:
+            logging.getLogger("playaural").exception(
+                "Invalid persisted account-approval-required setting; defaulting to false"
+            )
+            approval_required = False
+        self._account_approval_required = approval_required
+
         self._load_sound_event_mappings()
 
     def _load_sound_event_mappings(self) -> None:
@@ -762,6 +778,21 @@ class Server:
             for username, auth in list(self._voice_join_authorizations_by_user.items()):
                 if auth.get("scope") == "global":
                     self._clear_voice_join_authorization(username, scope="global")
+
+    @property
+    def account_approval_required(self) -> bool:
+        """Return whether newly registered accounts require manual admin approval."""
+        return self._account_approval_required
+
+    def set_account_approval_required(self, required: bool) -> None:
+        """Persist and update the account approval requirement state."""
+        if type(required) is not bool:
+            raise TypeError("Account approval requirement requires a bool value")
+        self._db.set_boolean_server_setting(
+            ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY,
+            required,
+        )
+        self._account_approval_required = required
 
     def _prune_obsolete_game_data(self) -> None:
         """Remove data outside the current registered game/stat schema."""
@@ -2891,14 +2922,34 @@ PlayAural Server
             return
 
         # Try to register the user
-        reg_result = self._auth.register(username, password, locale=locale, email=email, bio=bio)
+        approved = not self._account_approval_required
+        reg_result = self._auth.register(
+            username,
+            password,
+            locale=locale,
+            email=email,
+            bio=bio,
+            approved=approved,
+        )
         if reg_result == "ok":
             self._rate_limiter.record_registration(client.ip_address)
+            if not approved:
+                self._notify_admins(
+                    "admin-new-account-request",
+                    "accountrequest.ogg",
+                    username=username,
+                )
+                self.admin_manager.refresh_account_approval_menus()
             await client.send({
                 "type": "register_response",
                 "status": "success",
-                "text": Localization.get(locale, "auth-registration-success"), # Fallback text
-                "locale": locale
+                "text": Localization.get(
+                    locale,
+                    "auth-registration-pending-approval"
+                    if not approved
+                    else "auth-registration-success",
+                ),
+                "locale": locale,
             })
         elif reg_result == "username_taken":
             await client.send({
