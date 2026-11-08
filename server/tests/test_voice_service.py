@@ -112,6 +112,8 @@ def _make_server() -> Server:
     server._voice_join_authorizations_by_user = {}
     server._next_voice_join_authorization_expiry = None
     server._voice_rate_limiter = VoiceRateLimiter()
+    server._sound_event_mappings = {}
+    server._account_approval_required = False
     server.admin_manager = AdministrationManager(server)
     return server
 

@@ -468,6 +468,9 @@ class Server:
     Coordinates all components: network, auth, tables, games, and persistence.
     """
 
+    _account_approval_required: bool = False
+    _sound_event_mappings: dict[str, str] = {}
+
     # Global menus handled directly by the server, even if the user is sitting at a table.
     # This prevents active games from swallowing interactions meant for global overlays (like options or online list).
     GLOBAL_SYSTEM_MENUS = {
@@ -728,7 +731,8 @@ class Server:
 
     def get_sound_for_event(self, event_id: str) -> str:
         """Return the active sound asset name for a sound event."""
-        custom = self._sound_event_mappings.get(event_id)
+        mappings = getattr(self, "_sound_event_mappings", None)
+        custom = mappings.get(event_id) if mappings is not None else None
         if custom and custom in AVAILABLE_SOUND_ASSETS:
             return custom
         event_def = SOUND_EVENTS.get(event_id)
@@ -742,6 +746,8 @@ class Server:
             raise ValueError(f"Unknown sound event: {event_id!r}")
         if sound_name not in AVAILABLE_SOUND_ASSETS:
             raise ValueError(f"Unknown sound asset: {sound_name!r}")
+        if not hasattr(self, "_sound_event_mappings") or self._sound_event_mappings is None:
+            self._sound_event_mappings = {}
         self._sound_event_mappings[event_id] = sound_name
         self._db.set_json_server_setting(
             "sound_event_mappings", self._sound_event_mappings
@@ -782,7 +788,7 @@ class Server:
     @property
     def account_approval_required(self) -> bool:
         """Return whether newly registered accounts require manual admin approval."""
-        return self._account_approval_required
+        return bool(getattr(self, "_account_approval_required", False))
 
     def set_account_approval_required(self, required: bool) -> None:
         """Persist and update the account approval requirement state."""
