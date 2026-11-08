@@ -5119,6 +5119,13 @@ PlayAural Server
             queue_packet(packet)
         else:
             await user.connection.send(packet)
+
+    async def _send_voice_pans(
+        self,
+        user: NetworkUser,
+        table: "Table",
+    ) -> None:
+        """Send relative voice pans and quality settings to a client."""
         pans_packet = {
             "type": "voice_pans",
             "context_id": table.table_id,
@@ -5126,17 +5133,18 @@ PlayAural Server
             "quality": getattr(table, "voice_quality", "high"),
             "pans": table.calculate_voice_pans(user.uuid),
         }
+        queue_packet = getattr(user, "queue_protocol_packet", None)
         if callable(queue_packet):
             queue_packet(pans_packet)
         else:
             await user.connection.send(pans_packet)
 
     async def _broadcast_table_voice_settings(self, table: "Table") -> None:
-        """Send updated voice settings and spatial pans to all table members."""
+        """Send updated voice spatial pans and quality to all table members."""
         for member in table.members:
             user = self._users.get(member.username)
             if user:
-                await self._send_voice_settings(user, table)
+                await self._send_voice_pans(user, table)
 
     def _record_voice_join_authorization(
         self,
@@ -11058,6 +11066,9 @@ PlayAural Server
             self._nav_push(user, self._show_host_invite_menu, table)
 
         elif selection_id == "manage_voice":
+            if not self._has_host_voice_management_candidates(user, table):
+                user.speak_l("voice-host-management-no-members", buffer="system")
+                return
             self._nav_push(user, self._show_host_voice_management_menu, table)
 
         elif selection_id == "switch_game":
