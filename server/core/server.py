@@ -59,8 +59,11 @@ from ..administration.manager import (
     ADMIN_MODERATION_REPORT_DETAIL_MENU,
     ADMIN_MODERATION_REPORTS_MENU,
     ADMIN_MODERATION_SENDER_RESULTS_MENU,
+    ADMIN_SOUND_EVENTS_MENU,
+    ADMIN_SOUND_PICKER_MENU,
     AdministrationManager,
 )
+from .sound_events import AVAILABLE_SOUND_ASSETS, SOUND_EVENTS
 from ..network.websocket_server import WebSocketServer, ClientConnection
 from ..persistence.database import Database, UserRecord
 from ..auth.auth import AuthManager, is_valid_email
@@ -610,6 +613,7 @@ class Server:
         self._global_voice_chat_enabled = DEFAULT_GLOBAL_VOICE_CHAT_ENABLED
         self.global_voice_quality: str = "high"
         self.global_voice_spatial_audio: bool = True
+        self._sound_event_mappings: dict[str, str] = {}
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
@@ -685,6 +689,47 @@ class Server:
             )
             voice_enabled = False
         self._global_voice_chat_enabled = voice_enabled
+        self._load_sound_event_mappings()
+
+    def _load_sound_event_mappings(self) -> None:
+        """Load configured sound event mappings from the database."""
+        try:
+            mappings = self._db.get_json_server_setting(
+                "sound_event_mappings", default={}
+            )
+            if isinstance(mappings, dict):
+                self._sound_event_mappings = {
+                    k: v for k, v in mappings.items()
+                    if isinstance(k, str) and isinstance(v, str) and k in SOUND_EVENTS and v in AVAILABLE_SOUND_ASSETS
+                }
+            else:
+                self._sound_event_mappings = {}
+        except Exception:
+            logging.getLogger("playaural").exception(
+                "Failed to load sound event mappings from database"
+            )
+            self._sound_event_mappings = {}
+
+    def get_sound_for_event(self, event_id: str) -> str:
+        """Return the active sound asset name for a sound event."""
+        custom = self._sound_event_mappings.get(event_id)
+        if custom and custom in AVAILABLE_SOUND_ASSETS:
+            return custom
+        event_def = SOUND_EVENTS.get(event_id)
+        if event_def:
+            return event_def.default_sound
+        return ""
+
+    def set_sound_for_event(self, event_id: str, sound_name: str) -> None:
+        """Set and persist a sound asset for a sound event."""
+        if event_id not in SOUND_EVENTS:
+            raise ValueError(f"Unknown sound event: {event_id!r}")
+        if sound_name not in AVAILABLE_SOUND_ASSETS:
+            raise ValueError(f"Unknown sound asset: {sound_name!r}")
+        self._sound_event_mappings[event_id] = sound_name
+        self._db.set_json_server_setting(
+            "sound_event_mappings", self._sound_event_mappings
+        )
 
     def set_global_chat_sending_enabled(self, enabled: bool) -> None:
         """Persist and apply the server-wide global-chat availability state."""
@@ -2532,7 +2577,7 @@ PlayAural Server
 
             if etype == "friend_request_received":
                 user.speak_l("friends-grouped-requests", buffer="system", usernames=formatted_names)
-                user.play_sound("friend_request_received.ogg")
+                user.play_sound(self.get_sound_for_event("friend_request"))
             elif etype == "friend_accepted":
                 user.speak_l("friends-grouped-accepted", buffer="system", usernames=formatted_names)
                 user.play_sound("friend_accepted.ogg")
@@ -8141,7 +8186,7 @@ PlayAural Server
                     buffer="system",
                     username=user.username,
                 )
-                target_user.play_sound("friend_request_received.ogg")
+                target_user.play_sound(self.get_sound_for_event("friend_request"))
             else:
                 self._db.add_notification(
                     target_record.uuid,
@@ -10486,7 +10531,7 @@ PlayAural Server
                         and u.preferences.notify_table_created
                     ):
                         local_game_name = Localization.get(u.locale, name_key)
-                        u.play_sound(TABLE_CREATED_NOTIFICATION_SOUND)
+                        u.play_sound(self.get_sound_for_event("table_created"))
                         u.speak_l(
                             "table-created-broadcast", 
                             buffer="system",
@@ -13649,7 +13694,7 @@ PlayAural Server
         }
         if self._user_has_blocking_modal_state(invitee_name):
             self._pending_invites[invitee_name]["deferred"] = True
-            invitee_user.play_sound(TABLE_INVITE_NOTIFICATION_SOUND)
+            invitee_user.play_sound(self.get_sound_for_event("table_invite"))
             invitee_user.speak_l(
                 "table-invite-queued",
                 buffer="system",
@@ -13694,7 +13739,7 @@ PlayAural Server
             "prev_state": prev_state,
         }
 
-        invitee_user.play_sound(TABLE_INVITE_NOTIFICATION_SOUND)
+        invitee_user.play_sound(self.get_sound_for_event("table_invite"))
         show_confirmation_menu(
             invitee_user,
             "table_invite_prompt",
@@ -17193,7 +17238,9 @@ PlayAural Server
             username=sender.username,
             message=message,
         )
-        target_user.play_sound("pm.ogg", buffer="private")
+        target_user.play_sound(
+            self.get_sound_for_event("private_message"), buffer="private"
+        )
 
         sender.speak_l(
             "pm-sent-content",
@@ -17201,7 +17248,9 @@ PlayAural Server
             username=target_user.username,
             message=message,
         )
-        sender.play_sound("pm.ogg", buffer="private")
+        sender.play_sound(
+            self.get_sound_for_event("private_message"), buffer="private"
+        )
 
     def _submit_automated_spam_report(
         self,
@@ -18697,6 +18746,12 @@ PlayAural Server
             self.admin_manager._show_smtp_settings_menu(user)
         elif menu == "smtp_encryption_menu":
             self.admin_manager._show_smtp_encryption_menu(user)
+        elif menu == ADMIN_SOUND_EVENTS_MENU:
+            self.admin_manager._show_sound_events_menu(user)
+        elif menu == ADMIN_SOUND_PICKER_MENU:
+            self.admin_manager._show_sound_picker_menu(
+                user, str(frame.get("sound_event_id", "") or "")
+            )
         else:
             table = self._tables.find_user_table(username)
             if table:

@@ -178,6 +178,8 @@ class MenuList(wx.ListBox):
 
     def _on_activation(self):
         """Handle menu item activation (Enter/Space/Double-click)."""
+        if self.sound_manager and hasattr(self.sound_manager, "stop_sound"):
+            self.sound_manager.stop_sound("menu_item_preview")
         # Call the parent's activation handler directly
         parent = self.GetParent()
         while parent:
@@ -217,8 +219,10 @@ class MenuList(wx.ListBox):
                 pass
 
         if custom_sound:
-            self.sound_manager.play(custom_sound)
+            self.sound_manager.play(custom_sound, handle="menu_item_preview")
         else:
+            if hasattr(self.sound_manager, "stop_sound"):
+                self.sound_manager.stop_sound("menu_item_preview")
             self.sound_manager.play_menuclick()
 
     def on_selection_change(self, event):

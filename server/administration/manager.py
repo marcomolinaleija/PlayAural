@@ -60,6 +60,7 @@ from ..core.maintenance import (
     DatabaseMaintenanceBusyError,
     DatabaseMaintenanceUnavailableError,
 )
+from ..core.sound_events import AVAILABLE_SOUND_ASSETS, SOUND_EVENTS
 from ..menu_pagination import (
     DEFAULT_MENU_PAGE_SIZE,
     MENU_PAGE_IDS,
@@ -80,6 +81,8 @@ ADMIN_TARGET_PAGE_SIZE = DEFAULT_MENU_PAGE_SIZE
 ADMIN_TARGET_SEARCH_INPUT = "admin_target_search_input"
 ADMIN_LOCALIZED_TEXT_MENU = "admin_localized_text_menu"
 ADMIN_LOCALIZED_TEXT_INPUT = "admin_localized_text_input"
+ADMIN_SOUND_EVENTS_MENU = "admin_sound_events_menu"
+ADMIN_SOUND_PICKER_MENU = "admin_sound_picker_menu"
 ADMIN_MODERATION_MENU = "admin_moderation_menu"
 ADMIN_MODERATION_REPORTS_MENU = "admin_moderation_reports_menu"
 ADMIN_MODERATION_REPORT_DETAIL_MENU = "admin_moderation_report_detail_menu"
@@ -202,6 +205,8 @@ ADMIN_MENU_IDS = {
     "server_power_reason_menu",
     "server_power_confirm_menu",
     ADMIN_LOCALIZED_TEXT_MENU,
+    ADMIN_SOUND_EVENTS_MENU,
+    ADMIN_SOUND_PICKER_MENU,
     "smtp_settings_menu",
     "smtp_encryption_menu",
     "smtp_setting_input",
@@ -2589,6 +2594,13 @@ class AdministrationManager:
             )
         items.append(
             MenuItem(
+                text=Localization.get(user.locale, "admin-sound-settings"),
+                id="sound_settings",
+                description_key="admin-desc-sound-settings",
+            )
+        )
+        items.append(
+            MenuItem(
                 text=Localization.get(user.locale, "admin-switch-server"),
                 id="switch_server",
                 description_key="admin-desc-switch-server",
@@ -2855,6 +2867,10 @@ class AdministrationManager:
             await self._handle_database_compact_confirm_selection(
                 user, selection_id
             )
+        elif current_menu == ADMIN_SOUND_EVENTS_MENU:
+            await self._handle_sound_events_menu_selection(user, selection_id)
+        elif current_menu == ADMIN_SOUND_PICKER_MENU:
+            await self._handle_sound_picker_menu_selection(user, selection_id)
         elif current_menu == "account_approval_menu":
             await self._handle_account_approval_selection(user, selection_id, state)
         elif current_menu == "pending_user_actions_menu":
@@ -2980,9 +2996,129 @@ class AdministrationManager:
             else:
                 user.speak_l("dev-only-action", buffer="system")
                 self.server._nav_refresh(user, self._show_admin_menu)
+        elif selection_id == "sound_settings":
+            if user.trust_level < ADMIN_TRUST_LEVEL:
+                user.speak_l("admin-only-action", buffer="system")
+                return
+            self.server._nav_push(user, self._show_sound_events_menu)
         elif selection_id == "switch_server":
             await self.server._complete_switch_server(user)
         elif selection_id == "back":
+            self.server._nav_back(user)
+
+    def _show_sound_events_menu(self, user: NetworkUser) -> None:
+        """Show menu of configurable sound events."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+        items = []
+        for event_id, event_def in SOUND_EVENTS.items():
+            current_sound = self.server.get_sound_for_event(event_id)
+            event_name = Localization.get(user.locale, event_def.label_key)
+            text = f"{event_name}: {current_sound}"
+            desc_key = event_def.description_key
+            items.append(
+                MenuItem(
+                    text=text,
+                    id=event_id,
+                    description_key=desc_key,
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            ADMIN_SOUND_EVENTS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_SOUND_EVENTS_MENU,
+        }
+
+    async def _handle_sound_events_menu_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle selection in sound events menu."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if selection_id in SOUND_EVENTS:
+            self.server._nav_push(
+                user, self._show_sound_picker_menu, selection_id
+            )
+
+    def _show_sound_picker_menu(
+        self, user: NetworkUser, event_id: str
+    ) -> None:
+        """Show menu to pick a sound for the given event."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+        event_def = SOUND_EVENTS.get(event_id)
+        if not event_def:
+            self.server._nav_back(user)
+            return
+        current_sound = self.server.get_sound_for_event(event_id)
+        items = []
+        current_tag = Localization.get(user.locale, "current-selection")
+        default_tag = Localization.get(user.locale, "default-selection")
+        for sound_name in AVAILABLE_SOUND_ASSETS:
+            tags = []
+            if sound_name == current_sound:
+                tags.append(current_tag)
+            if sound_name == event_def.default_sound:
+                tags.append(default_tag)
+            tag_str = f" ({', '.join(tags)})" if tags else ""
+            items.append(
+                MenuItem(
+                    text=f"{sound_name}{tag_str}",
+                    id=sound_name,
+                    sound=sound_name,
+                )
+            )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "cancel"),
+                id="back",
+            )
+        )
+        user.show_menu(
+            ADMIN_SOUND_PICKER_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+            selection_id=current_sound,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_SOUND_PICKER_MENU,
+            "sound_event_id": event_id,
+        }
+
+    async def _handle_sound_picker_menu_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle sound picker selection."""
+        state = self.server.user_states.get(user.username, {})
+        event_id = state.get("sound_event_id")
+        if not event_id or event_id not in SOUND_EVENTS:
+            self.server._nav_back(user)
+            return
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if selection_id in AVAILABLE_SOUND_ASSETS:
+            event_def = SOUND_EVENTS[event_id]
+            self.server.set_sound_for_event(event_id, selection_id)
+            event_label = Localization.get(user.locale, event_def.label_key)
+            user.speak_l(
+                "sound-event-updated",
+                buffer="system",
+                event=event_label,
+                sound=selection_id,
+            )
+            user.play_sound(selection_id, buffer="system")
             self.server._nav_back(user)
 
     def _require_developer_database_access(self, user: NetworkUser) -> bool:
