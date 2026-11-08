@@ -1387,6 +1387,12 @@ host-game-switch-confirm-free-table = Switch this table to a free table? Everyon
 free-table-choose-game = Choose a game
 free-table-description = Open a table to talk by text and voice without starting a game.
 free-table-help = Free table help
+free-table-set-topic = Set table topic
+free-table-topic-display = Table topic: { $topic }
+free-table-prompt-topic = Enter the new topic for the free table (leave empty to clear):
+free-table-topic-changed = { $host } changed the table topic to: { $topic }.
+free-table-topic-cleared = { $host } cleared the table topic.
+free-table-current-topic = Table topic: { $topic }.
 
 # Global voice chat
 global-voice-chat = Global Voice Chat

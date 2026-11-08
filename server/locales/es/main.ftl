@@ -1401,6 +1401,12 @@ host-game-switch-confirm-free-table = ¿Cambiar esta mesa a una mesa libre? Toda
 free-table-choose-game = Cambiar a un juego
 free-table-description = Abre una mesa para conversar por texto y voz sin iniciar un juego.
 free-table-help = Ayuda de mesa libre
+free-table-set-topic = Cambiar tema de la mesa
+free-table-topic-display = Tema de la mesa: { $topic }
+free-table-prompt-topic = Introduce el tema de la mesa libre (deja vacío para quitarlo):
+free-table-topic-changed = { $host } cambió el tema de la mesa a: { $topic }.
+free-table-topic-cleared = { $host } eliminó el tema de la mesa.
+free-table-current-topic = Tema de la mesa: { $topic }.
 
 # Chat de voz global
 global-voice-chat = Chat de voz global

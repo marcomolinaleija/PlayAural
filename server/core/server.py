@@ -3334,6 +3334,10 @@ PlayAural Server
             if status in {"waiting", "playing", "finished"}
             else "table-status-waiting"
         )
+        if getattr(table.game, "is_social_activity", False) and getattr(table.game, "topic", ""):
+            topic = getattr(table.game, "topic", "").strip()
+            if topic:
+                game_name = f"{game_name} ({topic})"
         return Localization.get(
             locale,
             "table-listing-game-composition-status",
@@ -10792,6 +10796,8 @@ PlayAural Server
                 self._set_in_game_state(user, table_id)
                 game.broadcast_l("table-joined", buffer="system", player=user.username)
                 game.play_table_join_sound(joined_player, is_spectator=False)
+                if getattr(game, "is_social_activity", False) and getattr(game, "topic", ""):
+                    user.speak_l("free-table-current-topic", buffer="game", topic=game.topic)
                 game.refresh_menus()
                 self._flush_game_menus_now(game)
             else:
@@ -10811,6 +10817,8 @@ PlayAural Server
                     user.speak_l("spectator-joined", buffer="system", host=table.host)
                     game.broadcast_l("now-spectating", buffer="system", player=user.username)
                     game.play_table_join_sound(joined_player, is_spectator=True)
+                if getattr(game, "is_social_activity", False) and getattr(game, "topic", ""):
+                    user.speak_l("free-table-current-topic", buffer="game", topic=game.topic)
                 game.refresh_menus()
                 self._flush_game_menus_now(game)
 
@@ -16676,6 +16684,11 @@ PlayAural Server
         # Fallback if key missing (though it shouldn't be)
         if game_name == game_name_key:
              game_name = game.get_name()
+
+        if getattr(game, "is_social_activity", False) and getattr(game, "topic", ""):
+            topic = getattr(game, "topic", "").strip()
+            if topic:
+                game_name = f"{game_name} ({topic})"
 
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         save_name = Localization.get(locale, "default-save-name", game=game_name, date=date_str)

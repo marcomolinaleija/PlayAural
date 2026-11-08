@@ -1367,6 +1367,12 @@ host-game-switch-confirm-free-table = Chuyển bàn này sang bàn tự do? Mọ
 free-table-choose-game = Chọn trò chơi
 free-table-description = Mở bàn để trò chuyện bằng văn bản và giọng nói mà không bắt đầu trò chơi.
 free-table-help = Trợ giúp bàn tự do
+free-table-set-topic = Đặt chủ đề bàn
+free-table-topic-display = Chủ đề bàn: { $topic }
+free-table-prompt-topic = Nhập chủ đề mới cho bàn tự do (để trống để xóa):
+free-table-topic-changed = { $host } đã đổi chủ đề bàn thành: { $topic }.
+free-table-topic-cleared = { $host } đã xóa chủ đề bàn.
+free-table-current-topic = Chủ đề bàn: { $topic }.
 
 # Trò chuyện thoại chung
 global-voice-chat = Trò chuyện thoại chung
