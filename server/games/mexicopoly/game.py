@@ -243,6 +243,13 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             rp = self.find_action(player, "read_portfolios")
             if rp:
                 rp.input = None
+            standard_set = self.get_action_set(player, "standard")
+            if standard_set is not None:
+                fresh_standard = self.create_standard_action_set(player)
+                for action in fresh_standard._actions.values():
+                    if not standard_set.get_action(action.id):
+                        standard_set.add(action)
+                self._apply_standard_action_order(standard_set, player)
 
     def create_standard_action_set(self, player: Player) -> ActionSet:
         action_set = super().create_standard_action_set(player)

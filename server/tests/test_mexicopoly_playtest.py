@@ -436,8 +436,14 @@ def test_escalating_jail_fine_and_concise_jail_actions(monkeypatch):
     game._send_to_jail(p2)
     assert game._jail_fine(p2) == 200
     assert game._jail_fine(actor) == 800
+    # Simulate an older save that lacked quick actions in standard action set
+    std = game.get_action_set(actor, "standard")
+    if std:
+        std.remove_by_prefix("quick_")
     restored = MexicopolyGame.from_json(game.to_json())
+    assert restored.find_action(actor, "quick_buy_house") is None
     restored.rebuild_runtime_state()
+    assert restored.find_action(actor, "quick_buy_house") is not None
     assert restored.jail_counts[actor.id] == 4
     assert restored.jail_counts[p2.id] == 2
     for action_id in ("roll_dice", "roll_shortcut", "jail_roll"):
