@@ -847,10 +847,19 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
 
     def _action_jail_card(self, player: MonopolyPlayer, action_id: str) -> None:
         self.sat_jail_turns.pop(player.id, None)
-        if player.jail_card_ids and "juzgado_amparo" in player.jail_card_ids[0]:
-            player.jail_card_ids.pop(0)
-            if player.id in self.juzgado_amparos_issued and self.juzgado_amparos_issued[player.id] > 0:
-                self.juzgado_amparos_issued[player.id] -= 1
+        if not player.jail_card_ids:
+            return
+        amparo_idx = next(
+            (i for i, cid in enumerate(player.jail_card_ids) if "juzgado_amparo" in cid),
+            None,
+        )
+        if amparo_idx is not None:
+            card_id = player.jail_card_ids.pop(amparo_idx)
+            for issuer_id in list(self.juzgado_amparos_issued.keys()):
+                if f"juzgado_amparo_{issuer_id}_" in card_id:
+                    self.juzgado_amparos_issued[issuer_id] = max(
+                        0, self.juzgado_amparos_issued[issuer_id] - 1
+                    )
             player.in_jail = False
             player.jail_turns = 0
             self.phase = PHASE_AWAIT_ROLL
@@ -956,8 +965,44 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             return
         super()._sequence_failed_jail_roll(payload)
 
+    def _return_jail_cards(self, player: MonopolyPlayer) -> None:
+        remaining_cards: list[str] = []
+        for card_id in player.jail_card_ids:
+            if "juzgado_amparo" in card_id:
+                for issuer_id in list(self.juzgado_amparos_issued.keys()):
+                    if f"juzgado_amparo_{issuer_id}_" in card_id:
+                        self.juzgado_amparos_issued[issuer_id] = max(
+                            0, self.juzgado_amparos_issued[issuer_id] - 1
+                        )
+                continue
+            try:
+                self.board.deck_id_for_card(card_id)
+                remaining_cards.append(card_id)
+            except KeyError:
+                continue
+        player.jail_card_ids = remaining_cards
+        super()._return_jail_cards(player)
+
+    def _jail_card_option_label(self, player: Player, value: str) -> str:
+        if "juzgado_amparo" in value:
+            trade = self.trade_state
+            selected = False
+            if trade:
+                selected = (
+                    value in trade.offered_jail_card_ids
+                    or value in trade.requested_jail_card_ids
+                )
+            prefix = "[*] " if selected else ""
+            return f"{prefix}Amparo del Juzgado"
+        return super()._jail_card_option_label(player, value)
+
     def _eliminate_player(self, player: MonopolyPlayer) -> None:
         self.sat_jail_turns.pop(player.id, None)
+        self.flight_delay_turns.pop(player.id, None)
+        self.has_airplane.pop(player.id, None)
+        self.has_car.pop(player.id, None)
+        self.car_fuel.pop(player.id, None)
+        self.juzgado_amparos_issued.pop(player.id, None)
         self.unannounced_vandalisms = [
             v for v in self.unannounced_vandalisms
             if v.get("owner_id") != player.id and v.get("culprit_id") != player.id
