@@ -97,7 +97,7 @@ mexicopoly-utility-rent-schedule = { $single } por cada punto de los dados con u
 # Casillas del tablero de Estados Unidos
 mexicopoly-space-go = Salida
 mexicopoly-space-jail = Cárcel
-mexicopoly-space-free-parking = Descanso
+mexicopoly-space-free-parking = Bote
 mexicopoly-space-go-to-jail = Ir a la Cárcel
 mexicopoly-space-income-tax = SAT: impuesto sobre ingresos
 mexicopoly-space-luxury-tax = SAT: impuesto de lujo
@@ -105,8 +105,8 @@ mexicopoly-space-chance = Suerte
 mexicopoly-space-community = Caja de Comunidad
 mexicopoly-card-chance-top-property = Te lanzas de fin de semana a { $destination }. Avanza hasta allá.
 mexicopoly-card-chance-go = Te depositaron la quincena adelantada: avanza a { $go } y cobra tu salario.
-mexicopoly-card-chance-red-property = Te vas por carretera a { $destination }; cobra el salario de la casilla de salida si pasas por { $go }.
-mexicopoly-card-chance-pink-property = Te invitaron a una carnita asada y mariachi en { $destination }; cobra el salario de la casilla de salida si pasas por { $go }.
+mexicopoly-card-chance-red-property = Te vas por carretera a { $destination }; cobras el salario de salida si pasas por { $go }.
+mexicopoly-card-chance-pink-property = Te invitaron a una carnita asada y mariachi en { $destination }; cobras el salario de salida si pasas por { $go }.
 mexicopoly-card-chance-nearest-transit = Se descompuso tu coche en pleno tráfico: avanza al { $transit } más cercano. Si tiene dueño, paga el doble del alquiler normal.
 mexicopoly-card-chance-nearest-utility = Te cortaron el servicio por recibo vencido: avanza a la { $utility } más cercana. Si tiene dueño, haz una nueva tirada de alquiler y paga { $rate } por cada punto de los dados.
 mexicopoly-card-chance-dividend = Te cayó el reparto de utilidades de la empresa. Cobra { $amount } del Banco.
@@ -115,7 +115,7 @@ mexicopoly-card-chance-back-three = Te cerraron la avenida por una manifestació
 mexicopoly-card-chance-go-jail = Te detuvieron en el operativo del Torito: ve directo a { $jail } sin cobrar el salario de { $go }.
 mexicopoly-card-chance-repairs = Impermeabilización y arreglo de cuarteaduras tras las lluvias: paga { $perHouse } por cada casa y { $perHotel } por cada hotel en reparaciones.
 mexicopoly-card-chance-speeding = Te agarró la fotomulta en el Periférico por exceso de velocidad: paga { $amount }.
-mexicopoly-card-chance-named-transit = Alcanza el último tren en { $destination }; cobra el salario de la casilla de salida si pasas por { $go }.
+mexicopoly-card-chance-named-transit = Alcanzas el último tren en { $destination }; cobras el salario de salida si pasas por { $go }.
 mexicopoly-card-chance-chairperson = Te eligieron presidente del comité vecinal y te tocó poner las aguas y tortas: paga { $amount } a cada uno de los demás jugadores.
 mexicopoly-card-chance-loan = Tu crédito Infonavit rindió frutos: cobra { $amount }.
 mexicopoly-card-chance-sat-audit = ¡El SAT te encontró falta de pago de impuestos y facturas chuecas! Paga el { $percent }% de tu efectivo (mínimo { $minimum }) y ve { $turns } turnos a { $jail } sin derecho a fianza ni a cobrar alquiler.
@@ -126,7 +126,7 @@ mexicopoly-card-chance-verificacion-mordida = Tu coche no pasó la verificación
 mexicopoly-card-chance-bache-llanta = Caíste en un megabache en plena lluvia y reventaste dos llantas y el rin: paga { $amount } a la vulcanizadora.
 mexicopoly-card-chance-tanda-oficina = ¡Te tocó el primer número de la tanda de la oficina! Cobra { $amount }.
 mexicopoly-card-chance-cetes-buen-fin = Tus inversiones en CETES y bonificaciones del Buen Fin dieron rendimientos récord: cobra { $amount }.
-mexicopoly-card-chance-cobro-de-piso = ¡El crimen organizado ha empezado a hacer cobro de piso! Además de pagar { $amount } de cuota inicial, todos los alquileres pagarán derecho de piso según el nivel de la propiedad.
+mexicopoly-card-chance-cobro-de-piso = ¡El crimen organizado inició el cobro de piso! Pagas { $amount } de cuota inicial y los alquileres tendrán descuento del 5% al 50%.
 mexicopoly-card-chance-marina-operativo = ¡La Marina ha hecho un operativo y liberó todas las propiedades del cobro de piso! Además recibes { $amount } de recompensa ciudadana.
 mexicopoly-card-community-neighbor = Tus vecinos armaron tequio en la cuadra y te ayudaron con una remodelación. Cobra { $amount }.
 mexicopoly-card-community-path = Cooperaste para arreglar las banquetas y el alumbrado de la colonia. Cobra { $amount }.
@@ -151,8 +151,8 @@ mexicopoly-card-community-rosca-tamales = ¡Te salió el muñeco en la Rosca de 
 mexicopoly-card-community-remesa-tio = Tu tío que vive en el otro lado te mandó una buena remesa en dólares: cobra { $amount }.
 mexicopoly-card-community-predial = Llegó el cobro anual de predial y agua de tus inmuebles: paga { $perHouse } por cada casa y { $perHotel } por cada hotel.
 mexicopoly-card-community-loteria-nacional = ¡Le pegaste al reintegro y premio de tu cachito de la Lotería Nacional! Cobra { $amount }.
-mexicopoly-card-community-cancun-trip = Te ganaste un viaje todo pagado al Caribe en { $destination }; cobra el salario de la casilla de salida si pasas por { $go }.
-mexicopoly-card-community-cobro-de-piso = ¡Llegaron a cobrar derecho de piso a los negocios de la ciudad! Paga { $amount } de cuota inmediata y activa el cobro de piso en todos los alquileres.
+mexicopoly-card-community-cancun-trip = Te ganaste un viaje todo pagado al Caribe en { $destination }; cobras el salario de salida si pasas por { $go }.
+mexicopoly-card-community-cobro-de-piso = ¡El crimen organizado inició cobro de piso! Pagas { $amount } de cuota inmediata y los alquileres tendrán descuento del 5% al 50%.
 mexicopoly-card-community-marina-operativo = ¡Operativo conjunto de la Marina! Se desmanteló la red de extorsión, todas las propiedades quedan libres del cobro de piso y cobras { $amount } de recuperación.
 
 mexicopoly-board-mexico50 = México: 50 casillas
@@ -260,10 +260,10 @@ mexicopoly-you-owe-no-sat-jailed-rent = { $owner } está detenido por el SAT y t
 mexicopoly-player-owes-no-sat-jailed-rent = { $player } no paga alquiler en { $property } porque { $owner } está detenido por el SAT.
 mexicopoly-you-owe-no-sat-jailed-rent-brief = Sin alquiler: { $owner } está detenido por el SAT.
 mexicopoly-player-owes-no-sat-jailed-rent-brief = { $player } no paga alquiler a { $owner } (detenido por el SAT).
-mexicopoly-cobro-de-piso-started = ¡El crimen organizado ha empezado a hacer cobro de piso! Todos los alquileres sufren descuento: 5% en propiedades normales, 10% con 1 o 2 casas, 15% con 3 o más casas, 30% con un hotel y 50% con el máximo de hoteles.
-mexicopoly-cobro-de-piso-started-brief = ¡Cobro de piso activo! Descuento del 5% al 50% en todos los alquileres.
-mexicopoly-cobro-de-piso-ended = ¡La Marina ha hecho un operativo y liberó todas las propiedades del cobro de piso! Los dueños vuelven a cobrar el 100% de sus alquileres.
-mexicopoly-cobro-de-piso-ended-brief = ¡Operativo de la Marina! Propiedades liberadas del cobro de piso.
+mexicopoly-cobro-de-piso-started = ¡El crimen organizado inició cobro de piso! Los alquileres se reducen del 5% al 50%.
+mexicopoly-cobro-de-piso-started-brief = ¡Cobro de piso activo! Descuento del 5% al 50%.
+mexicopoly-cobro-de-piso-ended = ¡Operativo de la Marina! Las propiedades quedan libres del cobro de piso y se cobra el 100% de los alquileres.
+mexicopoly-cobro-de-piso-ended-brief = ¡Operativo de la Marina! Alquileres al 100%.
 mexicopoly-marina-patrol-calm = La Marina patrulla las ciudades y mantiene las propiedades libres de cobro de piso.
 mexicopoly-marina-patrol-calm-brief = Patrullaje de la Marina: sin cobro de piso.
 mexicopoly-you-collect-rent-extorted = { $tenant } paga { $amount } de alquiler por { $property }, pero el cobro de piso te quita el { $percent }% ({ $cut }); recibes { $net } netos y quedas con { $owner_cash }.
@@ -273,7 +273,7 @@ mexicopoly-you-collect-rent-extorted-brief = Cobras { $net } netos de { $tenant 
 mexicopoly-you-pay-rent-extorted-brief = Pagas { $amount } a { $owner } ({ $cut }, { $percent }% de piso).
 mexicopoly-player-pays-rent-extorted-brief = { $tenant } paga { $amount } a { $owner } ({ $cut }, { $percent }% de piso).
 mexicopoly-claim-rent-extorted-label = Cobrar alquiler ({ $amount } brutos; -{ $cut } por { $percent }% de piso, recibes { $net })
-mexicopoly-status-cobro-active = Cobro de piso: ACTIVO (descuento del 5% normal, 10% con 1-2 casas, 15% con 3-5 casas, 30% con 1 hotel, 50% con hoteles máximos).
+mexicopoly-status-cobro-active = Cobro de piso: ACTIVO (descuento del 5% al 50%).
 mexicopoly-status-cobro-inactive = Cobro de piso: inactivo (propiedades libres).
 mexicopoly-status-sat-jail = { $player } detenido por el SAT: { $turns } turnos restantes sin fianza ni alquiler.
 mexicopoly-option-economic-mode = Modalidad económica: { $value }
@@ -306,8 +306,8 @@ mexicopoly-error-already-vandalized-turn = Ya mandaste vandalizar una propiedad 
 mexicopoly-error-no-vandalizable-properties = No hay propiedades rivales elegibles para vandalizar en este momento.
 mexicopoly-error-vandalize-needs-cash = Necesitas al menos { $cost } para vandalizar una propiedad; tienes { $cash }.
 mexicopoly-error-property-vandalized = Esta propiedad está vandalizada y no puede construir obras nuevas durante { $turns } turnos más.
-mexicopoly-you-vandalize-property = Pagas { $cost } en secreto para vandalizar { $property } de { $owner }. Su alquiler cae a la mitad por { $turns } turnos, pero { $owner } intentará adivinar quién fue. Te quedan { $cash }.
-mexicopoly-you-vandalize-property-brief = Vandalizas { $property } de { $owner } por { $cost }.
+mexicopoly-you-vandalize-property = Pagas { $cost } en secreto para mandar vandalizar { $property } de { $owner }. El daño se descubrirá cuando comience su turno. Te quedan { $cash }.
+mexicopoly-you-vandalize-property-brief = Mandas vandalizar { $property } de { $owner } en secreto por { $cost }.
 mexicopoly-your-property-vandalized = ¡Han vandalizado tu propiedad { $property }! Su alquiler cae al 50% por { $turns } turnos. Puedes denunciar a quien creas responsable (si aciertas te indemniza y repara el daño; si acusas en falso pagarás indemnización) o dejarlo pasar.
 mexicopoly-your-property-vandalized-brief = ¡Vandalizaron tu { $property }! Denuncia a un sospechoso o déjalo pasar.
 mexicopoly-property-vandalized = ¡Alguien vandalizó { $property } de { $owner }! Su alquiler cae al 50% por { $turns } turnos y { $owner } busca al culpable.
@@ -359,3 +359,63 @@ mexicopoly-card-community-aeropuerto-cancun = Aterrizas de emergencia por tus va
 mexicopoly-rent-two-of-three = 2 de 3 del color { $amount }
 mexicopoly-rent-full-group = grupo completo sin obras { $amount }
 mexicopoly-hotel-cost-spec = Costo por casa { $house_cost }; costo por hotel { $hotel_cost }.
+
+# Bote (casilla de descanso / fondo de cobro de piso)
+mexicopoly-you-collect-bote = ¡Caíste en el Bote y te llevaste lo recaudado del cobro de piso: { $amount }! Ahora tienes { $cash }.
+mexicopoly-player-collects-bote = ¡{ $player } cayó en el Bote y se llevó lo recaudado del cobro de piso: { $amount }!
+mexicopoly-you-collect-bote-brief = Bote cobrado: { $amount }.
+mexicopoly-player-collects-bote-brief = { $player } cobró el Bote ({ $amount }).
+mexicopoly-you-bote-empty = Caíste en el Bote, pero está vacío. No hay nada recaudado del cobro de piso.
+mexicopoly-player-bote-empty = { $player } cayó en el Bote, pero está vacío.
+mexicopoly-status-bote-pot = Bote acumulado del cobro de piso: { $amount }.
+
+# Alquiler de casas con diálogo y sabor mexicano
+mexicopoly-house-flavor-1 = ¡Te tocó quedarte en el cuartito de azotea de { $owner } en { $property } con vista panorámica a los tinacos!
+mexicopoly-house-flavor-2 = ¡{ $owner } ya le levantó un segundo piso con varillas de fuera a { $property }!
+mexicopoly-house-flavor-3 = ¡Llegaste a la vecindad de { $owner } en { $property }, con regadera compartida y tendedero en el patio!
+mexicopoly-house-flavor-4 = ¡{ $owner } ya armó su privada con portón eléctrico descompuesto en { $property }!
+mexicopoly-house-flavor-5 = ¡Llegaste al complejo de departamentos de { $owner } en { $property }, con cobro puntual de cuota de mantenimiento!
+mexicopoly-hotel-flavor-1 = ¡Aterrizaste en el emporio hotelero de { $owner } en { $property }! Hasta te cobraron por el WiFi chafa.
+mexicopoly-hotel-flavor-2 = ¡Llegaste al resort cinco estrellas de { $owner } en { $property }! Incluye alberca con agua tibia y buffet de lujo.
+
+mexicopoly-you-pay-rent-houses = { $flavor } Pagas { $amount } de alquiler a { $owner } por { $property } ({ $buildings }). Te quedan { $tenant_cash }.
+mexicopoly-you-collect-rent-houses = { $flavor } Cobras { $amount } de alquiler a { $tenant } por { $property } ({ $buildings }). Ahora tienes { $owner_cash }.
+mexicopoly-player-pays-rent-houses = { $flavor } { $tenant } paga { $amount } de alquiler a { $owner } por { $property } ({ $buildings }).
+
+mexicopoly-you-pay-rent-houses-extorted = { $flavor } Pagas { $amount } de alquiler a { $owner } por { $property } ({ $buildings }); el cobro de piso se lleva el { $percent }% ({ $cut }) al Bote y { $owner } recibe { $net }. Te quedan { $tenant_cash }.
+mexicopoly-you-collect-rent-houses-extorted = { $flavor } { $tenant } paga { $amount } de alquiler por { $property } ({ $buildings }); el cobro de piso te quita el { $percent }% ({ $cut }) que va al Bote; recibes { $net } netos y quedas con { $owner_cash }.
+mexicopoly-player-pays-rent-houses-extorted = { $flavor } { $tenant } paga { $amount } de alquiler a { $owner } por { $property } ({ $buildings }); el cobro de piso se lleva el { $percent }% ({ $cut }) al Bote y { $owner } recibe { $net }.
+
+# Liberación de la cárcel del SAT
+mexicopoly-you-leave-sat-jail = Cumpliste tu sanción en la cárcel del SAT y quedas en libertad.
+mexicopoly-player-leaves-sat-jail = { $player } cumplió su sanción en la cárcel del SAT y queda en libertad.
+mexicopoly-you-leave-sat-jail-brief = Saliste de la cárcel del SAT.
+mexicopoly-player-leaves-sat-jail-brief = { $player } salió de la cárcel del SAT.
+
+# Construcción de casas progresivas
+mexicopoly-building-house-nth = { $count ->
+    [1] una casa (1ª)
+    [2] tu 2ª casa (2 casas)
+    [3] tu 3ª casa (3 casas)
+    [4] tu 4ª casa (4 casas)
+   *[other] tu { $count }ª casa ({ $count } casas)
+}
+
+# Atajos rápidos y portafolio ordenado
+mexicopoly-action-quick-buy-house = Comprar casa
+mexicopoly-desc-quick-buy-house = Elige una propiedad de un grupo completo para comprar una casa de inmediato.
+mexicopoly-prompt-quick-buy-house = Elige la propiedad donde deseas comprar una casa:
+
+mexicopoly-action-quick-sell-house = Vender casa
+mexicopoly-desc-quick-sell-house = Elige una propiedad para vender una de sus construcciones de inmediato.
+mexicopoly-prompt-quick-sell-house = Elige la propiedad donde deseas vender una construcción:
+
+mexicopoly-action-quick-mortgage = Hipotecar
+mexicopoly-desc-quick-mortgage = Elige una propiedad sin construcciones para hipotecarla de inmediato.
+mexicopoly-prompt-quick-mortgage = Elige la propiedad que deseas hipotecar:
+
+mexicopoly-action-quick-unmortgage = Deshipotecar
+mexicopoly-desc-quick-unmortgage = Elige una propiedad hipotecada para levantar su hipoteca pagando el costo con intereses.
+mexicopoly-prompt-quick-unmortgage = Elige la propiedad que deseas deshipotecar:
+
+mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: dinero { $cash }, patrimonio { $net_worth }

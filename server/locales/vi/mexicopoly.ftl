@@ -97,7 +97,7 @@ mexicopoly-utility-rent-schedule = { $single } cho mỗi điểm xúc xắc khi 
 # Tên các ô trên bàn cờ Hoa Kỳ
 mexicopoly-space-go = Khởi hành
 mexicopoly-space-jail = Nhà tù
-mexicopoly-space-free-parking = Bãi đậu xe miễn phí
+mexicopoly-space-free-parking = Bote
 mexicopoly-space-go-to-jail = Vào tù
 mexicopoly-space-income-tax = SAT: thuế thu nhập
 mexicopoly-space-luxury-tax = SAT: thuế xa xỉ
@@ -260,10 +260,10 @@ mexicopoly-you-owe-no-sat-jailed-rent = { $owner } đang bị SAT giam giữ và
 mexicopoly-player-owes-no-sat-jailed-rent = { $player } không phải trả tiền thuê tại { $property } vì { $owner } đang bị SAT giam giữ.
 mexicopoly-you-owe-no-sat-jailed-rent-brief = Miễn tiền thuê: { $owner } đang bị SAT giam.
 mexicopoly-player-owes-no-sat-jailed-rent-brief = { $player } không trả tiền thuê cho { $owner } (bị SAT giam).
-mexicopoly-cobro-de-piso-started = Tội phạm có tổ chức đã bắt đầu thu tiền bảo kê (cobro de piso)! Mọi khoản tiền thuê đều bị cắt phế: 5% với bất động sản thường, 10% khi có 1 hoặc 2 nhà, 15% khi có từ 3 nhà trở lên, 30% khi có 1 khách sạn và 50% khi đạt tối đa khách sạn.
-mexicopoly-cobro-de-piso-started-brief = Đang thu tiền bảo kê! Khấu trừ từ 5% đến 50% trên mọi khoản tiền thuê.
-mexicopoly-cobro-de-piso-ended = Hải quân Mexico đã mở chiến dịch truy quét và giải phóng mọi bất động sản khỏi nạn thu tiền bảo kê! Chủ sở hữu lại được nhận đủ 100% tiền thuê.
-mexicopoly-cobro-de-piso-ended-brief = Chiến dịch Hải quân! Bất động sản được giải phóng khỏi tiền bảo kê.
+mexicopoly-cobro-de-piso-started = Tội phạm có tổ chức bắt đầu thu tiền bảo kê! Tiền thuê giảm từ 5% đến 50%.
+mexicopoly-cobro-de-piso-started-brief = Đang thu tiền bảo kê! Khấu trừ từ 5% đến 50%.
+mexicopoly-cobro-de-piso-ended = Chiến dịch Hải quân! Bất động sản được giải phóng và thu đủ 100% tiền thuê.
+mexicopoly-cobro-de-piso-ended-brief = Chiến dịch Hải quân! Tiền thuê về 100%.
 mexicopoly-marina-patrol-calm = Hải quân Mexico tuần tra các thành phố và giữ cho mọi bất động sản không bị thu tiền bảo kê.
 mexicopoly-marina-patrol-calm-brief = Hải quân tuần tra: không có thu tiền bảo kê.
 mexicopoly-you-collect-rent-extorted = { $tenant } trả { $amount } tiền thuê cho { $property }, nhưng tiền bảo kê lấy mất { $percent }% ({ $cut }); bạn thực nhận { $net } và hiện có { $owner_cash }.
@@ -273,7 +273,7 @@ mexicopoly-you-collect-rent-extorted-brief = Thực nhận { $net } từ { $tena
 mexicopoly-you-pay-rent-extorted-brief = Trả { $amount } cho { $owner } ({ $cut }, { $percent }% bảo kê).
 mexicopoly-player-pays-rent-extorted-brief = { $tenant } trả { $amount } cho { $owner } ({ $cut }, { $percent }% bảo kê).
 mexicopoly-claim-rent-extorted-label = Thu tiền thuê (gốc { $amount }; -{ $cut } do { $percent }% bảo kê, thực nhận { $net })
-mexicopoly-status-cobro-active = Thu tiền bảo kê (cobro de piso): ĐANG HOẠT ĐỘNG (khấu trừ 5% thường, 10% với 1-2 nhà, 15% với 3-5 nhà, 30% với 1 khách sạn, 50% khi tối đa khách sạn).
+mexicopoly-status-cobro-active = Thu tiền bảo kê (cobro de piso): ĐANG HOẠT ĐỘNG (giảm từ 5% đến 50%).
 mexicopoly-status-cobro-inactive = Thu tiền bảo kê (cobro de piso): không hoạt động (bất động sản tự do).
 mexicopoly-status-sat-jail = { $player } đang bị SAT giam: còn { $turns } lượt bắt buộc không bảo lãnh và không thu tiền thuê.
 mexicopoly-option-economic-mode = Chế độ kinh tế: { $value }
@@ -306,8 +306,8 @@ mexicopoly-error-already-vandalized-turn = Bạn đã phá hoại một bất đ
 mexicopoly-error-no-vandalizable-properties = Hiện không có bất động sản đối thủ nào đủ điều kiện để phá hoại.
 mexicopoly-error-vandalize-needs-cash = Bạn cần ít nhất { $cost } để phá hoại bất động sản; bạn hiện có { $cash }.
 mexicopoly-error-property-vandalized = Bất động sản này đang bị phá hoại và không thể xây dựng mới trong { $turns } lượt nữa.
-mexicopoly-you-vandalize-property = Bạn bí mật trả { $cost } để phá hoại { $property } của { $owner }. Tiền thuê giảm một nửa trong { $turns } lượt, nhưng { $owner } sẽ cố đoán xem ai là thủ phạm. Bạn còn { $cash }.
-mexicopoly-you-vandalize-property-brief = Đã phá hoại { $property } của { $owner } với giá { $cost }.
+mexicopoly-you-vandalize-property = Bạn bí mật trả { $cost } để phá hoại { $property } của { $owner }. Thiệt hại sẽ được phát hiện khi đến lượt của họ. Bạn còn { $cash }.
+mexicopoly-you-vandalize-property-brief = Bí mật phá hoại { $property } của { $owner } với giá { $cost }.
 mexicopoly-your-property-vandalized = Kẻ nào đó đã phá hoại { $property } của bạn! Tiền thuê giảm 50% trong { $turns } lượt. Bạn có thể tố giác người mình nghi ngờ (đoán đúng sẽ được bồi thường và sửa chữa ngay; vu khống sai sẽ phải nộp phạt) hoặc bỏ qua.
 mexicopoly-your-property-vandalized-brief = { $property } của bạn bị phá hoại! Tố giác nghi phạm hoặc bỏ qua.
 mexicopoly-property-vandalized = Kẻ nào đó đã phá hoại { $property } của { $owner }! Tiền thuê giảm 50% trong { $turns } lượt và { $owner } đang tìm thủ phạm.
@@ -359,3 +359,60 @@ mexicopoly-card-community-aeropuerto-cancun = Hạ cánh khẩn trương cho k�
 mexicopoly-rent-two-of-three = 2 trên 3 cùng màu { $amount }
 mexicopoly-rent-full-group = đủ nhóm màu chưa xây { $amount }
 mexicopoly-hotel-cost-spec = Giá xây nhà { $house_cost }; giá xây khách sạn { $hotel_cost }.
+
+# Bote (Quỹ Bote / thu từ bảo kê)
+mexicopoly-you-collect-bote = Bạn rơi vào ô Bote và nhận toàn bộ tiền bảo kê đã thu gom: { $amount }! Hiện có { $cash }.
+mexicopoly-player-collects-bote = { $player } rơi vào ô Bote và nhận toàn bộ tiền bảo kê đã thu gom: { $amount }!
+mexicopoly-you-collect-bote-brief = Nhận Bote: { $amount }.
+mexicopoly-player-collects-bote-brief = { $player } nhận Bote ({ $amount }).
+mexicopoly-you-bote-empty = Bạn rơi vào ô Bote nhưng đang trống. Chưa có tiền bảo kê thu gom.
+mexicopoly-player-bote-empty = { $player } rơi vào ô Bote nhưng đang trống.
+mexicopoly-status-bote-pot = Quỹ Bote (thu từ bảo kê): { $amount }.
+
+# Lời thoại hài hước khi thuê nhà
+mexicopoly-house-flavor-1 = Bạn phải ở trong căn phòng tầng thượng của { $owner } tại { $property } nhìn ra bồn nước!
+mexicopoly-house-flavor-2 = { $owner } đã xây thêm tầng hai với cọc thép thò ra ngoài tại { $property }!
+mexicopoly-house-flavor-3 = Bạn đến khu nhà trọ tập thể của { $owner } tại { $property } với vòi sen chung và dây phơi ngoài sân!
+mexicopoly-house-flavor-4 = { $owner } đã lập khu dân cư có cổng tự động bị hỏng tại { $property }!
+mexicopoly-house-flavor-5 = Bạn đến khu chung cư của { $owner } tại { $property } với phí bảo trì thu đúng hạn!
+mexicopoly-hotel-flavor-1 = Bạn đặt chân đến tổ hợp khách sạn của { $owner } tại { $property }! Họ thu cả tiền WiFi chập chờn.
+mexicopoly-hotel-flavor-2 = Bạn đến khu nghỉ dưỡng 5 sao của { $owner } tại { $property } với bể bơi ấm và tiệc tự chọn sang trọng!
+
+mexicopoly-you-pay-rent-houses = { $flavor } Bạn trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }). Còn lại { $tenant_cash }.
+mexicopoly-you-collect-rent-houses = { $flavor } Bạn thu { $amount } tiền thuê từ { $tenant } cho { $property } ({ $buildings }). Hiện có { $owner_cash }.
+mexicopoly-player-pays-rent-houses = { $flavor } { $tenant } trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }).
+
+mexicopoly-you-pay-rent-houses-extorted = { $flavor } Bạn trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }); bảo kê thu { $percent }% ({ $cut }) vào Bote, { $owner } nhận { $net }. Còn lại { $tenant_cash }.
+mexicopoly-you-collect-rent-houses-extorted = { $flavor } { $tenant } trả { $amount } tiền thuê cho { $property } ({ $buildings }); bảo kê thu { $percent }% ({ $cut }) vào Bote; bạn nhận thực tế { $net } và có { $owner_cash }.
+mexicopoly-player-pays-rent-houses-extorted = { $flavor } { $tenant } trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }); bảo kê thu { $percent }% ({ $cut }) vào Bote, { $owner } nhận { $net }.
+
+# Ra tù SAT
+mexicopoly-you-leave-sat-jail = Bạn đã chấp hành xong án phạt trong tù SAT và được tự do.
+mexicopoly-player-leaves-sat-jail = { $player } đã chấp hành xong án phạt trong tù SAT và được tự do.
+mexicopoly-you-leave-sat-jail-brief = Đã ra khỏi tù SAT.
+mexicopoly-player-leaves-sat-jail-brief = { $player } đã ra khỏi tù SAT.
+
+# Tiến độ xây nhà
+mexicopoly-building-house-nth = { $count ->
+    [1] 1 ngôi nhà
+   *[other] nhà thứ { $count } ({ $count } ngôi nhà)
+}
+
+# Phím tắt nhanh và danh mục tài sản xếp hạng
+mexicopoly-action-quick-buy-house = Mua nhà
+mexicopoly-desc-quick-buy-house = Chọn một bất động sản trong nhóm hoàn chỉnh để mua nhà nhanh chóng.
+mexicopoly-prompt-quick-buy-house = Chọn bất động sản bạn muốn mua nhà:
+
+mexicopoly-action-quick-sell-house = Bán nhà
+mexicopoly-desc-quick-sell-house = Chọn một bất động sản để bán bớt công trình nhanh chóng.
+mexicopoly-prompt-quick-sell-house = Chọn bất động sản bạn muốn bán công trình:
+
+mexicopoly-action-quick-mortgage = Thế chấp
+mexicopoly-desc-quick-mortgage = Chọn một bất động sản chưa xây dựng để thế chấp nhanh chóng.
+mexicopoly-prompt-quick-mortgage = Chọn bất động sản cần thế chấp:
+
+mexicopoly-action-quick-unmortgage = Giải chấp
+mexicopoly-desc-quick-unmortgage = Chọn một bất động sản đang thế chấp để giải chấp.
+mexicopoly-prompt-quick-unmortgage = Chọn bất động sản cần giải chấp:
+
+mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: tiền { $cash }, tài sản { $net_worth }
