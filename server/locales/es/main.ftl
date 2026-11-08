@@ -1407,6 +1407,8 @@ free-table-prompt-topic = Introduce el tema de la mesa libre (deja vacío para q
 free-table-topic-changed = { $host } cambió el tema de la mesa a: { $topic }.
 free-table-topic-cleared = { $host } eliminó el tema de la mesa.
 free-table-current-topic = Tema de la mesa: { $topic }.
+free-table-read-topic = Ver tema de la mesa
+free-table-no-topic = La mesa libre no tiene un tema asignado.
 
 # Chat de voz global
 global-voice-chat = Chat de voz global

@@ -1393,6 +1393,8 @@ free-table-prompt-topic = Enter the new topic for the free table (leave empty to
 free-table-topic-changed = { $host } changed the table topic to: { $topic }.
 free-table-topic-cleared = { $host } cleared the table topic.
 free-table-current-topic = Table topic: { $topic }.
+free-table-read-topic = Read table topic
+free-table-no-topic = The free table has no topic set.
 
 # Global voice chat
 global-voice-chat = Global Voice Chat

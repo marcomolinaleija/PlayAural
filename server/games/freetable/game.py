@@ -49,6 +49,14 @@ class FreeTable(Game):
 
     def setup_keybinds(self) -> None:
         super().setup_keybinds()
+        self._keybinds.pop("t", None)
+        self.define_keybind(
+            "t",
+            "Read table topic",
+            ["read_table_topic"],
+            state=KeybindState.ALWAYS,
+            include_spectators=True,
+        )
         self.define_keybind(
             "ctrl+t",
             "Set table topic",
@@ -159,6 +167,20 @@ class FreeTable(Game):
         actions.get_action("game_rules").label = Localization.get(
             locale, "free-table-help"
         )
+        actions.add(
+            Action(
+                id="read_table_topic",
+                label=Localization.get(locale, "free-table-read-topic"),
+                handler="_action_read_table_topic",
+                is_enabled="_is_read_table_topic_enabled",
+                is_hidden="_is_read_table_topic_hidden",
+                include_spectators=True,
+            )
+        )
+        if "read_table_presence" in actions._order:
+            idx = actions._order.index("read_table_presence") + 1
+            actions._order.remove("read_table_topic")
+            actions._order.insert(idx, "read_table_topic")
         # Place leave_game after game_rules (free table help) and before go_back
         actions.add(
             Action(
@@ -183,6 +205,21 @@ class FreeTable(Game):
 
     def _is_read_table_presence_hidden(self, player: Player) -> Visibility:
         return Visibility.VISIBLE
+
+    def _is_read_table_topic_hidden(self, player: Player) -> Visibility:
+        return Visibility.VISIBLE
+
+    def _is_read_table_topic_enabled(self, player: Player) -> str | None:
+        return None
+
+    def _action_read_table_topic(self, player: Player, action_id: str) -> None:
+        user = self.get_user(player)
+        if not user:
+            return
+        if self.topic:
+            user.speak_l("free-table-current-topic", buffer="game", topic=self.topic)
+        else:
+            user.speak_l("free-table-no-topic", buffer="game")
 
     def _action_read_table_presence(self, player: Player, action_id: str) -> None:
         super()._action_read_table_presence(player, action_id)

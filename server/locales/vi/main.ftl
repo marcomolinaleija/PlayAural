@@ -1373,6 +1373,8 @@ free-table-prompt-topic = Nhập chủ đề mới cho bàn tự do (để trố
 free-table-topic-changed = { $host } đã đổi chủ đề bàn thành: { $topic }.
 free-table-topic-cleared = { $host } đã xóa chủ đề bàn.
 free-table-current-topic = Chủ đề bàn: { $topic }.
+free-table-read-topic = Xem chủ đề bàn
+free-table-no-topic = Bàn tự do chưa có chủ đề.
 
 # Trò chuyện thoại chung
 global-voice-chat = Trò chuyện thoại chung

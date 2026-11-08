@@ -77,7 +77,7 @@ async def test_free_table_creation_and_conversation_menu(room, client_type):
             "type": "keybind", "key": "escape",
         })
         action_ids = {item.id for item in user.get_current_menu_items("actions_menu")}
-        assert {"whos_at_table", "read_table_presence", "leave_game", "game_rules", "go_back"} <= action_ids
+        assert {"whos_at_table", "read_table_presence", "read_table_topic", "leave_game", "game_rules", "go_back"} <= action_ids
         if user is host:
             assert {"host_management", "switch_game", "set_table_topic"} <= action_ids
         else:
@@ -558,6 +558,14 @@ async def test_free_table_set_topic_flow(room):
     host_player = game.get_player_by_id(host.uuid)
     guest_player = game.get_player_by_id(guest.uuid)
 
+    # Pressing t when no topic is set announces no topic
+    guest.clear_messages()
+    game.handle_event(guest_player, {"type": "keybind", "key": "t"})
+    assert any(
+        Localization.get("es", "free-table-no-topic") in s
+        for s in guest.get_spoken_messages()
+    )
+
     # Guest cannot set topic via action or keybind
     game.handle_event(guest_player, {"type": "keybind", "key": "ctrl+t"})
     assert not any(msg.type == "show_editbox" for msg in guest.messages)
@@ -580,6 +588,11 @@ async def test_free_table_set_topic_flow(room):
     })
     assert game.topic == "Charla nocturna"
     assert any("Charla nocturna" in s for s in host.get_spoken_messages())
+    assert any("Charla nocturna" in s for s in guest.get_spoken_messages())
+
+    # Pressing t now announces the topic
+    guest.clear_messages()
+    game.handle_event(guest_player, {"type": "keybind", "key": "t"})
     assert any("Charla nocturna" in s for s in guest.get_spoken_messages())
 
     # Actions menu label reflects dynamic topic
@@ -614,6 +627,14 @@ async def test_free_table_set_topic_flow(room):
     assert game.topic == ""
     listing_cleared = server._format_active_table_listing(host, table, "Mesa libre")
     assert "(Charla nocturna)" not in listing_cleared
+
+    # Pressing t after topic cleared announces no topic
+    host.clear_messages()
+    game.handle_event(host_player, {"type": "keybind", "key": "t"})
+    assert any(
+        Localization.get("es", "free-table-no-topic") in s
+        for s in host.get_spoken_messages()
+    )
 
     # Serialization and save/load
     game.topic = "Filosofía y café"
