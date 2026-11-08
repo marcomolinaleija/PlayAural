@@ -31,6 +31,8 @@ from ...game_utils.sequence_runner_mixin import SequenceBeat, SequenceOperation
 from ..registry import register_game
 from .board import MEXICO_BOARD as LEGACY_BOARD
 from .compact_board import MEXICO_BOARD
+from .custom_spaces import CUSTOM_SPACE_HANDLERS
+from .shop import MEXICOPOLY_SHOP_ITEMS
 
 TURN_TIMER_CHOICES = ("0", "20", "30", "40", "60", "120")
 AUCTION_TIMER_CHOICES = ("3", "5", "8", "10", "15")
@@ -151,6 +153,13 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     active_special_event: str = ""
     special_event_turns: int = 0
     special_event_group_id: str = ""
+    visited_airports: dict[str, list[str]] = field(default_factory=dict)
+    has_airplane: dict[str, bool] = field(default_factory=dict)
+    flight_delay_turns: dict[str, int] = field(default_factory=dict)
+    has_car: dict[str, bool] = field(default_factory=dict)
+    car_fuel: dict[str, int] = field(default_factory=dict)
+    juzgado_amparos_issued: dict[str, int] = field(default_factory=dict)
+    amparo_issued_this_turn: bool = False
 
     @classmethod
     def get_name(cls) -> str:
@@ -223,6 +232,18 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             ["vandalize_property"],
             state=KeybindState.ACTIVE,
         )
+        self.define_keybind(
+            "b",
+            "Abrir tienda",
+            ["open_shop"],
+            state=KeybindState.ACTIVE,
+        )
+        self.define_keybind(
+            "a",
+            "Volar en avión",
+            ["fly_airplane"],
+            state=KeybindState.ACTIVE,
+        )
 
     def _locale(self, player: Player) -> str:
         user = self.get_user(player)
@@ -292,6 +313,12 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                         existing.label = action.label
                         existing.description = action.description
                 self._apply_standard_action_order(standard_set, player)
+            turn_set = self.get_action_set(player, "turn")
+            if turn_set is not None:
+                fresh_turn = self.create_turn_action_set(player)
+                for action in fresh_turn._actions.values():
+                    if not turn_set.get_action(action.id):
+                        turn_set.add(action)
 
     def create_standard_action_set(self, player: Player) -> ActionSet:
         action_set = super().create_standard_action_set(player)
@@ -386,6 +413,38 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 show_in_actions_menu=True,
             )
         )
+        action_set.add(
+            self._action(
+                player,
+                "open_shop",
+                "mexicopoly-action-open-shop",
+                "_action_open_shop",
+                "_is_shop_enabled",
+                "_is_shop_hidden",
+                description_key="mexicopoly-desc-open-shop",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-shop",
+                    options="_shop_item_options",
+                    bot_select="_bot_shop_item_input",
+                    option_label="_shop_item_option_label",
+                    option_description="_shop_item_option_description",
+                    initial_selection="_first_menu_option",
+                ),
+                show_in_actions_menu=True,
+            )
+        )
+        action_set.add(
+            self._action(
+                player,
+                "issue_amparo",
+                "mexicopoly-action-issue-amparo",
+                "_action_issue_amparo",
+                "_is_issue_amparo_enabled",
+                "_is_issue_amparo_hidden",
+                description_key="mexicopoly-desc-issue-amparo",
+                show_in_actions_menu=True,
+            )
+        )
         self._apply_standard_action_order(action_set, player)
         return action_set
 
@@ -463,6 +522,49 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 "_is_vandalism_response_enabled",
                 "_is_vandalism_response_hidden",
                 description_key="mexicopoly-desc-skip-vandalism-denounce",
+            )
+        )
+        actions.add(
+            self._action(
+                player,
+                "fly_airplane",
+                "mexicopoly-action-fly-airplane",
+                "_action_fly_airplane",
+                "_is_fly_airplane_enabled",
+                "_is_fly_airplane_hidden",
+                description_key="mexicopoly-desc-fly-airplane",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-fly-airplane",
+                    options="_fly_airplane_options",
+                    bot_select="_bot_fly_airplane_input",
+                    option_label="_fly_airplane_option_label",
+                    option_description="_fly_airplane_option_description",
+                    initial_selection="_first_menu_option",
+                ),
+            )
+        )
+        actions.add(
+            self._action(
+                player,
+                "roll_car",
+                "mexicopoly-action-roll-car",
+                "_action_roll_car",
+                "_is_roll_car_enabled",
+                "_is_roll_car_hidden",
+                get_label="_get_roll_car_label",
+                description_key="mexicopoly-desc-roll-car",
+            )
+        )
+        actions.add(
+            self._action(
+                player,
+                "buy_juzgado_amparo",
+                "mexicopoly-action-buy-juzgado-amparo",
+                "_action_buy_juzgado_amparo",
+                "_is_buy_juzgado_amparo_enabled",
+                "_is_buy_juzgado_amparo_hidden",
+                get_label="_get_buy_juzgado_amparo_label",
+                description_key="mexicopoly-desc-buy-juzgado-amparo",
             )
         )
         return actions
@@ -580,6 +682,66 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             return
         super().on_sequence_callback(sequence_id, callback_id, payload)
 
+    def _record_traversed_airports(
+        self, player: MonopolyPlayer, start: int, spaces: int
+    ) -> None:
+        if spaces <= 0:
+            return
+        board_size = len(self.board.spaces)
+        airport_ids = {s.id for s in self.board.spaces if s.group_id == "airports"}
+        total_airports = len(airport_ids)
+        if total_airports == 0:
+            return
+        player_airports = self.visited_airports.setdefault(player.id, [])
+        newly_unlocked = False
+        for step in range(1, spaces + 1):
+            pos = (start + step) % board_size
+            space = self.board.spaces[pos]
+            if space.group_id == "airports" and space.id not in player_airports:
+                player_airports.append(space.id)
+                if len(player_airports) == total_airports:
+                    newly_unlocked = True
+        if newly_unlocked:
+            self._broadcast_actor(
+                player,
+                "mexicopoly-airports-unlocked-airplane",
+                "mexicopoly-airports-unlocked-airplane-player",
+            )
+            self.play_sound(game_audio.SOUND_COLOR_GROUP_COMPLETED)
+
+    def _move_by(
+        self,
+        player: MonopolyPlayer,
+        spaces: int,
+        *,
+        collect_go: bool,
+        resolve_landing: bool = True,
+    ) -> None:
+        self._record_traversed_airports(player, player.position, spaces)
+        super()._move_by(
+            player, spaces, collect_go=collect_go, resolve_landing=resolve_landing
+        )
+
+    def _move_to(
+        self,
+        player: MonopolyPlayer,
+        destination_id: str,
+        *,
+        collect_go: bool,
+        rent_multiplier: int = 1,
+        utility_override: bool = False,
+    ) -> None:
+        destination = self.board.space_index(destination_id)
+        distance = (destination - player.position) % len(self.board.spaces)
+        self._record_traversed_airports(player, player.position, distance)
+        super()._move_to(
+            player,
+            destination_id,
+            collect_go=collect_go,
+            rent_multiplier=rent_multiplier,
+            utility_override=utility_override,
+        )
+
     def _collect_go(
         self, player: MonopolyPlayer, *, landed_on_go: bool = False
     ) -> None:
@@ -682,6 +844,25 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
 
     def _action_jail_card(self, player: MonopolyPlayer, action_id: str) -> None:
         self.sat_jail_turns.pop(player.id, None)
+        if player.jail_card_ids and "juzgado_amparo" in player.jail_card_ids[0]:
+            player.jail_card_ids.pop(0)
+            if player.id in self.juzgado_amparos_issued and self.juzgado_amparos_issued[player.id] > 0:
+                self.juzgado_amparos_issued[player.id] -= 1
+            player.in_jail = False
+            player.jail_turns = 0
+            self.phase = PHASE_AWAIT_ROLL
+            self.decision_player_id = player.id
+            self._broadcast_actor(
+                player,
+                "monopoly-you-use-jail-card",
+                "monopoly-player-uses-jail-card",
+                brief_personal_key="monopoly-you-use-jail-card-brief",
+                brief_others_key="monopoly-player-uses-jail-card-brief",
+            )
+            self._play_jail_release_cues()
+            self.refresh_menus()
+            self._focus_after_user_transition(player)
+            return
         super()._action_jail_card(player, action_id)
 
     def _start_jail_roll_sequence(
@@ -1854,6 +2035,9 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         utility_override: bool = False,
     ) -> None:
         space = self.board.spaces[player.position]
+        if space.id in CUSTOM_SPACE_HANDLERS:
+            if CUSTOM_SPACE_HANDLERS[space.id](self, player, space):
+                return
         if space.kind in OWNABLE_SPACE_KINDS:
             state = self.property_states[space.id]
             owner = self._alive_player_by_id(state.owner_id)
@@ -2260,6 +2444,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
 
     def _start_turn(self, *, announce):
         self.vandalized_this_turn = False
+        self.amparo_issued_this_turn = False
         current = self.current_player
         if announce:
             self._tick_vandalized_properties(
@@ -2278,7 +2463,32 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 if self.sat_jail_turns.get(current.id, 0) > 0 and current.in_jail:
                     self._handle_sat_jail_turn(current)
                     return
+                if self.flight_delay_turns.get(current.id, 0) > 0:
+                    self._handle_flight_delay_turn(current)
+                    return
                 self._check_and_trigger_vandalism_discovery(current)
+
+    def _handle_flight_delay_turn(self, player: MonopolyPlayer) -> None:
+        turns = self.flight_delay_turns.get(player.id, 0)
+        remaining = turns - 1
+        if remaining > 0:
+            self.flight_delay_turns[player.id] = remaining
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-flight-delay",
+                "mexicopoly-player-flight-delay",
+                turns=remaining,
+            )
+            self._finish_turn()
+            self._focus_after_user_transition(player)
+        else:
+            self.flight_delay_turns.pop(player.id, None)
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-flight-arrived",
+                "mexicopoly-player-flight-arrived",
+            )
+            self.refresh_menus()
 
     def _handle_sat_jail_turn(self, player: MonopolyPlayer) -> None:
         turns = self.sat_jail_turns.get(player.id, 0)
@@ -2335,11 +2545,19 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             if suspects and random.random() < 0.65:  # nosec B311
                 return "denounce_vandal"
             return "skip_vandalism_denounce"
-        if self.phase == PHASE_JAIL and self.sat_jail_turns.get(player.id, 0) > 0:
-            return None
+        if self.phase == PHASE_JAIL:
+            if self.sat_jail_turns.get(player.id, 0) > 0:
+                return None
+            if not self._is_buy_juzgado_amparo_enabled(player):
+                return "buy_juzgado_amparo"
         # Management used to happen after rolling. Do it before the final roll
         # now, otherwise automatic turn completion would prevent bots building.
         if self.phase == PHASE_AWAIT_ROLL:
+            if not self._is_issue_amparo_enabled(player) and random.random() < 0.5:  # nosec B311
+                return "issue_amparo"
+            if self.has_car.get(player.id) and self.car_fuel.get(player.id, 0) > 0:
+                if self.active_special_event != SPECIAL_EVENT_HOY_NO_CIRCULA and random.random() < 0.6:  # nosec B311
+                    return "roll_car"
             if self._bot_has_management_opportunity(player):
                 return "manage_properties"
             if player.bot_trade_turn != self.turn_number:
@@ -2794,3 +3012,418 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             cash=self._money(locale, owner.cash),
             net_worth=self._money(locale, self._net_worth(owner)),
         )
+
+    # -------------------------------------------------------------------------
+    # Tienda Mexipoly (Shop)
+    # -------------------------------------------------------------------------
+
+    def _is_shop_hidden(self, player: Player) -> Visibility:
+        if (
+            self.status != "playing"
+            or player.is_spectator
+            or not isinstance(player, MonopolyPlayer)
+            or player.bankrupt
+        ):
+            return Visibility.HIDDEN
+        return Visibility.VISIBLE
+
+    def _is_shop_enabled(self, player: MonopolyPlayer) -> str | None:
+        if player.bankrupt:
+            return "monopoly-error-bankrupt"
+        return None
+
+    def _shop_item_options(self, player: MonopolyPlayer) -> list[str]:
+        del player
+        return list(MEXICOPOLY_SHOP_ITEMS.keys())
+
+    def _shop_item_option_label(self, player: MonopolyPlayer, value: str) -> str:
+        item = MEXICOPOLY_SHOP_ITEMS.get(value)
+        if not item:
+            return value
+        return item.get_label(self, player)
+
+    def _shop_item_option_description(self, player: MonopolyPlayer, value: str) -> str:
+        item = MEXICOPOLY_SHOP_ITEMS.get(value)
+        if not item:
+            return ""
+        return item.get_description(self, player)
+
+    def _bot_shop_item_input(self, player: MonopolyPlayer, options: list[str]) -> str:
+        del player
+        return options[0] if options else ""
+
+    def _action_open_shop(
+        self, player: MonopolyPlayer, action_id: str, input_value: str
+    ) -> None:
+        del action_id
+        item = MEXICOPOLY_SHOP_ITEMS.get(input_value)
+        if not item:
+            return
+        can_buy, error_key = item.can_buy(self, player)
+        if not can_buy:
+            if error_key:
+                user = self.get_user(player)
+                if user:
+                    user.speak_l(error_key, buffer="game")
+            return
+        item.on_buy(self, player)
+        self.refresh_menus()
+
+    # -------------------------------------------------------------------------
+    # Sistema de Avión y Vuelos entre Aeropuertos
+    # -------------------------------------------------------------------------
+
+    def _is_fly_airplane_hidden(self, player: MonopolyPlayer) -> Visibility:
+        if not self.has_airplane.get(player.id, False):
+            return Visibility.HIDDEN
+        if self.phase not in {PHASE_AWAIT_ROLL, PHASE_TURN_ACTIONS}:
+            return Visibility.HIDDEN
+        return Visibility.VISIBLE
+
+    def _is_fly_airplane_enabled(self, player: MonopolyPlayer) -> str | None:
+        if not self._is_actor(player, self.phase):
+            return self._waiting_reason(player)
+        if not self.has_airplane.get(player.id, False):
+            return "mexicopoly-error-no-airplane"
+        if self.active_special_event == SPECIAL_EVENT_HOY_NO_CIRCULA:
+            return "mexicopoly-error-hoy-no-circula"
+        if player.in_jail:
+            return "monopoly-error-in-jail"
+        if self.flight_delay_turns.get(player.id, 0) > 0:
+            return "mexicopoly-error-flight-in-progress"
+        return None
+
+    def _fly_airplane_options(self, player: MonopolyPlayer) -> list[str]:
+        cur_space = self.board.spaces[player.position]
+        return [
+            s.id for s in self.board.spaces
+            if s.group_id == "airports" and s.id != cur_space.id
+        ]
+
+    def _fly_airplane_option_label(self, player: MonopolyPlayer, value: str) -> str:
+        space = self.board.space(value)
+        locale = self._locale(player)
+        cur_pos = player.position
+        dest_pos = self.board.space_index(value)
+        distance = (dest_pos - cur_pos) % len(self.board.spaces)
+        turns = (distance + 9) // 10
+        tua = 150
+        state = self.property_states.get(value)
+        owner = self._alive_player_by_id(state.owner_id) if state and state.owner_id else None
+        airport_name = self._space_name(locale, space)
+
+        if owner and owner.id == player.id:
+            return Localization.get(
+                locale,
+                "mexicopoly-flight-option-own",
+                airport=airport_name,
+                distance=distance,
+                turns=turns,
+            )
+        if owner:
+            rent = 0
+            if not state.mortgaged:
+                owned_airports = sum(
+                    1 for s in self.board.group_spaces("airports")
+                    if self.property_states[s.id].owner_id == owner.id
+                )
+                rent = space.rents[max(0, owned_airports - 1)]
+            return Localization.get(
+                locale,
+                "mexicopoly-flight-option-other",
+                airport=airport_name,
+                distance=distance,
+                turns=turns,
+                owner=owner.name,
+                tua=self._money(locale, tua),
+                rent=self._money(locale, rent),
+            )
+        return Localization.get(
+            locale,
+            "mexicopoly-flight-option-unowned",
+            airport=airport_name,
+            distance=distance,
+            turns=turns,
+            tua=self._money(locale, tua),
+        )
+
+    def _fly_airplane_option_description(self, player: MonopolyPlayer, value: str) -> str:
+        return self._fly_airplane_option_label(player, value)
+
+    def _bot_fly_airplane_input(self, player: MonopolyPlayer, options: list[str]) -> str:
+        del player
+        return options[0] if options else ""
+
+    def _action_fly_airplane(
+        self, player: MonopolyPlayer, action_id: str, input_value: str
+    ) -> None:
+        del action_id
+        if self._is_fly_airplane_enabled(player):
+            return
+        dest_space = self.board.space(input_value)
+        cur_pos = player.position
+        dest_pos = self.board.space_index(input_value)
+        distance = (dest_pos - cur_pos) % len(self.board.spaces)
+        flight_turns = (distance + 9) // 10
+        tua = 150
+
+        # Move to destination airport
+        player.position = dest_pos
+        self.play_sound(game_audio.SOUND_TOKEN_LANDED)
+        state = self.property_states.get(dest_space.id)
+        owner = self._alive_player_by_id(state.owner_id) if state and state.owner_id else None
+
+        if owner and owner.id == player.id:
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-fly-own",
+                "mexicopoly-player-flies-own",
+                airport=lambda locale: self._space_name(locale, dest_space),
+                turns=flight_turns,
+            )
+        elif owner:
+            rent = 0
+            if not state.mortgaged:
+                owned_airports = sum(
+                    1 for s in self.board.group_spaces("airports")
+                    if self.property_states[s.id].owner_id == owner.id
+                )
+                rent = dest_space.rents[max(0, owned_airports - 1)]
+            total = tua + rent
+            if player.cash < total:
+                self.flight_delay_turns[player.id] = flight_turns
+                self._start_debt(
+                    player,
+                    owner.id,
+                    total,
+                    "mexicopoly-debt-flight-fees",
+                    continuation="finish_landing",
+                )
+                return
+            player.cash -= total
+            owner.cash += total
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-fly-other",
+                "mexicopoly-player-flies-other",
+                airport=lambda locale: self._space_name(locale, dest_space),
+                owner=owner.name,
+                tua=lambda locale: self._money(locale, tua),
+                rent=lambda locale: self._money(locale, rent),
+                total=lambda locale: self._money(locale, total),
+                cash=lambda locale: self._money(locale, player.cash),
+                turns=flight_turns,
+            )
+        else:
+            if player.cash < tua:
+                self.flight_delay_turns[player.id] = flight_turns
+                self._start_debt(
+                    player,
+                    "",
+                    tua,
+                    "mexicopoly-debt-flight-fees",
+                    continuation="finish_landing",
+                )
+                return
+            player.cash -= tua
+            self.free_parking_pot += tua
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-fly-unowned",
+                "mexicopoly-player-flies-unowned",
+                airport=lambda locale: self._space_name(locale, dest_space),
+                tua=lambda locale: self._money(locale, tua),
+                turns=flight_turns,
+            )
+            self.flight_delay_turns[player.id] = flight_turns
+            self.pending_property_id = dest_space.id
+            self.phase = PHASE_PROPERTY
+            self.decision_player_id = player.id
+            self._broadcast_actor(
+                player,
+                "monopoly-you-land-unowned",
+                "monopoly-player-land-unowned",
+                property=lambda locale: self._space_name(locale, dest_space),
+                group=lambda locale: self._group_name(locale, dest_space.group_id),
+                price=lambda locale: self._money(locale, dest_space.price),
+                cash=lambda locale: self._money(locale, player.cash),
+                brief_personal_key="monopoly-you-land-unowned-brief",
+                brief_others_key="monopoly-player-land-unowned-brief",
+            )
+            self.refresh_menus()
+            return
+
+        self.flight_delay_turns[player.id] = flight_turns
+        self._finish_landing()
+
+    # -------------------------------------------------------------------------
+    # Sistema de Auto y Gasolina
+    # -------------------------------------------------------------------------
+
+    def _is_roll_car_hidden(self, player: MonopolyPlayer) -> Visibility:
+        if not self.has_car.get(player.id, False):
+            return Visibility.HIDDEN
+        if self.phase != PHASE_AWAIT_ROLL:
+            return Visibility.HIDDEN
+        return Visibility.VISIBLE
+
+    def _is_roll_car_enabled(self, player: MonopolyPlayer) -> str | None:
+        if not self._is_actor(player, PHASE_AWAIT_ROLL):
+            return self._waiting_reason(player)
+        if not self.has_car.get(player.id, False):
+            return "mexicopoly-error-no-car"
+        if self.active_special_event == SPECIAL_EVENT_HOY_NO_CIRCULA:
+            return "mexicopoly-error-hoy-no-circula"
+        fuel = self.car_fuel.get(player.id, 0)
+        if fuel <= 0:
+            return "mexicopoly-error-no-gasoline"
+        if player.in_jail:
+            return "monopoly-error-in-jail"
+        return None
+
+    def _get_roll_car_label(self, player: MonopolyPlayer, action_id: str) -> str:
+        del action_id
+        locale = self._locale(player)
+        fuel = self.car_fuel.get(player.id, 0)
+        return Localization.get(locale, "mexicopoly-action-roll-car", fuel=fuel)
+
+    def _action_roll_car(self, player: MonopolyPlayer, action_id: str) -> None:
+        del action_id
+        if self._is_roll_car_enabled(player):
+            return
+        fuel = self.car_fuel.get(player.id, 0)
+        self.car_fuel[player.id] = max(0, fuel - 1)
+        d1 = random.randint(1, 6)  # nosec B311
+        d2 = random.randint(1, 6)  # nosec B311
+        d3 = random.randint(1, 6)  # nosec B311
+        total = d1 + d2 + d3
+        self.last_die_1 = d1
+        self.last_die_2 = d2
+        remaining_fuel = self.car_fuel[player.id]
+
+        self._broadcast_actor(
+            player,
+            "mexicopoly-you-roll-car",
+            "mexicopoly-player-rolls-car",
+            die1=d1,
+            die2=d2,
+            die3=d3,
+            total=total,
+            fuel=remaining_fuel,
+        )
+        self.play_sound(random.choice(game_audio.SOUND_DICE_ROLLS))
+        self._move_by(player, total, collect_go=True)
+
+    # -------------------------------------------------------------------------
+    # Juzgado de Distrito y Expedición de Amparos
+    # -------------------------------------------------------------------------
+
+    def _is_issue_amparo_hidden(self, player: MonopolyPlayer) -> Visibility:
+        state = self.property_states.get("juzgado")
+        if not state or state.owner_id != player.id:
+            return Visibility.HIDDEN
+        return Visibility.VISIBLE
+
+    def _is_issue_amparo_enabled(self, player: MonopolyPlayer) -> str | None:
+        state = self.property_states.get("juzgado")
+        if not state or state.owner_id != player.id:
+            return "mexicopoly-error-not-juzgado-owner"
+        if state.mortgaged:
+            return "mexicopoly-error-juzgado-mortgaged"
+        if self.juzgado_amparos_issued.get(player.id, 0) >= 2:
+            return "mexicopoly-error-amparo-limit"
+        if self.amparo_issued_this_turn:
+            return "mexicopoly-error-amparo-cooldown"
+        if player.cash < 100:
+            return "monopoly-error-not-enough-cash"
+        return None
+
+    def _action_issue_amparo(self, player: MonopolyPlayer, action_id: str) -> None:
+        del action_id
+        if self._is_issue_amparo_enabled(player):
+            return
+        cost = 100
+        player.cash -= cost
+        count = self.juzgado_amparos_issued.get(player.id, 0) + 1
+        self.juzgado_amparos_issued[player.id] = count
+        self.amparo_issued_this_turn = True
+        card_id = f"juzgado_amparo_{player.id}_{random.randint(1000, 9999)}"  # nosec B311
+        player.jail_card_ids.append(card_id)
+        self._broadcast_actor(
+            player,
+            "mexicopoly-you-issue-amparo",
+            "mexicopoly-player-issues-amparo",
+            cost=lambda locale: self._money(locale, cost),
+            count=count,
+        )
+        self.play_sound(random.choice(game_audio.SOUND_CARD_DRAWS))
+        self.refresh_menus()
+
+    def _is_buy_juzgado_amparo_hidden(self, player: MonopolyPlayer) -> Visibility:
+        if self.phase != PHASE_JAIL:
+            return Visibility.HIDDEN
+        juzgado_state = self.property_states.get("juzgado")
+        if not juzgado_state or not juzgado_state.owner_id:
+            return Visibility.HIDDEN
+        owner = self._alive_player_by_id(juzgado_state.owner_id)
+        if not owner or owner.id == player.id:
+            return Visibility.HIDDEN
+        if self.juzgado_amparos_issued.get(owner.id, 0) <= 0:
+            return Visibility.HIDDEN
+        return Visibility.VISIBLE
+
+    def _is_buy_juzgado_amparo_enabled(self, player: MonopolyPlayer) -> str | None:
+        if not self._is_actor(player, PHASE_JAIL):
+            return self._waiting_reason(player)
+        turns = self.sat_jail_turns.get(player.id, 0)
+        if turns > 0:
+            return ("mexicopoly-error-sat-no-bail", {"turns": turns})
+        if player.cash < 200:
+            return "monopoly-error-not-enough-cash"
+        juzgado_state = self.property_states.get("juzgado")
+        if not juzgado_state or not juzgado_state.owner_id:
+            return "mexicopoly-error-not-juzgado-owner"
+        owner = self._alive_player_by_id(juzgado_state.owner_id)
+        if not owner or self.juzgado_amparos_issued.get(owner.id, 0) <= 0:
+            return "mexicopoly-error-no-amparo-available"
+        return None
+
+    def _get_buy_juzgado_amparo_label(self, player: MonopolyPlayer, action_id: str) -> str:
+        del action_id
+        locale = self._locale(player)
+        juzgado_state = self.property_states.get("juzgado")
+        owner = self._alive_player_by_id(juzgado_state.owner_id) if juzgado_state and juzgado_state.owner_id else None
+        owner_name = owner.name if owner else ""
+        return Localization.get(locale, "mexicopoly-action-buy-juzgado-amparo", owner=owner_name)
+
+    def _action_buy_juzgado_amparo(self, player: MonopolyPlayer, action_id: str) -> None:
+        del action_id
+        if self._is_buy_juzgado_amparo_enabled(player):
+            return
+        juzgado_state = self.property_states.get("juzgado")
+        owner = self._alive_player_by_id(juzgado_state.owner_id) if juzgado_state and juzgado_state.owner_id else None
+        if not owner:
+            return
+        fee = 200
+        player.cash -= fee
+        owner.cash += fee
+        self.juzgado_amparos_issued[owner.id] = max(0, self.juzgado_amparos_issued.get(owner.id, 0) - 1)
+        for cid in list(owner.jail_card_ids):
+            if "juzgado_amparo" in cid:
+                owner.jail_card_ids.remove(cid)
+                break
+        player.in_jail = False
+        player.jail_turns = 0
+        self.sat_jail_turns.pop(player.id, None)
+        self.phase = PHASE_AWAIT_ROLL
+        self.decision_player_id = player.id
+        self._broadcast_actor(
+            player,
+            "mexicopoly-you-buy-juzgado-amparo",
+            "mexicopoly-player-buys-juzgado-amparo",
+            owner=owner.name,
+            amount=lambda locale: self._money(locale, fee),
+        )
+        self._play_jail_release_cues()
+        self.refresh_menus()
+        self._focus_after_user_transition(player)

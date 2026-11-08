@@ -89,7 +89,7 @@ def _build_spaces() -> tuple[BoardSpaceDefinition, ...]:
     }
     for kind, positions in (
         (SPACE_CHANCE, (3, 15, 27, 40, 49)),
-        (SPACE_COMMUNITY, (6, 19, 29, 34, 44)),
+        (SPACE_COMMUNITY, (6, 19, 34, 44)),
     ):
         for number, position in enumerate(positions, 1):
             spaces[position] = BoardSpaceDefinition(
@@ -104,10 +104,14 @@ def _build_spaces() -> tuple[BoardSpaceDefinition, ...]:
     for position, identifier in AIRPORTS.items():
         spaces[position] = BoardSpaceDefinition(
             identifier, _key("space", identifier), SPACE_TRANSIT,
-            price=500, mortgage_value=250, group_id="airports",
-            rents=(80, 160, 320, 640),
+            price=800, mortgage_value=400, group_id="airports",
+            rents=(120, 250, 500, 1000),
         )
-    for position, identifier in ((12, "electricity"), (37, "water")):
+    spaces[12] = BoardSpaceDefinition(
+        "juzgado", _key("space", "juzgado"), SPACE_UTILITY,
+        price=650, mortgage_value=325, group_id="juzgado",
+    )
+    for position, identifier in ((29, "electricity"), (37, "water")):
         spaces[position] = BoardSpaceDefinition(
             identifier, _key("space", identifier), SPACE_UTILITY,
             price=360, mortgage_value=180, group_id="utilities",
@@ -171,13 +175,13 @@ EXTRA_CHANCE_CARDS: tuple[CardDefinition, ...] = (
         "chance_tanda_oficina",
         "mexicopoly-card-chance-tanda-oficina",
         CARD_COLLECT,
-        amount=350,
+        amount=800,
     ),
     CardDefinition(
         "chance_cetes_buen_fin",
         "mexicopoly-card-chance-cetes-buen-fin",
         CARD_COLLECT,
-        amount=280,
+        amount=700,
     ),
     CardDefinition(
         "chance_cobro_de_piso",
@@ -189,7 +193,7 @@ EXTRA_CHANCE_CARDS: tuple[CardDefinition, ...] = (
         "chance_marina_operativo",
         "mexicopoly-card-chance-marina-operativo",
         CARD_COLLECT,
-        amount=250,
+        amount=600,
     ),
 )
 
@@ -198,7 +202,7 @@ EXTRA_COMMUNITY_CARDS: tuple[CardDefinition, ...] = (
         "community_sat_refund",
         "mexicopoly-card-community-sat-refund",
         CARD_COLLECT,
-        amount=450,
+        amount=1200,
     ),
     CardDefinition(
         "community_falsa_denuncia_vecinal",
@@ -222,7 +226,7 @@ EXTRA_COMMUNITY_CARDS: tuple[CardDefinition, ...] = (
         "community_remesa_tio",
         "mexicopoly-card-community-remesa-tio",
         CARD_COLLECT,
-        amount=320,
+        amount=900,
     ),
     CardDefinition(
         "community_predial",
@@ -235,7 +239,7 @@ EXTRA_COMMUNITY_CARDS: tuple[CardDefinition, ...] = (
         "community_loteria_nacional",
         "mexicopoly-card-community-loteria-nacional",
         CARD_COLLECT,
-        amount=240,
+        amount=750,
     ),
     CardDefinition(
         "community_cancun_trip",
@@ -352,9 +356,32 @@ EXTRA_COMMUNITY_CARDS: tuple[CardDefinition, ...] = (
         "community_marina_operativo",
         "mexicopoly-card-community-marina-operativo",
         CARD_COLLECT,
-        amount=250,
+        amount=600,
     ),
 )
+
+BOOSTED_MONEY_AMOUNTS = {
+    "chance_dividend": 400,
+    "chance_loan": 600,
+    "community_neighbor": 500,
+    "community_path": 350,
+    "community_blood": 250,
+    "community_party": 100,
+    "community_groceries": 300,
+    "community_playground": 500,
+    "community_hospital": 500,
+    "community_storm": 800,
+    "community_bake_sale": 300,
+}
+
+
+def _apply_money_boost(cards: tuple[CardDefinition, ...]) -> tuple[CardDefinition, ...]:
+    return tuple(
+        replace(card, amount=BOOSTED_MONEY_AMOUNTS[card.id])
+        if card.id in BOOSTED_MONEY_AMOUNTS
+        else card
+        for card in cards
+    )
 
 
 MEXICO_BOARD = replace(
@@ -383,15 +410,17 @@ MEXICO_BOARD = replace(
         PropertyGroupDefinition(color, _key("group", color)) for color, _ in REGIONS
     ) + tuple(
         PropertyGroupDefinition(group, _key("group", group))
-        for group in ("metro", "airports", "utilities")
+        for group in ("metro", "airports", "utilities", "juzgado")
     ),
     spaces=_build_spaces(),
-    chance_cards=tuple(
-        replace(card, destination_id="saltillo")
-        if card.destination_id == "torreon" else card
-        for card in LEGACY_BOARD.chance_cards
+    chance_cards=_apply_money_boost(
+        tuple(
+            replace(card, destination_id="saltillo")
+            if card.destination_id == "torreon" else card
+            for card in LEGACY_BOARD.chance_cards
+        )
     ) + EXTRA_CHANCE_CARDS,
-    community_cards=LEGACY_BOARD.community_cards + EXTRA_COMMUNITY_CARDS,
+    community_cards=_apply_money_boost(LEGACY_BOARD.community_cards) + EXTRA_COMMUNITY_CARDS,
 )
 
 validate_board(MEXICO_BOARD)

@@ -535,19 +535,19 @@ def test_mexican_folklore_cards_sat_audit_false_accusation_and_sat_refund():
     game._resolve_card(actor, vecinal)
     assert actor.cash == 2650 - 300
 
-    # Higher-than-expected SAT tax refund
+    # Higher-than-expected SAT tax refund (boosted for liquidity)
     force_actor(game)
     sat_refund = game.board.card("community", "community_sat_refund")
     game._resolve_card(actor, sat_refund)
-    assert actor.cash == 2350 + 450 == 2800
+    assert actor.cash == 2350 + 1200 == 3550
 
-    # SAT tax audit: 20% of 2800 = 560, then 2 mandatory turns in SAT jail
+    # SAT tax audit: 20% of 3550 = 710, then 2 mandatory turns in SAT jail
     force_actor(game)
     actor.jail_card_ids.append("chance:chance_jail_free")
     game.property_states["tijuana"].owner_id = actor.id
     sat_audit = game.board.card("chance", "chance_sat_audit")
     game._resolve_card(actor, sat_audit)
-    assert actor.cash == 2800 - 560 == 2240
+    assert actor.cash == 3550 - 710 == 2840
     assert actor.in_jail and actor.position == game.board.space_index("jail")
     assert game.sat_jail_turns.get(actor.id) == 2
 
@@ -560,7 +560,7 @@ def test_mexican_folklore_cards_sat_audit_false_accusation_and_sat_refund():
     other_user.clear_messages()
     actor_user.clear_messages()
     game._resolve_landing(other)
-    assert other.cash == 3000 and actor.cash == 2240
+    assert other.cash == 3000 and actor.cash == 2840
     assert any("SAT" in m.data["text"] for m in other_user.messages if m.type == "speak")
 
     # In SAT jail, actor cannot roll dice, bail is disabled, and turn 1 was passed automatically
@@ -652,7 +652,7 @@ def test_cobro_de_piso_extortion_tiers_cards_and_marina_operativo(monkeypatch):
     game._resolve_card(owner, marina_card)
     assert game.cobro_de_piso_active is False
     assert game.cobro_cooldown_turns == 3
-    assert owner.cash == owner_before + 250
+    assert owner.cash == owner_before + 600
 
     # Random event respects cooldown, then triggers and lasts at least MIN_COBRO_DE_PISO_TURNS (8)
     game.turn_number = 6

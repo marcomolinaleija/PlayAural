@@ -419,3 +419,77 @@ mexicopoly-desc-quick-unmortgage = Elige una propiedad hipotecada para levantar 
 mexicopoly-prompt-quick-unmortgage = Elige la propiedad que deseas deshipotecar:
 
 mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: dinero { $cash }, patrimonio { $net_worth }
+
+# Juzgado y Poder Judicial
+mexicopoly-space-juzgado = Juzgado de Distrito
+mexicopoly-group-juzgado = Poder Judicial
+mexicopoly-action-issue-amparo = Expedir amparo judicial
+mexicopoly-desc-issue-amparo = Expide un amparo legal de salida de la cárcel ($100 MXN de trámite) para venderlo o usarlo.
+mexicopoly-action-buy-juzgado-amparo = Comprar amparo a { $owner }
+mexicopoly-desc-buy-juzgado-amparo = Compra un amparo legal de salida de la cárcel al dueño del Juzgado por $200 MXN.
+mexicopoly-you-issue-amparo = Tramitaste y expediste un amparo judicial legal en tu Juzgado de Distrito pagando { $cost } de timbres judiciales. Ahora tienes { $count } amparo(s) disponible(s).
+mexicopoly-player-issues-amparo = { $player } expidió un amparo judicial legal en su Juzgado de Distrito pagando { $cost } de timbres.
+mexicopoly-you-buy-juzgado-amparo = Le compraste un amparo judicial a { $owner } por { $amount } y quedas en libertad inmediata.
+mexicopoly-player-buys-juzgado-amparo = { $player } le compró un amparo judicial a { $owner } por { $amount } y queda en libertad inmediata.
+mexicopoly-you-juzgado-fee = Compareces ante el Juzgado de Distrito de { $owner } y pagas { $amount } por costas procesales y honorarios de abogados. Te quedan { $cash }.
+mexicopoly-player-juzgado-fee = { $player } comparece ante el Juzgado de Distrito de { $owner } y paga { $amount } por costas procesales y honorarios.
+mexicopoly-you-juzgado-welcome = Visitas tu Juzgado de Distrito. Tus secretarios de acuerdos y jueces tienen todo en orden.
+mexicopoly-player-juzgado-welcome = { $player } visita su propio Juzgado de Distrito; todo está en orden legal.
+mexicopoly-you-juzgado-mortgaged-visit = Visitas el Juzgado de { $owner }, pero está hipotecado y sus labores suspendidas; no pagas costas.
+mexicopoly-player-juzgado-mortgaged-visit = { $player } visita el Juzgado de { $owner }, pero está hipotecado y en suspensión de labores.
+mexicopoly-debt-juzgado-fee = las costas procesales del Juzgado de Distrito
+mexicopoly-error-not-juzgado-owner = No eres el dueño del Juzgado de Distrito.
+mexicopoly-error-juzgado-mortgaged = El Juzgado de Distrito está hipotecado y sus funciones se encuentran suspendidas.
+mexicopoly-error-amparo-limit = Ya tienes 2 amparos judiciales activos expedidos. Úsalos o véndelos antes de tramitar otro.
+mexicopoly-error-amparo-cooldown = Ya expediste un amparo judicial en este turno. Espera al siguiente turno.
+
+# Tienda Mexipoly
+mexicopoly-action-open-shop = Tienda Mexipoly
+mexicopoly-desc-open-shop = Abre la tienda de Mexipoly para adquirir vehículos, combustible o equipo especial.
+mexicopoly-prompt-shop = Selecciona un artículo de la tienda para adquirir:
+mexicopoly-shop-item-airplane = Avión privado ({ $price })
+mexicopoly-shop-item-airplane-locked = Avión privado ({ $price }) [Bloqueado: debes pasar por todos los aeropuertos ({ $visited }/{ $total })]
+mexicopoly-shop-item-airplane-owned = Avión privado (Ya adquirido)
+mexicopoly-desc-shop-airplane = Te permite volar directamente a cualquier aeropuerto nacional.
+mexicopoly-shop-item-car = Auto ({ $price }, incluye 4 usos de 3 dados)
+mexicopoly-shop-item-car-owned = Auto propio (Ya adquirido)
+mexicopoly-desc-shop-car = Te permite tirar 3 dados en tus turnos mientras tengas gasolina.
+mexicopoly-shop-item-fuel = Gasolina para auto ({ $price }, tienes { $current }/{ $max } usos)
+mexicopoly-shop-item-fuel-no-car = Gasolina para auto (Requiere tener auto)
+mexicopoly-shop-item-fuel-full = Gasolina para auto (Tanque lleno: 4/4 usos)
+mexicopoly-desc-shop-fuel = Recarga tu tanque de gasolina a 4 usos de 3 dados.
+mexicopoly-error-airplane-locked = El avión está bloqueado. Debes recorrer todos los aeropuertos del juego para desbloquearlo.
+
+# Sistema de Vuelos y Aeropuertos
+mexicopoly-airports-unlocked-airplane = ¡Has recorrido todos los aeropuertos de México! Se ha desbloqueado la compra del Avión privado en la Tienda Mexipoly (tecla B).
+mexicopoly-airports-unlocked-airplane-player = ¡{ $player } ha recorrido todos los aeropuertos de México y desbloqueó el Avión en la Tienda!
+mexicopoly-you-bought-airplane = Compraste un avión privado por { $price } en la Tienda Mexipoly. Ahora tienes { $cash }. Puedes volar a cualquier aeropuerto con la tecla A.
+mexicopoly-player-bought-airplane = ¡{ $player } compró un avión privado por { $price } en la Tienda Mexipoly!
+mexicopoly-action-fly-airplane = Volar en avión
+mexicopoly-desc-fly-airplane = Despliega y vuela a cualquier aeropuerto de la República Mexicana en tu avión privado.
+mexicopoly-prompt-fly-airplane = Elige el aeropuerto de destino para tu vuelo:
+mexicopoly-flight-option-own = { $airport } (Distancia: { $distance } casillas, escala: { $turns } turno(s), tuyo: sin costo)
+mexicopoly-flight-option-other = { $airport } (Distancia: { $distance } casillas, escala: { $turns } turno(s), de { $owner }: TUA { $tua } + alquiler { $rent })
+mexicopoly-flight-option-unowned = { $airport } (Distancia: { $distance } casillas, escala: { $turns } turno(s), sin dueño: TUA { $tua })
+mexicopoly-you-fly-own = Abordaste tu avión privado y volaste hasta { $airport }. Al ser tu propio aeropuerto, no pagas TUA ni alquiler. Pasas { $turns } turno(s) en escala aérea.
+mexicopoly-player-flies-own = { $player } voló en su avión privado hasta { $airport } de su propiedad; no paga TUA ni alquiler y pasa { $turns } turno(s) en escala.
+mexicopoly-you-fly-other = Volaste hasta { $airport } propiedad de { $owner }. Pagas { $tua } de TUA y { $rent } de alquiler (total { $total }). Te quedan { $cash }. Pasas { $turns } turno(s) en escala aérea.
+mexicopoly-player-flies-other = { $player } voló en avión hasta { $airport } de { $owner } y pagó { $tua } de TUA más { $rent } de alquiler (total { $total }). Pasará { $turns } turno(s) en escala.
+mexicopoly-you-fly-unowned = Volaste hasta { $airport }. Pagas { $tua } de TUA al Bote y pasas { $turns } turno(s) en escala aérea.
+mexicopoly-player-flies-unowned = { $player } voló hasta { $airport } pagando { $tua } de TUA al Bote; pasará { $turns } turno(s) en escala.
+mexicopoly-you-flight-delay = Continúas en escala aérea de tu vuelo nacional. Te quedan { $turns } turno(s) de viaje.
+mexicopoly-player-flight-delay = { $player } continúa en escala aérea; le quedan { $turns } turno(s) de viaje.
+mexicopoly-you-flight-arrived = ¡Has completado tu escala aérea y aterrizaste con éxito! Estás listo para jugar en tu próximo turno.
+mexicopoly-player-flight-arrived = { $player } ha completado su escala aérea y aterrizó exitosamente.
+
+# Sistema de Auto y Gasolina
+mexicopoly-you-bought-car = Compraste un auto por { $price } en la Tienda Mexipoly. Incluye tanque lleno con { $fuel } usos de 3 dados. Te quedan { $cash }.
+mexicopoly-player-bought-car = ¡{ $player } compró un auto por { $price } con tanque lleno ({ $fuel } usos de 3 dados)!
+mexicopoly-you-bought-fuel = Recargaste el tanque de gasolina de tu auto por { $price } ({ $fuel } usos listos). Te quedan { $cash }.
+mexicopoly-player-bought-fuel = { $player } recargó gasolina para su auto por { $price } ({ $fuel } usos de 3 dados).
+mexicopoly-action-roll-car = Tirar con auto (3 dados, quedan { $fuel } usos)
+mexicopoly-desc-roll-car = Acelera en tu auto y tira con 3 dados consumiendo 1 uso de gasolina.
+mexicopoly-you-roll-car = Aceleras en tu auto y tiras 3 dados: { $die1 }, { $die2 } y { $die3 } (total { $total }). Te quedan { $fuel } uso(s) de gasolina.
+mexicopoly-player-rolls-car = { $player } acelera en su auto y tira 3 dados: { $die1 }, { $die2 } y { $die3 } (total { $total }), quedándole { $fuel } uso(s) de gasolina.
+mexicopoly-error-no-gasoline = Tu auto no tiene gasolina. Adquiere una recarga en la tienda de Mexipoly con la tecla B.
+mexicopoly-error-hoy-no-circula = El programa Hoy No Circula y contingencia ambiental prohíbe el uso de autos y vuelos privados en este momento.

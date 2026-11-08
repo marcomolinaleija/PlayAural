@@ -419,3 +419,77 @@ mexicopoly-desc-quick-unmortgage = Choose a mortgaged property to unmortgage.
 mexicopoly-prompt-quick-unmortgage = Choose the property to unmortgage:
 
 mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: cash { $cash }, net worth { $net_worth }
+
+# District Court & Judiciary
+mexicopoly-space-juzgado = District Court
+mexicopoly-group-juzgado = Judiciary
+mexicopoly-action-issue-amparo = Issue judicial injunction
+mexicopoly-desc-issue-amparo = Issue a legal get-out-of-jail injunction ($100 MXN fee) to sell or use.
+mexicopoly-action-buy-juzgado-amparo = Buy injunction from { $owner }
+mexicopoly-desc-buy-juzgado-amparo = Buy a legal get-out-of-jail injunction from the Court owner for $200 MXN.
+mexicopoly-you-issue-amparo = You issued a legal judicial injunction at your District Court paying { $cost } in legal stamps. You now have { $count } injunction(s) available.
+mexicopoly-player-issues-amparo = { $player } issued a legal judicial injunction at their District Court paying { $cost } in stamps.
+mexicopoly-you-buy-juzgado-amparo = You bought a judicial injunction from { $owner } for { $amount } and are immediately released from jail.
+mexicopoly-player-buys-juzgado-amparo = { $player } bought a judicial injunction from { $owner } for { $amount } and is immediately released from jail.
+mexicopoly-you-juzgado-fee = You appear before { $owner }'s District Court and pay { $amount } in court costs and legal fees. You have { $cash } left.
+mexicopoly-player-juzgado-fee = { $player } appears before { $owner }'s District Court and pays { $amount } in court costs and legal fees.
+mexicopoly-you-juzgado-welcome = You visit your District Court. Your court clerks and judges have everything in order.
+mexicopoly-player-juzgado-welcome = { $player } visits their District Court; all legal operations are in order.
+mexicopoly-you-juzgado-mortgaged-visit = You visit { $owner }'s District Court, but it is mortgaged and court operations are suspended; no fees owed.
+mexicopoly-player-juzgado-mortgaged-visit = { $player } visits { $owner }'s District Court, but it is mortgaged with suspended operations.
+mexicopoly-debt-juzgado-fee = District Court legal processing fees
+mexicopoly-error-not-juzgado-owner = You are not the owner of the District Court.
+mexicopoly-error-juzgado-mortgaged = The District Court is mortgaged and its judicial operations are suspended.
+mexicopoly-error-amparo-limit = You already have 2 active judicial injunctions issued. Use or sell them before issuing another.
+mexicopoly-error-amparo-cooldown = You have already issued a judicial injunction this turn. Wait until your next turn.
+
+# Mexipoly Shop
+mexicopoly-action-open-shop = Mexipoly Shop
+mexicopoly-desc-open-shop = Open the Mexipoly Shop to purchase vehicles, fuel, or special equipment.
+mexicopoly-prompt-shop = Select an item from the shop to purchase:
+mexicopoly-shop-item-airplane = Private Airplane ({ $price })
+mexicopoly-shop-item-airplane-locked = Private Airplane ({ $price }) [Locked: must visit all airports ({ $visited }/{ $total })]
+mexicopoly-shop-item-airplane-owned = Private Airplane (Already purchased)
+mexicopoly-desc-shop-airplane = Allows you to fly directly to any national airport.
+mexicopoly-shop-item-car = Personal Car ({ $price }, includes 4 rolls with 3 dice)
+mexicopoly-shop-item-car-owned = Personal Car (Already purchased)
+mexicopoly-desc-shop-car = Allows you to roll 3 dice on your turns as long as you have gasoline.
+mexicopoly-shop-item-fuel = Gasoline for car ({ $price }, you have { $current }/{ $max } uses)
+mexicopoly-shop-item-fuel-no-car = Gasoline for car (Requires owning a car)
+mexicopoly-shop-item-fuel-full = Gasoline for car (Tank full: 4/4 uses)
+mexicopoly-desc-shop-fuel = Refill your car's fuel tank to 4 uses with 3 dice.
+mexicopoly-error-airplane-locked = The airplane is locked. You must traverse all airports on the board to unlock it.
+
+# Flight & Airport System
+mexicopoly-airports-unlocked-airplane = You have visited every airport in Mexico! The Private Airplane is now available in the Mexipoly Shop (key B).
+mexicopoly-airports-unlocked-airplane-player = { $player } has visited every airport in Mexico and unlocked the Airplane in the Shop!
+mexicopoly-you-bought-airplane = You purchased a private airplane for { $price } at the Mexipoly Shop. You have { $cash } left. Fly to any airport with the A key.
+mexicopoly-player-bought-airplane = { $player } purchased a private airplane for { $price } at the Mexipoly Shop!
+mexicopoly-action-fly-airplane = Fly in airplane
+mexicopoly-desc-fly-airplane = Board your private plane and fly to any airport in Mexico.
+mexicopoly-prompt-fly-airplane = Choose your flight destination airport:
+mexicopoly-flight-option-own = { $airport } (Distance: { $distance } spaces, layover: { $turns } turn(s), yours: no fee)
+mexicopoly-flight-option-other = { $airport } (Distance: { $distance } spaces, layover: { $turns } turn(s), owned by { $owner }: TUA { $tua } + rent { $rent })
+mexicopoly-flight-option-unowned = { $airport } (Distance: { $distance } spaces, layover: { $turns } turn(s), unowned: TUA { $tua })
+mexicopoly-you-fly-own = You boarded your private plane and flew to { $airport }. As your own property, you pay no TUA or rent. You spend { $turns } turn(s) on flight layover.
+mexicopoly-player-flies-own = { $player } flew in their private plane to { $airport } (owned); no TUA or rent charged, spending { $turns } turn(s) on layover.
+mexicopoly-you-fly-other = You flew to { $airport } owned by { $owner }. You pay { $tua } in TUA and { $rent } in rent (total { $total }). You have { $cash } left. You spend { $turns } turn(s) on flight layover.
+mexicopoly-player-flies-other = { $player } flew by plane to { $airport } owned by { $owner }, paying { $tua } in TUA plus { $rent } in rent (total { $total }). Spending { $turns } turn(s) on layover.
+mexicopoly-you-fly-unowned = You flew to { $airport }. You pay { $tua } in TUA to the Pot and spend { $turns } turn(s) on flight layover.
+mexicopoly-player-flies-unowned = { $player } flew to { $airport }, paying { $tua } in TUA to the Pot and spending { $turns } turn(s) on layover.
+mexicopoly-you-flight-delay = You remain on flight layover for your domestic flight. { $turns } turn(s) remaining.
+mexicopoly-player-flight-delay = { $player } remains on flight layover; { $turns } turn(s) remaining.
+mexicopoly-you-flight-arrived = You have completed your flight layover and landed safely! Ready to play on your next turn.
+mexicopoly-player-flight-arrived = { $player } has completed their flight layover and landed safely.
+
+# Car & Gasoline System
+mexicopoly-you-bought-car = You bought a personal car for { $price } at the Mexipoly Shop, including a full tank ({ $fuel } uses of 3 dice). You have { $cash } left.
+mexicopoly-player-bought-car = { $player } bought a car for { $price } with a full tank ({ $fuel } uses of 3 dice)!
+mexicopoly-you-bought-fuel = You refilled your car's fuel tank for { $price } ({ $fuel } uses ready). You have { $cash } left.
+mexicopoly-player-bought-fuel = { $player } refilled gasoline for their car for { $price } ({ $fuel } uses of 3 dice).
+mexicopoly-action-roll-car = Roll with car (3 dice, { $fuel } uses left)
+mexicopoly-desc-roll-car = Step on the gas in your car and roll 3 dice consuming 1 fuel charge.
+mexicopoly-you-roll-car = You accelerate in your car and roll 3 dice: { $die1 }, { $die2 }, and { $die3 } (total { $total }). You have { $fuel } fuel use(s) left.
+mexicopoly-player-rolls-car = { $player } accelerates in their car and rolls 3 dice: { $die1 }, { $die2 }, and { $die3 } (total { $total }), with { $fuel } fuel use(s) left.
+mexicopoly-error-no-gasoline = Your car is out of gasoline. Purchase a refill at the Mexipoly Shop with key B.
+mexicopoly-error-hoy-no-circula = The No-Drive Day (Hoy No Circula) environmental contingency prohibits car driving and private flights right now.
