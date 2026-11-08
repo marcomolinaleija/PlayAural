@@ -1403,3 +1403,34 @@ global-voice-chat-availability-enabled = Global voice chat has been enabled by t
 global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
 voice-room-global-label = Global Voice Chat
 voice-global-chat-disabled = Global voice chat is currently disabled.
+# Table Voice Host Settings
+voice-host-spatial-audio-option = Spatial voice audio: { $status }
+voice-host-desc-spatial-audio = Toggle spatial voice panning for all players at this table
+voice-host-spatial-audio-changed = Table spatial voice audio set to { $status }.
+voice-host-spatial-audio-broadcast = Table spatial voice audio was set to { $status } by the host.
+voice-host-quality-option = Voice quality: { $quality }
+voice-host-desc-quality = Change voice chat quality profile between High Fidelity (64 kbps) and Standard (24 kbps)
+voice-host-quality-changed = Table voice quality set to { $quality }.
+voice-host-quality-broadcast = Table voice quality was set to { $quality } by the host.
+voice-quality-high = High Fidelity (64 kbps)
+voice-quality-standard = Standard (24 kbps)
+voice-host-members-heading = Table Voice Participants:
+
+# Personal Audio Voice Preferences
+voice-noise-suppression-option = Voice noise suppression: { $status }
+general-desc-voice-noise-suppression = Toggle background noise suppression on your microphone
+voice-noise-suppression-changed = Voice noise suppression set to { $status }.
+voice-spatial-audio-option = Spatial voice audio: { $status }
+general-desc-voice-spatial-audio = Position voices in stereo based on seat positions at the table
+voice-spatial-audio-changed = Spatial voice audio set to { $status }.
+voice-auto-gain-option = Microphone auto gain control: { $status }
+general-desc-voice-auto-gain = Automatically adjust microphone volume
+voice-auto-gain-changed = Microphone auto gain control set to { $status }.
+
+# Global Voice Chat Management
+global-voice-chat-toggle-enabled = Global voice chat: { $status }
+global-voice-chat-desc-toggle-enabled = Enable or disable global voice chat server-wide
+global-voice-chat-status-changed = Global voice chat is now { $status }.
+global-voice-chat-quality-option = Global voice quality: { $quality }
+global-voice-chat-desc-quality = Change global voice chat audio quality profile
+global-voice-chat-quality-changed = Global voice quality set to { $quality }.

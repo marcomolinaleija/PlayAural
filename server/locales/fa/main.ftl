@@ -794,3 +794,34 @@ global-voice-chat-availability-enabled = Global voice chat has been enabled by t
 global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
 voice-room-global-label = Global Voice Chat
 voice-global-chat-disabled = Global voice chat is currently disabled.
+# تنظیمات میزبان مکالمه صوتی میز
+voice-host-spatial-audio-option = صدای مکانی مکالمه: { $status }
+voice-host-desc-spatial-audio = تغییر وضعیت صدای استریوی مکانی برای همه بازیکنان این میز
+voice-host-spatial-audio-changed = صدای مکانی مکالمه میز روی { $status } تنظیم شد.
+voice-host-spatial-audio-broadcast = میزبان صدای مکانی مکالمه میز را روی { $status } تنظیم کرد.
+voice-host-quality-option = کیفیت صدا: { $quality }
+voice-host-desc-quality = تغییر کیفیت مکالمه صوتی بین کیفیت بالا (64 kbps) و استاندارد (24 kbps)
+voice-host-quality-changed = کیفیت صدای میز روی { $quality } تنظیم شد.
+voice-host-quality-broadcast = میزبان کیفیت صدای میز را روی { $quality } تنظیم کرد.
+voice-quality-high = کیفیت بالا (64 kbps)
+voice-quality-standard = استاندارد (24 kbps)
+voice-host-members-heading = اعضای حاضر در مکالمه صوتی میز:
+
+# ترجیحات صوتی شخصی
+voice-noise-suppression-option = کاهش نویز میکروفون: { $status }
+general-desc-voice-noise-suppression = فعال یا غیرفعال کردن حذف نویز محیط در میکروفون
+voice-noise-suppression-changed = کاهش نویز میکروفون روی { $status } تنظیم شد.
+voice-spatial-audio-option = صدای مکانی مکالمه: { $status }
+general-desc-voice-spatial-audio = موقعیت‌دهی استریو به صداها بر اساس صندلی‌های سر میز
+voice-spatial-audio-changed = صدای مکانی مکالمه روی { $status } تنظیم شد.
+voice-auto-gain-option = تنظیم خودکار حساسیت میکروفون: { $status }
+general-desc-voice-auto-gain = تنظیم خودکار بلندی ورودی میکروفون
+voice-auto-gain-changed = تنظیم خودکار حساسیت میکروفون روی { $status } قرار گرفت.
+
+# مدیریت مکالمه صوتی عمومی
+global-voice-chat-toggle-enabled = مکالمه صوتی عمومی: { $status }
+global-voice-chat-desc-toggle-enabled = فعال یا غیرفعال کردن مکالمه صوتی عمومی در کل سرور
+global-voice-chat-status-changed = مکالمه صوتی عمومی اکنون { $status } است.
+global-voice-chat-quality-option = کیفیت صدای عمومی: { $quality }
+global-voice-chat-desc-quality = تغییر مشخصات کیفیت صدای مکالمه صوتی عمومی
+global-voice-chat-quality-changed = کیفیت صدای عمومی روی { $quality } تنظیم شد.

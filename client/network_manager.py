@@ -258,5 +258,7 @@ class NetworkManager:
             self.main_window.on_voice_context_closed(packet)
         elif packet_type == "voice_settings":
             self.main_window.on_voice_settings(packet)
+        elif packet_type == "voice_pans":
+            self.main_window.on_voice_pans(packet)
         elif packet_type == "table_context":
             self.main_window.on_table_context(packet)

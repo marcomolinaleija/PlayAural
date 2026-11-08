@@ -1335,3 +1335,34 @@ global-voice-chat-availability-enabled = Global voice chat has been enabled by t
 global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
 voice-room-global-label = Global Voice Chat
 voice-global-chat-disabled = Global voice chat is currently disabled.
+# Pengaturan Suara Meja Tuan Rumah
+voice-host-spatial-audio-option = Audio spasial suara: { $status }
+voice-host-desc-spatial-audio = Mengaktifkan atau menonaktifkan panning spasial suara untuk semua pemain di meja ini
+voice-host-spatial-audio-changed = Audio spasial suara meja diatur ke { $status }.
+voice-host-spatial-audio-broadcast = Audio spasial suara meja diatur ke { $status } oleh tuan rumah.
+voice-host-quality-option = Kualitas suara: { $quality }
+voice-host-desc-quality = Mengubah profil kualitas obrolan suara antara Kualitas Tinggi (64 kbps) dan Standar (24 kbps)
+voice-host-quality-changed = Kualitas suara meja diatur ke { $quality }.
+voice-host-quality-broadcast = Kualitas suara meja diatur ke { $quality } oleh tuan rumah.
+voice-quality-high = Kualitas Tinggi (64 kbps)
+voice-quality-standard = Standar (24 kbps)
+voice-host-members-heading = Peserta Obrolan Suara Meja:
+
+# Preferensi Audio Suara Pribadi
+voice-noise-suppression-option = Peredam bising mikrofon: { $status }
+general-desc-voice-noise-suppression = Mengaktifkan atau menonaktifkan peredam bising latar belakang pada mikrofon Anda
+voice-noise-suppression-changed = Peredam bising mikrofon diatur ke { $status }.
+voice-spatial-audio-option = Audio spasial suara: { $status }
+general-desc-voice-spatial-audio = Menempatkan suara dalam stereo berdasarkan posisi kursi di meja
+voice-spatial-audio-changed = Audio spasial suara diatur ke { $status }.
+voice-auto-gain-option = Kontrol penguatan otomatis mikrofon: { $status }
+general-desc-voice-auto-gain = Menyesuaikan volume mikrofon secara otomatis
+voice-auto-gain-changed = Kontrol penguatan otomatis mikrofon diatur ke { $status }.
+
+# Manajemen Obrolan Suara Global
+global-voice-chat-toggle-enabled = Obrolan suara global: { $status }
+global-voice-chat-desc-toggle-enabled = Mengaktifkan atau menonaktifkan obrolan suara global di seluruh server
+global-voice-chat-status-changed = Obrolan suara global sekarang { $status }.
+global-voice-chat-quality-option = Kualitas suara global: { $quality }
+global-voice-chat-desc-quality = Mengubah profil kualitas audio obrolan suara global
+global-voice-chat-quality-changed = Kualitas suara global diatur ke { $quality }.

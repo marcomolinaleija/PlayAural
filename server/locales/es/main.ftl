@@ -1417,3 +1417,34 @@ global-voice-chat-availability-enabled = El desarrollador ha activado el chat de
 global-voice-chat-availability-disabled = El desarrollador ha desactivado temporalmente el chat de voz global.
 voice-room-global-label = Chat de voz global
 voice-global-chat-disabled = El chat de voz global está desactivado.
+# Configuración del anfitrión para el chat de voz de la mesa
+voice-host-spatial-audio-option = Audio espacial de voz: { $status }
+voice-host-desc-spatial-audio = Activa o desactiva la distribución espacial de las voces para todos los jugadores de la mesa
+voice-host-spatial-audio-changed = Audio espacial de voz de la mesa establecido en { $status }.
+voice-host-spatial-audio-broadcast = El anfitrión estableció el audio espacial de voz en { $status }.
+voice-host-quality-option = Calidad de voz: { $quality }
+voice-host-desc-quality = Cambia el perfil de calidad del chat de voz entre Alta fidelidad (64 kbps) y Estándar (24 kbps)
+voice-host-quality-changed = Calidad de voz de la mesa establecida en { $quality }.
+voice-host-quality-broadcast = El anfitrión estableció la calidad de voz de la mesa en { $quality }.
+voice-quality-high = Alta fidelidad (64 kbps)
+voice-quality-standard = Estándar (24 kbps)
+voice-host-members-heading = Participantes del chat de voz:
+
+# Preferencias personales de audio y voz
+voice-noise-suppression-option = Supresión de ruido del micrófono: { $status }
+general-desc-voice-noise-suppression = Activa o desactiva la supresión de ruido de fondo en tu micrófono
+voice-noise-suppression-changed = Supresión de ruido del micrófono establecida en { $status }.
+voice-spatial-audio-option = Audio espacial de voz: { $status }
+general-desc-voice-spatial-audio = Posiciona las voces en estéreo según la posición de los asientos en la mesa
+voice-spatial-audio-changed = Audio espacial de voz establecido en { $status }.
+voice-auto-gain-option = Control automático de ganancia del micrófono: { $status }
+general-desc-voice-auto-gain = Ajusta automáticamente el volumen de entrada de tu micrófono
+voice-auto-gain-changed = Control automático de ganancia del micrófono establecido en { $status }.
+
+# Gestión del chat de voz global
+global-voice-chat-toggle-enabled = Chat de voz global: { $status }
+global-voice-chat-desc-toggle-enabled = Activa o desactiva el chat de voz global en todo el servidor
+global-voice-chat-status-changed = El chat de voz global ahora está { $status }.
+global-voice-chat-quality-option = Calidad de voz global: { $quality }
+global-voice-chat-desc-quality = Cambia el perfil de calidad de audio del chat de voz global
+global-voice-chat-quality-changed = Calidad de voz global establecida en { $quality }.

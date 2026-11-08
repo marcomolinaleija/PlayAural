@@ -594,6 +594,8 @@ class Server:
         # synchronous and avoids a settings query for every message.
         self._global_chat_sending_enabled = DEFAULT_GLOBAL_CHAT_SENDING_ENABLED
         self._global_voice_chat_enabled = DEFAULT_GLOBAL_VOICE_CHAT_ENABLED
+        self.global_voice_quality: str = "high"
+        self.global_voice_spatial_audio: bool = True
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
@@ -3839,6 +3841,48 @@ PlayAural Server
                     description_key="general-desc-play-typing-sounds",
                 )
             )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-noise-suppression-option",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if prefs.voice_noise_suppression else "option-off",
+                    ),
+                ),
+                id="toggle_voice_noise_suppression",
+                description_key="general-desc-voice-noise-suppression",
+            )
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-spatial-audio-option",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if prefs.voice_spatial_audio else "option-off",
+                    ),
+                ),
+                id="toggle_voice_spatial_audio",
+                description_key="general-desc-voice-spatial-audio",
+            )
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-auto-gain-option",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if prefs.voice_auto_gain else "option-off",
+                    ),
+                ),
+                id="toggle_voice_auto_gain",
+                description_key="general-desc-voice-auto-gain",
+            )
+        )
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "options_audio_submenu",
@@ -5073,8 +5117,26 @@ PlayAural Server
         queue_packet = getattr(user, "queue_protocol_packet", None)
         if callable(queue_packet):
             queue_packet(packet)
-            return
-        await user.connection.send(packet)
+        else:
+            await user.connection.send(packet)
+        pans_packet = {
+            "type": "voice_pans",
+            "context_id": table.table_id,
+            "spatial_enabled": getattr(table, "voice_spatial_audio", True),
+            "quality": getattr(table, "voice_quality", "high"),
+            "pans": table.calculate_voice_pans(user.uuid),
+        }
+        if callable(queue_packet):
+            queue_packet(pans_packet)
+        else:
+            await user.connection.send(pans_packet)
+
+    async def _broadcast_table_voice_settings(self, table: "Table") -> None:
+        """Send updated voice settings and spatial pans to all table members."""
+        for member in table.members:
+            user = self._users.get(member.username)
+            if user:
+                await self._send_voice_settings(user, table)
 
     def _record_voice_join_authorization(
         self,
@@ -6781,6 +6843,18 @@ PlayAural Server
                     read_only=True,
                 )
             )
+            if user.trust_level >= ADMIN_TRUST_LEVEL:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "global-voice-chat-toggle-enabled",
+                            status=Localization.get(user.locale, "option-off"),
+                        ),
+                        id="toggle_global_voice_enabled",
+                        description_key="global-voice-chat-desc-toggle-enabled",
+                    )
+                )
         else:
             if in_voice:
                 items.append(
@@ -6796,6 +6870,35 @@ PlayAural Server
                         text=Localization.get(user.locale, "global-voice-chat-connect"),
                         id="connect_voice",
                         description_key="global-voice-chat-connect-description",
+                    )
+                )
+
+            if user.trust_level >= ADMIN_TRUST_LEVEL:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "global-voice-chat-toggle-enabled",
+                            status=Localization.get(user.locale, "option-on"),
+                        ),
+                        id="toggle_global_voice_enabled",
+                        description_key="global-voice-chat-desc-toggle-enabled",
+                    )
+                )
+                quality_val = getattr(self, "global_voice_quality", "high")
+                quality_label = Localization.get(
+                    user.locale,
+                    "voice-quality-high" if quality_val == "high" else "voice-quality-standard",
+                )
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "global-voice-chat-quality-option",
+                            quality=quality_label,
+                        ),
+                        id="toggle_global_voice_quality",
+                        description_key="global-voice-chat-desc-quality",
                     )
                 )
 
@@ -6883,6 +6986,20 @@ PlayAural Server
                 context_id="lobby",
             )
             self._nav_refresh(user, self._show_global_voice_chat_menu)
+        elif selection_id == "toggle_global_voice_enabled" and user.trust_level >= ADMIN_TRUST_LEVEL:
+            new_state = not self.global_voice_chat_enabled
+            self.set_global_voice_chat_enabled(new_state)
+            status_str = Localization.get(user.locale, "option-on" if new_state else "option-off")
+            user.speak_l("global-voice-chat-status-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_global_voice_chat_menu)
+            return
+        elif selection_id == "toggle_global_voice_quality" and user.trust_level >= ADMIN_TRUST_LEVEL:
+            current_q = getattr(self, "global_voice_quality", "high")
+            self.global_voice_quality = "standard" if current_q == "high" else "high"
+            quality_str = Localization.get(user.locale, f"voice-quality-{self.global_voice_quality}")
+            user.speak_l("global-voice-chat-quality-changed", buffer="system", quality=quality_str)
+            self._nav_refresh(user, self._show_global_voice_chat_menu)
+            return
         elif selection_id == "back":
             self._nav_back(user)
 
@@ -9753,6 +9870,27 @@ PlayAural Server
             self._nav_refresh(user, self._show_audio_submenu)
         elif selection_id == "audio_input_device":
             self._nav_push(user, self._show_audio_input_device_menu)
+        elif selection_id == "toggle_voice_noise_suppression":
+            prefs.voice_noise_suppression = not prefs.voice_noise_suppression
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(user, "audio/voice_noise_suppression", prefs.voice_noise_suppression)
+            status_str = Localization.get(user.locale, "option-on" if prefs.voice_noise_suppression else "option-off")
+            user.speak_l("voice-noise-suppression-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_audio_submenu)
+        elif selection_id == "toggle_voice_spatial_audio":
+            prefs.voice_spatial_audio = not prefs.voice_spatial_audio
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(user, "audio/voice_spatial_audio", prefs.voice_spatial_audio)
+            status_str = Localization.get(user.locale, "option-on" if prefs.voice_spatial_audio else "option-off")
+            user.speak_l("voice-spatial-audio-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_audio_submenu)
+        elif selection_id == "toggle_voice_auto_gain":
+            prefs.voice_auto_gain = not prefs.voice_auto_gain
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(user, "audio/voice_auto_gain", prefs.voice_auto_gain)
+            status_str = Localization.get(user.locale, "option-on" if prefs.voice_auto_gain else "option-off")
+            user.speak_l("voice-auto-gain-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_audio_submenu)
 
     async def _handle_volume_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -10920,9 +11058,6 @@ PlayAural Server
             self._nav_push(user, self._show_host_invite_menu, table)
 
         elif selection_id == "manage_voice":
-            if not self._has_host_voice_management_candidates(user, table):
-                user.speak_l("voice-host-management-no-members", buffer="system")
-                return
             self._nav_push(user, self._show_host_voice_management_menu, table)
 
         elif selection_id == "switch_game":
@@ -11050,6 +11185,52 @@ PlayAural Server
         table: "Table",
     ) -> list[MenuItem]:
         items: list[MenuItem] = []
+
+        spatial_status = Localization.get(
+            user.locale,
+            "option-on" if getattr(table, "voice_spatial_audio", True) else "option-off",
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-host-spatial-audio-option",
+                    status=spatial_status,
+                ),
+                id="toggle_table_spatial_audio",
+                description_key="voice-host-desc-spatial-audio",
+            )
+        )
+
+        quality_val = getattr(table, "voice_quality", "high")
+        quality_label = Localization.get(
+            user.locale,
+            "voice-quality-high" if quality_val == "high" else "voice-quality-standard",
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-host-quality-option",
+                    quality=quality_label,
+                ),
+                id="toggle_table_voice_quality",
+                description_key="voice-host-desc-quality",
+            )
+        )
+
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-host-members-heading",
+                ),
+                id="members_heading",
+                read_only=True,
+            )
+        )
+
+        has_members = False
         for row in self._table_member_rows(table):
             account_id = str(row.get("account_id") or "")
             if row.get("kind") != "user" or not account_id:
@@ -11057,6 +11238,7 @@ PlayAural Server
             host_muted = table.is_voice_host_muted(account_id)
             if row.get("name") == user.username and not host_muted:
                 continue
+            has_members = True
             status_parts = [
                 Localization.get(
                     user.locale,
@@ -11085,7 +11267,7 @@ PlayAural Server
                     id=f"host_voice_member_{account_id}",
                 )
             )
-        if not items:
+        if not has_members:
             items.append(
                 MenuItem(
                     text=Localization.get(
@@ -11133,6 +11315,47 @@ PlayAural Server
             return
         if selection_id == "back":
             self._nav_back(user)
+            return
+        if selection_id == "toggle_table_spatial_audio":
+            table.set_voice_spatial_audio(not getattr(table, "voice_spatial_audio", True))
+            status_str = Localization.get(
+                user.locale,
+                "option-on" if table.voice_spatial_audio else "option-off",
+            )
+            user.speak_l(
+                "voice-host-spatial-audio-changed",
+                buffer="system",
+                status=status_str,
+            )
+            if table.game:
+                table.game.broadcast_l(
+                    "voice-host-spatial-audio-broadcast",
+                    buffer="system",
+                    status=status_str,
+                )
+            await self._broadcast_table_voice_settings(table)
+            self._nav_refresh(user, self._show_host_voice_management_menu, table)
+            return
+        if selection_id == "toggle_table_voice_quality":
+            current_q = getattr(table, "voice_quality", "high")
+            table.set_voice_quality("standard" if current_q == "high" else "high")
+            quality_str = Localization.get(
+                user.locale,
+                f"voice-quality-{table.voice_quality}",
+            )
+            user.speak_l(
+                "voice-host-quality-changed",
+                buffer="system",
+                quality=quality_str,
+            )
+            if table.game:
+                table.game.broadcast_l(
+                    "voice-host-quality-broadcast",
+                    buffer="system",
+                    quality=quality_str,
+                )
+            await self._broadcast_table_voice_settings(table)
+            self._nav_refresh(user, self._show_host_voice_management_menu, table)
             return
         prefix = "host_voice_member_"
         if not selection_id.startswith(prefix):

@@ -2556,6 +2556,8 @@ class PlayAuralWebApp {
       case "voice_settings":
         this.voice.applySettings(packet);
         break;
+      case "voice_pans":
+        break;
       case "disconnect":
         this.handleServerDisconnect(packet);
         break;

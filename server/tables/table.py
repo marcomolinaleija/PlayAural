@@ -232,6 +232,14 @@ class Table(DataClassJSONMixin):
         repr=False,
         metadata={CHECKPOINT_TABLE_PROPERTY: "voice_personal_volumes"},
     )
+    voice_spatial_audio: bool = field(
+        default=True,
+        metadata={CHECKPOINT_TABLE_PROPERTY: "voice_spatial_audio"},
+    )
+    voice_quality: str = field(
+        default="high",
+        metadata={CHECKPOINT_TABLE_PROPERTY: "voice_quality"},
+    )
 
     # Not serialized
     _game: "Game | None" = field(default=None, repr=False)
@@ -416,6 +424,10 @@ class Table(DataClassJSONMixin):
                     or volume == VOICE_PERSONAL_VOLUME_DEFAULT
                 ):
                     raise ValueError("voice_personal_volumes contains an invalid value")
+        if "voice_spatial_audio" in state and type(state["voice_spatial_audio"]) is not bool:
+            raise ValueError("voice_spatial_audio contains an invalid value")
+        if "voice_quality" in state and state["voice_quality"] not in ("high", "standard"):
+            raise ValueError("voice_quality contains an invalid value")
         if len(all_identities) > MAX_VOICE_SETTINGS_IDENTITIES:
             raise ValueError("table voice settings contain too many identities")
 
@@ -460,6 +472,57 @@ class Table(DataClassJSONMixin):
         else:
             self._voice_host_muted_account_ids.discard(account_id)
         return True
+
+    def set_voice_spatial_audio(self, enabled: bool) -> bool:
+        """Update table voice spatial audio policy."""
+        if type(enabled) is not bool:
+            return False
+        self.voice_spatial_audio = enabled
+        return True
+
+    def set_voice_quality(self, quality: str) -> bool:
+        """Update table voice quality profile ('high' or 'standard')."""
+        if quality not in ("high", "standard"):
+            return False
+        self.voice_quality = quality
+        return True
+
+    def calculate_voice_pans(self, listener_uuid: str) -> dict[str, float]:
+        """Calculate relative stereo pans (-0.85 to +0.85) for table members."""
+        if not getattr(self, "voice_spatial_audio", True):
+            return {}
+        seated_uuids: list[str] = []
+        if self._game and hasattr(self._game, "players"):
+            for player in self._game.players:
+                if not getattr(player, "is_bot", False) and getattr(player, "id", None):
+                    pid = str(player.id)
+                    if pid not in seated_uuids:
+                        seated_uuids.append(pid)
+        else:
+            for member in self.members:
+                if not member.is_spectator:
+                    user = self._users.get(member.username)
+                    if not user and self._server:
+                        user = self._server._users.get(member.username)
+                    if user and getattr(user, "uuid", None):
+                        uid = str(user.uuid)
+                        if uid not in seated_uuids:
+                            seated_uuids.append(uid)
+
+        total_seats = len(seated_uuids)
+        if total_seats < 3 or listener_uuid not in seated_uuids:
+            return {uid: 0.0 for uid in seated_uuids}
+
+        listener_idx = seated_uuids.index(listener_uuid)
+        pans: dict[str, float] = {}
+        for idx, uid in enumerate(seated_uuids):
+            if uid == listener_uuid:
+                continue
+            relative_idx = (idx - listener_idx) % total_seats
+            angle = 2.0 * math.pi * relative_idx / total_seats
+            pan = round(0.85 * math.sin(angle), 2)
+            pans[uid] = pan
+        return pans
 
     def get_personal_voice_settings(
         self,

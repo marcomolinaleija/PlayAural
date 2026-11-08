@@ -2554,6 +2554,15 @@ class MainWindow(wx.Frame):
             self._pending_voice_volume = vol / 100.0
         elif key == "audio/input_device_id" and not value:
             self.config_manager.set_client_option("audio/input_device_name", "", create_mode=True)
+        elif key == "audio/voice_noise_suppression":
+            if self.voice_manager:
+                self.voice_manager.set_noise_suppression(bool(value))
+        elif key == "audio/voice_spatial_audio":
+            if self.voice_manager:
+                self.voice_manager.set_spatial_audio_enabled(bool(value))
+        elif key == "audio/voice_auto_gain":
+            if self.voice_manager:
+                self.voice_manager.set_auto_gain_control(bool(value))
 
         # Reload full options to be safe
         self.client_options = self.config_manager.get_client_options()
@@ -3672,6 +3681,11 @@ class MainWindow(wx.Frame):
             self.voice_mic_toggle_pending = None
             self.voice_mic_enabled = False
         self.update_voice_ui()
+
+    def on_voice_pans(self, packet):
+        """Apply spatial voice panning directives from server."""
+        if hasattr(self, "voice_manager") and self.voice_manager:
+            self.voice_manager.apply_voice_pans(packet)
 
     def on_server_game_list(self, packet):
         """Handle game_list packet from server."""

@@ -2866,6 +2866,10 @@ export function PlayAuralApp() {
           return;
         }
 
+        if (packet.type === "voice_pans") {
+          return;
+        }
+
         if (packet.type === "voice_join_error") {
           const voiceErrorPacket = packet as VoiceJoinErrorPacket;
           const packetContextId = String(voiceErrorPacket.context_id || "");

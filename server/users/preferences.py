@@ -91,6 +91,9 @@ class UserPreferences:
     sound_volume: int = 100
     ambience_volume: int = 20
     voice_volume: int = 80  # 10-100 range (not 0 to avoid complete muting)
+    voice_noise_suppression: bool = True
+    voice_spatial_audio: bool = True
+    voice_auto_gain: bool = True
     desktop_audio_input_device_id: str = ""
     desktop_audio_input_device_name: str = ""
 
@@ -186,6 +189,9 @@ class UserPreferences:
             "sound_volume": self.sound_volume,
             "ambience_volume": self.ambience_volume,
             "voice_volume": self.voice_volume,
+            "voice_noise_suppression": self.voice_noise_suppression,
+            "voice_spatial_audio": self.voice_spatial_audio,
+            "voice_auto_gain": self.voice_auto_gain,
             "desktop_audio_input_device_id": self.desktop_audio_input_device_id,
             "desktop_audio_input_device_name": self.desktop_audio_input_device_name,
             "speech_mode": self.speech_mode,
@@ -222,6 +228,9 @@ class UserPreferences:
             sound_volume=data.get("sound_volume", 100),
             ambience_volume=data.get("ambience_volume", 20),
             voice_volume=data.get("voice_volume", 80),
+            voice_noise_suppression=data.get("voice_noise_suppression", True),
+            voice_spatial_audio=data.get("voice_spatial_audio", True),
+            voice_auto_gain=data.get("voice_auto_gain", True),
             desktop_audio_input_device_id=data.get("desktop_audio_input_device_id", ""),
             desktop_audio_input_device_name=data.get(
                 "desktop_audio_input_device_name", ""

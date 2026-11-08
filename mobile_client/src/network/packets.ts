@@ -284,6 +284,14 @@ export type VoiceSettingsPacket = {
   version: number;
 };
 
+export type VoicePansPacket = {
+  type: "voice_pans";
+  context_id: string;
+  spatial_enabled?: boolean;
+  quality?: string;
+  pans?: Record<string, number>;
+};
+
 export type VoiceJoinErrorPacket = {
   type: "voice_join_error";
   context_id?: string;
@@ -328,6 +336,7 @@ export type ServerPacket =
   | VoiceJoinInfoPacket
   | VoiceLeaveAckPacket
   | VoiceSettingsPacket
+  | VoicePansPacket
   | { type: string; [key: string]: unknown };
 
 export type AuthorizePacket = {

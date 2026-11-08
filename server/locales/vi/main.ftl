@@ -1383,3 +1383,34 @@ global-voice-chat-availability-enabled = Nhà phát triển đã bật trò chuy
 global-voice-chat-availability-disabled = Nhà phát triển đã tạm thời tắt trò chuyện thoại chung.
 voice-room-global-label = Trò chuyện thoại chung
 voice-global-chat-disabled = Trò chuyện thoại chung hiện đang bị tắt.
+# Cài đặt thoại bàn của chủ bàn
+voice-host-spatial-audio-option = Âm thanh thoại không gian: { $status }
+voice-host-desc-spatial-audio = Bật hoặc tắt định vị âm thanh không gian cho tất cả người chơi tại bàn này
+voice-host-spatial-audio-changed = Âm thanh thoại không gian của bàn được đặt thành { $status }.
+voice-host-spatial-audio-broadcast = Chủ bàn đã đặt âm thanh thoại không gian thành { $status }.
+voice-host-quality-option = Chất lượng thoại: { $quality }
+voice-host-desc-quality = Thay đổi chất lượng trò chuyện thoại giữa Độ trung thực cao (64 kbps) và Tiêu chuẩn (24 kbps)
+voice-host-quality-changed = Chất lượng thoại của bàn được đặt thành { $quality }.
+voice-host-quality-broadcast = Chủ bàn đã đặt chất lượng thoại của bàn thành { $quality }.
+voice-quality-high = Độ trung thực cao (64 kbps)
+voice-quality-standard = Tiêu chuẩn (24 kbps)
+voice-host-members-heading = Người tham gia trò chuyện thoại:
+
+# Tùy chọn âm thanh thoại cá nhân
+voice-noise-suppression-option = Khử tiếng ồn micrô: { $status }
+general-desc-voice-noise-suppression = Bật hoặc tắt tính năng khử tiếng ồn nền trên micrô của bạn
+voice-noise-suppression-changed = Khử tiếng ồn micrô được đặt thành { $status }.
+voice-spatial-audio-option = Âm thanh thoại không gian: { $status }
+general-desc-voice-spatial-audio = Định vị giọng nói trong không gian hai tai dựa trên vị trí ngồi tại bàn
+voice-spatial-audio-changed = Âm thanh thoại không gian được đặt thành { $status }.
+voice-auto-gain-option = Tự động điều chỉnh âm lượng micrô: { $status }
+general-desc-voice-auto-gain = Tự động điều chỉnh âm lượng đầu vào của micrô
+voice-auto-gain-changed = Tự động điều chỉnh âm lượng micrô được đặt thành { $status }.
+
+# Quản lý trò chuyện thoại chung
+global-voice-chat-toggle-enabled = Trò chuyện thoại chung: { $status }
+global-voice-chat-desc-toggle-enabled = Bật hoặc tắt trò chuyện thoại chung trên toàn máy chủ
+global-voice-chat-status-changed = Trò chuyện thoại chung hiện { $status }.
+global-voice-chat-quality-option = Chất lượng thoại chung: { $quality }
+global-voice-chat-desc-quality = Thay đổi cấu hình chất lượng âm thanh trò chuyện thoại chung
+global-voice-chat-quality-changed = Chất lượng thoại chung được đặt thành { $quality }.
