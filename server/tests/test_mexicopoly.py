@@ -371,3 +371,47 @@ def test_bots_finish_extended_game_with_uuid_owned_winner(seed):
     result = game.build_game_result()
     assert result.game_type == "mexicopoly"
     assert result.custom_data["winner_ids"] == [game.winner.id]
+
+
+def test_quick_action_labels_and_descriptions_in_spanish():
+    game = make_game(locale="es", bots=False, count=2)
+    player = game.players[0]
+    game.before_menu_build(player)
+    standard_set = game.get_action_set(player, "standard")
+    assert standard_set is not None
+
+    buy_house = standard_set.get_action("quick_buy_house")
+    assert buy_house is not None
+    resolved = game.resolve_action(player, buy_house)
+    assert resolved.label == "Comprar casa"
+    assert "Elige una propiedad" in resolved.description
+
+    sell_house = standard_set.get_action("quick_sell_house")
+    assert sell_house is not None
+    resolved = game.resolve_action(player, sell_house)
+    assert resolved.label == "Vender casa"
+
+    mortgage = standard_set.get_action("quick_mortgage")
+    assert mortgage is not None
+    resolved = game.resolve_action(player, mortgage)
+    assert resolved.label == "Hipotecar"
+
+    unmortgage = standard_set.get_action("quick_unmortgage")
+    assert unmortgage is not None
+    resolved = game.resolve_action(player, unmortgage)
+    assert resolved.label == "Deshipotecar"
+
+
+def test_quick_action_localizes_even_if_created_without_user():
+    game = MexicopolyGame()
+    player = game.create_player("p1", "Player1")
+    game.players.append(player)
+    # At this point, no user is attached.
+    action_set = game.create_standard_action_set(player)
+    game.add_action_set(player, action_set)
+    # Default without user for Mexicopoly should be Spanish now!
+    buy_house = action_set.get_action("quick_buy_house")
+    assert buy_house is not None
+    resolved = game.resolve_action(player, buy_house)
+    assert resolved.label == "Comprar casa"
+    assert "Elige una propiedad" in resolved.description
