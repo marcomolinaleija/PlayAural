@@ -121,6 +121,9 @@ game-cancelled-no-controller = Ván chơi đã bị hủy và bàn đã đóng v
 player-reclaimed-from-bot = { $player } đã trở lại và lấy lại chỗ { GENDER_TERM($player_gender, "possessive-determiner") } từ { $bot }.
 player-reclaimed-from-bot-you = Bạn đã trở lại và lấy lại chỗ của mình từ { $bot }.
 spectator-joined = Đã tham gia bàn của { $host } với tư cách khán giả.
+table-game-in-progress = Trận đấu đang diễn ra.
+spectator-watching-game = Đang theo dõi trận đấu.
+spectator-stopped-watching = Đã dừng theo dõi trận đấu.
 
 spectate = Xem
 now-playing = { $player } đang chơi.

@@ -121,6 +121,9 @@ game-cancelled-no-controller = Partida cancelada y mesa cerrada: no queda ningú
 player-reclaimed-from-bot = { $player } regresó y recuperó { GENDER_TERM($player_gender, "possessive-determiner") } asiento de manos de { $bot }.
 player-reclaimed-from-bot-you = Regresaste y recuperaste tu asiento de manos de { $bot }.
 spectator-joined = Te uniste a la mesa de { $host } como espectador.
+table-game-in-progress = Partida en curso.
+spectator-watching-game = Viendo la partida.
+spectator-stopped-watching = Has dejado de ver la partida.
 
 spectate = Observar
 now-playing = { $player } ahora está jugando.

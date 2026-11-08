@@ -509,6 +509,20 @@ class MenuManagementMixin:
                     # repaint: doing so would erase typed text or reset focus.
                     return
 
+        if self.status == "playing" and not getattr(player, "is_watching", True):
+            user.show_menu(
+                "turn_menu",
+                [
+                    MenuItem(
+                        text=Localization.get(user.locale, "table-game-in-progress"),
+                        id="watch_game",
+                    )
+                ],
+                multiletter=False,
+                escape_behavior=EscapeBehavior.KEYBIND,
+            )
+            return
+
         if player.id in self._actions_menu_open:
             painter = getattr(self, "_paint_actions_menu", None)
             if painter:
@@ -561,6 +575,20 @@ class MenuManagementMixin:
                     return
             self._pending_actions.pop(player.id, None)
             self._pending_action_return_focus.pop(player.id, None)
+
+        if self.status == "playing" and not getattr(player, "is_watching", True):
+            user.show_menu(
+                "turn_menu",
+                [
+                    MenuItem(
+                        text=Localization.get(user.locale, "table-game-in-progress"),
+                        id="watch_game",
+                    )
+                ],
+                multiletter=False,
+                escape_behavior=EscapeBehavior.KEYBIND,
+            )
+            return
 
         if player.id in self._actions_menu_open:
             self._paint_actions_menu(player)

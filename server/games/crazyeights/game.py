@@ -164,8 +164,8 @@ class CrazyEightsGame(Game, TurnTimerMixin):
         player = super().add_player(name, user)
         return player
 
-    def add_spectator(self, name: str, user: User) -> Player:
-        return super().add_spectator(name, user)
+    def add_spectator(self, name: str, user: User, **kwargs) -> Player:
+        return super().add_spectator(name, user, **kwargs)
 
     def _action_remove_bot(self, player: Player, action_id: str) -> None:
         for i in range(len(self.players) - 1, -1, -1):

@@ -85,6 +85,9 @@ table-full = میز پر است.
 player-replaced-by-bot = { $bot } اکنون به جای { $player } بازی می‌کند.
 player-reclaimed-from-bot = { $player } بازگشت و جای خود را از { $bot } پس گرفت.
 spectator-joined = به عنوان تماشاگر به میز { $host } پیوست.
+table-game-in-progress = بازی در حال انجام است.
+spectator-watching-game = در حال تماشای بازی.
+spectator-stopped-watching = تماشای بازی متوقف شد.
 
 spectate = تماشا
 now-playing = { $player } اکنون در حال بازی است.

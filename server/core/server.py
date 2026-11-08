@@ -10742,11 +10742,17 @@ PlayAural Server
                     user.speak_l("table-name-already-used", buffer="system")
                     return
                 self._prepare_user_for_table_audio(user)
-                joined_player = game.add_spectator(user.username, user)
+                is_midgame = (game.status == "playing")
+                joined_player = game.add_spectator(
+                    user.username, user, is_watching=not is_midgame
+                )
                 self._set_in_game_state(user, table_id)
-                user.speak_l("spectator-joined", buffer="system", host=table.host)
-                game.broadcast_l("now-spectating", buffer="system", player=user.username)
-                game.play_table_join_sound(joined_player, is_spectator=True)
+                if is_midgame:
+                    user.speak_l("table-game-in-progress", buffer="system")
+                else:
+                    user.speak_l("spectator-joined", buffer="system", host=table.host)
+                    game.broadcast_l("now-spectating", buffer="system", player=user.username)
+                    game.play_table_join_sound(joined_player, is_spectator=True)
                 game.refresh_menus()
                 self._flush_game_menus_now(game)
 

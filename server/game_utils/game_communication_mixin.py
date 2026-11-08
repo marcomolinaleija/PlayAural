@@ -27,6 +27,8 @@ class GameCommunicationMixin:
         for player in self.players:
             if player is exclude:
                 continue
+            if buffer == "game" and not getattr(player, "is_watching", True):
+                continue
             user = self.get_user(player)
             if user:
                 user.speak(text, buffer)
@@ -41,6 +43,8 @@ class GameCommunicationMixin:
         """Send a localized message to all players (each in their own locale)."""
         for player in self.players:
             if player is exclude:
+                continue
+            if buffer == "game" and not getattr(player, "is_watching", True):
                 continue
             user = self.get_user(player)
             if user:
@@ -72,7 +76,7 @@ class GameCommunicationMixin:
             **kwargs: Additional arguments passed to all speak_l calls.
         """
         user = self.get_user(player)
-        if user:
+        if user and (buffer != "game" or getattr(player, "is_watching", True)):
             user.speak_l(
                 personal_message_id,
                 buffer,
@@ -81,6 +85,8 @@ class GameCommunicationMixin:
 
         for p in self.players:
             if p is player:
+                continue
+            if buffer == "game" and not getattr(p, "is_watching", True):
                 continue
             u = self.get_user(p)
             if u:

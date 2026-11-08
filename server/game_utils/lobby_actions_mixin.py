@@ -64,6 +64,8 @@ class LobbyActionsMixin:
         """Start gameplay after all lobby-only preparation has completed."""
         if hasattr(self, "_dismiss_all_end_screens"):
             self._dismiss_all_end_screens()
+        for p in self.players:
+            p.is_watching = True
         # Enforce a clean music boundary before on_start() can dispatch an
         # intro, ambience, or immediate game track. This also protects delayed
         # intros if a future extension temporarily owns the music handle while
@@ -1004,11 +1006,20 @@ class LobbyActionsMixin:
         self._notify_table_presence_changed()
         return player
 
-    def add_spectator(self, name: str, user: "User") -> "Player":
+    def add_spectator(
+        self,
+        name: str,
+        user: "User",
+        *,
+        is_watching: bool | None = None,
+    ) -> "Player":
         """Add a spectator to the game."""
         self.prepare_human_name_for_roster(name)
         player = self.create_player(user.uuid, name, is_bot=False)
         player.is_spectator = True
+        if is_watching is None:
+            is_watching = (self.status != "playing")
+        player.is_watching = is_watching
         self.players.append(player)
         self.attach_user(player.id, user)
         self.setup_player_actions(player)
