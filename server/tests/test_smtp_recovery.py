@@ -136,3 +136,40 @@ async def test_submit_reset_code_success(server, mock_client):
     # Verify token was cleared
     token_record = server.db.get_password_reset_token(user.uuid)
     assert token_record is None
+
+
+@pytest.mark.asyncio
+async def test_smtp_mailer_message_headers():
+    """Test that SmtpMailer generates required Date and Message-ID headers with domain alignment."""
+    from server.persistence.database import SmtpConfig
+    from server.core.smtp_mailer import SmtpMailer
+
+    config = SmtpConfig(
+        host="smtp.test.com",
+        port=587,
+        username="user",
+        password="pass",
+        from_email="notificaciones@marco-ml.com",
+        from_name="PlayAural",
+        encryption_type="tls"
+    )
+
+    with patch.object(SmtpMailer, "_send_email_sync", return_value=(True, "")) as mock_sync:
+        success, err = await SmtpMailer.send_email(
+            config=config,
+            to_email="dest@example.com",
+            subject="Test Subject",
+            body="Test body",
+            html_body="<p>Test body</p>"
+        )
+        assert success is True
+        assert err == ""
+        mock_sync.assert_called_once()
+        msg = mock_sync.call_args[0][1]
+
+        assert msg["Date"] is not None
+        assert msg["Message-ID"] is not None
+        assert msg["Message-ID"].endswith("@marco-ml.com>")
+        assert msg["From"] == "PlayAural <notificaciones@marco-ml.com>"
+        assert msg["To"] == "dest@example.com"
+        assert msg["Subject"] == "Test Subject"

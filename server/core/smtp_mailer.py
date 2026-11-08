@@ -4,6 +4,7 @@ import smtplib
 import asyncio
 import logging
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -36,6 +37,9 @@ class SmtpMailer:
         msg['Subject'] = subject
         msg['From'] = f"{config.from_name} <{config.from_email}>"
         msg['To'] = to_email
+        msg['Date'] = formatdate(localtime=True)
+        from_domain = config.from_email.split('@')[-1].strip() if '@' in (config.from_email or '') else None
+        msg['Message-ID'] = make_msgid(domain=from_domain)
 
         # Run the synchronous smtplib in a thread pool so it doesn't block the async event loop
         loop = asyncio.get_running_loop()
