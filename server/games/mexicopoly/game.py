@@ -4,8 +4,10 @@ from dataclasses import dataclass, field
 import random
 from typing import Any
 
-from ...game_utils.actions import MenuInput, Visibility
+from ...game_utils.actions import ActionSet, MenuInput, Visibility
+from ...game_utils.menu_management_mixin import StatusBoxBuild
 from ...game_utils.options import BoolOption, MenuOption, option_field
+from ...game_utils.player import Player
 from ...game_utils.poker_timer import PokerTurnTimer
 from ...game_utils.turn_timer_mixin import TurnTimerMixin
 from ...messages.localization import Localization
@@ -17,14 +19,14 @@ from ..monopoly.game import (
     MonopolyGame, MonopolyOptions, MonopolyPlayer, PHASE_SETUP, PHASE_AWAIT_ROLL,
     PHASE_TURN_ACTIONS, PHASE_PROPERTY, PHASE_AUCTION, PHASE_RENT, PHASE_DEBT,
     PHASE_JAIL, PHASE_MANAGE, PHASE_TRADE_BUILD, PHASE_TRADE_RESPONSE,
-    PHASE_MORTGAGE_TRANSFER, PHASE_ENTRY_ACTIONS,
+    PHASE_MORTGAGE_TRANSFER, PHASE_ENTRY_ACTIONS, SELL_GROUP_OPTION_PREFIX,
 )
 from ..monopoly.models import (
     BoardDefinition, BoardSpaceDefinition, CardDefinition, CARD_JAIL_FREE,
-    OWNABLE_SPACE_KINDS, PropertyState, SPACE_STREET, SPACE_TAX,
+    OWNABLE_SPACE_KINDS, PropertyState, SPACE_FREE_PARKING, SPACE_STREET, SPACE_TAX,
     SPACE_TRANSIT, SPACE_UTILITY,
 )
-from ..monopoly.rules import can_build, liquid_assets, owns_group
+from ..monopoly.rules import can_build, liquid_assets, owns_group, unmortgage_cost
 from ...game_utils.sequence_runner_mixin import SequenceBeat, SequenceOperation
 from ..registry import register_game
 from .board import MEXICO_BOARD as LEGACY_BOARD
@@ -179,6 +181,43 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     def setup_keybinds(self) -> None:
         super().setup_keybinds()
         self.define_keybind(
+            "h",
+            "Comprar casa",
+            ["quick_buy_house"],
+            state=KeybindState.ACTIVE,
+        )
+        self.define_keybind(
+            "shift+h",
+            "Vender casa",
+            ["quick_sell_house"],
+            state=KeybindState.ACTIVE,
+        )
+        self.define_keybind(
+            "k",
+            "Hipotecar",
+            ["quick_mortgage"],
+            state=KeybindState.ACTIVE,
+        )
+        self.define_keybind(
+            "shift+k",
+            "Deshipotecar",
+            ["quick_unmortgage"],
+            state=KeybindState.ACTIVE,
+        )
+        self.define_keybind(
+            "v",
+            "Ver mi portafolio",
+            ["read_my_portfolio"],
+            state=KeybindState.ACTIVE,
+        )
+        self.define_keybind(
+            "shift+v",
+            "Ver portafolio de todos",
+            ["read_portfolios"],
+            state=KeybindState.ACTIVE,
+            include_spectators=True,
+        )
+        self.define_keybind(
             "x",
             "Vandalize opponent property",
             ["vandalize_property"],
@@ -201,6 +240,97 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             if decline:
                 decline.get_label = "_get_decline_property_label"
                 decline.get_description = "_get_decline_property_description"
+            rp = self.find_action(player, "read_portfolios")
+            if rp:
+                rp.input = None
+
+    def create_standard_action_set(self, player: Player) -> ActionSet:
+        action_set = super().create_standard_action_set(player)
+        rp = action_set.get_action("read_portfolios")
+        if rp:
+            rp.input = None
+        action_set.add(
+            self._action(
+                player,
+                "quick_buy_house",
+                "mexicopoly-action-quick-buy-house",
+                "_action_quick_buy_house",
+                "_is_quick_buy_enabled",
+                "_is_quick_management_hidden",
+                description_key="mexicopoly-desc-quick-buy-house",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-quick-buy-house",
+                    options="_build_property_options",
+                    bot_select="_first_menu_option",
+                    option_label="_build_property_option_label",
+                    option_description="_property_option_description",
+                    initial_selection="_first_menu_option",
+                ),
+                show_in_actions_menu=True,
+            )
+        )
+        action_set.add(
+            self._action(
+                player,
+                "quick_sell_house",
+                "mexicopoly-action-quick-sell-house",
+                "_action_quick_sell_house",
+                "_is_quick_sell_enabled",
+                "_is_quick_management_hidden",
+                description_key="mexicopoly-desc-quick-sell-house",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-quick-sell-house",
+                    options="_sell_property_options",
+                    bot_select="_first_menu_option",
+                    option_label="_sell_property_option_label",
+                    option_description="_sell_property_option_description",
+                    initial_selection="_first_menu_option",
+                ),
+                show_in_actions_menu=True,
+            )
+        )
+        action_set.add(
+            self._action(
+                player,
+                "quick_mortgage",
+                "mexicopoly-action-quick-mortgage",
+                "_action_quick_mortgage",
+                "_is_quick_mortgage_enabled",
+                "_is_quick_management_hidden",
+                description_key="mexicopoly-desc-quick-mortgage",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-quick-mortgage",
+                    options="_mortgage_property_options",
+                    bot_select="_first_menu_option",
+                    option_label="_mortgage_property_option_label",
+                    option_description="_property_option_description",
+                    initial_selection="_first_menu_option",
+                ),
+                show_in_actions_menu=True,
+            )
+        )
+        action_set.add(
+            self._action(
+                player,
+                "quick_unmortgage",
+                "mexicopoly-action-quick-unmortgage",
+                "_action_quick_unmortgage",
+                "_is_quick_unmortgage_enabled",
+                "_is_quick_management_hidden",
+                description_key="mexicopoly-desc-quick-unmortgage",
+                input_request=MenuInput(
+                    prompt="mexicopoly-prompt-quick-unmortgage",
+                    options="_unmortgage_property_options",
+                    bot_select="_first_menu_option",
+                    option_label="_unmortgage_property_option_label",
+                    option_description="_property_option_description",
+                    initial_selection="_first_menu_option",
+                ),
+                show_in_actions_menu=True,
+            )
+        )
+        self._apply_standard_action_order(action_set, player)
+        return action_set
 
     def _broadcast_actor(self, actor, personal_key, public_key, **kwargs):
         if not self.options.auctions_enabled:
@@ -445,11 +575,18 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
 
     def _is_roll_enabled(self, player: MonopolyPlayer):
         if self.phase == PHASE_JAIL:
+            turns = self.sat_jail_turns.get(player.id, 0)
+            if turns > 0:
+                return ("mexicopoly-error-sat-no-bail", {"turns": turns})
             return self._is_jail_roll_enabled(player)
         return super()._is_roll_enabled(player)
 
     def _action_roll_dice(self, player: MonopolyPlayer, action_id: str) -> None:
         if self.phase == PHASE_JAIL:
+            turns = self.sat_jail_turns.get(player.id, 0)
+            if turns > 0:
+                self._speak(player, "mexicopoly-error-sat-no-bail", turns=turns)
+                return
             self._action_jail_roll(player, "jail_roll")
             return
         super()._action_roll_dice(player, action_id)
@@ -460,6 +597,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
             and self.status == "playing"
             and self.decision_player_id == player.id
             and self.phase == PHASE_JAIL
+            and self.sat_jail_turns.get(player.id, 0) <= 0
         ):
             self.request_menu_focus(player, "roll_dice")
             return
@@ -495,7 +633,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         die_1: int,
         die_2: int,
     ) -> None:
-        if self.sat_jail_turns.get(player.id, 0) > 1:
+        if self.sat_jail_turns.get(player.id, 0) > 0:
             self.last_die_1 = die_1
             self.last_die_2 = die_2
             total = die_1 + die_2
@@ -1226,11 +1364,17 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         self._restore_interrupted_phase(resume_phase, actor.id)
         self._focus_after_user_transition(actor)
 
-    def _tick_vandalized_properties(self) -> None:
+    def _tick_vandalized_properties(
+        self, player: MonopolyPlayer | None = None
+    ) -> None:
         if not self.vandalized_turns:
             return
         expired: list[str] = []
         for prop_id in list(self.vandalized_turns.keys()):
+            state = self.property_states.get(prop_id)
+            if player is not None:
+                if state and state.owner_id and state.owner_id != player.id:
+                    continue
             remaining = self.vandalized_turns[prop_id] - 1
             if remaining <= 0:
                 expired.append(prop_id)
@@ -1684,6 +1828,30 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 continuation="finish_landing",
             )
             return
+        if space.kind == SPACE_FREE_PARKING:
+            amount = self.free_parking_pot
+            self.free_parking_pot = 0
+            if amount > 0:
+                player.cash += amount
+                self._broadcast_actor(
+                    player,
+                    "mexicopoly-you-collect-bote",
+                    "mexicopoly-player-collects-bote",
+                    amount=lambda locale: self._money(locale, amount),
+                    cash=lambda locale: self._money(locale, player.cash),
+                    brief_personal_key="mexicopoly-you-collect-bote-brief",
+                    brief_others_key="mexicopoly-player-collects-bote-brief",
+                )
+                self.play_sound(game_audio.SOUND_LARGE_CASH_PAYOUT)
+            else:
+                self._broadcast_actor(
+                    player,
+                    "mexicopoly-you-bote-empty",
+                    "mexicopoly-player-bote-empty",
+                    suppress_brief=True,
+                )
+            self._finish_landing()
+            return
         super()._resolve_landing(
             player,
             rent_multiplier=rent_multiplier,
@@ -1691,30 +1859,103 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         )
 
     def _announce_rent_payment(self, owner, tenant, space, amount):
-        if not self.cobro_de_piso_active or amount <= 0:
-            super()._announce_rent_payment(owner, tenant, space, amount)
+        state = self.property_states.get(space.id)
+        buildings = state.buildings if state else 0
+        h_per_hotel = self.board.development.houses_per_hotel
+        is_street = space.kind == SPACE_STREET
+        has_buildings = is_street and buildings > 0
+        is_hotel = buildings > h_per_hotel
+
+        if self.cobro_de_piso_active and amount > 0:
+            percent, cut, net = self._extortion_cut(space, amount)
+            owner.cash -= cut
+            self.free_parking_pot += cut
+            if has_buildings:
+                flavor_key = (
+                    f"mexicopoly-hotel-flavor-{min(buildings - h_per_hotel, 2)}"
+                    if is_hotel
+                    else f"mexicopoly-house-flavor-{min(buildings, 5)}"
+                )
+                self._broadcast_actor_target(
+                    owner,
+                    tenant,
+                    "mexicopoly-you-collect-rent-houses-extorted",
+                    "mexicopoly-you-pay-rent-houses-extorted",
+                    "mexicopoly-player-pays-rent-houses-extorted",
+                    brief_personal_key="mexicopoly-you-collect-rent-extorted-brief",
+                    brief_target_key="mexicopoly-you-pay-rent-extorted-brief",
+                    brief_others_key="mexicopoly-player-pays-rent-extorted-brief",
+                    owner=owner.name,
+                    tenant=tenant.name,
+                    property=lambda locale: self._space_name(locale, space),
+                    buildings=lambda locale: self._building_text(locale, buildings),
+                    amount=lambda locale: self._money(locale, amount),
+                    cut=lambda locale: self._money(locale, cut),
+                    net=lambda locale: self._money(locale, net),
+                    percent=percent,
+                    owner_cash=lambda locale: self._money(locale, owner.cash),
+                    tenant_cash=lambda locale: self._money(locale, tenant.cash),
+                    flavor=lambda locale: Localization.get(
+                        locale,
+                        flavor_key,
+                        owner=owner.name,
+                        property=self._space_name(locale, space),
+                    ),
+                )
+                return
+            self._broadcast_actor_target(
+                owner,
+                tenant,
+                "mexicopoly-you-collect-rent-extorted",
+                "mexicopoly-you-pay-rent-extorted",
+                "mexicopoly-player-pays-rent-extorted",
+                brief_personal_key="mexicopoly-you-collect-rent-extorted-brief",
+                brief_target_key="mexicopoly-you-pay-rent-extorted-brief",
+                brief_others_key="mexicopoly-player-pays-rent-extorted-brief",
+                owner=owner.name,
+                tenant=tenant.name,
+                property=lambda locale: self._space_name(locale, space),
+                amount=lambda locale: self._money(locale, amount),
+                cut=lambda locale: self._money(locale, cut),
+                net=lambda locale: self._money(locale, net),
+                percent=percent,
+                owner_cash=lambda locale: self._money(locale, owner.cash),
+                tenant_cash=lambda locale: self._money(locale, tenant.cash),
+            )
             return
-        percent, cut, net = self._extortion_cut(space, amount)
-        owner.cash -= cut
-        self._broadcast_actor_target(
-            owner,
-            tenant,
-            "mexicopoly-you-collect-rent-extorted",
-            "mexicopoly-you-pay-rent-extorted",
-            "mexicopoly-player-pays-rent-extorted",
-            brief_personal_key="mexicopoly-you-collect-rent-extorted-brief",
-            brief_target_key="mexicopoly-you-pay-rent-extorted-brief",
-            brief_others_key="mexicopoly-player-pays-rent-extorted-brief",
-            owner=owner.name,
-            tenant=tenant.name,
-            property=lambda locale: self._space_name(locale, space),
-            amount=lambda locale: self._money(locale, amount),
-            cut=lambda locale: self._money(locale, cut),
-            net=lambda locale: self._money(locale, net),
-            percent=percent,
-            owner_cash=lambda locale: self._money(locale, owner.cash),
-            tenant_cash=lambda locale: self._money(locale, tenant.cash),
-        )
+
+        if has_buildings and amount > 0:
+            flavor_key = (
+                f"mexicopoly-hotel-flavor-{min(buildings - h_per_hotel, 2)}"
+                if is_hotel
+                else f"mexicopoly-house-flavor-{min(buildings, 5)}"
+            )
+            self._broadcast_actor_target(
+                owner,
+                tenant,
+                "mexicopoly-you-collect-rent-houses",
+                "mexicopoly-you-pay-rent-houses",
+                "mexicopoly-player-pays-rent-houses",
+                brief_personal_key="monopoly-you-collect-rent-brief",
+                brief_target_key="monopoly-you-pay-rent-brief",
+                brief_others_key="monopoly-player-pays-rent-brief",
+                owner=owner.name,
+                tenant=tenant.name,
+                property=lambda locale: self._space_name(locale, space),
+                buildings=lambda locale: self._building_text(locale, buildings),
+                amount=lambda locale: self._money(locale, amount),
+                owner_cash=lambda locale: self._money(locale, owner.cash),
+                tenant_cash=lambda locale: self._money(locale, tenant.cash),
+                flavor=lambda locale: Localization.get(
+                    locale,
+                    flavor_key,
+                    owner=owner.name,
+                    property=self._space_name(locale, space),
+                ),
+            )
+            return
+
+        super()._announce_rent_payment(owner, tenant, space, amount)
 
     def _get_claim_rent_label(self, player: MonopolyPlayer, action_id: str) -> str:
         rent = self.rent_state
@@ -1962,8 +2203,11 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
 
     def _start_turn(self, *, announce):
         self.vandalized_this_turn = False
+        current = self.current_player
         if announce:
-            self._tick_vandalized_properties()
+            self._tick_vandalized_properties(
+                current if isinstance(current, MonopolyPlayer) else None
+            )
             self._maybe_trigger_random_cobro_event()
             self._maybe_trigger_special_event()
         super()._start_turn(announce=announce)
@@ -1974,7 +2218,42 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         if announce and self.status == "playing":
             current = self.current_player
             if isinstance(current, MonopolyPlayer) and not current.bankrupt:
+                if self.sat_jail_turns.get(current.id, 0) > 0 and current.in_jail:
+                    self._handle_sat_jail_turn(current)
+                    return
                 self._check_and_trigger_vandalism_discovery(current)
+
+    def _handle_sat_jail_turn(self, player: MonopolyPlayer) -> None:
+        turns = self.sat_jail_turns.get(player.id, 0)
+        remaining = turns - 1
+        player.jail_turns += 1
+        if remaining > 0:
+            self.sat_jail_turns[player.id] = remaining
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-stay-sat-jail",
+                "mexicopoly-player-stays-sat-jail",
+                remaining=remaining,
+                turns=remaining,
+                brief_personal_key="mexicopoly-you-stay-sat-jail-brief",
+                brief_others_key="mexicopoly-player-stays-sat-jail-brief",
+            )
+            self._finish_turn()
+            self._focus_after_user_transition(player)
+        else:
+            self.sat_jail_turns.pop(player.id, None)
+            player.in_jail = False
+            player.jail_turns = 0
+            self._broadcast_actor(
+                player,
+                "mexicopoly-you-leave-sat-jail",
+                "mexicopoly-player-leaves-sat-jail",
+                brief_personal_key="mexicopoly-you-leave-sat-jail-brief",
+                brief_others_key="mexicopoly-player-leaves-sat-jail-brief",
+            )
+            self.play_sound(game_audio.SOUND_LEAVE_JAIL)
+            self._finish_turn()
+            self._focus_after_user_transition(player)
 
     def _can_interrupt(self, player):
         # Optional management/trades belong to the acting player's own turn.
@@ -2000,7 +2279,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 return "denounce_vandal"
             return "skip_vandalism_denounce"
         if self.phase == PHASE_JAIL and self.sat_jail_turns.get(player.id, 0) > 0:
-            return "roll_dice"
+            return None
         # Management used to happen after rolling. Do it before the final roll
         # now, otherwise automatic turn completion would prevent bots building.
         if self.phase == PHASE_AWAIT_ROLL:
@@ -2203,6 +2482,17 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                         ),
                     )
                 )
+        if self.free_parking_pot > 0 or self.cobro_de_piso_active:
+            result.items.append(
+                MenuItem(
+                    id="mexicopoly:bote_pot",
+                    text=Localization.get(
+                        user.locale,
+                        "mexicopoly-status-bote-pot",
+                        amount=self._money(user.locale, self.free_parking_pot),
+                    ),
+                )
+            )
         if self.phase == PHASE_AUCTION and self.auction_state:
             result.items.append(MenuItem(
                 id="mexicopoly:auction_timer",
@@ -2221,3 +2511,229 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                 text=Localization.get(user.locale, "mexicopoly-status-timer", seconds=countdown.seconds_remaining()),
             ))
         return result
+
+    def _development_level_text(self, locale: str, level: int) -> str:
+        h_per_hotel = self.board.development.houses_per_hotel
+        if level <= h_per_hotel:
+            return Localization.get(locale, "mexicopoly-building-house-nth", count=level)
+        num_hotels = level - h_per_hotel
+        if num_hotels == 1:
+            return Localization.get(locale, "monopoly-building-hotel")
+        return Localization.get(locale, "mexicopoly-building-second-hotel")
+
+    def _is_quick_management_enabled(self, player: MonopolyPlayer) -> str | None:
+        if self.status != "playing" or not self.property_states:
+            return self._waiting_reason(player)
+        if not self._can_interrupt(player):
+            return self._waiting_reason(player)
+        return None
+
+    def _is_quick_buy_enabled(self, player: MonopolyPlayer) -> str | tuple[str, dict] | None:
+        err = self._is_quick_management_enabled(player)
+        if err:
+            return err
+        if not self._build_property_options(player):
+            return self._build_selector_empty_reason(player)
+        return None
+
+    def _is_quick_sell_enabled(self, player: MonopolyPlayer) -> str | None:
+        err = self._is_quick_management_enabled(player)
+        if err:
+            return err
+        if not self._sell_property_options(player):
+            return self._development_error_key("monopoly-error-no-sellable-buildings")
+        return None
+
+    def _is_quick_mortgage_enabled(self, player: MonopolyPlayer) -> str | None:
+        err = self._is_quick_management_enabled(player)
+        if err:
+            return err
+        if not self._mortgage_property_options(player):
+            return "monopoly-error-no-mortgageable-properties"
+        return None
+
+    def _is_quick_unmortgage_enabled(self, player: MonopolyPlayer) -> str | None:
+        err = self._is_quick_management_enabled(player)
+        if err:
+            return err
+        if not self._unmortgage_property_options(player):
+            return "monopoly-error-no-unmortgageable-properties"
+        return None
+
+    def _is_quick_management_hidden(self, player: Player) -> Visibility:
+        if self.status != "playing" or not self.property_states:
+            return Visibility.HIDDEN
+        if player.is_spectator or not isinstance(player, MonopolyPlayer) or player.bankrupt:
+            return Visibility.HIDDEN
+        return Visibility.VISIBLE
+
+    def _action_unmortgage(self, player: MonopolyPlayer, action_id: str) -> None:
+        del action_id
+        if self._is_unmortgage_enabled(player):
+            return
+        self._apply_unmortgage(player, self.management_property_id)
+        self._focus_management_task(player, "choose_unmortgage_property")
+
+    def _apply_unmortgage(
+        self, player: MonopolyPlayer, property_id: str, *, announce: bool = True
+    ) -> None:
+        if property_id not in self.property_states:
+            return
+        space = self.board.space(property_id)
+        state = self.property_states[property_id]
+        if not state.mortgaged:
+            return
+        cost = unmortgage_cost(
+            space.mortgage_value, self.board.rules.mortgage_interest_percent
+        )
+        if player.cash < cost:
+            return
+        player.cash -= cost
+        state.mortgaged = False
+        if announce:
+            self._broadcast_actor(
+                player,
+                "monopoly-you-unmortgage",
+                "monopoly-player-unmortgages",
+                property=lambda locale: self._space_name(locale, space),
+                cost=lambda locale: self._money(locale, cost),
+                cash=lambda locale: self._money(locale, player.cash),
+                brief_personal_key="monopoly-you-unmortgage-brief",
+                brief_others_key="monopoly-player-unmortgages-brief",
+            )
+            self.play_sound(game_audio.SOUND_PROPERTY_UNMORTGAGED)
+        self.refresh_menus()
+
+    def _action_quick_buy_house(
+        self, player: MonopolyPlayer, *args, **kwargs
+    ) -> None:
+        if self._is_quick_buy_enabled(player):
+            return
+        input_value = ""
+        if args:
+            input_value = str(args[0])
+        elif "input_value" in kwargs:
+            input_value = str(kwargs["input_value"])
+        if not input_value and self.management_property_id:
+            input_value = self.management_property_id
+        if not input_value or input_value not in self.property_states:
+            return
+        if self._build_property_error(player, input_value):
+            return
+        self._apply_build(player, input_value)
+
+    def _action_quick_sell_house(
+        self, player: MonopolyPlayer, *args, **kwargs
+    ) -> None:
+        if self._is_quick_sell_enabled(player):
+            return
+        input_value = ""
+        if args:
+            input_value = str(args[0])
+        elif "input_value" in kwargs:
+            input_value = str(kwargs["input_value"])
+        if not input_value and self.management_property_id:
+            input_value = self.management_property_id
+        if not input_value:
+            return
+        if input_value.startswith(SELL_GROUP_OPTION_PREFIX):
+            group_id = input_value.removeprefix(SELL_GROUP_OPTION_PREFIX)
+            self._apply_sell_group_buildings(player, group_id)
+        elif input_value in self.property_states:
+            self._apply_sell_building(player, input_value)
+
+    def _action_quick_mortgage(
+        self, player: MonopolyPlayer, *args, **kwargs
+    ) -> None:
+        if self._is_quick_mortgage_enabled(player):
+            return
+        input_value = ""
+        if args:
+            input_value = str(args[0])
+        elif "input_value" in kwargs:
+            input_value = str(kwargs["input_value"])
+        if not input_value and self.management_property_id:
+            input_value = self.management_property_id
+        if not input_value or input_value not in self.property_states:
+            return
+        self._apply_mortgage(player, input_value)
+
+    def _action_quick_unmortgage(
+        self, player: MonopolyPlayer, *args, **kwargs
+    ) -> None:
+        if self._is_quick_unmortgage_enabled(player):
+            return
+        input_value = ""
+        if args:
+            input_value = str(args[0])
+        elif "input_value" in kwargs:
+            input_value = str(kwargs["input_value"])
+        if not input_value and self.management_property_id:
+            input_value = self.management_property_id
+        if not input_value or input_value not in self.property_states:
+            return
+        self._apply_unmortgage(player, input_value)
+
+    def _all_portfolios_sorted_players(self) -> list[MonopolyPlayer]:
+        players = [p for p in self.alive_players if isinstance(p, MonopolyPlayer)]
+        return sorted(players, key=lambda p: (self._net_worth(p), p.cash), reverse=True)
+
+    def _build_all_portfolios_status(self, viewer: Player, user) -> StatusBoxBuild:
+        locale = user.locale
+        items: list[MenuItem] = []
+        ranked_players = self._all_portfolios_sorted_players()
+        for rank, owner in enumerate(ranked_players, start=1):
+            summary = Localization.get(
+                locale,
+                "mexicopoly-portfolio-ranked-summary",
+                rank=rank,
+                player=owner.name,
+                cash=self._money(locale, owner.cash),
+                net_worth=self._money(locale, self._net_worth(owner)),
+            )
+            items.append(
+                MenuItem(
+                    id=f"all:summary:{owner.id}",
+                    text=summary,
+                )
+            )
+            prop_items = self._portfolio_property_items(locale, owner, prefix=f"all:{owner.id}")
+            items.extend(prop_items)
+        return StatusBoxBuild(items=items)
+
+    def _action_read_portfolios(
+        self,
+        player: Player,
+        *args,
+        **kwargs,
+    ) -> None:
+        if not isinstance(player, MonopolyPlayer) or player.bankrupt:
+            return
+        ranked = self._all_portfolios_sorted_players()
+        focus_id = f"all:summary:{ranked[0].id}" if ranked else ""
+        self.live_status_box(
+            player,
+            "monopoly_all_portfolios",
+            self._build_all_portfolios_status,
+            focus_id=focus_id,
+        )
+
+    def _portfolio_player_options(self, player: Player) -> list[str]:
+        del player
+        return [p.id for p in self._all_portfolios_sorted_players()]
+
+    def _portfolio_player_label(self, player: Player, value: str) -> str:
+        owner = self.get_player_by_id(value)
+        if not isinstance(owner, MonopolyPlayer):
+            return value
+        ranked = self._all_portfolios_sorted_players()
+        rank = (ranked.index(owner) + 1) if owner in ranked else 1
+        locale = self._locale(player)
+        return Localization.get(
+            locale,
+            "mexicopoly-portfolio-ranked-summary",
+            rank=rank,
+            player=owner.name,
+            cash=self._money(locale, owner.cash),
+            net_worth=self._money(locale, self._net_worth(owner)),
+        )

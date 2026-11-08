@@ -97,7 +97,7 @@ mexicopoly-utility-rent-schedule = { $single } cho mỗi điểm xúc xắc khi 
 # Tên các ô trên bàn cờ Hoa Kỳ
 mexicopoly-space-go = Khởi hành
 mexicopoly-space-jail = Nhà tù
-mexicopoly-space-free-parking = Bãi đậu xe miễn phí
+mexicopoly-space-free-parking = Bote
 mexicopoly-space-go-to-jail = Vào tù
 mexicopoly-space-income-tax = SAT: thuế thu nhập
 mexicopoly-space-luxury-tax = SAT: thuế xa xỉ
@@ -359,3 +359,60 @@ mexicopoly-card-community-aeropuerto-cancun = Hạ cánh khẩn trương cho k�
 mexicopoly-rent-two-of-three = 2 trên 3 cùng màu { $amount }
 mexicopoly-rent-full-group = đủ nhóm màu chưa xây { $amount }
 mexicopoly-hotel-cost-spec = Giá xây nhà { $house_cost }; giá xây khách sạn { $hotel_cost }.
+
+# Bote (Quỹ Bote / thu từ bảo kê)
+mexicopoly-you-collect-bote = Bạn rơi vào ô Bote và nhận toàn bộ tiền bảo kê đã thu gom: { $amount }! Hiện có { $cash }.
+mexicopoly-player-collects-bote = { $player } rơi vào ô Bote và nhận toàn bộ tiền bảo kê đã thu gom: { $amount }!
+mexicopoly-you-collect-bote-brief = Nhận Bote: { $amount }.
+mexicopoly-player-collects-bote-brief = { $player } nhận Bote ({ $amount }).
+mexicopoly-you-bote-empty = Bạn rơi vào ô Bote nhưng đang trống. Chưa có tiền bảo kê thu gom.
+mexicopoly-player-bote-empty = { $player } rơi vào ô Bote nhưng đang trống.
+mexicopoly-status-bote-pot = Quỹ Bote (thu từ bảo kê): { $amount }.
+
+# Lời thoại hài hước khi thuê nhà
+mexicopoly-house-flavor-1 = Bạn phải ở trong căn phòng tầng thượng của { $owner } tại { $property } nhìn ra bồn nước!
+mexicopoly-house-flavor-2 = { $owner } đã xây thêm tầng hai với cọc thép thò ra ngoài tại { $property }!
+mexicopoly-house-flavor-3 = Bạn đến khu nhà trọ tập thể của { $owner } tại { $property } với vòi sen chung và dây phơi ngoài sân!
+mexicopoly-house-flavor-4 = { $owner } đã lập khu dân cư có cổng tự động bị hỏng tại { $property }!
+mexicopoly-house-flavor-5 = Bạn đến khu chung cư của { $owner } tại { $property } với phí bảo trì thu đúng hạn!
+mexicopoly-hotel-flavor-1 = Bạn đặt chân đến tổ hợp khách sạn của { $owner } tại { $property }! Họ thu cả tiền WiFi chập chờn.
+mexicopoly-hotel-flavor-2 = Bạn đến khu nghỉ dưỡng 5 sao của { $owner } tại { $property } với bể bơi ấm và tiệc tự chọn sang trọng!
+
+mexicopoly-you-pay-rent-houses = { $flavor } Bạn trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }). Còn lại { $tenant_cash }.
+mexicopoly-you-collect-rent-houses = { $flavor } Bạn thu { $amount } tiền thuê từ { $tenant } cho { $property } ({ $buildings }). Hiện có { $owner_cash }.
+mexicopoly-player-pays-rent-houses = { $flavor } { $tenant } trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }).
+
+mexicopoly-you-pay-rent-houses-extorted = { $flavor } Bạn trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }); bảo kê thu { $percent }% ({ $cut }) vào Bote, { $owner } nhận { $net }. Còn lại { $tenant_cash }.
+mexicopoly-you-collect-rent-houses-extorted = { $flavor } { $tenant } trả { $amount } tiền thuê cho { $property } ({ $buildings }); bảo kê thu { $percent }% ({ $cut }) vào Bote; bạn nhận thực tế { $net } và có { $owner_cash }.
+mexicopoly-player-pays-rent-houses-extorted = { $flavor } { $tenant } trả { $amount } tiền thuê cho { $owner } tại { $property } ({ $buildings }); bảo kê thu { $percent }% ({ $cut }) vào Bote, { $owner } nhận { $net }.
+
+# Ra tù SAT
+mexicopoly-you-leave-sat-jail = Bạn đã chấp hành xong án phạt trong tù SAT và được tự do.
+mexicopoly-player-leaves-sat-jail = { $player } đã chấp hành xong án phạt trong tù SAT và được tự do.
+mexicopoly-you-leave-sat-jail-brief = Đã ra khỏi tù SAT.
+mexicopoly-player-leaves-sat-jail-brief = { $player } đã ra khỏi tù SAT.
+
+# Tiến độ xây nhà
+mexicopoly-building-house-nth = { $count ->
+    [1] 1 ngôi nhà
+   *[other] nhà thứ { $count } ({ $count } ngôi nhà)
+}
+
+# Phím tắt nhanh và danh mục tài sản xếp hạng
+mexicopoly-action-quick-buy-house = Mua nhà
+mexicopoly-desc-quick-buy-house = Chọn một bất động sản trong nhóm hoàn chỉnh để mua nhà nhanh chóng.
+mexicopoly-prompt-quick-buy-house = Chọn bất động sản bạn muốn mua nhà:
+
+mexicopoly-action-quick-sell-house = Bán nhà
+mexicopoly-desc-quick-sell-house = Chọn một bất động sản để bán bớt công trình nhanh chóng.
+mexicopoly-prompt-quick-sell-house = Chọn bất động sản bạn muốn bán công trình:
+
+mexicopoly-action-quick-mortgage = Thế chấp
+mexicopoly-desc-quick-mortgage = Chọn một bất động sản chưa xây dựng để thế chấp nhanh chóng.
+mexicopoly-prompt-quick-mortgage = Chọn bất động sản cần thế chấp:
+
+mexicopoly-action-quick-unmortgage = Giải chấp
+mexicopoly-desc-quick-unmortgage = Chọn một bất động sản đang thế chấp để giải chấp.
+mexicopoly-prompt-quick-unmortgage = Chọn bất động sản cần giải chấp:
+
+mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: tiền { $cash }, tài sản { $net_worth }

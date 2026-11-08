@@ -552,32 +552,31 @@ def test_mexican_folklore_cards_sat_audit_false_accusation_and_sat_refund():
     game.decision_player_id = other.id
     other.position = game.board.space_index("tijuana")
     other_user.clear_messages()
+    actor_user.clear_messages()
     game._resolve_landing(other)
     assert other.cash == 3000 and actor.cash == 2240
     assert any("SAT" in m.data["text"] for m in other_user.messages if m.type == "speak")
 
-    # Actor's turn 1 in SAT jail: bail and jail card are disabled; bot chooses roll_dice
-    game.current_player = actor
-    game.phase = PHASE_JAIL
-    game.decision_player_id = actor.id
-    assert game._is_jail_pay_enabled(actor) == ("mexicopoly-error-sat-no-bail", {"turns": 2})
-    assert game._is_jail_card_enabled(actor) == ("mexicopoly-error-sat-no-bail", {"turns": 2})
-    assert game.bot_think(actor) == "roll_dice"
-
-    # Even rolling doubles on turn 1 of SAT jail does NOT release actor!
-    game._start_jail_roll_sequence(actor, 4, 4)
-    drain(game, "monopoly_roll")
-    assert actor.in_jail
+    # In SAT jail, actor cannot roll dice, bail is disabled, and turn 1 was passed automatically
     assert game.sat_jail_turns.get(actor.id) == 1
-
-    # Turn 2 in SAT jail: rolling non-doubles completes the 2-turn SAT lock
+    assert actor.in_jail
+    assert any("SAT" in m.data.get("text", "") for m in actor_user.messages if m.type == "speak")
+    # In PHASE_JAIL, rolling, bail, and cards are strictly disabled without offering roll
     game.current_player = actor
-    game.phase = PHASE_JAIL
     game.decision_player_id = actor.id
+    game.phase = PHASE_JAIL
+    assert game._is_jail_pay_enabled(actor) == ("mexicopoly-error-sat-no-bail", {"turns": 1})
+    assert game._is_jail_card_enabled(actor) == ("mexicopoly-error-sat-no-bail", {"turns": 1})
+    assert game._is_roll_enabled(actor) == ("mexicopoly-error-sat-no-bail", {"turns": 1})
+    assert game.bot_think(actor) is None
+
+    # Actor's turn 2 in SAT jail: completes the 2-turn sentence and leaves jail automatically
     actor_user.clear_messages()
-    game._start_jail_roll_sequence(actor, 2, 5)
-    drain(game, "monopoly_roll")
+    game.current_player = actor
+    game._start_turn(announce=True)
     assert actor.id not in game.sat_jail_turns
+    assert not actor.in_jail
+    assert any("SAT" in m.data.get("text", "") or "cárcel" in m.data.get("text", "").lower() for m in actor_user.messages if m.type == "speak")
 
 
 def test_cobro_de_piso_extortion_tiers_cards_and_marina_operativo(monkeypatch):

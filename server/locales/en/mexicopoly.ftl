@@ -97,7 +97,7 @@ mexicopoly-utility-rent-schedule = { $single } per dice pip with one utility; { 
 # United States board spaces
 mexicopoly-space-go = Go
 mexicopoly-space-jail = Jail
-mexicopoly-space-free-parking = Free Parking
+mexicopoly-space-free-parking = Pot
 mexicopoly-space-go-to-jail = Go to Jail
 mexicopoly-space-income-tax = SAT: income tax
 mexicopoly-space-luxury-tax = SAT: luxury tax
@@ -359,3 +359,63 @@ mexicopoly-card-community-aeropuerto-cancun = Touchdown in the Mexican Caribbean
 mexicopoly-rent-two-of-three = 2 of 3 in color { $amount }
 mexicopoly-rent-full-group = full color group unbuilt { $amount }
 mexicopoly-hotel-cost-spec = House cost { $house_cost }; hotel cost { $hotel_cost }.
+
+# Pot (Jackpot / Extortion collection)
+mexicopoly-you-collect-bote = You landed on the Pot and collected all the extortion collections: { $amount }! You now have { $cash }.
+mexicopoly-player-collects-bote = { $player } landed on the Pot and collected all the extortion collections: { $amount }!
+mexicopoly-you-collect-bote-brief = Pot collected: { $amount }.
+mexicopoly-player-collects-bote-brief = { $player } collected the Pot ({ $amount }).
+mexicopoly-you-bote-empty = You landed on the Pot, but it is empty. No extortion funds collected.
+mexicopoly-player-bote-empty = { $player } landed on the Pot, but it is empty.
+mexicopoly-status-bote-pot = Pot (extortion collections): { $amount }.
+
+# House rental flavor dialogue
+mexicopoly-house-flavor-1 = You ended up in { $owner }'s rooftop room in { $property } with a panoramic view of the water tanks!
+mexicopoly-house-flavor-2 = { $owner } already built a second floor with exposed rebar in { $property }!
+mexicopoly-house-flavor-3 = You arrived at { $owner }'s courtyard tenement in { $property }, with a shared shower and clotheslines outside!
+mexicopoly-house-flavor-4 = { $owner } put together a gated community in { $property } with a gate that never opens!
+mexicopoly-house-flavor-5 = You arrived at { $owner }'s apartment tower in { $property } with mandatory maintenance fees!
+mexicopoly-hotel-flavor-1 = You landed at { $owner }'s hotel emporium in { $property }! They even charged you for the sketchy WiFi.
+mexicopoly-hotel-flavor-2 = You arrived at { $owner }'s 5-star resort in { $property } with warm pool and luxury buffet!
+
+mexicopoly-you-pay-rent-houses = { $flavor } You pay { $amount } rent to { $owner } for { $property } ({ $buildings }). You have { $tenant_cash } left.
+mexicopoly-you-collect-rent-houses = { $flavor } You collect { $amount } rent from { $tenant } for { $property } ({ $buildings }). You now have { $owner_cash }.
+mexicopoly-player-pays-rent-houses = { $flavor } { $tenant } pays { $amount } rent to { $owner } for { $property } ({ $buildings }).
+
+mexicopoly-you-pay-rent-houses-extorted = { $flavor } You pay { $amount } rent to { $owner } for { $property } ({ $buildings }); extortion takes { $percent }% ({ $cut }) into the Pot, and { $owner } receives { $net }. You have { $tenant_cash } left.
+mexicopoly-you-collect-rent-houses-extorted = { $flavor } { $tenant } pays { $amount } rent for { $property } ({ $buildings }); extortion takes { $percent }% ({ $cut }) into the Pot; you receive { $net } net and have { $owner_cash } left.
+mexicopoly-player-pays-rent-houses-extorted = { $flavor } { $tenant } pays { $amount } rent to { $owner } for { $property } ({ $buildings }); extortion takes { $percent }% ({ $cut }) into the Pot, and { $owner } receives { $net }.
+
+# Release from SAT jail
+mexicopoly-you-leave-sat-jail = You served your mandatory sentence in SAT jail and are now released.
+mexicopoly-player-leaves-sat-jail = { $player } served their mandatory sentence in SAT jail and is now released.
+mexicopoly-you-leave-sat-jail-brief = Released from SAT jail.
+mexicopoly-player-leaves-sat-jail-brief = { $player } was released from SAT jail.
+
+# Progressive house building text
+mexicopoly-building-house-nth = { $count ->
+    [1] 1 house
+    [2] 2nd house (2 houses)
+    [3] 3rd house (3 houses)
+    [4] 4th house (4 houses)
+   *[other] house #{ $count } ({ $count } houses)
+}
+
+# Quick actions and ranked portfolio
+mexicopoly-action-quick-buy-house = Buy house
+mexicopoly-desc-quick-buy-house = Choose a property in a completed group to quickly buy a house.
+mexicopoly-prompt-quick-buy-house = Choose the property where you want to buy a house:
+
+mexicopoly-action-quick-sell-house = Sell house
+mexicopoly-desc-quick-sell-house = Choose a property to quickly sell a building.
+mexicopoly-prompt-quick-sell-house = Choose the property where you want to sell a building:
+
+mexicopoly-action-quick-mortgage = Mortgage
+mexicopoly-desc-quick-mortgage = Choose an undeveloped property to quickly mortgage.
+mexicopoly-prompt-quick-mortgage = Choose the property to mortgage:
+
+mexicopoly-action-quick-unmortgage = Unmortgage
+mexicopoly-desc-quick-unmortgage = Choose a mortgaged property to unmortgage.
+mexicopoly-prompt-quick-unmortgage = Choose the property to unmortgage:
+
+mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: cash { $cash }, net worth { $net_worth }

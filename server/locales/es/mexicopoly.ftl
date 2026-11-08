@@ -97,7 +97,7 @@ mexicopoly-utility-rent-schedule = { $single } por cada punto de los dados con u
 # Casillas del tablero de Estados Unidos
 mexicopoly-space-go = Salida
 mexicopoly-space-jail = Cárcel
-mexicopoly-space-free-parking = Descanso
+mexicopoly-space-free-parking = Bote
 mexicopoly-space-go-to-jail = Ir a la Cárcel
 mexicopoly-space-income-tax = SAT: impuesto sobre ingresos
 mexicopoly-space-luxury-tax = SAT: impuesto de lujo
@@ -359,3 +359,63 @@ mexicopoly-card-community-aeropuerto-cancun = Aterrizas de emergencia por tus va
 mexicopoly-rent-two-of-three = 2 de 3 del color { $amount }
 mexicopoly-rent-full-group = grupo completo sin obras { $amount }
 mexicopoly-hotel-cost-spec = Costo por casa { $house_cost }; costo por hotel { $hotel_cost }.
+
+# Bote (casilla de descanso / fondo de cobro de piso)
+mexicopoly-you-collect-bote = ¡Caíste en el Bote y te llevaste lo recaudado del cobro de piso: { $amount }! Ahora tienes { $cash }.
+mexicopoly-player-collects-bote = ¡{ $player } cayó en el Bote y se llevó lo recaudado del cobro de piso: { $amount }!
+mexicopoly-you-collect-bote-brief = Bote cobrado: { $amount }.
+mexicopoly-player-collects-bote-brief = { $player } cobró el Bote ({ $amount }).
+mexicopoly-you-bote-empty = Caíste en el Bote, pero está vacío. No hay nada recaudado del cobro de piso.
+mexicopoly-player-bote-empty = { $player } cayó en el Bote, pero está vacío.
+mexicopoly-status-bote-pot = Bote acumulado del cobro de piso: { $amount }.
+
+# Alquiler de casas con diálogo y sabor mexicano
+mexicopoly-house-flavor-1 = ¡Te tocó quedarte en el cuartito de azotea de { $owner } en { $property } con vista panorámica a los tinacos!
+mexicopoly-house-flavor-2 = ¡{ $owner } ya le levantó un segundo piso con varillas de fuera a { $property }!
+mexicopoly-house-flavor-3 = ¡Llegaste a la vecindad de { $owner } en { $property }, con regadera compartida y tendedero en el patio!
+mexicopoly-house-flavor-4 = ¡{ $owner } ya armó su privada con portón eléctrico descompuesto en { $property }!
+mexicopoly-house-flavor-5 = ¡Llegaste al complejo de departamentos de { $owner } en { $property }, con cobro puntual de cuota de mantenimiento!
+mexicopoly-hotel-flavor-1 = ¡Aterrizaste en el emporio hotelero de { $owner } en { $property }! Hasta te cobraron por el WiFi chafa.
+mexicopoly-hotel-flavor-2 = ¡Llegaste al resort cinco estrellas de { $owner } en { $property }! Incluye alberca con agua tibia y buffet de lujo.
+
+mexicopoly-you-pay-rent-houses = { $flavor } Pagas { $amount } de alquiler a { $owner } por { $property } ({ $buildings }). Te quedan { $tenant_cash }.
+mexicopoly-you-collect-rent-houses = { $flavor } Cobras { $amount } de alquiler a { $tenant } por { $property } ({ $buildings }). Ahora tienes { $owner_cash }.
+mexicopoly-player-pays-rent-houses = { $flavor } { $tenant } paga { $amount } de alquiler a { $owner } por { $property } ({ $buildings }).
+
+mexicopoly-you-pay-rent-houses-extorted = { $flavor } Pagas { $amount } de alquiler a { $owner } por { $property } ({ $buildings }); el cobro de piso se lleva el { $percent }% ({ $cut }) al Bote y { $owner } recibe { $net }. Te quedan { $tenant_cash }.
+mexicopoly-you-collect-rent-houses-extorted = { $flavor } { $tenant } paga { $amount } de alquiler por { $property } ({ $buildings }); el cobro de piso te quita el { $percent }% ({ $cut }) que va al Bote; recibes { $net } netos y quedas con { $owner_cash }.
+mexicopoly-player-pays-rent-houses-extorted = { $flavor } { $tenant } paga { $amount } de alquiler a { $owner } por { $property } ({ $buildings }); el cobro de piso se lleva el { $percent }% ({ $cut }) al Bote y { $owner } recibe { $net }.
+
+# Liberación de la cárcel del SAT
+mexicopoly-you-leave-sat-jail = Cumpliste tu sanción en la cárcel del SAT y quedas en libertad.
+mexicopoly-player-leaves-sat-jail = { $player } cumplió su sanción en la cárcel del SAT y queda en libertad.
+mexicopoly-you-leave-sat-jail-brief = Saliste de la cárcel del SAT.
+mexicopoly-player-leaves-sat-jail-brief = { $player } salió de la cárcel del SAT.
+
+# Construcción de casas progresivas
+mexicopoly-building-house-nth = { $count ->
+    [1] una casa (1ª)
+    [2] tu 2ª casa (2 casas)
+    [3] tu 3ª casa (3 casas)
+    [4] tu 4ª casa (4 casas)
+   *[other] tu { $count }ª casa ({ $count } casas)
+}
+
+# Atajos rápidos y portafolio ordenado
+mexicopoly-action-quick-buy-house = Comprar casa
+mexicopoly-desc-quick-buy-house = Elige una propiedad de un grupo completo para comprar una casa de inmediato.
+mexicopoly-prompt-quick-buy-house = Elige la propiedad donde deseas comprar una casa:
+
+mexicopoly-action-quick-sell-house = Vender casa
+mexicopoly-desc-quick-sell-house = Elige una propiedad para vender una de sus construcciones de inmediato.
+mexicopoly-prompt-quick-sell-house = Elige la propiedad donde deseas vender una construcción:
+
+mexicopoly-action-quick-mortgage = Hipotecar
+mexicopoly-desc-quick-mortgage = Elige una propiedad sin construcciones para hipotecarla de inmediato.
+mexicopoly-prompt-quick-mortgage = Elige la propiedad que deseas hipotecar:
+
+mexicopoly-action-quick-unmortgage = Deshipotecar
+mexicopoly-desc-quick-unmortgage = Elige una propiedad hipotecada para levantar su hipoteca pagando el costo con intereses.
+mexicopoly-prompt-quick-unmortgage = Elige la propiedad que deseas deshipotecar:
+
+mexicopoly-portfolio-ranked-summary = { $rank }. { $player }: dinero { $cash }, patrimonio { $net_worth }
