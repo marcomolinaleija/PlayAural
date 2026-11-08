@@ -77,11 +77,11 @@ async def test_free_table_creation_and_conversation_menu(room, client_type):
             "type": "keybind", "key": "escape",
         })
         action_ids = {item.id for item in user.get_current_menu_items("actions_menu")}
-        assert {"whos_at_table", "read_table_presence", "leave_game", "game_rules", "go_back"} <= action_ids
+        assert {"whos_at_table", "read_table_presence", "read_table_topic", "leave_game", "game_rules", "go_back"} <= action_ids
         if user is host:
-            assert {"host_management", "switch_game"} <= action_ids
+            assert {"host_management", "switch_game", "set_table_topic"} <= action_ids
         else:
-            assert not {"host_management", "switch_game"} & action_ids
+            assert not {"host_management", "switch_game", "set_table_topic"} & action_ids
         game.handle_event(participant, {
             "type": "menu", "menu_id": "actions_menu", "selection_id": "go_back",
         })
@@ -545,4 +545,100 @@ async def test_free_table_save_and_restore(room):
     assert "stat_user_duration" in stats_map
     assert "stat_privacy" not in stats_map
     assert "stat_voice" not in stats_map
+
+
+@pytest.mark.asyncio
+async def test_free_table_set_topic_flow(room):
+    server, host, guest = room
+    table = await create_room(server, host)
+    game = table.game
+    server._auto_join_table(guest, table, "freetable")
+    game.flush_menus()
+
+    host_player = game.get_player_by_id(host.uuid)
+    guest_player = game.get_player_by_id(guest.uuid)
+
+    # Pressing t when no topic is set announces no topic
+    guest.clear_messages()
+    game.handle_event(guest_player, {"type": "keybind", "key": "t"})
+    assert any(
+        Localization.get("es", "free-table-no-topic") in s
+        for s in guest.get_spoken_messages()
+    )
+
+    # Guest cannot set topic via action or keybind
+    game.handle_event(guest_player, {"type": "keybind", "key": "ctrl+t"})
+    assert not any(msg.type == "show_editbox" for msg in guest.messages)
+    assert any(
+        Localization.get("es", "action-not-host") in s
+        for s in guest.get_spoken_messages()
+    )
+
+    # Host presses ctrl+t
+    game.handle_event(host_player, {"type": "keybind", "key": "ctrl+t"})
+    editbox_msgs = [m for m in host.messages if m.type == "show_editbox"]
+    assert len(editbox_msgs) > 0
+    assert editbox_msgs[-1].data["input_id"] == "action_input_editbox"
+
+    # Host submits topic
+    game.handle_event(host_player, {
+        "type": "editbox",
+        "input_id": "action_input_editbox",
+        "text": "Charla nocturna",
+    })
+    assert game.topic == "Charla nocturna"
+    assert any("Charla nocturna" in s for s in host.get_spoken_messages())
+    assert any("Charla nocturna" in s for s in guest.get_spoken_messages())
+
+    # Pressing t now announces the topic
+    guest.clear_messages()
+    game.handle_event(guest_player, {"type": "keybind", "key": "t"})
+    assert any("Charla nocturna" in s for s in guest.get_spoken_messages())
+
+    # Actions menu label reflects dynamic topic
+    game.handle_event(host_player, {"type": "keybind", "key": "escape"})
+    actions = {item.id: item.text for item in host.get_current_menu_items("actions_menu")}
+    assert "set_table_topic" in actions
+    assert "Charla nocturna" in actions["set_table_topic"]
+
+    # Listing reflects the topic
+    listing = server._format_active_table_listing(host, table, "Mesa libre")
+    assert "Mesa libre (Charla nocturna)" in listing
+
+    # New guest joining hears the current topic
+    third = MockUser("Third", uuid="third-id", locale="es")
+    server._users["Third"] = third
+    server._auto_join_table(third, table, "freetable")
+    assert any("Charla nocturna" in s for s in third.get_spoken_messages())
+
+    # Pressing W (read presence) also announces topic
+    third_player = game.get_player_by_id(third.uuid)
+    third.clear_messages()
+    game.handle_event(third_player, {"type": "keybind", "key": "w"})
+    assert any("Charla nocturna" in s for s in third.get_spoken_messages())
+
+    # Host clears topic by submitting empty text
+    game.handle_event(host_player, {"type": "keybind", "key": "ctrl+t"})
+    game.handle_event(host_player, {
+        "type": "editbox",
+        "input_id": "action_input_editbox",
+        "text": "",
+    })
+    assert game.topic == ""
+    listing_cleared = server._format_active_table_listing(host, table, "Mesa libre")
+    assert "(Charla nocturna)" not in listing_cleared
+
+    # Pressing t after topic cleared announces no topic
+    host.clear_messages()
+    game.handle_event(host_player, {"type": "keybind", "key": "t"})
+    assert any(
+        Localization.get("es", "free-table-no-topic") in s
+        for s in host.get_spoken_messages()
+    )
+
+    # Serialization and save/load
+    game.topic = "Filosofía y café"
+    saved_json = game.to_json()
+    restored = FreeTable.from_json(saved_json)
+    assert restored.topic == "Filosofía y café"
 

@@ -424,8 +424,15 @@ class EventHandlingMixin:
             if player.id in self._pending_actions:
                 action_id = self._pending_actions.pop(player.id)
                 return_focus = self._pending_action_return_focus.pop(player.id, None)
+                action = self.find_action(player, action_id)
+                allow_empty = (
+                    isinstance(action.input_request, EditboxInput)
+                    and action.input_request.allow_empty
+                    if action
+                    else False
+                )
                 cancelled = bool(
-                    not text
+                    (not text and not allow_empty)
                     or event.get("cancelled")
                     or event.get("cancel")
                 )
