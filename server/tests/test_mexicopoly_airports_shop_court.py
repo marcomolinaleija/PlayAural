@@ -269,3 +269,39 @@ def test_juzgado_court_fee_amparo_issuing_and_jail_bailout():
     assert defendant.in_jail is False  # Released immediately!
     assert game.phase == PHASE_AWAIT_ROLL
     assert game.juzgado_amparos_issued[judge_owner.id] == 1
+
+
+def test_shop_and_flight_via_execute_action():
+    """Verify execute_action dispatches MenuInput handlers with exact parameter order."""
+    game = make_game(start=True)
+    p1 = force_actor(game)
+    p1.cash = 600
+
+    # Purchase car via execute_action
+    game.execute_action(p1, "open_shop", "car")
+    assert game.has_car[p1.id] is True
+    assert p1.cash == 0
+    assert game.car_fuel[p1.id] == 4
+
+    # Refill fuel via execute_action
+    p1.cash = 200
+    game.car_fuel[p1.id] = 1
+    game.execute_action(p1, "open_shop", "fuel")
+    assert game.car_fuel[p1.id] == 4
+    assert p1.cash == 0
+
+    # Unlock and buy airplane via execute_action
+    airports = [s.id for s in MEXICO_BOARD.spaces if s.group_id == "airports"]
+    game.visited_airports[p1.id] = set(airports)
+    p1.cash = 1500
+    game.execute_action(p1, "open_shop", "airplane")
+    assert game.has_airplane[p1.id] is True
+    assert p1.cash == 0
+
+    # Fly airplane via execute_action
+    target_airport = airports[2]
+    target_idx = MEXICO_BOARD.space_index(target_airport)
+    p1.position = 0
+    game.execute_action(p1, "fly_airplane", target_airport)
+    assert p1.position == target_idx
+

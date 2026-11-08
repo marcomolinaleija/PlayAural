@@ -492,6 +492,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                     option_description="_property_option_description",
                     initial_selection="_first_menu_option",
                 ),
+                show_in_actions_menu=True,
             )
         )
         actions.add(
@@ -511,6 +512,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                     option_description="_trade_target_description",
                     initial_selection="_first_menu_option",
                 ),
+                show_in_actions_menu=True,
             )
         )
         actions.add(
@@ -541,6 +543,7 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
                     option_description="_fly_airplane_option_description",
                     initial_selection="_first_menu_option",
                 ),
+                show_in_actions_menu=True,
             )
         )
         actions.add(
@@ -3053,8 +3056,10 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         return options[0] if options else ""
 
     def _action_open_shop(
-        self, player: MonopolyPlayer, action_id: str, input_value: str
+        self, player: MonopolyPlayer, input_value: str, action_id: str = "open_shop"
     ) -> None:
+        if action_id in MEXICOPOLY_SHOP_ITEMS and input_value not in MEXICOPOLY_SHOP_ITEMS:
+            input_value, action_id = action_id, input_value
         del action_id
         item = MEXICOPOLY_SHOP_ITEMS.get(input_value)
         if not item:
@@ -3155,8 +3160,10 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
         return options[0] if options else ""
 
     def _action_fly_airplane(
-        self, player: MonopolyPlayer, action_id: str, input_value: str
+        self, player: MonopolyPlayer, input_value: str, action_id: str = "fly_airplane"
     ) -> None:
+        if action_id in {s.id for s in self.board.spaces} and input_value not in {s.id for s in self.board.spaces}:
+            input_value, action_id = action_id, input_value
         del action_id
         if self._is_fly_airplane_enabled(player):
             return
@@ -3261,9 +3268,13 @@ class MexicopolyGame(TurnTimerMixin, MonopolyGame):
     # -------------------------------------------------------------------------
 
     def _is_roll_car_hidden(self, player: MonopolyPlayer) -> Visibility:
-        if not self.has_car.get(player.id, False):
+        if (
+            self.status != "playing"
+            or player.is_spectator
+            or getattr(player, "bankrupt", False)
+        ):
             return Visibility.HIDDEN
-        if self.phase != PHASE_AWAIT_ROLL:
+        if not self.has_car.get(player.id, False):
             return Visibility.HIDDEN
         return Visibility.VISIBLE
 
