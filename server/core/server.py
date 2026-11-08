@@ -583,6 +583,10 @@ class Server:
         self._stopping = False
         self._serve_stop_event: asyncio.Event | None = None
         self._requested_exit_code = 0
+        self._power_command_path = os.environ.get(
+            "PLAYAURAL_POWER_COMMAND", "/data/power-command.json"
+        )
+        self._last_power_command_check = 0.0
         self._voice = VoiceService.from_env()
         self._voice_context_resolvers = {
             "table": self._resolve_table_voice_context,
@@ -1063,8 +1067,62 @@ PlayAural Server
                 version=VERSION,
             )
 
+        # Check for external power control requests
+        self._check_power_command()
+
         # Flush queued messages for all users
         self._flush_user_messages()
+
+    def _check_power_command(self) -> None:
+        """Check for external power command files (e.g. from automated updates)."""
+        now = time.monotonic()
+        if now - self._last_power_command_check < 1.0:
+            return
+        self._last_power_command_check = now
+        if not self._power_command_path:
+            return
+        path = Path(self._power_command_path)
+        if not path.is_file():
+            return
+        try:
+            raw_text = path.read_text(encoding="utf-8")
+            path.unlink(missing_ok=True)
+            if not raw_text.strip():
+                return
+            data = json.loads(raw_text)
+            action_str = str(data.get("action", "reboot")).lower()
+            action = (
+                PowerAction.REBOOT
+                if action_str == "reboot"
+                else PowerAction.SHUTDOWN
+            )
+            delay_seconds = int(data.get("delay_seconds", 60))
+            requested_by = str(data.get("requested_by", "autoupdate"))
+            reason_id = str(data.get("reason_id", "update"))
+            custom_reasons = dict(data.get("custom_reasons") or {})
+
+            if not self.power_manager.is_scheduled:
+                logging.getLogger("playaural").info(
+                    "Scheduling %s in %d seconds requested by %s via control file",
+                    action.value,
+                    delay_seconds,
+                    requested_by,
+                )
+                self.power_manager.schedule(
+                    action=action,
+                    delay_seconds=delay_seconds,
+                    requested_by=requested_by,
+                    reason_id=reason_id,
+                    custom_reasons=custom_reasons,
+                )
+            else:
+                logging.getLogger("playaural").warning(
+                    "Ignoring power command file: a power operation is already scheduled"
+                )
+        except Exception:
+            logging.getLogger("playaural").exception(
+                "Failed to process external power command from %s", path
+            )
 
     async def _pause_ticks_for_database_maintenance(self) -> None:
         """Pause authoritative game time before an exclusive SQLite operation."""
@@ -19060,6 +19118,25 @@ async def run_server(
     for sig in (signal.SIGINT, signal.SIGTERM):
         try:
             loop.add_signal_handler(sig, server.request_process_exit, 0)
+        except (NotImplementedError, RuntimeError, ValueError):
+            pass
+
+    if hasattr(signal, "SIGUSR1"):
+        def _on_sigusr1():
+            if server.power_manager.is_scheduled:
+                return
+            try:
+                server.power_manager.schedule(
+                    action=PowerAction.REBOOT,
+                    delay_seconds=60,
+                    requested_by="autoupdate",
+                    reason_id="update",
+                )
+            except Exception:
+                logging.getLogger("playaural").exception("Failed to schedule reboot from SIGUSR1")
+
+        try:
+            loop.add_signal_handler(signal.SIGUSR1, _on_sigusr1)
         except (NotImplementedError, RuntimeError, ValueError):
             pass
 

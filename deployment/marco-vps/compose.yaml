@@ -9,6 +9,7 @@ services:
     environment:
       PLAYAURAL_RELEASE_MANIFEST: /config/releases.json
       PLAYAURAL_MAINTENANCE_STATUS: /data/maintenance-status.json
+      PLAYAURAL_POWER_COMMAND: /data/power-command.json
     ports:
       - "127.0.0.1:3047:8000"
     volumes:
