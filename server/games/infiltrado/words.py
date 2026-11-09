@@ -175,3 +175,4 @@ class InfiltradoWordManager:
             cls._save_to_disk()
             return True
         return False
+

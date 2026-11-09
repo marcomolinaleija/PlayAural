@@ -100,6 +100,9 @@ infiltrado-role-label-undercover = Undercover
 infiltrado-role-label-mr_white = Mr. White
 
 infiltrado-error-min-players = At least 3 players are required to play Undercover.
+infiltrado-error-need-5-for-two-undercovers = At least 5 players are required to play with 2 undercovers.
+infiltrado-error-need-4-for-mr-white = At least 4 players are required to include Mr. White.
 infiltrado-error-already-voted = You have already voted this round.
 infiltrado-error-not-in-voting = The game is not in voting phase.
 infiltrado-error-not-your-turn = It is not your turn to give a clue.
+

@@ -100,6 +100,9 @@ infiltrado-role-label-undercover = Infiltrado
 infiltrado-role-label-mr_white = Mr. White
 
 infiltrado-error-min-players = Se requieren al menos 3 jugadores para jugar a El Infiltrado.
+infiltrado-error-need-5-for-two-undercovers = Se necesitan al menos 5 jugadores para jugar con 2 infiltrados.
+infiltrado-error-need-4-for-mr-white = Se necesitan al menos 4 jugadores para incluir a Mr. White.
 infiltrado-error-already-voted = Ya has emitido tu voto en esta ronda.
 infiltrado-error-not-in-voting = La partida no se encuentra en fase de votación.
 infiltrado-error-not-your-turn = No es tu turno para dar una pista.
+

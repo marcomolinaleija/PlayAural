@@ -125,6 +125,7 @@ class InfiltradoOptions(GameOptions):
             default="1",
             choices=UNDERCOVER_CHOICES,
             choice_labels=UNDERCOVER_LABELS,
+            value_key="count",
             label="infiltrado-set-undercover-count",
             prompt="infiltrado-select-undercover-count",
             change_msg="infiltrado-option-changed-undercover-count",
@@ -133,9 +134,10 @@ class InfiltradoOptions(GameOptions):
     )
     include_mr_white: str = option_field(
         MenuOption(
-            default="yes",
+            default="no",
             choices=MR_WHITE_CHOICES,
             choice_labels=MR_WHITE_LABELS,
+            value_key="enabled",
             label="infiltrado-set-mr-white",
             prompt="infiltrado-select-mr-white",
             change_msg="infiltrado-option-changed-mr-white",
@@ -147,6 +149,7 @@ class InfiltradoOptions(GameOptions):
             default="45",
             choices=TURN_TIMER_CHOICES,
             choice_labels=TURN_TIMER_LABELS,
+            value_key="seconds",
             label="infiltrado-set-turn-timer",
             prompt="infiltrado-select-turn-timer",
             change_msg="infiltrado-option-changed-turn-timer",
@@ -158,6 +161,7 @@ class InfiltradoOptions(GameOptions):
             default="60",
             choices=VOTE_TIMER_CHOICES,
             choice_labels=VOTE_TIMER_LABELS,
+            value_key="seconds",
             label="infiltrado-set-vote-timer",
             prompt="infiltrado-select-vote-timer",
             change_msg="infiltrado-option-changed-vote-timer",
@@ -189,6 +193,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
     winning_role: str = ""
     winning_player_ids: list[str] = field(default_factory=list)
     vote_timer_ticks: int = 0
+    bot_wait_ticks: int = field(default=0, init=False, repr=False)
 
     # ------------------------------------------------------------------ #
     # Metadata                                                           #
@@ -217,6 +222,15 @@ class InfiltradoGame(TurnTimerMixin, Game):
     @classmethod
     def get_supported_leaderboards(cls) -> list[str]:
         return ["wins", "games_played"]
+
+    def prestart_validate(self) -> list[str | tuple[str, dict]]:
+        errors = list(super().prestart_validate())
+        active_count = len(self.get_active_players())
+        if self.options.undercover_count == "2" and active_count < 5:
+            errors.append("infiltrado-error-need-5-for-two-undercovers")
+        if self.options.include_mr_white == "yes" and active_count < 4:
+            errors.append("infiltrado-error-need-4-for-mr-white")
+        return errors
 
     def create_player(
         self, player_id: str, name: str, is_bot: bool = False
@@ -380,6 +394,17 @@ class InfiltradoGame(TurnTimerMixin, Game):
             self._order_touch_standard_actions(action_set, self._STANDARD_TOUCH_ORDER)
         return action_set
 
+    def before_menu_build(self, player: Player) -> None:
+        turn_set = self.get_action_set(player, "turn")
+        fresh_turn = self.create_turn_action_set(player)
+        if turn_set is not None:
+            turn_set._actions = fresh_turn._actions.copy()
+            turn_set._order = list(fresh_turn._order)
+        else:
+            if player.id not in self.player_action_sets:
+                self.player_action_sets[player.id] = []
+            self.player_action_sets[player.id].insert(0, fresh_turn)
+
     _STANDARD_TOUCH_ORDER: ClassVar[list[str]] = [
         "check_secret_word",
         "check_clues_history",
@@ -391,6 +416,16 @@ class InfiltradoGame(TurnTimerMixin, Game):
     # ------------------------------------------------------------------ #
     # Helper Queries                                                     #
     # ------------------------------------------------------------------ #
+
+    def _is_always_enabled(self, player: Player) -> str | None:
+        if self.status != "playing":
+            return "action-not-playing"
+        return None
+
+    def _is_gameplay_visible(self, player: Player) -> Visibility:
+        if self.status == "playing":
+            return Visibility.VISIBLE
+        return Visibility.HIDDEN
 
     def _as_infiltrado_player(self, player: Player | None) -> InfiltradoPlayer | None:
         if isinstance(player, InfiltradoPlayer):
@@ -463,6 +498,10 @@ class InfiltradoGame(TurnTimerMixin, Game):
         active = self.get_active_players()
         if len(active) < 3:
             return
+
+        self.game_active = True
+        self.status = "playing"
+        self._sync_table_status()
 
         # Fetch word pair
         pair = InfiltradoWordManager.get_random_pair()
@@ -549,6 +588,8 @@ class InfiltradoGame(TurnTimerMixin, Game):
 
         current = self.current_player
         if current:
+            if current.is_bot:
+                self.bot_wait_ticks = 25
             self.broadcast_l("game-turn-start", buffer="game", player=current.name)
             self.request_menu_focus(current, "word_said" if self.options.clue_mode == CLUE_MODE_VOICE else "give_clue_text")
 
@@ -599,6 +640,8 @@ class InfiltradoGame(TurnTimerMixin, Game):
         self.refresh_menus()
         cur = self.current_player
         if cur:
+            if cur.is_bot:
+                self.bot_wait_ticks = 25
             self.request_menu_focus(cur, "word_said" if self.options.clue_mode == CLUE_MODE_VOICE else "give_clue_text")
 
     # ------------------------------------------------------------------ #
@@ -635,6 +678,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
         """Transition table to voting phase."""
         self.stop_turn_timer()
         self.phase = PHASE_VOTING
+        self.bot_wait_ticks = 30
         living = self._living_players()
         for p in living:
             p.voted_for = ""
@@ -871,11 +915,14 @@ class InfiltradoGame(TurnTimerMixin, Game):
             self.on_tick_turn_timer()
             current = self.current_player
             if current and current.is_bot:
-                clue = self._bot_input_clue(current, "")
-                if self.options.clue_mode == CLUE_MODE_VOICE:
-                    self._action_word_said(current, "word_said")
+                if self.bot_wait_ticks > 0:
+                    self.bot_wait_ticks -= 1
                 else:
-                    self._action_give_clue_text(current, clue, "give_clue_text")
+                    clue = self._bot_input_clue(current, "")
+                    if self.options.clue_mode == CLUE_MODE_VOICE:
+                        self._action_word_said(current, "word_said")
+                    else:
+                        self._action_give_clue_text(current, clue, "give_clue_text")
 
         # Vote timer for voting phase
         elif self.phase == PHASE_VOTING:
@@ -885,19 +932,25 @@ class InfiltradoGame(TurnTimerMixin, Game):
                     self._resolve_voting()
                     return
 
-            # Let bots vote
-            living_bots = [p for p in self._living_players() if p.is_bot and not p.voted_for]
-            for bot in living_bots:
-                choice = self._bot_select_vote(bot, "vote_suspect")
-                if choice:
-                    self._action_vote_suspect(bot, choice, "vote_suspect")
+            if self.bot_wait_ticks > 0:
+                self.bot_wait_ticks -= 1
+            else:
+                # Let bots vote
+                living_bots = [p for p in self._living_players() if p.is_bot and not p.voted_for]
+                for bot in living_bots:
+                    choice = self._bot_select_vote(bot, "vote_suspect")
+                    if choice:
+                        self._action_vote_suspect(bot, choice, "vote_suspect")
 
         # Bot Mr. White guess
         elif self.phase == PHASE_MR_WHITE_GUESS:
             mr_white = self.get_player_by_id(self.mr_white_target_id)
             if mr_white and mr_white.is_bot:
-                guess = self._bot_mr_white_guess(mr_white, "mr_white_guess")
-                self._action_mr_white_guess(mr_white, guess, "mr_white_guess")
+                if self.bot_wait_ticks > 0:
+                    self.bot_wait_ticks -= 1
+                else:
+                    guess = self._bot_mr_white_guess(mr_white, "mr_white_guess")
+                    self._action_mr_white_guess(mr_white, guess, "mr_white_guess")
 
     # ------------------------------------------------------------------ #
     # Info & Status Actions                                              #

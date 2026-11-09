@@ -286,3 +286,79 @@ def test_clues_history_status_box():
     assert status_menu is not None
     rendered_texts = [item.text if hasattr(item, "text") else str(item) for item in status_menu.get("items", [])]
     assert any("Cuerdas" in t for t in rendered_texts)
+
+
+def test_infiltrado_options_formatting():
+    opts = InfiltradoOptions()
+    metas = opts.get_option_metas()
+
+    for locale in ["es", "en"]:
+        for name, meta in metas.items():
+            val = getattr(opts, name)
+            label = meta.get_label(locale, val)
+            assert "count" not in label.lower() or "1" in label or "2" in label
+            assert "enabled" not in label.lower()
+            assert "seconds" not in label.lower() or "45" in label or "60" in label
+
+    # Check Spanish labels specifically
+    assert metas["undercover_count"].get_label("es", "1") == "Infiltrados: 1 Infiltrado"
+    assert metas["include_mr_white"].get_label("es", "no") == "Incluir a Mr. White: No"
+    assert metas["turn_timer"].get_label("es", "45") == "Tiempo por turno: 45 segundos"
+    assert metas["vote_timer"].get_label("es", "60") == "Tiempo de votación: 60 segundos"
+
+
+def test_infiltrado_table_start_integration():
+    from ..tables.manager import TableManager
+    from ..games.registry import get_game_class
+
+    manager = TableManager()
+    alice = MockUser("Alice", locale="es", uuid="u-alice")
+    table = manager.create_table("infiltrado", alice.username, alice)
+    game = get_game_class("infiltrado")()
+    table.game = game
+    game._table = table
+    game.initialize_lobby(alice.username, alice)
+
+    # Check lobby items
+    game.flush_menus()
+    lobby_ids = [getattr(i, "id", None) for i in alice.menus.get("turn_menu", {}).get("items", [])]
+    assert "start_game" in lobby_ids
+    assert "set_clue_mode" in lobby_ids
+    assert "set_undercover_count" in lobby_ids
+    assert "set_include_mr_white" in lobby_ids
+
+    # Add 2 bots
+    game._action_add_bot(game.players[0], "Bot1", "add_bot")
+    game._action_add_bot(game.players[0], "Bot2", "add_bot")
+    assert len(game.get_active_players()) == 3
+
+    # Start game
+    game._action_start_game(game.players[0], "start_game")
+    game.flush_menus()
+
+    assert game.status == "playing"
+    assert table.status == "playing"
+    assert game.phase == PHASE_CLUES
+
+    gameplay_ids = [getattr(i, "id", None) for i in alice.menus.get("turn_menu", {}).get("items", [])]
+    assert "start_game" not in gameplay_ids
+    assert "check_secret_word" in gameplay_ids
+    assert "check_clues_history" in gameplay_ids
+    assert "check_alive_players" in gameplay_ids
+    # Alice is current player in 3-player turn order
+    if game.current_player and game.current_player.id == alice.uuid:
+        assert "word_said" in gameplay_ids
+
+
+def test_infiltrado_prestart_validate():
+    game = make_infiltrado_game(player_count=3, undercover_count="2")
+    errors = game.prestart_validate()
+    assert "infiltrado-error-need-5-for-two-undercovers" in errors
+
+    game_white = make_infiltrado_game(player_count=3, include_mr_white="yes")
+    errors_white = game_white.prestart_validate()
+    assert "infiltrado-error-need-4-for-mr-white" in errors_white
+
+    game_valid = make_infiltrado_game(player_count=5, undercover_count="2", include_mr_white="yes")
+    assert game_valid.prestart_validate() == []
+
