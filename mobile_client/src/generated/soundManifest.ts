@@ -184,6 +184,7 @@ export const soundManifest: Record<string, number> = {
   "checkbox_list_off.wav": require("../../sounds/checkbox_list_off.wav"),
   "checkbox_list_on.wav": require("../../sounds/checkbox_list_on.wav"),
   "click.ogg": require("../../sounds/click.ogg"),
+  "coins_grant.ogg": require("../../sounds/coins_grant.ogg"),
   "connectloop.ogg": require("../../sounds/connectloop.ogg"),
   "disconnect.ogg": require("../../sounds/disconnect.ogg"),
   "download_loop.ogg": require("../../sounds/download_loop.ogg"),

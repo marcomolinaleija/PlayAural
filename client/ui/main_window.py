@@ -1388,6 +1388,7 @@ class MainWindow(wx.Frame):
         "admin_motd_version_input", "admin_motd_input",
         "ban_custom_reason_input", "mute_custom_reason_input",
         "admin_target_search_input",
+        "grant_coins_menu", "grant_coins_amount_menu", "grant_coins_input",
     })
     # Options-family menus.
     _OPTIONS_MENU_IDS = frozenset({

@@ -1556,3 +1556,17 @@ admin-infiltrado-edit-word1 = Editar primera palabra ({ $word })
 admin-infiltrado-edit-word2 = Editar segunda palabra ({ $word })
 admin-infiltrado-delete-pair = Eliminar este par de palabras
 admin-infiltrado-empty-pairs = No hay pares de palabras registrados.
+
+# Gestión de monedas para administradores
+admin-grant-coins = Otorgar monedas a un jugador
+admin-desc-grant-coins = Otorga monedas virtuales a la cuenta de un jugador registrado.
+admin-grant-coins-no-users = No hay usuarios registrados disponibles.
+admin-grant-coins-target-balance = Jugador: { $player }. Saldo actual: { $coins } monedas.
+admin-grant-coins-custom-amount = Ingresar cantidad personalizada...
+admin-grant-coins-prompt-amount = Ingresa la cantidad de monedas a otorgar:
+admin-grant-coins-error-positive = La cantidad de monedas debe ser un número entero mayor a 0.
+admin-grant-coins-error-invalid = Cantidad no válida. Debe ser un número entero positivo.
+admin-grant-coins-success = Se otorgaron { $amount } monedas a { $player }. Nuevo saldo: { $balance } monedas.
+coins-amount-option = { $coins } monedas
+coins-granted-notification = Has recibido { $amount } monedas de un administrador. Saldo actual: { $balance } monedas.
+

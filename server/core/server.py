@@ -19042,6 +19042,18 @@ PlayAural Server
                 frame.get("search_query", ""),
                 frame.get("target_page", 1),
             )
+        elif menu == "grant_coins_menu":
+            self.admin_manager._show_grant_coins_menu(
+                user,
+                frame.get("search_query", ""),
+                frame.get("target_page", 1),
+            )
+        elif menu == "grant_coins_amount_menu":
+            target_username = frame.get("target_username", "")
+            if target_username:
+                self.admin_manager._show_grant_coins_amount_menu(user, target_username)
+            else:
+                self.admin_manager._show_grant_coins_menu(user)
         elif menu == "manage_motd_menu":
             self.admin_manager._show_manage_motd_menu(user)
         elif menu == "view_motd_menu":

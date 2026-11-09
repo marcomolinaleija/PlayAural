@@ -1542,3 +1542,17 @@ admin-infiltrado-edit-word1 = Edit first word ({ $word })
 admin-infiltrado-edit-word2 = Edit second word ({ $word })
 admin-infiltrado-delete-pair = Delete this word pair
 admin-infiltrado-empty-pairs = No word pairs registered.
+
+# Admin coin granting
+admin-grant-coins = Grant coins to a player
+admin-desc-grant-coins = Grant virtual coins to a registered player's account.
+admin-grant-coins-no-users = No registered users available.
+admin-grant-coins-target-balance = Player: { $player }. Current balance: { $coins } coins.
+admin-grant-coins-custom-amount = Enter custom amount...
+admin-grant-coins-prompt-amount = Enter the amount of coins to grant:
+admin-grant-coins-error-positive = The amount of coins must be an integer greater than 0.
+admin-grant-coins-error-invalid = Invalid amount. Must be a positive integer.
+admin-grant-coins-success = Granted { $amount } coins to { $player }. New balance: { $balance } coins.
+coins-amount-option = { $coins } coins
+coins-granted-notification = You received { $amount } coins from an administrator. Current balance: { $balance } coins.
+
