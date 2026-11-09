@@ -451,4 +451,19 @@ def test_game_start_with_category():
     assert game.undercover_word in all_comida_words
 
 
+def test_infiltrado_how_to_play_rules():
+    game = make_infiltrado_game(player_count=3, start=True)
+    p1 = game.players[0]
+    u1 = game.get_user(p1)
+
+    game._action_game_rules(p1, "game_rules")
+    status_menu = u1.menus.get("status_box")
+    assert status_menu is not None
+    rendered_texts = [item.text if hasattr(item, "text") else str(item) for item in status_menu.get("items", [])]
+    assert any("El Infiltrado" in t for t in rendered_texts)
+    assert any("Civiles" in t for t in rendered_texts)
+    assert any("Mr. White" in t for t in rendered_texts)
+
+
+
 
