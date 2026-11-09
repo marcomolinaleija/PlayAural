@@ -358,6 +358,7 @@ class TestGameRegistryIntegration:
             "uno": "cards",
             "yahtzee": "dice",
             "zombiedice": "dice",
+            "tomatodo": "dice",
         }
 
         actual_categories = {
