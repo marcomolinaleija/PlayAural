@@ -362,3 +362,59 @@ def test_infiltrado_prestart_validate():
     game_valid = make_infiltrado_game(player_count=5, undercover_count="2", include_mr_white="yes")
     assert game_valid.prestart_validate() == []
 
+
+def test_infiltrado_clue_rounds_before_vote():
+    game = make_infiltrado_game(player_count=3, start=True, clue_rounds_before_vote="3")
+    assert game.phase == PHASE_CLUES
+    assert game.round_number == 1
+    assert game.clue_cycle_round == 1
+
+    # Round 1
+    for p in game._living_players():
+        game._action_word_said(p, "word_said")
+    assert game.phase == PHASE_CLUES
+    assert game.round_number == 2
+    assert game.clue_cycle_round == 2
+
+    # Round 2
+    for p in game._living_players():
+        game._action_word_said(p, "word_said")
+    assert game.phase == PHASE_CLUES
+    assert game.round_number == 3
+    assert game.clue_cycle_round == 3
+
+    # Round 3
+    for p in game._living_players():
+        game._action_word_said(p, "word_said")
+    assert game.phase == PHASE_VOTING
+
+
+def test_infiltrado_whose_turn_announcement():
+    game = make_infiltrado_game(player_count=3, start=True, turn_timer="45", vote_timer="60")
+    current = game.current_player
+    assert current is not None
+    other = next(p for p in game._living_players() if p.id != current.id)
+
+    user_cur = game.get_user(current)
+    user_other = game.get_user(other)
+
+    # In clue phase: current player asks whose turn
+    user_cur.clear_messages()
+    game._action_whose_turn(current, "whose_turn")
+    assert any("Es tu turno" in msg for msg in user_cur.get_spoken_messages())
+    assert any("45" in msg for msg in user_cur.get_spoken_messages())
+
+    # Other player asks whose turn
+    user_other.clear_messages()
+    game._action_whose_turn(other, "whose_turn")
+    assert any(current.name in msg for msg in user_other.get_spoken_messages())
+    assert any("45" in msg for msg in user_other.get_spoken_messages())
+
+    # Transition to voting
+    game._start_voting_phase()
+    user_cur.clear_messages()
+    game._action_whose_turn(current, "whose_turn")
+    assert any("Fase de votación" in msg for msg in user_cur.get_spoken_messages())
+    assert any("60" in msg for msg in user_cur.get_spoken_messages())
+
+

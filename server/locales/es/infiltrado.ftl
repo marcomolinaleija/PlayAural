@@ -40,6 +40,16 @@ infiltrado-vote-timer-45 = 45 segundos
 infiltrado-vote-timer-60 = 60 segundos
 infiltrado-vote-timer-90 = 90 segundos
 
+infiltrado-set-clue-rounds = Rondas de pistas antes de votar: { $count }
+infiltrado-select-clue-rounds = Selecciona la cantidad de rondas de pistas antes de votar
+infiltrado-option-changed-clue-rounds = Rondas de pistas antes de votar establecido en { $count }.
+infiltrado-desc-clue-rounds = Número de rondas completas de pistas que da cada jugador antes de iniciar la fase de votación.
+infiltrado-clue-rounds-1 = 1 ronda
+infiltrado-clue-rounds-2 = 2 rondas
+infiltrado-clue-rounds-3 = 3 rondas
+infiltrado-clue-rounds-4 = 4 rondas
+infiltrado-clue-rounds-5 = 5 rondas
+
 infiltrado-action-word-said = Ya dije mi palabra
 infiltrado-action-word-said-voice = Ya dije mi palabra (solo voz)
 infiltrado-action-give-clue-text = Escribir mi pista
@@ -85,6 +95,15 @@ infiltrado-win-undercovers = ¡VICTORIA DE LOS INFILTRADOS! Los infiltrados han 
 infiltrado-win-mr-white = ¡VICTORIA DE MR. WHITE! { $player } adivinó la palabra de los ciudadanos y se alza con la victoria en solitario.
 
 infiltrado-next-round = Comienza la ronda { $round } de pistas con los { $count } jugadores supervivientes.
+infiltrado-next-clue-round = Comienza la ronda { $round } de pistas ({ $cycle_round } de { $total_cycle } antes de la votación).
+
+infiltrado-turn-info-you = Es tu turno. Quedan { $seconds } segundos.
+infiltrado-turn-info-you-no-timer = Es tu turno. Sin límite de tiempo.
+infiltrado-turn-info-other = Es turno de { $player }. Quedan { $seconds } segundos.
+infiltrado-turn-info-other-no-timer = Es turno de { $player }. Sin límite de tiempo.
+infiltrado-turn-info-voting = Fase de votación. Quedan { $seconds } segundos para debatir y votar.
+infiltrado-turn-info-voting-no-timer = Fase de votación. Debatan y emitan su voto sin límite de tiempo.
+infiltrado-turn-info-mr-white = Turno de Mr. White ({ $player }) para intentar adivinar la palabra secreta.
 
 infiltrado-history-title = Historial de pistas:
 infiltrado-history-empty = Aún no se han registrado pistas en esta partida.

@@ -40,6 +40,16 @@ infiltrado-vote-timer-45 = 45 seconds
 infiltrado-vote-timer-60 = 60 seconds
 infiltrado-vote-timer-90 = 90 seconds
 
+infiltrado-set-clue-rounds = Clue rounds before voting: { $count }
+infiltrado-select-clue-rounds = Select number of clue rounds before voting
+infiltrado-option-changed-clue-rounds = Clue rounds before voting set to { $count }.
+infiltrado-desc-clue-rounds = Number of consecutive clue rounds before entering voting phase.
+infiltrado-clue-rounds-1 = 1 round
+infiltrado-clue-rounds-2 = 2 rounds
+infiltrado-clue-rounds-3 = 3 rounds
+infiltrado-clue-rounds-4 = 4 rounds
+infiltrado-clue-rounds-5 = 5 rounds
+
 infiltrado-action-word-said = Word said
 infiltrado-action-word-said-voice = Word said (voice only)
 infiltrado-action-give-clue-text = Type my clue
@@ -85,6 +95,15 @@ infiltrado-win-undercovers = UNDERCOVERS WIN! Undercovers have equaled the numbe
 infiltrado-win-mr-white = MR. WHITE WINS! { $player } guessed the secret word and claims solo victory.
 
 infiltrado-next-round = Round { $round } of clues begins with { $count } surviving players.
+infiltrado-next-clue-round = Starting clue round { $round } ({ $cycle_round } of { $total_cycle } before voting).
+
+infiltrado-turn-info-you = It is your turn. { $seconds } seconds remaining.
+infiltrado-turn-info-you-no-timer = It is your turn. No time limit.
+infiltrado-turn-info-other = It is { $player }'s turn. { $seconds } seconds remaining.
+infiltrado-turn-info-other-no-timer = It is { $player }'s turn. No time limit.
+infiltrado-turn-info-voting = Voting phase. { $seconds } seconds remaining to discuss and vote.
+infiltrado-turn-info-voting-no-timer = Voting phase. Discuss and vote with no time limit.
+infiltrado-turn-info-mr-white = Turn for Mr. White ({ $player }) to attempt guessing the secret word.
 
 infiltrado-history-title = Clue history:
 infiltrado-history-empty = No clues have been recorded yet in this match.

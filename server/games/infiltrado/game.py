@@ -78,6 +78,15 @@ VOTE_TIMER_LABELS = {
     "90": "infiltrado-vote-timer-90",
 }
 
+CLUE_ROUNDS_CHOICES = ["1", "2", "3", "4", "5"]
+CLUE_ROUNDS_LABELS = {
+    "1": "infiltrado-clue-rounds-1",
+    "2": "infiltrado-clue-rounds-2",
+    "3": "infiltrado-clue-rounds-3",
+    "4": "infiltrado-clue-rounds-4",
+    "5": "infiltrado-clue-rounds-5",
+}
+
 
 # --------------------------------------------------------------------- #
 # Dataclasses                                                           #
@@ -168,6 +177,18 @@ class InfiltradoOptions(GameOptions):
             description="infiltrado-desc-vote-timer",
         )
     )
+    clue_rounds_before_vote: str = option_field(
+        MenuOption(
+            default="1",
+            choices=CLUE_ROUNDS_CHOICES,
+            choice_labels=CLUE_ROUNDS_LABELS,
+            value_key="count",
+            label="infiltrado-set-clue-rounds",
+            prompt="infiltrado-select-clue-rounds",
+            change_msg="infiltrado-option-changed-clue-rounds",
+            description="infiltrado-desc-clue-rounds",
+        )
+    )
 
 
 # --------------------------------------------------------------------- #
@@ -184,6 +205,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
 
     phase: str = PHASE_LOBBY
     round_number: int = 0
+    clue_cycle_round: int = 1
     civilian_word: str = ""
     undercover_word: str = ""
     civilian_clues: list[str] = field(default_factory=list)
@@ -568,6 +590,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
         self.broadcast_l("infiltrado-game-started", buffer="game")
 
         self.round_number = 1
+        self.clue_cycle_round = 1
         self.clue_history = []
         self._start_clue_round()
 
@@ -624,7 +647,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
         # Check if all living players have given a clue
         all_given = all(p.clue_given for p in living)
         if all_given:
-            self._start_voting_phase()
+            self._handle_clue_round_completed()
             return
 
         # Advance to next turn
@@ -633,7 +656,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
             # Check remaining
             remaining = [p for p in living if not p.clue_given]
             if not remaining:
-                self._start_voting_phase()
+                self._handle_clue_round_completed()
                 return
 
         self.start_turn_timer()
@@ -643,6 +666,27 @@ class InfiltradoGame(TurnTimerMixin, Game):
             if cur.is_bot:
                 self.bot_wait_ticks = 25
             self.request_menu_focus(cur, "word_said" if self.options.clue_mode == CLUE_MODE_VOICE else "give_clue_text")
+
+    def _handle_clue_round_completed(self) -> None:
+        """Handle end of a clue round: either advance clue round or start voting."""
+        try:
+            target_rounds = max(1, int(self.options.clue_rounds_before_vote))
+        except (ValueError, TypeError):
+            target_rounds = 1
+
+        if self.clue_cycle_round < target_rounds:
+            self.round_number += 1
+            self.clue_cycle_round += 1
+            self.broadcast_l(
+                "infiltrado-next-clue-round",
+                buffer="game",
+                round=self.round_number,
+                cycle_round=self.clue_cycle_round,
+                total_cycle=target_rounds,
+            )
+            self._start_clue_round()
+        else:
+            self._start_voting_phase()
 
     # ------------------------------------------------------------------ #
     # Clue Actions                                                       #
@@ -868,6 +912,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
 
     def _next_round(self) -> None:
         self.round_number += 1
+        self.clue_cycle_round = 1
         living = self._living_players()
         self.broadcast_l(
             "infiltrado-next-round",
@@ -955,6 +1000,61 @@ class InfiltradoGame(TurnTimerMixin, Game):
     # ------------------------------------------------------------------ #
     # Info & Status Actions                                              #
     # ------------------------------------------------------------------ #
+
+    def _action_whose_turn(self, player: Player, action_id: str) -> None:
+        user = self.get_user(player)
+        if not user:
+            return
+
+        if self.status != "playing":
+            user.speak_l("game-no-turn", buffer="game")
+            return
+
+        if self.phase == PHASE_CLUES:
+            current = self.current_player
+            if not current:
+                user.speak_l("game-no-turn", buffer="game")
+                return
+
+            try:
+                timer_setting = int(self.options.turn_timer)
+            except (ValueError, TypeError):
+                timer_setting = 0
+
+            seconds = self.timer.seconds_remaining()
+            is_you = (player.id == current.id)
+            has_timer = (timer_setting > 0 and seconds > 0)
+
+            if is_you:
+                if has_timer:
+                    user.speak_l("infiltrado-turn-info-you", buffer="game", seconds=seconds)
+                else:
+                    user.speak_l("infiltrado-turn-info-you-no-timer", buffer="game")
+            else:
+                if has_timer:
+                    user.speak_l("infiltrado-turn-info-other", buffer="game", player=current.name, seconds=seconds)
+                else:
+                    user.speak_l("infiltrado-turn-info-other-no-timer", buffer="game", player=current.name)
+
+        elif self.phase == PHASE_VOTING:
+            try:
+                vote_setting = int(self.options.vote_timer)
+            except (ValueError, TypeError):
+                vote_setting = 0
+
+            seconds = (self.vote_timer_ticks + 19) // 20 if self.vote_timer_ticks > 0 else 0
+            if vote_setting > 0 and seconds > 0:
+                user.speak_l("infiltrado-turn-info-voting", buffer="game", seconds=seconds)
+            else:
+                user.speak_l("infiltrado-turn-info-voting-no-timer", buffer="game")
+
+        elif self.phase == PHASE_MR_WHITE_GUESS:
+            target = self.get_player_by_id(self.mr_white_target_id)
+            name = target.name if target else "Mr. White"
+            user.speak_l("infiltrado-turn-info-mr-white", buffer="game", player=name)
+
+        else:
+            user.speak_l("game-no-turn", buffer="game")
 
     def _action_check_secret_word(self, player: Player, action_id: str) -> None:
         user = self.get_user(player)
