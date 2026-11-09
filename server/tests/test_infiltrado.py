@@ -305,6 +305,7 @@ def test_infiltrado_options_formatting():
     assert metas["include_mr_white"].get_label("es", "no") == "Incluir a Mr. White: No"
     assert metas["turn_timer"].get_label("es", "45") == "Tiempo por turno: 45 segundos"
     assert metas["vote_timer"].get_label("es", "60") == "Tiempo de votación: 60 segundos"
+    assert "Temática de palabras" in metas["word_category"].get_label("es", "all")
 
 
 def test_infiltrado_table_start_integration():
@@ -416,5 +417,17 @@ def test_infiltrado_whose_turn_announcement():
     game._action_whose_turn(current, "whose_turn")
     assert any("Fase de votación" in msg for msg in user_cur.get_spoken_messages())
     assert any("60" in msg for msg in user_cur.get_spoken_messages())
+
+
+def test_game_start_with_category():
+    game = make_infiltrado_game(player_count=3, start=True, word_category="Comida y bebidas")
+    comida_pairs = InfiltradoWordManager.get_pairs_by_category("Comida y bebidas")
+    all_comida_words = set()
+    for p in comida_pairs:
+        all_comida_words.add(p.word1)
+        all_comida_words.add(p.word2)
+    assert game.civilian_word in all_comida_words
+    assert game.undercover_word in all_comida_words
+
 
 

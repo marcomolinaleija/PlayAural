@@ -50,6 +50,12 @@ infiltrado-clue-rounds-3 = 3 rounds
 infiltrado-clue-rounds-4 = 4 rounds
 infiltrado-clue-rounds-5 = 5 rounds
 
+infiltrado-set-word-category = Word theme: { $category }
+infiltrado-select-word-category = Select a word theme
+infiltrado-option-changed-word-category = Word theme set to { $category }.
+infiltrado-desc-word-category = Filter secret words by a specific theme or play with all.
+infiltrado-category-all = All themes
+
 infiltrado-action-word-said = Word said
 infiltrado-action-word-said-voice = Word said (voice only)
 infiltrado-action-give-clue-text = Type my clue

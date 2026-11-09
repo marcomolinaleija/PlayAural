@@ -87,6 +87,15 @@ CLUE_ROUNDS_LABELS = {
     "5": "infiltrado-clue-rounds-5",
 }
 
+WORD_CATEGORY_LABELS = {
+    "all": "infiltrado-category-all",
+}
+
+
+def get_infiltrado_category_choices(game: "InfiltradoGame", player: Player) -> list[str]:
+    cats = InfiltradoWordManager.get_categories()
+    return ["all", *cats]
+
 
 # --------------------------------------------------------------------- #
 # Dataclasses                                                           #
@@ -187,6 +196,18 @@ class InfiltradoOptions(GameOptions):
             prompt="infiltrado-select-clue-rounds",
             change_msg="infiltrado-option-changed-clue-rounds",
             description="infiltrado-desc-clue-rounds",
+        )
+    )
+    word_category: str = option_field(
+        MenuOption(
+            default="all",
+            choices=get_infiltrado_category_choices,
+            choice_labels=WORD_CATEGORY_LABELS,
+            value_key="category",
+            label="infiltrado-set-word-category",
+            prompt="infiltrado-select-word-category",
+            change_msg="infiltrado-option-changed-word-category",
+            description="infiltrado-desc-word-category",
         )
     )
 
@@ -526,7 +547,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
         self._sync_table_status()
 
         # Fetch word pair
-        pair = InfiltradoWordManager.get_random_pair()
+        pair = InfiltradoWordManager.get_random_pair(category=self.options.word_category)
         if not pair:
             pair = InfiltradoWordManager.add_pair(
                 "Café",

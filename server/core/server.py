@@ -50,6 +50,9 @@ from ..administration.manager import (
     ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
     ADMIN_INFILTRADO_PAIRS_LIST_MENU,
     ADMIN_INFILTRADO_WORDS_MENU,
+    ADMIN_INFILTRADO_CATEGORIES_MENU,
+    ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+    ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
     ADMIN_LOCALIZED_TEXT_MENU,
     ADMIN_MENU_IDS,
     ADMIN_MODERATION_CLEAR_CONFIRM_MENU,
@@ -19105,6 +19108,16 @@ PlayAural Server
                 self.admin_manager._show_infiltrado_pair_detail_menu(user, pair_id)
             else:
                 self.admin_manager._show_infiltrado_words_menu(user)
+        elif menu == ADMIN_INFILTRADO_CATEGORIES_MENU:
+            self.admin_manager._show_infiltrado_categories_menu(user)
+        elif menu == ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU:
+            cat = str(frame.get("category", "") or "")
+            if cat:
+                self.admin_manager._show_infiltrado_category_detail_menu(user, cat)
+            else:
+                self.admin_manager._show_infiltrado_categories_menu(user)
+        elif menu == ADMIN_INFILTRADO_SELECT_CATEGORY_MENU:
+            self.admin_manager._show_infiltrado_categories_menu(user)
         else:
             table = self._tables.find_user_table(username)
             if table:

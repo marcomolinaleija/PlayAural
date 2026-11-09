@@ -50,6 +50,12 @@ infiltrado-clue-rounds-3 = 3 rondas
 infiltrado-clue-rounds-4 = 4 rondas
 infiltrado-clue-rounds-5 = 5 rondas
 
+infiltrado-set-word-category = Temática de palabras: { $category }
+infiltrado-select-word-category = Selecciona una temática de palabras
+infiltrado-option-changed-word-category = Temática de palabras establecida en { $category }.
+infiltrado-desc-word-category = Filtra las palabras secretas por una temática concreta o juega con todas.
+infiltrado-category-all = Todas las temáticas
+
 infiltrado-action-word-said = Ya dije mi palabra
 infiltrado-action-word-said-voice = Ya dije mi palabra (solo voz)
 infiltrado-action-give-clue-text = Escribir mi pista
