@@ -1,4 +1,4 @@
-﻿"""Pytest configuration and fixtures."""
+"""Pytest configuration and fixtures."""
 
 import pytest
 import shutil
@@ -44,6 +44,26 @@ def _isolate_localization():
         Localization._bundle_cache_by_dir = saved_cache
         Localization._available_locale_codes_cache = saved_locale_codes
         Localization._resolve_locale_from_catalog.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_infiltrado_words(tmp_path):
+    """Isolate Infiltrado words persistence so tests never mutate words.json in the repo."""
+    from ..games.infiltrado.words import InfiltradoWordManager, WORDS_JSON_PATH
+
+    if WORDS_JSON_PATH.exists():
+        tmp_words = tmp_path / "infiltrado_words.json"
+        shutil.copy2(WORDS_JSON_PATH, tmp_words)
+        saved_method = InfiltradoWordManager.get_json_path
+        InfiltradoWordManager.get_json_path = classmethod(lambda cls: tmp_words)
+        InfiltradoWordManager.reload()
+        try:
+            yield
+        finally:
+            InfiltradoWordManager.get_json_path = saved_method
+            InfiltradoWordManager.reload()
+    else:
+        yield
 
 
 @pytest.fixture
