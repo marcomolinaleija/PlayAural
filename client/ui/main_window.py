@@ -191,6 +191,8 @@ class MainWindow(wx.Frame):
             on_join_failed=lambda: wx.CallAfter(self.on_voice_join_failed),
         )
         self.available_audio_input_devices = []
+        self._volume_channels = ["sound", "music", "ambience", "voice"]
+        self._current_volume_channel_index = 0
 
         # Store user's options
         # Client-side options from the local global configuration.
@@ -556,10 +558,14 @@ class MainWindow(wx.Frame):
         self.ID_TOGGLE_VOICE_CHAT = wx.NewIdRef()
         self.ID_TOGGLE_VOICE_MIC = wx.NewIdRef()
         self.ID_FOCUS_HISTORY = wx.NewIdRef()        
-        self.ID_VOLUME_DOWN = wx.NewIdRef()
-        self.ID_VOLUME_UP = wx.NewIdRef()
-        self.ID_AMBIENCE_DOWN = wx.NewIdRef()
-        self.ID_AMBIENCE_UP = wx.NewIdRef()
+        self.ID_CYCLE_VOLUME = wx.NewIdRef()
+        self.ID_CYCLE_VOLUME_PREV = wx.NewIdRef()
+        self.ID_ACTIVE_VOLUME_DOWN = wx.NewIdRef()
+        self.ID_ACTIVE_VOLUME_UP = wx.NewIdRef()
+        self.ID_VOLUME_DOWN = self.ID_ACTIVE_VOLUME_DOWN
+        self.ID_VOLUME_UP = self.ID_ACTIVE_VOLUME_UP
+        self.ID_AMBIENCE_DOWN = self.ID_ACTIVE_VOLUME_DOWN
+        self.ID_AMBIENCE_UP = self.ID_ACTIVE_VOLUME_UP
         self.ID_TOGGLE_TABLE_CHAT = wx.NewIdRef()
         self.ID_TOGGLE_GLOBAL_CHAT = wx.NewIdRef()
         self.ID_PING = wx.NewIdRef()
@@ -568,6 +574,7 @@ class MainWindow(wx.Frame):
         self.ID_OPEN_FRIENDS_HUB = wx.NewIdRef()
         self.ID_OPEN_ADMIN_MENU = wx.NewIdRef()
         self.ID_OPEN_OPTIONS = wx.NewIdRef()
+        self.ID_OPEN_PERSONAL_OPTIONS = wx.NewIdRef()
 
         # Buffer system IDs
         self.ID_PREV_BUFFER = wx.NewIdRef()
@@ -601,18 +608,19 @@ class MainWindow(wx.Frame):
                 self.ID_TOGGLE_VOICE_MIC,
             ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("H"), self.ID_FOCUS_HISTORY),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F6, self.ID_TOGGLE_TABLE_CHAT),
-            wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F6, self.ID_TOGGLE_GLOBAL_CHAT),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F7, self.ID_AMBIENCE_DOWN),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F8, self.ID_AMBIENCE_UP),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F9, self.ID_VOLUME_DOWN),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F10, self.ID_VOLUME_UP),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F5, self.ID_TOGGLE_TABLE_CHAT),
+            wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F5, self.ID_TOGGLE_GLOBAL_CHAT),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F6, self.ID_CYCLE_VOLUME),
+            wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F6, self.ID_CYCLE_VOLUME_PREV),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F7, self.ID_ACTIVE_VOLUME_DOWN),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F8, self.ID_ACTIVE_VOLUME_UP),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F9, self.ID_OPEN_PERSONAL_OPTIONS),
             wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F2, self.ID_LIST_ONLINE),
             wx.AcceleratorEntry(
                 wx.ACCEL_SHIFT, wx.WXK_F2, self.ID_LIST_ONLINE_WITH_GAMES
             ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("P"), self.ID_PING),
-            wx.AcceleratorEntry(wx.ACCEL_ALT, ord("F"), self.ID_OPEN_FRIENDS_HUB),
+            wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB),
             wx.AcceleratorEntry(
                 wx.ACCEL_ALT | wx.ACCEL_SHIFT,
                 ord("A"),
@@ -664,10 +672,11 @@ class MainWindow(wx.Frame):
         self.Bind(
             wx.EVT_MENU, self.on_toggle_global_chat, id=self.ID_TOGGLE_GLOBAL_CHAT
         )
-        self.Bind(wx.EVT_MENU, self.on_ambience_down, id=self.ID_AMBIENCE_DOWN)
-        self.Bind(wx.EVT_MENU, self.on_ambience_up, id=self.ID_AMBIENCE_UP)
-        self.Bind(wx.EVT_MENU, self.on_volume_down, id=self.ID_VOLUME_DOWN)
-        self.Bind(wx.EVT_MENU, self.on_volume_up, id=self.ID_VOLUME_UP)
+        self.Bind(wx.EVT_MENU, self.on_cycle_volume, id=self.ID_CYCLE_VOLUME)
+        self.Bind(wx.EVT_MENU, self.on_cycle_volume_prev, id=self.ID_CYCLE_VOLUME_PREV)
+        self.Bind(wx.EVT_MENU, self.on_active_volume_down, id=self.ID_ACTIVE_VOLUME_DOWN)
+        self.Bind(wx.EVT_MENU, self.on_active_volume_up, id=self.ID_ACTIVE_VOLUME_UP)
+        self.Bind(wx.EVT_MENU, self.on_open_personal_options, id=self.ID_OPEN_PERSONAL_OPTIONS)
         self.Bind(wx.EVT_MENU, self.on_ping, id=self.ID_PING)
         self.Bind(wx.EVT_MENU, self.on_open_friends_hub, id=self.ID_OPEN_FRIENDS_HUB)
         self.Bind(wx.EVT_MENU, self.on_open_admin_menu, id=self.ID_OPEN_ADMIN_MENU)
@@ -1232,41 +1241,108 @@ class MainWindow(wx.Frame):
                 "value": value
             })
 
+    def _get_active_volume_channel(self) -> str:
+        return self._volume_channels[self._current_volume_channel_index % len(self._volume_channels)]
+
+    def _get_channel_volume_percent(self, channel: str) -> int:
+        if channel == "sound":
+            return int(round(self.sound_manager.sound_volume * 100)) if self.sound_manager else 100
+        elif channel == "music":
+            return int(round(self.sound_manager.music_volume * 100)) if self.sound_manager else 20
+        elif channel == "ambience":
+            return int(round(self.sound_manager.ambience_volume * 100)) if self.sound_manager else 20
+        elif channel == "voice":
+            if self.voice_manager and hasattr(self.voice_manager, "_get_voice_volume"):
+                return int(round(self.voice_manager._get_voice_volume() * 100))
+            return int(round(getattr(self.preferences, "voice_volume", 0.8) * 100))
+        return 100
+
+    def _set_channel_volume_percent(self, channel: str, percent: int):
+        msg_keys = {
+            "sound": "main-sound-volume",
+            "music": "main-music-volume",
+            "ambience": "main-ambience-volume",
+            "voice": "main-voice-volume",
+        }
+        msg_key = msg_keys.get(channel, "main-sound-volume")
+        if channel == "sound":
+            clamped = max(10, min(100, percent))
+            if self.sound_manager:
+                self.sound_manager.set_sound_volume(clamped / 100.0)
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/sound_volume", clamped)
+        elif channel == "music":
+            clamped = max(0, min(100, percent))
+            if self.sound_manager:
+                self.sound_manager.set_music_volume(clamped / 100.0)
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/music_volume", clamped)
+        elif channel == "ambience":
+            clamped = max(0, min(100, percent))
+            if self.sound_manager:
+                self.sound_manager.set_ambience_volume(clamped / 100.0)
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/ambience_volume", clamped)
+        elif channel == "voice":
+            clamped = max(10, min(100, percent))
+            if self.voice_manager:
+                self.voice_manager.set_voice_volume(clamped / 100.0)
+            self.preferences.voice_volume = clamped / 100.0
+            self._pending_voice_volume = clamped / 100.0
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/voice_volume", clamped)
+
+    def _speak_current_volume_channel(self):
+        channel = self._get_active_volume_channel()
+        pct = self._get_channel_volume_percent(channel)
+        msg_keys = {
+            "sound": "main-sound-volume",
+            "music": "main-music-volume",
+            "ambience": "main-ambience-volume",
+            "voice": "main-voice-volume",
+        }
+        msg_key = msg_keys.get(channel, "main-sound-volume")
+        self.speaker.speak(Localization.get(msg_key, value=pct))
+
+    def on_cycle_volume(self, event):
+        """Handle F6 to cycle to next volume channel."""
+        self._current_volume_channel_index = (self._current_volume_channel_index + 1) % len(self._volume_channels)
+        self._speak_current_volume_channel()
+
+    def on_cycle_volume_prev(self, event):
+        """Handle Shift+F6 to cycle to previous volume channel."""
+        self._current_volume_channel_index = (self._current_volume_channel_index - 1) % len(self._volume_channels)
+        self._speak_current_volume_channel()
+
+    def on_active_volume_down(self, event):
+        """Handle F7 to decrease volume of current active channel."""
+        channel = self._get_active_volume_channel()
+        current_pct = self._get_channel_volume_percent(channel)
+        self._set_channel_volume_percent(channel, current_pct - 10)
+
+    def on_active_volume_up(self, event):
+        """Handle F8 to increase volume of current active channel."""
+        channel = self._get_active_volume_channel()
+        current_pct = self._get_channel_volume_percent(channel)
+        self._set_channel_volume_percent(channel, current_pct + 10)
+
     def on_ambience_down(self, event):
-        """Handle F7 to decrease ambience volume."""
-        current_volume = self.sound_manager.ambience_volume
-        new_volume = max(0.0, current_volume - 0.1)
-        self.sound_manager.set_ambience_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-ambience-volume", value=percentage))
-        self.modify_option_value("audio/ambience_volume", percentage)
+        self._set_channel_volume_percent("ambience", self._get_channel_volume_percent("ambience") - 10)
 
     def on_ambience_up(self, event):
-        """Handle F8 to increase ambience volume."""
-        current_volume = self.sound_manager.ambience_volume
-        new_volume = min(1.0, current_volume + 0.1)
-        self.sound_manager.set_ambience_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-ambience-volume", value=percentage))
-        self.modify_option_value("audio/ambience_volume", percentage)
+        self._set_channel_volume_percent("ambience", self._get_channel_volume_percent("ambience") + 10)
 
     def on_volume_down(self, event):
-        """Handle F9 to decrease music volume."""
-        current_volume = self.sound_manager.music_volume
-        new_volume = max(0.0, current_volume - 0.1)
-        self.sound_manager.set_music_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-music-volume", value=percentage))
-        self.modify_option_value("audio/music_volume", percentage)
+        self._set_channel_volume_percent("music", self._get_channel_volume_percent("music") - 10)
 
     def on_volume_up(self, event):
-        """Handle F10 to increase music volume."""
-        current_volume = self.sound_manager.music_volume
-        new_volume = min(1.0, current_volume + 0.1)
-        self.sound_manager.set_music_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-music-volume", value=percentage))
-        self.modify_option_value("audio/music_volume", percentage)
+        self._set_channel_volume_percent("music", self._get_channel_volume_percent("music") + 10)
+
+    def on_open_personal_options(self, event):
+        """Handle F9 to open the personal and options menu from anywhere."""
+        if self.connected and self.current_menu_id != "personal_options_menu":
+            self._prepare_for_menu_shortcut_navigation()
+            self.network.send_packet({"type": "open_personal_options"})
 
     def on_ping(self, event):
         """Handle Alt+P to ping the server and measure latency."""
@@ -1328,7 +1404,7 @@ class MainWindow(wx.Frame):
     })
 
     def on_open_friends_hub(self, event):
-        """Handle Alt+F to open the friends hub from anywhere."""
+        """Handle Ctrl+F to open the friends hub from anywhere."""
         if self.connected and self.current_menu_id not in self._FRIENDS_MENU_IDS:
             self._prepare_for_menu_shortcut_navigation()
             self.network.send_packet({"type": "open_friends_hub"})
@@ -1774,6 +1850,10 @@ class MainWindow(wx.Frame):
                 key_name = "enter"
         # Handle letter keys (case insensitive)
         elif 65 <= key_code <= 90:  # A-Z
+            # Ctrl+F is handled by the accelerator table for Friends Hub.
+            if event.ControlDown() and key_code == ord("F") and not event.AltDown() and not event.ShiftDown():
+                event.Skip()
+                return
             # Alt shortcuts are handled by the accelerator table.
             if event.AltDown() and key_code in [
                 ord("P"), ord("M"), ord("C"), ord("V"), ord("H"),

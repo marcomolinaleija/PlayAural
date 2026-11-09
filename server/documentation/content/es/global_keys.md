@@ -9,13 +9,15 @@ Esta guía explica los controles que funcionan en toda la plataforma de PlayAura
 \* \*\*F2:\*\* Leer usuarios en línea: escucha el total, luego los desarrolladores y administradores conectados, seguidos de hasta 20 nombres de otros usuarios y un conteo de los restantes.
 \* \*\*Shift + F2:\*\* Abrir lista de usuarios en línea: los desarrolladores aparecen primero, luego los administradores, luego los demás usuarios, en orden alfabético dentro de cada grupo. La lista incluye la actividad actual de cada usuario y se actualiza automáticamente.
 \* \*\*F4:\*\* Silencia o reactiva el búfer de mensajes actual.
-\* \*\*F6:\*\* Silencia o reactiva el chat de mesa.
-\* \*\*Shift + F6:\*\* Silencia o reactiva el chat global.
-\* \*\*F7 / F8:\*\* Baja o sube el volumen del ambiente.
-\* \*\*F9 / F10:\*\* Baja o sube el volumen de la música.
+\* \*\*F5:\*\* Silencia o reactiva el chat de mesa.
+\* \*\*Shift + F5:\*\* Silencia o reactiva el chat global.
+\* \*\*F6:\*\* Cambia entre los canales de volumen disponibles (Efectos de sonido, Música, Sonido ambiente y Chat de voz).
+\* \*\*Shift + F6:\*\* Cambia entre los canales de volumen en orden inverso.
+\* \*\*F7 / F8:\*\* Baja o sube el volumen del canal de audio seleccionado actualmente.
+\* \*\*F9:\*\* Abre el menú de Personal y opciones (Perfil, Amigos, Estadísticas, Opciones).
+\* \*\*Ctrl + F:\*\* Abre Amigos.
 \* \*\*Alt + P:\*\* Comprueba la latencia de la conexión.
 \* \*\*Alt + M:\*\* Devuelve el foco al menú principal.
-\* \*\*Alt + F:\*\* Abre Amigos.
 \* \*\*Alt + O:\*\* Abre Opciones.
 
 \*\*Información de mesa y de partida\*\*

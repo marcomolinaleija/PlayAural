@@ -82,6 +82,11 @@ export function installKeybinds({
   onToggleBufferMute,
   onToggleTableChat,
   onToggleGlobalChat,
+  onCycleVolumeNext,
+  onCycleVolumePrev,
+  onActiveVolumeDown,
+  onActiveVolumeUp,
+  onOpenPersonalOptions,
   onAmbienceDown,
   onAmbienceUp,
   onMusicDown,
@@ -142,6 +147,19 @@ export function installKeybinds({
 
     if (
       connected
+      && event.ctrlKey
+      && !event.altKey
+      && !event.shiftKey
+      && !event.metaKey
+      && event.key.toLowerCase() === "f"
+    ) {
+      event.preventDefault();
+      onOpenFriends?.();
+      return;
+    }
+
+    if (
+      connected
       && event.altKey
       && !event.ctrlKey
       && !event.shiftKey
@@ -171,11 +189,6 @@ export function installKeybinds({
       if (altKey === "p") {
         event.preventDefault();
         onPing?.();
-        return;
-      }
-      if (altKey === "f") {
-        event.preventDefault();
-        onOpenFriends?.();
         return;
       }
       if (altKey === "o") {
@@ -240,7 +253,7 @@ export function installKeybinds({
         onToggleBufferMute?.();
         return;
       }
-      if (event.key === "F6") {
+      if (event.key === "F5") {
         event.preventDefault();
         if (event.shiftKey) {
           onToggleGlobalChat?.();
@@ -249,24 +262,36 @@ export function installKeybinds({
         }
         return;
       }
+      if (event.key === "F6") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          onCycleVolumePrev?.();
+        } else {
+          onCycleVolumeNext?.();
+        }
+        return;
+      }
       if (event.key === "F7" && !event.shiftKey) {
         event.preventDefault();
-        onAmbienceDown?.();
+        if (onActiveVolumeDown) {
+          onActiveVolumeDown();
+        } else {
+          onAmbienceDown?.();
+        }
         return;
       }
       if (event.key === "F8" && !event.shiftKey) {
         event.preventDefault();
-        onAmbienceUp?.();
+        if (onActiveVolumeUp) {
+          onActiveVolumeUp();
+        } else {
+          onAmbienceUp?.();
+        }
         return;
       }
       if (event.key === "F9" && !event.shiftKey) {
         event.preventDefault();
-        onMusicDown?.();
-        return;
-      }
-      if (event.key === "F10" && !event.shiftKey) {
-        event.preventDefault();
-        onMusicUp?.();
+        onOpenPersonalOptions?.();
         return;
       }
     }

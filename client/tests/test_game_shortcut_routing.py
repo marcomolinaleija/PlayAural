@@ -66,3 +66,31 @@ def test_table_shortcuts_dispatch_from_the_real_desktop_key_handler():
     window.current_mode = "edit"
     scope["on_char_hook"](window, event)
     assert len(sent) == 4
+
+    # Ctrl+F skips so it reaches the AcceleratorTable for Friends Hub.
+    window.current_mode = "list"
+    skipped = []
+    ctrl_f_event = SimpleNamespace(
+        GetKeyCode=lambda: ord("F"),
+        GetModifiers=lambda: wx.MOD_CONTROL,
+        ControlDown=lambda: True, AltDown=lambda: False, ShiftDown=lambda: False,
+        Skip=lambda: skipped.append(True),
+    )
+    scope["on_char_hook"](window, ctrl_f_event)
+    assert len(skipped) == 1
+    assert len(sent) == 4
+
+
+def test_desktop_hotkeys_layout_in_source() -> None:
+    source = _source()
+    # Check accelerator entries for updated layout
+    assert 'wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F5, self.ID_TOGGLE_TABLE_CHAT)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F5, self.ID_TOGGLE_GLOBAL_CHAT)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F6, self.ID_CYCLE_VOLUME)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F6, self.ID_CYCLE_VOLUME_PREV)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F7, self.ID_ACTIVE_VOLUME_DOWN)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F8, self.ID_ACTIVE_VOLUME_UP)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F9, self.ID_OPEN_PERSONAL_OPTIONS)' in source
+    # F10 should not be bound to volume
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F10' not in source

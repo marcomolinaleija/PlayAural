@@ -15,13 +15,15 @@ When Menu Hints are off, focus any described menu item and press \*\*F1\*\* in t
 \* \*\*F2:\*\* Read online users: hear the total count, then online developers and administrators, followed by up to 20 other usernames and a count of any remaining users.
 \* \*\*Shift + F2:\*\* Open online users list: developers appear first, then administrators, then other users, alphabetically within each group. The list includes each user's current activity and refreshes automatically.
 \* \*\*F4:\*\* Mute or unmute the current message buffer.
-\* \*\*F6:\*\* Mute or unmute table chat.
-\* \*\*Shift + F6:\*\* Mute or unmute global chat.
-\* \*\*F7 / F8:\*\* Decrease or increase ambience volume.
-\* \*\*F9 / F10:\*\* Decrease or increase music volume.
+\* \*\*F5:\*\* Mute or unmute table chat.
+\* \*\*Shift + F5:\*\* Mute or unmute global chat.
+\* \*\*F6:\*\* Cycle available volume channels (Sound effects, Music, Ambience, and Voice chat).
+\* \*\*Shift + F6:\*\* Cycle available volume channels in reverse order.
+\* \*\*F7 / F8:\*\* Decrease or increase volume for the currently selected audio channel.
+\* \*\*F9:\*\* Open Personal and Options menu (Profile, Friends, Stats, Options).
+\* \*\*Ctrl + F:\*\* Open Friends.
 \* \*\*Alt + P:\*\* Check connection latency.
 \* \*\*Alt + M:\*\* Return focus to the main menu.
-\* \*\*Alt + F:\*\* Open Friends.
 \* \*\*Alt + O:\*\* Open Options.
 
 \*\*Table and Game Information\*\*
