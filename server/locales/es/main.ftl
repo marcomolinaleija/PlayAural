@@ -1515,3 +1515,22 @@ global-voice-chat-status-changed = El chat de voz global ahora está { $status }
 global-voice-chat-quality-option = Calidad de voz global: { $quality }
 global-voice-chat-desc-quality = Cambia el perfil de calidad de audio del chat de voz global
 global-voice-chat-quality-changed = Calidad de voz global establecida en { $quality }.
+
+
+# Gestión de palabras del Infiltrado (Administración)
+admin-infiltrado-words = Gestión de palabras del Infiltrado
+admin-desc-infiltrado-words = Añade, edita y elimina pares de palabras para el juego El Infiltrado.
+admin-infiltrado-add-pair = Añadir nuevo par de palabras
+admin-infiltrado-list-pairs = Ver y editar pares de palabras ({ $total } pares)
+admin-infiltrado-prompt-word1 = Introduce la primera palabra (Civil):
+admin-infiltrado-prompt-word2 = Introduce la segunda palabra (Infiltrado):
+admin-infiltrado-prompt-edit-word1 = Modifica la primera palabra (actual: { $word }):
+admin-infiltrado-prompt-edit-word2 = Modifica la segunda palabra (actual: { $word }):
+admin-infiltrado-pair-added = Par añadido con éxito: { $word1 } / { $word2 }.
+admin-infiltrado-pair-updated = Par actualizado con éxito: { $word1 } / { $word2 }.
+admin-infiltrado-pair-deleted = Par de palabras eliminado con éxito.
+admin-infiltrado-pair-current = Par #{ $id }: { $word1 } / { $word2 }
+admin-infiltrado-edit-word1 = Editar primera palabra ({ $word })
+admin-infiltrado-edit-word2 = Editar segunda palabra ({ $word })
+admin-infiltrado-delete-pair = Eliminar este par de palabras
+admin-infiltrado-empty-pairs = No hay pares de palabras registrados.

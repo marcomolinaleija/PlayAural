@@ -1501,3 +1501,22 @@ global-voice-chat-status-changed = Global voice chat is now { $status }.
 global-voice-chat-quality-option = Global voice quality: { $quality }
 global-voice-chat-desc-quality = Change global voice chat audio quality profile
 global-voice-chat-quality-changed = Global voice quality set to { $quality }.
+
+
+# Undercover words management (Administration)
+admin-infiltrado-words = Undercover word pairs management
+admin-desc-infiltrado-words = Add, edit and delete word pairs for the Undercover game.
+admin-infiltrado-add-pair = Add new word pair
+admin-infiltrado-list-pairs = View and edit word pairs ({ $total } pairs)
+admin-infiltrado-prompt-word1 = Enter first word (Civilian):
+admin-infiltrado-prompt-word2 = Enter second word (Undercover):
+admin-infiltrado-prompt-edit-word1 = Edit first word (current: { $word }):
+admin-infiltrado-prompt-edit-word2 = Edit second word (current: { $word }):
+admin-infiltrado-pair-added = Pair successfully added: { $word1 } / { $word2 }.
+admin-infiltrado-pair-updated = Pair successfully updated: { $word1 } / { $word2 }.
+admin-infiltrado-pair-deleted = Word pair successfully deleted.
+admin-infiltrado-pair-current = Pair #{ $id }: { $word1 } / { $word2 }
+admin-infiltrado-edit-word1 = Edit first word ({ $word })
+admin-infiltrado-edit-word2 = Edit second word ({ $word })
+admin-infiltrado-delete-pair = Delete this word pair
+admin-infiltrado-empty-pairs = No word pairs registered.

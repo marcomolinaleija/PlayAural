@@ -1,0 +1,164 @@
+"""Tests for Infiltrado word pairs management in administration menu."""
+
+from types import SimpleNamespace
+import pytest
+
+from ..auth.auth import AuthManager
+from ..core.server import Server
+from ..administration.manager import (
+    ADMIN_INFILTRADO_ADD_WORD1_INPUT,
+    ADMIN_INFILTRADO_ADD_WORD2_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD1_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
+    ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+    ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+    ADMIN_INFILTRADO_WORDS_MENU,
+)
+from ..games.infiltrado.words import InfiltradoWordManager
+from ..messages.localization import Localization
+from ..users.roles import ADMIN_TRUST_LEVEL
+from ..users.test_user import MockUser
+
+
+@pytest.fixture
+def admin_server():
+    server = Server(db_path=":memory:")
+    server._db.connect()
+    server._auth = AuthManager(server._db)
+    server._db.create_user("AdminUser", "hash")
+    admin_rec = server._db.get_user("AdminUser")
+
+    admin = MockUser("AdminUser", uuid=admin_rec.uuid, locale="es")
+    admin.trust_level = ADMIN_TRUST_LEVEL
+    admin.queue_protocol_packet = lambda packet: None
+
+    server._users = {admin.username: admin}
+    server._connections = {admin.username: SimpleNamespace(remote_address="127.0.0.1")}
+    yield server, admin
+    server._db.close()
+
+
+@pytest.mark.asyncio
+async def test_admin_menu_shows_infiltrado_words(admin_server):
+    server, admin = admin_server
+    server.admin_manager._show_admin_menu(admin)
+
+    # Check menu items sent to admin
+    menu = admin.menus.get("admin_menu")
+    assert menu is not None
+    item_ids = [item.id if hasattr(item, "id") else item for item in menu["items"]]
+    assert "manage_infiltrado_words" in item_ids
+
+
+@pytest.mark.asyncio
+async def test_admin_infiltrado_words_navigation(admin_server):
+    server, admin = admin_server
+
+    # Open admin menu and click manage_infiltrado_words
+    server.admin_manager._show_admin_menu(admin)
+    state = server.user_states.get(admin.username, {})
+    await server.admin_manager.handle_menu_selection(
+        admin, "manage_infiltrado_words", "admin_menu", state
+    )
+
+    current_state = server.user_states.get(admin.username, {})
+    assert current_state.get("menu") == ADMIN_INFILTRADO_WORDS_MENU
+
+    words_menu = admin.menus.get(ADMIN_INFILTRADO_WORDS_MENU)
+    assert words_menu is not None
+    item_ids = [item.id if hasattr(item, "id") else item for item in words_menu["items"]]
+    assert "add_pair" in item_ids
+    assert "list_pairs" in item_ids
+
+
+@pytest.mark.asyncio
+async def test_admin_infiltrado_pairs_list_pagination(admin_server):
+    server, admin = admin_server
+
+    server.admin_manager._show_infiltrado_pairs_list_menu(admin, page=1)
+    current_state = server.user_states.get(admin.username, {})
+    assert current_state.get("menu") == ADMIN_INFILTRADO_PAIRS_LIST_MENU
+    assert current_state.get("page") == 1
+    assert current_state.get("total_pages", 0) >= 3
+
+    # Check list menu items
+    pairs_menu = admin.menus.get(ADMIN_INFILTRADO_PAIRS_LIST_MENU)
+    assert pairs_menu is not None
+    item_ids = [item.id if hasattr(item, "id") else item for item in pairs_menu["items"]]
+    assert any(str(i).startswith("pair_") for i in item_ids)
+
+
+@pytest.mark.asyncio
+async def test_admin_add_pair_flow(admin_server):
+    server, admin = admin_server
+
+    # Start at hub
+    server.admin_manager._show_infiltrado_words_menu(admin)
+    state = server.user_states.get(admin.username, {})
+    await server.admin_manager.handle_menu_selection(
+        admin, "add_pair", ADMIN_INFILTRADO_WORDS_MENU, state
+    )
+
+    # Now in input state 1
+    input_state1 = server.user_states.get(admin.username, {})
+    assert input_state1.get("menu") == ADMIN_INFILTRADO_ADD_WORD1_INPUT
+
+    # User submits word 1
+    packet1 = {"input_id": "infiltrado_add_word1", "text": "Sol"}
+    handled1 = await server.admin_manager.handle_input(admin, packet1, input_state1)
+    assert handled1 is True
+
+    # Now in input state 2
+    input_state2 = server.user_states.get(admin.username, {})
+    assert input_state2.get("menu") == ADMIN_INFILTRADO_ADD_WORD2_INPUT
+    assert input_state2.get("draft_word1") == "Sol"
+
+    # User submits word 2
+    initial_count = InfiltradoWordManager.count_pairs()
+    packet2 = {"input_id": "infiltrado_add_word2", "text": "Luna"}
+    handled2 = await server.admin_manager.handle_input(admin, packet2, input_state2)
+    assert handled2 is True
+    assert InfiltradoWordManager.count_pairs() == initial_count + 1
+
+    # Cleanup added pair
+    added = [p for p in InfiltradoWordManager.get_all_pairs() if p.word1 == "Sol" and p.word2 == "Luna"]
+    assert len(added) >= 1
+    InfiltradoWordManager.delete_pair(added[-1].id)
+
+
+@pytest.mark.asyncio
+async def test_admin_edit_and_delete_pair(admin_server):
+    server, admin = admin_server
+
+    # Create temporary pair
+    temp_pair = InfiltradoWordManager.add_pair("EditTest1", "EditTest2")
+    pair_id = temp_pair.id
+
+    # View pair detail
+    server.admin_manager._show_infiltrado_pair_detail_menu(admin, pair_id)
+    detail_state = server.user_states.get(admin.username, {})
+    assert detail_state.get("menu") == ADMIN_INFILTRADO_PAIR_DETAIL_MENU
+    assert detail_state.get("pair_id") == pair_id
+
+    # Select edit_word1
+    await server.admin_manager.handle_menu_selection(
+        admin, "edit_word1", ADMIN_INFILTRADO_PAIR_DETAIL_MENU, detail_state
+    )
+    edit_state1 = server.user_states.get(admin.username, {})
+    assert edit_state1.get("menu") == ADMIN_INFILTRADO_EDIT_WORD1_INPUT
+
+    # Submit updated word1
+    packet_edit = {"input_id": "infiltrado_edit_word1", "text": "NuevoWord1"}
+    await server.admin_manager.handle_input(admin, packet_edit, edit_state1)
+
+    updated_pair = InfiltradoWordManager.get_pair_by_id(pair_id)
+    assert updated_pair is not None
+    assert updated_pair.word1 == "NuevoWord1"
+
+    # Delete pair
+    server.admin_manager._show_infiltrado_pair_detail_menu(admin, pair_id)
+    detail_state = server.user_states.get(admin.username, {})
+    await server.admin_manager.handle_menu_selection(
+        admin, "delete_pair", ADMIN_INFILTRADO_PAIR_DETAIL_MENU, detail_state
+    )
+    assert InfiltradoWordManager.get_pair_by_id(pair_id) is None

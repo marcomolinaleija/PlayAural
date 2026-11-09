@@ -73,6 +73,7 @@ from ..menu_pagination import (
     pagination_menu_items,
     paginate_sequence,
 )
+from ..games.infiltrado.words import InfiltradoWordManager
 
 if TYPE_CHECKING:
     from ..core.server import Server
@@ -83,6 +84,13 @@ ADMIN_LOCALIZED_TEXT_MENU = "admin_localized_text_menu"
 ADMIN_LOCALIZED_TEXT_INPUT = "admin_localized_text_input"
 ADMIN_SOUND_EVENTS_MENU = "admin_sound_events_menu"
 ADMIN_SOUND_PICKER_MENU = "admin_sound_picker_menu"
+ADMIN_INFILTRADO_WORDS_MENU = "admin_infiltrado_words_menu"
+ADMIN_INFILTRADO_PAIRS_LIST_MENU = "admin_infiltrado_pairs_list_menu"
+ADMIN_INFILTRADO_PAIR_DETAIL_MENU = "admin_infiltrado_pair_detail_menu"
+ADMIN_INFILTRADO_ADD_WORD1_INPUT = "admin_infiltrado_add_word1_input"
+ADMIN_INFILTRADO_ADD_WORD2_INPUT = "admin_infiltrado_add_word2_input"
+ADMIN_INFILTRADO_EDIT_WORD1_INPUT = "admin_infiltrado_edit_word1_input"
+ADMIN_INFILTRADO_EDIT_WORD2_INPUT = "admin_infiltrado_edit_word2_input"
 ADMIN_MODERATION_MENU = "admin_moderation_menu"
 ADMIN_MODERATION_REPORTS_MENU = "admin_moderation_reports_menu"
 ADMIN_MODERATION_REPORT_DETAIL_MENU = "admin_moderation_report_detail_menu"
@@ -215,6 +223,13 @@ ADMIN_MENU_IDS = {
     "server_power_custom_delay_input",
     ADMIN_TARGET_SEARCH_INPUT,
     ADMIN_MODERATION_HISTORY_INPUT,
+    ADMIN_INFILTRADO_WORDS_MENU,
+    ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+    ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+    ADMIN_INFILTRADO_ADD_WORD1_INPUT,
+    ADMIN_INFILTRADO_ADD_WORD2_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD1_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
 }
 
 
@@ -2613,6 +2628,13 @@ class AdministrationManager:
         )
         items.append(
             MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-words"),
+                id="manage_infiltrado_words",
+                description_key="admin-desc-infiltrado-words",
+            )
+        )
+        items.append(
+            MenuItem(
                 text=Localization.get(user.locale, "admin-switch-server"),
                 id="switch_server",
                 description_key="admin-desc-switch-server",
@@ -2936,6 +2958,12 @@ class AdministrationManager:
              await self._handle_smtp_settings_selection(user, selection_id)
         elif current_menu == "smtp_encryption_menu":
              await self._handle_smtp_encryption_selection(user, selection_id)
+        elif current_menu == ADMIN_INFILTRADO_WORDS_MENU:
+             await self._handle_infiltrado_words_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_PAIRS_LIST_MENU:
+             await self._handle_infiltrado_pairs_list_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_PAIR_DETAIL_MENU:
+             await self._handle_infiltrado_pair_detail_selection(user, selection_id, state)
 
     async def _handle_admin_menu_selection(
         self, user: NetworkUser, selection_id: str
@@ -3027,6 +3055,11 @@ class AdministrationManager:
                 user.speak_l("admin-only-action", buffer="system")
                 return
             self.server._nav_push(user, self._show_sound_events_menu)
+        elif selection_id == "manage_infiltrado_words":
+            if user.trust_level < ADMIN_TRUST_LEVEL:
+                user.speak_l("admin-only-action", buffer="system")
+                return
+            self.server._nav_push(user, self._show_infiltrado_words_menu)
         elif selection_id == "switch_server":
             await self.server._complete_switch_server(user)
         elif selection_id == "back":
@@ -4659,6 +4692,71 @@ class AdministrationManager:
             self.server._restore_input_parent(user, state)
             return True
 
+        elif menu_id == ADMIN_INFILTRADO_ADD_WORD1_INPUT:
+            if value:
+                clean_w1 = str(value).strip()
+                parent = dict(state.get("_parent_frame") or {})
+                self.server.enter_input_state(
+                    user,
+                    ADMIN_INFILTRADO_ADD_WORD2_INPUT,
+                    draft_word1=clean_w1,
+                    _parent_frame=parent,
+                )
+                user.show_editbox(
+                    "infiltrado_add_word2",
+                    Localization.get(user.locale, "admin-infiltrado-prompt-word2"),
+                )
+            else:
+                self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_ADD_WORD2_INPUT:
+            word1 = state.get("draft_word1")
+            clean_w2 = str(value or "").strip()
+            if word1 and clean_w2:
+                pair = InfiltradoWordManager.add_pair(word1, clean_w2)
+                user.speak_l(
+                    "admin-infiltrado-pair-added",
+                    buffer="system",
+                    word1=pair.word1,
+                    word2=pair.word2,
+                )
+                user.play_sound("menuenter.ogg")
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_EDIT_WORD1_INPUT:
+            pair_id = state.get("pair_id")
+            clean_w1 = str(value or "").strip()
+            if pair_id and clean_w1:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), word1=clean_w1)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-updated",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                    )
+                    user.play_sound("menuenter.ogg")
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_EDIT_WORD2_INPUT:
+            pair_id = state.get("pair_id")
+            clean_w2 = str(value or "").strip()
+            if pair_id and clean_w2:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), word2=clean_w2)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-updated",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                    )
+                    user.play_sound("menuenter.ogg")
+            self.server._restore_input_parent(user, state)
+            return True
+
         return False
 
     def _show_smtp_settings_menu(self, user: NetworkUser) -> None:
@@ -5855,3 +5953,233 @@ class AdministrationManager:
             str(state.get("search_query", "")),
             int(state.get("target_page", 1) or 1),
         )
+
+    # ------------------------------------------------------------------ #
+    # Infiltrado Word Pairs Management                                  #
+    # ------------------------------------------------------------------ #
+
+    def _show_infiltrado_words_menu(self, user: NetworkUser) -> None:
+        """Show Infiltrado word pairs management hub."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        total_pairs = InfiltradoWordManager.count_pairs()
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-add-pair"),
+                id="add_pair",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-list-pairs", total=total_pairs
+                ),
+                id="list_pairs",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_INFILTRADO_WORDS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_WORDS_MENU,
+        }
+
+    async def _handle_infiltrado_words_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in Infiltrado word pairs hub."""
+        if selection_id == "add_pair":
+            self.server.enter_input_state(user, ADMIN_INFILTRADO_ADD_WORD1_INPUT)
+            user.show_editbox(
+                "infiltrado_add_word1",
+                Localization.get(user.locale, "admin-infiltrado-prompt-word1"),
+            )
+        elif selection_id == "list_pairs":
+            self.server._nav_push(user, self._show_infiltrado_pairs_list_menu, 1)
+        elif selection_id == "back":
+            self.server._nav_back(user)
+
+    def _show_infiltrado_pairs_list_menu(
+        self, user: NetworkUser, page: int = 1
+    ) -> None:
+        """Show paginated list of word pairs."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        pairs = InfiltradoWordManager.get_all_pairs()
+        page_size = 20
+        paginated = paginate_sequence(pairs, page, page_size=page_size)
+
+        items: list[MenuItem] = []
+        if not pairs:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-infiltrado-empty-pairs"),
+                    id="",
+                    read_only=True,
+                )
+            )
+        else:
+            for pair in paginated.items:
+                items.append(
+                    MenuItem(
+                        text=f"{pair.id}. {pair.word1} / {pair.word2}",
+                        id=f"pair_{pair.id}",
+                    )
+                )
+
+        if paginated.total_pages > 1:
+            items.extend(
+                pagination_menu_items(user.locale, paginated, include_refresh=True)
+            )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+            "page": paginated.page,
+            "total_pages": paginated.total_pages,
+        }
+
+    async def _handle_infiltrado_pairs_list_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in paginated pairs list."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+
+        if is_page_navigation(selection_id) or selection_id in MENU_PAGE_IDS:
+            current_page = state.get("page", 1)
+            total_pages = state.get("total_pages", 1)
+            target_page = page_for_selection(selection_id, current_page, total_pages)
+            if target_page is not None:
+                if is_page_refresh(selection_id):
+                    announce_page_refresh(user)
+                self._show_infiltrado_pairs_list_menu(user, target_page)
+            return
+
+        if selection_id.startswith("pair_"):
+            try:
+                pair_id = int(selection_id.split("_")[1])
+                self.server._nav_push(user, self._show_infiltrado_pair_detail_menu, pair_id)
+            except (ValueError, IndexError):
+                pass
+
+    def _show_infiltrado_pair_detail_menu(
+        self, user: NetworkUser, pair_id: int
+    ) -> None:
+        """Show detail / actions menu for a specific word pair."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        pair = InfiltradoWordManager.get_pair_by_id(pair_id)
+        if not pair:
+            user.speak_l("admin-infiltrado-empty-pairs", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-infiltrado-pair-current",
+                    id=pair.id,
+                    word1=pair.word1,
+                    word2=pair.word2,
+                ),
+                id="",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-edit-word1", word=pair.word1
+                ),
+                id="edit_word1",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-edit-word2", word=pair.word2
+                ),
+                id="edit_word2",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-delete-pair"),
+                id="delete_pair",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+
+        user.show_menu(
+            ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+            "pair_id": pair_id,
+        }
+
+    async def _handle_infiltrado_pair_detail_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle edit/delete action for a word pair."""
+        pair_id = state.get("pair_id")
+        if not pair_id:
+            self.server._nav_back(user)
+            return
+
+        pair = InfiltradoWordManager.get_pair_by_id(int(pair_id))
+        if not pair:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "edit_word1":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_EDIT_WORD1_INPUT,
+                pair_id=pair.id,
+            )
+            user.show_editbox(
+                "infiltrado_edit_word1",
+                Localization.get(
+                    user.locale, "admin-infiltrado-prompt-edit-word1", word=pair.word1
+                ),
+                default_value=pair.word1,
+            )
+        elif selection_id == "edit_word2":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
+                pair_id=pair.id,
+            )
+            user.show_editbox(
+                "infiltrado_edit_word2",
+                Localization.get(
+                    user.locale, "admin-infiltrado-prompt-edit-word2", word=pair.word2
+                ),
+                default_value=pair.word2,
+            )
+        elif selection_id == "delete_pair":
+            InfiltradoWordManager.delete_pair(pair.id)
+            user.speak_l("admin-infiltrado-pair-deleted", buffer="system")
+            user.play_sound("menuenter.ogg")
+            self.server._nav_back(user)
+        elif selection_id == "back":
+            self.server._nav_back(user)

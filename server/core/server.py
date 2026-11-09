@@ -47,6 +47,9 @@ from ..administration.manager import (
     ADMIN_DATABASE_MENU,
     ADMIN_DATABASE_STORAGE_ANALYSIS_MENU,
     ADMIN_DATABASE_STORAGE_CLEANUP_CONFIRM_MENU,
+    ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+    ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+    ADMIN_INFILTRADO_WORDS_MENU,
     ADMIN_LOCALIZED_TEXT_MENU,
     ADMIN_MENU_IDS,
     ADMIN_MODERATION_CLEAR_CONFIRM_MENU,
@@ -19090,6 +19093,18 @@ PlayAural Server
             self.admin_manager._show_sound_picker_menu(
                 user, str(frame.get("sound_event_id", "") or "")
             )
+        elif menu == ADMIN_INFILTRADO_WORDS_MENU:
+            self.admin_manager._show_infiltrado_words_menu(user)
+        elif menu == ADMIN_INFILTRADO_PAIRS_LIST_MENU:
+            self.admin_manager._show_infiltrado_pairs_list_menu(
+                user, int(frame.get("page", 1) or 1)
+            )
+        elif menu == ADMIN_INFILTRADO_PAIR_DETAIL_MENU:
+            pair_id = int(frame.get("pair_id", 0) or 0)
+            if pair_id:
+                self.admin_manager._show_infiltrado_pair_detail_menu(user, pair_id)
+            else:
+                self.admin_manager._show_infiltrado_words_menu(user)
         else:
             table = self._tables.find_user_table(username)
             if table:

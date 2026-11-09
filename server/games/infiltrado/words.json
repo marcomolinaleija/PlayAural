@@ -1,0 +1,1149 @@
+[
+  {
+    "id": 1,
+    "word1": "Café",
+    "word2": "Té",
+    "clues_word1": [
+      "Caliente",
+      "Taza",
+      "Desayuno",
+      "Granos",
+      "Despertar"
+    ],
+    "clues_word2": [
+      "Infusión",
+      "Hierbas",
+      "Bolsita",
+      "Taza",
+      "Inglaterra"
+    ]
+  },
+  {
+    "id": 2,
+    "word1": "Playa",
+    "word2": "Piscina",
+    "clues_word1": [
+      "Arena",
+      "Olas",
+      "Mar",
+      "Sol",
+      "Verano"
+    ],
+    "clues_word2": [
+      "Cloro",
+      "Azulejos",
+      "Flotador",
+      "Bañador",
+      "Trampolín"
+    ]
+  },
+  {
+    "id": 3,
+    "word1": "Perro",
+    "word2": "Gato",
+    "clues_word1": [
+      "Ladrar",
+      "Hueso",
+      "Correa",
+      "Paseo",
+      "Fiel"
+    ],
+    "clues_word2": [
+      "Maullar",
+      "Bigotes",
+      "Ronroneo",
+      "Ovillo",
+      "Independiente"
+    ]
+  },
+  {
+    "id": 4,
+    "word1": "Guitarra",
+    "word2": "Violín",
+    "clues_word1": [
+      "Seis cuerdas",
+      "Acordes",
+      "Trastes",
+      "Púa",
+      "Rock"
+    ],
+    "clues_word2": [
+      "Arco",
+      "Cuatro cuerdas",
+      "Barbilla",
+      "Clásica",
+      "Orquesta"
+    ]
+  },
+  {
+    "id": 5,
+    "word1": "Avión",
+    "word2": "Helicóptero",
+    "clues_word1": [
+      "Alas",
+      "Pista",
+      "Turbinas",
+      "Aeropuerto",
+      "Piloto"
+    ],
+    "clues_word2": [
+      "Hélice",
+      "Rotor",
+      "Vertical",
+      "Rescate",
+      "Aterrizar"
+    ]
+  },
+  {
+    "id": 6,
+    "word1": "Pizza",
+    "word2": "Hamburguesa",
+    "clues_word1": [
+      "Queso",
+      "Horno",
+      "Masa",
+      "Porción",
+      "Italia"
+    ],
+    "clues_word2": [
+      "Carne",
+      "Pan con sésamo",
+      "Papas fritas",
+      "Pepinillos",
+      "Parrilla"
+    ]
+  },
+  {
+    "id": 7,
+    "word1": "Manzana",
+    "word2": "Pera",
+    "clues_word1": [
+      "Roja",
+      "Sidra",
+      "Blancanieves",
+      "Tarta",
+      "Crujiente"
+    ],
+    "clues_word2": [
+      "Forma de gota",
+      "Verde",
+      "Jugosa",
+      "Agua",
+      "Fruta"
+    ]
+  },
+  {
+    "id": 8,
+    "word1": "Cine",
+    "word2": "Teatro",
+    "clues_word1": [
+      "Palomitas",
+      "Pantalla",
+      "Proyector",
+      "Película",
+      "Butacas"
+    ],
+    "clues_word2": [
+      "Actores",
+      "Escenario",
+      "Telón",
+      "Aplausos",
+      "Obra"
+    ]
+  },
+  {
+    "id": 9,
+    "word1": "Cama",
+    "word2": "Sofá",
+    "clues_word1": [
+      "Colchón",
+      "Sábanas",
+      "Dormir",
+      "Almohada",
+      "Noche"
+    ],
+    "clues_word2": [
+      "Salón",
+      "Cojines",
+      "Siesta",
+      "Televisión",
+      "Sentarse"
+    ]
+  },
+  {
+    "id": 10,
+    "word1": "Zapato",
+    "word2": "Zapatilla",
+    "clues_word1": [
+      "Cuero",
+      "Elegante",
+      "Cordones",
+      "Suela",
+      "Trabajo"
+    ],
+    "clues_word2": [
+      "Deporte",
+      "Cómodo",
+      "Correr",
+      "Goma",
+      "Entrenar"
+    ]
+  },
+  {
+    "id": 11,
+    "word1": "Sol",
+    "word2": "Luna",
+    "clues_word1": [
+      "Día",
+      "Calor",
+      "Luz",
+      "Amanecer",
+      "Estrella"
+    ],
+    "clues_word2": [
+      "Noche",
+      "Cráteres",
+      "Mareas",
+      "Fases",
+      "Satélite"
+    ]
+  },
+  {
+    "id": 12,
+    "word1": "Río",
+    "word2": "Lago",
+    "clues_word1": [
+      "Corriente",
+      "Fluye",
+      "Cauce",
+      "Peces",
+      "Desembocadura"
+    ],
+    "clues_word2": [
+      "Agua quieta",
+      "Orilla",
+      "Canoa",
+      "Profundo",
+      "Paisaje"
+    ]
+  },
+  {
+    "id": 13,
+    "word1": "Barco",
+    "word2": "Submarino",
+    "clues_word1": [
+      "Cubierta",
+      "Velas",
+      "Puerto",
+      "Navegar",
+      "Ancla"
+    ],
+    "clues_word2": [
+      "Bajo el agua",
+      "Periscopio",
+      "Profundidad",
+      "Sonar",
+      "Torpedos"
+    ]
+  },
+  {
+    "id": 14,
+    "word1": "León",
+    "word2": "Tigre",
+    "clues_word1": [
+      "Melena",
+      "Sabana",
+      "Rey",
+      "Rugido",
+      "África"
+    ],
+    "clues_word2": [
+      "Rayas",
+      "Selva",
+      "Felino",
+      "Garras",
+      "Asia"
+    ]
+  },
+  {
+    "id": 15,
+    "word1": "Fútbol",
+    "word2": "Baloncesto",
+    "clues_word1": [
+      "Balón",
+      "Portería",
+      "Gol",
+      "Césped",
+      "Once"
+    ],
+    "clues_word2": [
+      "Canasta",
+      "Aro",
+      "Tablero",
+      "Bote",
+      "Cinco"
+    ]
+  },
+  {
+    "id": 16,
+    "word1": "Libro",
+    "word2": "Revista",
+    "clues_word1": [
+      "Capítulos",
+      "Novela",
+      "Páginas",
+      "Lomo",
+      "Leer"
+    ],
+    "clues_word2": [
+      "Artículos",
+      "Fotos",
+      "Publicidad",
+      "Mensual",
+      "Portada"
+    ]
+  },
+  {
+    "id": 17,
+    "word1": "Cuchara",
+    "word2": "Tenedor",
+    "clues_word1": [
+      "Sopa",
+      "Hondo",
+      "Caldo",
+      "Postre",
+      "Líquido"
+    ],
+    "clues_word2": [
+      "Pinchos",
+      "Dientes",
+      "Pasta",
+      "Carne",
+      "Pinchar"
+    ]
+  },
+  {
+    "id": 18,
+    "word1": "Mantequilla",
+    "word2": "Margarina",
+    "clues_word1": [
+      "Vaca",
+      "Lácteo",
+      "Tostada",
+      "Untar",
+      "Amarillo"
+    ],
+    "clues_word2": [
+      "Vegetal",
+      "Aceite",
+      "Untar",
+      "Ligera",
+      "Tarrina"
+    ]
+  },
+  {
+    "id": 19,
+    "word1": "Oro",
+    "word2": "Plata",
+    "clues_word1": [
+      "Amarillo",
+      "Lingote",
+      "Precioso",
+      "Primero",
+      "Valioso"
+    ],
+    "clues_word2": [
+      "Blanco brillante",
+      "Segundo",
+      "Medalla",
+      "Joyería",
+      "Monedas"
+    ]
+  },
+  {
+    "id": 20,
+    "word1": "Coche",
+    "word2": "Moto",
+    "clues_word1": [
+      "Cuatro ruedas",
+      "Volante",
+      "Maletero",
+      "Cinturón",
+      "Familia"
+    ],
+    "clues_word2": [
+      "Dos ruedas",
+      "Casco",
+      "Manillar",
+      "Inclinarse",
+      "Velocidad"
+    ]
+  },
+  {
+    "id": 21,
+    "word1": "Tren",
+    "word2": "Metro",
+    "clues_word1": [
+      "Vías",
+      "Vagones",
+      "Estación",
+      "Locomotora",
+      "Viaje"
+    ],
+    "clues_word2": [
+      "Subterráneo",
+      "Túnel",
+      "Urbano",
+      "Rápido",
+      "Paradas"
+    ]
+  },
+  {
+    "id": 22,
+    "word1": "Lápiz",
+    "word2": "Bolígrafo",
+    "clues_word1": [
+      "Grafito",
+      "Goma",
+      "Madera",
+      "Sacapuntas",
+      "Borrar"
+    ],
+    "clues_word2": [
+      "Tinta",
+      "Capuchón",
+      "Escribir",
+      "Azul",
+      "Firma"
+    ]
+  },
+  {
+    "id": 23,
+    "word1": "Camisa",
+    "word2": "Camiseta",
+    "clues_word1": [
+      "Botones",
+      "Cuello",
+      "Manga larga",
+      "Elegante",
+      "Planchar"
+    ],
+    "clues_word2": [
+      "Algodón",
+      "Casual",
+      "Manga corta",
+      "Cuello redondo",
+      "Cómoda"
+    ]
+  },
+  {
+    "id": 24,
+    "word1": "Reloj",
+    "word2": "Cronómetro",
+    "clues_word1": [
+      "Hora",
+      "Minutos",
+      "Muñeca",
+      "Agujas",
+      "Puntual"
+    ],
+    "clues_word2": [
+      "Segundos",
+      "Medir tiempo",
+      "Carrera",
+      "Pulsador",
+      "Atleta"
+    ]
+  },
+  {
+    "id": 25,
+    "word1": "Castillo",
+    "word2": "Palacio",
+    "clues_word1": [
+      "Muralla",
+      "Torres",
+      "Foso",
+      "Fortaleza",
+      "Puente levadizo"
+    ],
+    "clues_word2": [
+      "Rey",
+      "Lujo",
+      "Salones",
+      "Jardines",
+      "Residencia"
+    ]
+  },
+  {
+    "id": 26,
+    "word1": "Nieve",
+    "word2": "Hielo",
+    "clues_word1": [
+      "Copos",
+      "Blanco",
+      "Invierno",
+      "Muñeco",
+      "Esquiar"
+    ],
+    "clues_word2": [
+      "Congelado",
+      "Cubo",
+      "Resbaladizo",
+      "Glaciar",
+      "Frío"
+    ]
+  },
+  {
+    "id": 27,
+    "word1": "Vino",
+    "word2": "Cerveza",
+    "clues_word1": [
+      "Uvas",
+      "Copa",
+      "Bodega",
+      "Tinto",
+      "Fermentado"
+    ],
+    "clues_word2": [
+      "Cebada",
+      "Espuma",
+      "Lúpulo",
+      "Caña",
+      "Fría"
+    ]
+  },
+  {
+    "id": 28,
+    "word1": "Bosque",
+    "word2": "Selva",
+    "clues_word1": [
+      "Árboles",
+      "Pinos",
+      "Senderismo",
+      "Hojas",
+      "Naturaleza"
+    ],
+    "clues_word2": [
+      "Tropical",
+      "Lianas",
+      "Húmeda",
+      "Exótica",
+      "Lluvia"
+    ]
+  },
+  {
+    "id": 29,
+    "word1": "Doctor",
+    "word2": "Enfermero",
+    "clues_word1": [
+      "Diagnóstico",
+      "Receta",
+      "Hospital",
+      "Bata blanca",
+      "Medicina"
+    ],
+    "clues_word2": [
+      "Cuidado",
+      "Inyección",
+      "Termómetro",
+      "Atención",
+      "Hospital"
+    ]
+  },
+  {
+    "id": 30,
+    "word1": "Profesor",
+    "word2": "Maestro",
+    "clues_word1": [
+      "Universidad",
+      "Clases",
+      "Exámenes",
+      "Enseñar",
+      "Cátedra"
+    ],
+    "clues_word2": [
+      "Primaria",
+      "Niños",
+      "Pizarra",
+      "Tiza",
+      "Colegio"
+    ]
+  },
+  {
+    "id": 31,
+    "word1": "Rey",
+    "word2": "Emperador",
+    "clues_word1": [
+      "Corona",
+      "Reino",
+      "Trono",
+      "Monarquía",
+      "Príncipe"
+    ],
+    "clues_word2": [
+      "Imperio",
+      "Conquista",
+      "Romano",
+      "Poder",
+      "Dinastía"
+    ]
+  },
+  {
+    "id": 32,
+    "word1": "Pintura",
+    "word2": "Dibujo",
+    "clues_word1": [
+      "Pincel",
+      "Lienzo",
+      "Óleo",
+      "Colores",
+      "Cuadro"
+    ],
+    "clues_word2": [
+      "Lápiz",
+      "Papel",
+      "Trazos",
+      "Boceto",
+      "Sombreado"
+    ]
+  },
+  {
+    "id": 33,
+    "word1": "Radio",
+    "word2": "Podcast",
+    "clues_word1": [
+      "Frecuencia",
+      "Emisora",
+      "Antena",
+      "Locutor",
+      "Directo"
+    ],
+    "clues_word2": [
+      "Episodios",
+      "Descargar",
+      "Auriculares",
+      "Grabado",
+      "Internet"
+    ]
+  },
+  {
+    "id": 34,
+    "word1": "Periódico",
+    "word2": "Noticiero",
+    "clues_word1": [
+      "Papel",
+      "Titular",
+      "Prensa",
+      "Kiosco",
+      "Diario"
+    ],
+    "clues_word2": [
+      "Televisión",
+      "Presentador",
+      "Pantalla",
+      "Última hora",
+      "Cámaras"
+    ]
+  },
+  {
+    "id": 35,
+    "word1": "Puente",
+    "word2": "Túnel",
+    "clues_word1": [
+      "Cruzar",
+      "Río",
+      "Altura",
+      "Pilares",
+      "Estructura"
+    ],
+    "clues_word2": [
+      "Montaña",
+      "Bajo tierra",
+      "Oscuro",
+      "Atravesar",
+      "Excavación"
+    ]
+  },
+  {
+    "id": 36,
+    "word1": "Isla",
+    "word2": "Península",
+    "clues_word1": [
+      "Rodeada de agua",
+      "Palmeras",
+      "Naufragio",
+      "Aislada",
+      "Costa"
+    ],
+    "clues_word2": [
+      "Conectada",
+      "Istmo",
+      "Costa",
+      "Continente",
+      "Península Ibérica"
+    ]
+  },
+  {
+    "id": 37,
+    "word1": "Lluvia",
+    "word2": "Llovizna",
+    "clues_word1": [
+      "Gotas",
+      "Nubes",
+      "Tormenta",
+      "Charcos",
+      "Mojar"
+    ],
+    "clues_word2": [
+      "Fina",
+      "Suave",
+      "Niebla",
+      "Chirimiri",
+      "Húmedo"
+    ]
+  },
+  {
+    "id": 38,
+    "word1": "Espejo",
+    "word2": "Vidrio",
+    "clues_word1": [
+      "Reflejo",
+      "Verse",
+      "Cristal",
+      "Marco",
+      "Imagen"
+    ],
+    "clues_word2": [
+      "Transparente",
+      "Ventana",
+      "Frágil",
+      "Botella",
+      "Romperse"
+    ]
+  },
+  {
+    "id": 39,
+    "word1": "Montaña",
+    "word2": "Volcán",
+    "clues_word1": [
+      "Pico",
+      "Cumbre",
+      "Nieve",
+      "Escalar",
+      "Altura"
+    ],
+    "clues_word2": [
+      "Lava",
+      "Cráter",
+      "Magma",
+      "Erupción",
+      "Fuego"
+    ]
+  },
+  {
+    "id": 40,
+    "word1": "Vela",
+    "word2": "Linterna",
+    "clues_word1": [
+      "Cera",
+      "Fuego",
+      "Mecha",
+      "Llama",
+      "Olor"
+    ],
+    "clues_word2": [
+      "Pilas",
+      "Bombilla",
+      "Luz LED",
+      "Botón",
+      "Portátil"
+    ]
+  },
+  {
+    "id": 41,
+    "word1": "Sopa",
+    "word2": "Caldo",
+    "clues_word1": [
+      "Fideos",
+      "Plato hondo",
+      "Caliente",
+      "Verduras",
+      "Cuchara"
+    ],
+    "clues_word2": [
+      "Líquido",
+      "Olla",
+      "Pollo",
+      "Hervir",
+      "Base"
+    ]
+  },
+  {
+    "id": 42,
+    "word1": "Galleta",
+    "word2": "Bizcocho",
+    "clues_word1": [
+      "Crujiente",
+      "Chocolate",
+      "Triturar",
+      "Leche",
+      "Paquete"
+    ],
+    "clues_word2": [
+      "Esponjoso",
+      "Tarta",
+      "Horno",
+      "Molde",
+      "Dulce"
+    ]
+  },
+  {
+    "id": 43,
+    "word1": "Escuela",
+    "word2": "Universidad",
+    "clues_word1": [
+      "Recreo",
+      "Mochila",
+      "Aulas",
+      "Infantil",
+      "Horario"
+    ],
+    "clues_word2": [
+      "Campus",
+      "Carrera",
+      "Grado",
+      "Facultad",
+      "Estudiantes"
+    ]
+  },
+  {
+    "id": 44,
+    "word1": "Parque",
+    "word2": "Jardín",
+    "clues_word1": [
+      "Columpios",
+      "Bancos",
+      "Pasear",
+      "Público",
+      "Césped"
+    ],
+    "clues_word2": [
+      "Flores",
+      "Casa",
+      "Regar",
+      "Privado",
+      "Plantas"
+    ]
+  },
+  {
+    "id": 45,
+    "word1": "Gafas",
+    "word2": "Lentillas",
+    "clues_word1": [
+      "Cristales",
+      "Montura",
+      "Nariz",
+      "Patillas",
+      "Ver bien"
+    ],
+    "clues_word2": [
+      "Ojos",
+      "Contacto",
+      "Líquido",
+      "Invisible",
+      "Estuche"
+    ]
+  },
+  {
+    "id": 46,
+    "word1": "Avellana",
+    "word2": "Almendra",
+    "clues_word1": [
+      "Cacao",
+      "Crema",
+      "Redonda",
+      "Fruto seco",
+      "Cáscara"
+    ],
+    "clues_word2": [
+      "Turrón",
+      "Alargada",
+      "Fruto seco",
+      "Blanca",
+      "Dulce"
+    ]
+  },
+  {
+    "id": 47,
+    "word1": "Miel",
+    "word2": "Mermelada",
+    "clues_word1": [
+      "Abejas",
+      "Panal",
+      "Dulce",
+      "Dorada",
+      "Tarro"
+    ],
+    "clues_word2": [
+      "Fruta",
+      "Azúcar",
+      "Fresa",
+      "Untar",
+      "Confitura"
+    ]
+  },
+  {
+    "id": 48,
+    "word1": "Cuchillo",
+    "word2": "Tijeras",
+    "clues_word1": [
+      "Hoja",
+      "Filo",
+      "Cortar",
+      "Mango",
+      "Cocina"
+    ],
+    "clues_word2": [
+      "Dos hojas",
+      "Anillas",
+      "Papel",
+      "Peluquería",
+      "Abrir y cerrar"
+    ]
+  },
+  {
+    "id": 49,
+    "word1": "Escalera",
+    "word2": "Ascensor",
+    "clues_word1": [
+      "Peldaños",
+      "Subir a pie",
+      "Barandilla",
+      "Escalones",
+      "Ejercicio"
+    ],
+    "clues_word2": [
+      "Botones",
+      "Puertas automáticas",
+      "Subir rápido",
+      "Cable",
+      "Pisos"
+    ]
+  },
+  {
+    "id": 50,
+    "word1": "Piano",
+    "word2": "Teclado",
+    "clues_word1": [
+      "Teclas blancas y negras",
+      "Cuerdas",
+      "Pedales",
+      "Cola",
+      "Acústico"
+    ],
+    "clues_word2": [
+      "Digital",
+      "Enchufar",
+      "Sonidos",
+      "Portátil",
+      "Sintetizador"
+    ]
+  },
+  {
+    "id": 51,
+    "word1": "Teléfono",
+    "word2": "Walkie-talkie",
+    "clues_word1": [
+      "Llamada",
+      "Móvil",
+      "Pantalla",
+      "Marcar",
+      "Voz"
+    ],
+    "clues_word2": [
+      "Antena",
+      "Cambio y corto",
+      "Frecuencia",
+      "Canal",
+      "Pulsar para hablar"
+    ]
+  },
+  {
+    "id": 52,
+    "word1": "Bicicleta",
+    "word2": "Patinete",
+    "clues_word1": [
+      "Pedales",
+      "Cadena",
+      "Sillín",
+      "Ruedas",
+      "Manillar"
+    ],
+    "clues_word2": [
+      "Plataforma",
+      "Pie",
+      "Manillar",
+      "Eléctrico",
+      "Ruedas pequeñas"
+    ]
+  },
+  {
+    "id": 53,
+    "word1": "Ducha",
+    "word2": "Bañera",
+    "clues_word1": [
+      "De pie",
+      "Chorro",
+      "Mampara",
+      "Rápido",
+      "Agua caliente"
+    ],
+    "clues_word2": [
+      "Sumergirse",
+      "Espuma",
+      "Relajarse",
+      "Tapón",
+      "Llenar"
+    ]
+  },
+  {
+    "id": 54,
+    "word1": "Paraguas",
+    "word2": "Impermeable",
+    "clues_word1": [
+      "Varillas",
+      "Abrir",
+      "Lluvia",
+      "Mango",
+      "Mojarse"
+    ],
+    "clues_word2": [
+      "Abrigo",
+      "Capucha",
+      "Chubasquero",
+      "Plástico",
+      "Ponerse"
+    ]
+  },
+  {
+    "id": 55,
+    "word1": "Helado",
+    "word2": "Granizado",
+    "clues_word1": [
+      "Cucurucho",
+      "Crema",
+      "Bola",
+      "Polo",
+      "Fresa"
+    ],
+    "clues_word2": [
+      "Hielo picado",
+      "Pajita",
+      "Limón",
+      "Vaso",
+      "Refrescante"
+    ]
+  },
+  {
+    "id": 56,
+    "word1": "Queso",
+    "word2": "Yogur",
+    "clues_word1": [
+      "Curado",
+      "Lonchas",
+      "Ratón",
+      "Corteza",
+      "Lácteo"
+    ],
+    "clues_word2": [
+      "Cuchara",
+      "Cremoso",
+      "Bífidus",
+      "Tarrina",
+      "Postre"
+    ]
+  },
+  {
+    "id": 57,
+    "word1": "Cinturón",
+    "word2": "Tirantes",
+    "clues_word1": [
+      "Hebilla",
+      "Cuero",
+      "Pantalón",
+      "Agujeros",
+      "Ajustar"
+    ],
+    "clues_word2": [
+      "Hombros",
+      "Pinzas",
+      "Elástico",
+      "Cruzados",
+      "Sujetar"
+    ]
+  },
+  {
+    "id": 58,
+    "word1": "Sombrero",
+    "word2": "Gorra",
+    "clues_word1": [
+      "Ala ancha",
+      "Elegante",
+      "Cabeza",
+      "Paja",
+      "Sol"
+    ],
+    "clues_word2": [
+      "Visera",
+      "Béisbol",
+      "Ajustable",
+      "Deporte",
+      "Cabeza"
+    ]
+  },
+  {
+    "id": 59,
+    "word1": "Naval",
+    "word2": "Militar",
+    "clues_word1": [
+      "Océano",
+      "Flota",
+      "Acorazado",
+      "Marinos",
+      "Base naval"
+    ],
+    "clues_word2": [
+      "Ejército",
+      "Soldados",
+      "Uniforme",
+      "Cuartel",
+      "Defensa"
+    ]
+  },
+  {
+    "id": 60,
+    "word1": "Diamante",
+    "word2": "Rubí",
+    "clues_word1": [
+      "Brillante",
+      "Transparente",
+      "Anillo",
+      "Duro",
+      "Carat"
+    ],
+    "clues_word2": [
+      "Rojo",
+      "Gema",
+      "Piedra preciosa",
+      "Joya",
+      "Colorido"
+    ]
+  },
+  {
+    "id": 61,
+    "word1": "EditTest1",
+    "word2": "EditTest2",
+    "clues_word1": [],
+    "clues_word2": []
+  }
+]
