@@ -326,3 +326,27 @@ def test_tomatodo_audio_measurements():
     assert tomatodo_audio.sound_ticks(tomatodo_audio.SOUND_SPIN) > 0
     assert tomatodo_audio.sound_ticks(tomatodo_audio.SOUND_SPIN_FAST) > 0
     assert tomatodo_audio.sound_ticks(tomatodo_audio.SOUND_COINS) > 0
+
+
+def test_tomatodo_spin_sequence_completes_and_unfreezes():
+    """Verify that firing a spin sequence processes its callback and completes cleanly."""
+    from server.games.tomatodo.game import PIRINOLA_FACES
+
+    game, users = _create_test_game(2)
+    game.on_start()
+    p1 = game.players[0]
+
+    # Execute spin
+    game._execute_spin(p1)
+    assert game.has_active_sequence()
+    assert game._is_spin_top_enabled(p1) == "action-sequence-running"
+
+    # Advance ticks until sequence finishes (duration is 70 ticks for fast spin)
+    duration = tomatodo_audio.sound_ticks(tomatodo_audio.SOUND_SPIN_FAST)
+    for _ in range(duration + 5):
+        game.on_tick()
+
+    # Sequence must be completely finished and no longer active!
+    assert not game.has_active_sequence()
+    assert game.last_face in PIRINOLA_FACES
+

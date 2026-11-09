@@ -559,8 +559,11 @@ class TomaTodoGame(Game):
             pause_bots=True,
         )
 
-    def on_sequence_callback(self, action: str, payload: dict) -> None:
-        if action == "resolve_spin":
+    def on_sequence_callback(
+        self, sequence_id: str, callback_id: str, payload: dict
+    ) -> None:
+        super().on_sequence_callback(sequence_id, callback_id, payload)
+        if callback_id == "resolve_spin":
             player_id = payload.get("player_id", "")
             player = next((p for p in self.players if p.id == player_id), None)
             if player and isinstance(player, TomaTodoPlayer):
@@ -782,6 +785,8 @@ class TomaTodoGame(Game):
 
     def on_tick(self) -> None:
         super().on_tick()
+        self.process_scheduled_sounds()
+        self.process_sequences()
         if self.status != "playing" or self.has_active_sequence():
             return
 
