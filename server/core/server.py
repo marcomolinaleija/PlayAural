@@ -1931,6 +1931,8 @@ PlayAural Server
             await self._handle_open_admin_menu(client)
         elif packet_type == "open_options":
             await self._handle_open_options(client)
+        elif packet_type == "open_personal_options":
+            await self._handle_open_personal_options(client)
         elif packet_type == "broadcast_cmd":
             await self._handle_broadcast_cmd(client, packet)
         elif packet_type == "set_preference":
@@ -19472,6 +19474,18 @@ PlayAural Server
         if self._user_states.get(username, {}).get("menu") in OPTIONS_MENU_IDS:
             return
         self._nav_push(user, self._show_options_menu)
+
+    async def _handle_open_personal_options(self, client: ClientConnection) -> None:
+        """Handle F9 global hotkey: open the personal and options menu from any context."""
+        username = client.username
+        if not username:
+            return
+        user = self._users.get(username)
+        if not user:
+            return
+        if self._user_states.get(username, {}).get("menu") == "personal_options_menu":
+            return
+        self._nav_push(user, self._show_personal_options_menu)
 
     async def _handle_ping(self, client: ClientConnection) -> None:
         """Handle ping request - respond immediately with pong."""

@@ -450,6 +450,51 @@ async def test_open_friends_defers_while_status_box_open() -> None:
 
 
 @pytest.mark.asyncio
+async def test_open_personal_options_defers_while_status_box_open() -> None:
+    server, host, _guest, _table, game, host_player = _make_playing_game_server()
+    try:
+        host.clear_messages()
+        game.status_box(host_player, ["Personal summary"])
+        assert host_player.id in game._status_box_open
+
+        await server._handle_open_personal_options(SimpleNamespace(username=host.username))
+
+        assert server._user_states[host.username]["menu"] == "in_game"
+        assert "personal_options_menu" not in host.menus
+        assert "status_box" in host.menus
+
+        await server._handle_menu(
+            SimpleNamespace(username=host.username),
+            {
+                "type": "menu",
+                "menu_id": "status_box",
+                "selection_id": "status_box:line:0",
+            },
+        )
+
+        assert host_player.id not in game._status_box_open
+        assert server._user_states[host.username]["menu"] == "personal_options_menu"
+        assert "personal_options_menu" in host.menus
+    finally:
+        server._db.close()
+
+
+@pytest.mark.asyncio
+async def test_open_personal_options_is_idempotent_inside_personal_options() -> None:
+    server, host, _guest, _table, _game, _host_player = _make_playing_game_server()
+    try:
+        await server._handle_open_personal_options(SimpleNamespace(username=host.username))
+        assert server._user_states[host.username]["menu"] == "personal_options_menu"
+        state_before = dict(server._user_states[host.username])
+
+        await server._handle_open_personal_options(SimpleNamespace(username=host.username))
+
+        assert server._user_states[host.username] == state_before
+    finally:
+        server._db.close()
+
+
+@pytest.mark.asyncio
 async def test_host_management_keybind_defers_while_status_box_open() -> None:
     server, host, _guest, _table, game, host_player = _make_playing_game_server()
     try:

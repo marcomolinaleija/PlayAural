@@ -1207,9 +1207,17 @@ class VoiceChatManager {
   }
 }
 
+const VOLUME_CHANNELS = [
+  { id: "sound", flatKey: "sound_volume", serverKey: "audio/sound_volume", min: 10, max: 100, step: 10, messageKey: "main-sound-volume" },
+  { id: "music", flatKey: "music_volume", serverKey: "audio/music_volume", min: 0, max: 100, step: 10, messageKey: "main-music-volume" },
+  { id: "ambience", flatKey: "ambience_volume", serverKey: "audio/ambience_volume", min: 0, max: 100, step: 10, messageKey: "main-ambience-volume" },
+  { id: "voice", flatKey: "voice_volume", serverKey: "audio/voice_volume", min: 10, max: 100, step: 10, messageKey: "main-voice-volume" },
+];
+
 class PlayAuralWebApp {
   constructor({ validator }) {
     this.validator = validator;
+    this.currentVolumeChannelIndex = 0;
     this.store = createStore();
     this.a11y = createA11y({
       politeEl: byId("live-polite"),
@@ -1512,6 +1520,11 @@ class PlayAuralWebApp {
       onToggleBufferMute: () => this.historyView.toggleCurrentBufferMute(),
       onToggleTableChat: () => this.toggleChatMute("table"),
       onToggleGlobalChat: () => this.toggleChatMute("global"),
+      onCycleVolumeNext: () => this.cycleVolumeChannel(1),
+      onCycleVolumePrev: () => this.cycleVolumeChannel(-1),
+      onActiveVolumeDown: () => this.adjustActiveVolume(-10),
+      onActiveVolumeUp: () => this.adjustActiveVolume(10),
+      onOpenPersonalOptions: () => this.openPersonalOptions(),
       onAmbienceDown: () => this.adjustVolumePreference("ambience_volume", "audio/ambience_volume", -10, 0, 100, 10),
       onAmbienceUp: () => this.adjustVolumePreference("ambience_volume", "audio/ambience_volume", 10, 0, 100, 10),
       onMusicDown: () => this.adjustVolumePreference("music_volume", "audio/music_volume", -10, 0, 100, 10),
@@ -1688,6 +1701,38 @@ class PlayAuralWebApp {
     });
   }
 
+  getActiveVolumeChannel() {
+    const len = VOLUME_CHANNELS.length;
+    return VOLUME_CHANNELS[((this.currentVolumeChannelIndex % len) + len) % len];
+  }
+
+  speakCurrentVolumeChannel() {
+    const channel = this.getActiveVolumeChannel();
+    const value = snapNumberToStep(this.preferences[channel.flatKey] ?? channel.max, channel.min, channel.max, channel.max, channel.step);
+    const message = Localization.get(channel.messageKey, { value });
+    this.speak(message, { buffer: "system", noHistory: true });
+  }
+
+  cycleVolumeChannel(step = 1) {
+    this.currentVolumeChannelIndex = (this.currentVolumeChannelIndex + step + VOLUME_CHANNELS.length) % VOLUME_CHANNELS.length;
+    this.speakCurrentVolumeChannel();
+  }
+
+  adjustActiveVolume(delta) {
+    const channel = this.getActiveVolumeChannel();
+    this.adjustVolumePreference(channel.flatKey, channel.serverKey, delta, channel.min, channel.max, channel.step);
+  }
+
+  openPersonalOptions() {
+    if (!this.isConnected()) {
+      return;
+    }
+    if (this.store.state.currentMenu?.menuId === "personal_options_menu") {
+      return;
+    }
+    this.send({ type: "open_personal_options" });
+  }
+
   adjustVolumePreference(flatKey, serverKey, delta, min, max, step = 1) {
     const current = snapNumberToStep(this.preferences[flatKey] ?? max, min, max, max, step);
     const value = snapNumberToStep(current + delta, min, max, current, step);
@@ -1701,7 +1746,11 @@ class PlayAuralWebApp {
       ? "main-ambience-volume"
       : flatKey === "music_volume"
         ? "main-music-volume"
-        : "";
+        : flatKey === "sound_volume"
+          ? "main-sound-volume"
+          : flatKey === "voice_volume"
+            ? "main-voice-volume"
+            : "";
     const message = messageKey ? Localization.get(messageKey, { value }) : `${value}%`;
     this.speak(message, { buffer: "system", noHistory: true });
   }
