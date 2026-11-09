@@ -329,6 +329,7 @@ class TestGameRegistryIntegration:
             "flip7": "cards",
             "holdem": "poker",
             "humanitycards": "cards",
+            "infiltrado": "misc",
             "leftrightcenter": "dice",
             "lightturret": "arcade",
             "ludo": "board",

@@ -1,6 +1,8 @@
 """Tests for Infiltrado (Undercover) game."""
 
 from pathlib import Path
+import pytest
+import shutil
 
 from ..game_utils.actions import Visibility
 from ..games.infiltrado.game import (
@@ -24,6 +26,25 @@ from ..users.test_user import MockUser
 
 _locales_dir = Path(__file__).parent.parent / "locales"
 Localization.init(_locales_dir)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_infiltrado_words(tmp_path):
+    from ..games.infiltrado.words import InfiltradoWordManager, WORDS_JSON_PATH
+
+    if WORDS_JSON_PATH.exists():
+        tmp_words = tmp_path / "infiltrado_words.json"
+        shutil.copy2(WORDS_JSON_PATH, tmp_words)
+        saved_method = InfiltradoWordManager.get_json_path
+        InfiltradoWordManager.get_json_path = classmethod(lambda cls: tmp_words)
+        InfiltradoWordManager.reload()
+        try:
+            yield
+        finally:
+            InfiltradoWordManager.get_json_path = saved_method
+            InfiltradoWordManager.reload()
+    else:
+        yield
 
 
 def make_infiltrado_game(

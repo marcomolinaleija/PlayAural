@@ -297,7 +297,7 @@ class InfiltradoGame(TurnTimerMixin, Game):
             state=KeybindState.ACTIVE,
         )
         self.define_keybind(
-            "w",
+            "alt+w",
             "Check secret word",
             ["check_secret_word"],
             state=KeybindState.ACTIVE,
