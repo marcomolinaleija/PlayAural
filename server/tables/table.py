@@ -200,6 +200,14 @@ class Table(DataClassJSONMixin):
         default_factory=set,
         metadata={SAVED_TABLE_PROPERTY: "total_unique_visitors"},
     )
+    bet: int = field(
+        default=0,
+        metadata={SAVED_TABLE_PROPERTY: "bet"},
+    )
+    pot: int = field(
+        default=0,
+        metadata={CHECKPOINT_TABLE_PROPERTY: "pot"},
+    )
 
     # These properties follow this table through manual saves and transient
     # server checkpoints. They are not account-global: final table/save
@@ -209,6 +217,12 @@ class Table(DataClassJSONMixin):
         init=False,
         repr=False,
         metadata={SAVED_TABLE_PROPERTY: "banned_uuids"},
+    )
+    _pot_contributors: set[str] = field(
+        default_factory=set,
+        init=False,
+        repr=False,
+        metadata={CHECKPOINT_TABLE_PROPERTY: "pot_contributors"},
     )
 
     # Voice preferences are part of one live table, not a manually saved game.
@@ -263,6 +277,8 @@ class Table(DataClassJSONMixin):
         self._member_offline_since = {}
         self._offline_since = None
         self._destroyed = False
+        self._banned_uuids = set()
+        self._pot_contributors = set()
         self._power_restore_started_at: float | None = None
         self._power_restore_grace_seconds: int = 0
         self._power_restore_processed: bool = False
@@ -1483,6 +1499,9 @@ class Table(DataClassJSONMixin):
             return
         self._destroyed = True
 
+        if self.pot > 0:
+            self._refund_pot("cancelled")
+
         # Ensure Game is also destroyed (e.g. if table is destroyed by timeout)
         # We need to avoid infinite recursion since Game.destroy calls Table.destroy
         if self._game and hasattr(self._game, "destroy") and not getattr(self._game, "_destroyed", False):
@@ -1831,6 +1850,9 @@ class Table(DataClassJSONMixin):
         self._offline_since = None
         self.clear_power_restore_grace()
 
+        if self.pot > 0:
+            self._refund_pot("cancelled")
+
         # A game change is a hard activity boundary. Retirement flushes any
         # final batched table cue, then stops every source (including one-shots)
         # so nothing from the old activity overlaps the fresh waiting lobby.
@@ -1874,6 +1896,9 @@ class Table(DataClassJSONMixin):
 
         if self._server and hasattr(self._server, "on_table_game_reset"):
             self._server.on_table_game_reset(self)
+
+        if self.pot > 0:
+            self._refund_pot("cancelled")
 
         # 1. Store old game state we need
         old_game = self._game
@@ -2046,6 +2071,132 @@ class Table(DataClassJSONMixin):
             self._server.on_tables_changed()
         return True
 
+    def set_bet(self, amount: int) -> bool:
+        """Set the table buy-in/bet amount in virtual coins."""
+        if not isinstance(amount, int) or amount < 0:
+            return False
+        if self.status != "playing":
+            self.bet = amount
+            return True
+        return False
+
+    def _broadcast_table_l(self, key: str, buffer: str = "game", **kwargs) -> None:
+        """Broadcast a localized message to all connected members."""
+        if self._game and hasattr(self._game, "broadcast_l"):
+            try:
+                self._game.broadcast_l(key, buffer=buffer, **kwargs)
+                return
+            except Exception:
+                pass
+        for user in self._users.values():
+            try:
+                msg = Localization.get(user.locale, key, **kwargs)
+                user.speak(msg, buffer=buffer)
+            except Exception:
+                pass
+
+    def _refund_pot(self, reason: str = "cancelled") -> None:
+        """Refund all contributed bets from escrow back to human players."""
+        if self.pot <= 0 or not self._pot_contributors:
+            self.pot = 0
+            self._pot_contributors.clear()
+            return
+
+        db = self._db
+        if not db and self._server:
+            db = getattr(self._server, "_db", None)
+
+        refund_amount = self.bet
+        if db and refund_amount > 0:
+            for contributor_uuid in self._pot_contributors:
+                try:
+                    db.adjust_wallet_balance(contributor_uuid, refund_amount, is_bet=False)
+                except Exception:
+                    pass
+
+        self.broadcast_sound("game_citadels/coins_small.ogg")
+        if reason == "no_winner":
+            self._broadcast_table_l("table-pot-refunded-no-winner", buffer="game", bet=refund_amount)
+        else:
+            self._broadcast_table_l("table-pot-refunded", buffer="game", bet=refund_amount)
+
+        self.pot = 0
+        self._pot_contributors.clear()
+
+    def _settle_pot(self, result: Any) -> None:
+        """Distribute the table pot to winners or refund if no human won."""
+        if self.pot <= 0:
+            self._pot_contributors.clear()
+            return
+
+        db = self._db
+        if not db and self._server:
+            db = getattr(self._server, "_db", None)
+
+        if not db:
+            self.pot = 0
+            self._pot_contributors.clear()
+            return
+
+        # Extract winners from GameResult
+        winner_ids: list[str] = []
+        if hasattr(result, "custom_data") and isinstance(result.custom_data, dict):
+            w_ids = result.custom_data.get("winner_ids")
+            if w_ids and isinstance(w_ids, (list, tuple, set)):
+                winner_ids = [str(w) for w in w_ids if w]
+            elif result.custom_data.get("winner_id"):
+                winner_ids = [str(result.custom_data["winner_id"])]
+
+        # Find human winners who were part of this table/pot
+        human_winners: list[str] = []
+        for winner_id in winner_ids:
+            if winner_id in self._pot_contributors:
+                human_winners.append(winner_id)
+            else:
+                for member in self.members:
+                    user = self._users.get(member.username)
+                    if user and str(getattr(user, "uuid", "")) == winner_id:
+                        human_winners.append(winner_id)
+                        break
+
+        # Deduplicate preserving order
+        seen = set()
+        unique_human_winners = []
+        for hw in human_winners:
+            if hw not in seen:
+                seen.add(hw)
+                unique_human_winners.append(hw)
+
+        if unique_human_winners:
+            total_pot = self.pot
+            share = total_pot // len(unique_human_winners)
+            for winner_uuid in unique_human_winners:
+                db.adjust_wallet_balance(winner_uuid, share, is_win=True)
+
+            self.broadcast_sound("game_citadels/coins_large.ogg")
+            winner_names = []
+            for winner_uuid in unique_human_winners:
+                name = None
+                for member in self.members:
+                    user = self._users.get(member.username)
+                    if user and str(getattr(user, "uuid", "")) == winner_uuid:
+                        name = member.username
+                        break
+                if not name:
+                    acc = db.get_user(winner_uuid)
+                    name = acc.username if acc else "Jugador"
+                winner_names.append(name)
+
+            if len(unique_human_winners) == 1:
+                self._broadcast_table_l("table-winner-won-pot", buffer="game", winner=winner_names[0], pot=total_pot)
+            else:
+                self._broadcast_table_l("table-pot-split", buffer="game", winners=", ".join(winner_names), share=share)
+        else:
+            self._refund_pot(reason="no_winner")
+
+        self.pot = 0
+        self._pot_contributors.clear()
+
     def save_and_close(self, username: str) -> None:
         """Save game state and close table. Called by game save action."""
         if self._server:
@@ -2058,5 +2209,6 @@ class Table(DataClassJSONMixin):
         rating_updates: dict[str, tuple[float, float]] | None = None,
     ) -> None:
         """Save a game result to the database. Called by game when it finishes."""
+        self._settle_pot(result)
         if self._server:
             self._server.on_game_result(result, rating_updates=rating_updates)

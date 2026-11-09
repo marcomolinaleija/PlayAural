@@ -65,7 +65,13 @@ from ..administration.manager import (
 )
 from .sound_events import AVAILABLE_SOUND_ASSETS, SOUND_EVENTS
 from ..network.websocket_server import WebSocketServer, ClientConnection
-from ..persistence.database import Database, UserRecord
+from ..persistence.database import (
+    Database,
+    UserRecord,
+    UserWallet,
+    ACTIVITY_BONUS_COINS,
+    MAX_BONUS_ELIGIBLE_COINS,
+)
 from ..auth.auth import AuthManager, is_valid_email
 from ..auth.captcha import verify_captcha
 from ..auth.rate_limit import RateLimiter
@@ -310,6 +316,7 @@ USER_REPORT_CONFIRM_MENU = "user_report_confirm_menu"
 TABLE_MEMBERS_MENU = "table_members_menu"
 TABLE_MEMBER_ACTIONS_MENU = "table_member_actions_menu"
 HOST_TABLE_STATS_MENU = "host_table_stats_menu"
+HOST_TABLE_BET_MENU = "host_table_bet_menu"
 HOST_VOICE_MANAGEMENT_MENU = "host_voice_management_menu"
 HOST_VOICE_TARGET_MENU = "host_voice_target_menu"
 PERSONAL_VOICE_SETTINGS_MENU = "personal_voice_settings_menu"
@@ -479,7 +486,7 @@ class Server:
         *OPTIONS_MENU_IDS,
         "saved_tables_menu", "saved_table_actions_menu",
         "leaderboards_menu", "leaderboard_types_menu", "game_leaderboard",
-        "my_stats_menu", "my_game_stats", "profile_menu", "gender_menu",
+        "my_stats_menu", "my_game_stats", "profile_menu", "wallet_menu", "gender_menu",
         "bio_actions_menu", "email_confirm_menu", *FRIENDS_MENU_IDS,
         "online_users",
         *ADMIN_MENU_IDS, "logout_confirm_menu",
@@ -494,7 +501,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
-        HOST_TABLE_STATS_MENU, "global_voice_chat_menu",
+        HOST_TABLE_STATS_MENU, HOST_TABLE_BET_MENU, "global_voice_chat_menu",
         "table_invite_prompt", "game_over",
     }
 
@@ -512,7 +519,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
-        HOST_TABLE_STATS_MENU,
+        HOST_TABLE_STATS_MENU, HOST_TABLE_BET_MENU,
     }
 
     GAMEPLAY_CLIENT_MENU_IDS = {
@@ -3440,7 +3447,7 @@ PlayAural Server
             topic = getattr(table.game, "topic", "").strip()
             if topic:
                 game_name = f"{game_name} ({topic})"
-        return Localization.get(
+        desc = Localization.get(
             locale,
             "table-listing-game-composition-status",
             game=game_name,
@@ -3448,6 +3455,9 @@ PlayAural Server
             host=table.host,
             composition=self._format_table_composition(locale, segments),
         )
+        if getattr(table, "bet", 0) > 0:
+            desc = f"{desc} {Localization.get(locale, 'table-listing-bet', coins=table.bet)}"
+        return desc
 
     def _get_tables_menu_items(
         self, user: NetworkUser, game_type: str, page: int = 1
@@ -6796,6 +6806,8 @@ PlayAural Server
             await self._handle_my_game_stats_selection(user, selection_id, state)
         elif current_menu == "profile_menu":
             await self._handle_profile_selection(user, selection_id)
+        elif current_menu == "wallet_menu":
+            await self._handle_wallet_selection(user, selection_id)
         elif current_menu == "gender_menu":
             await self._handle_gender_selection(user, selection_id)
         elif current_menu == "bio_actions_menu":
@@ -6864,6 +6876,8 @@ PlayAural Server
             await self._handle_host_management_selection(user, selection_id, state)
         elif current_menu == HOST_TABLE_STATS_MENU:
             await self._handle_table_stats_selection(user, selection_id, state)
+        elif current_menu == HOST_TABLE_BET_MENU:
+            await self._handle_table_bet_selection(user, selection_id, state)
         elif current_menu == HOST_VOICE_MANAGEMENT_MENU:
             await self._handle_host_voice_management_selection(
                 user, selection_id, state
@@ -9558,9 +9572,11 @@ PlayAural Server
             gender.localization_key,
         )
 
+        wallet = self._db.get_wallet(target_record.uuid)
         items = [
             MenuItem(text=Localization.get(requesting_user.locale, "profile-registration-date", date=date_str), id=""),
             MenuItem(text=Localization.get(requesting_user.locale, "profile-username", username=target_record.username), id=""),
+            MenuItem(text=Localization.get(requesting_user.locale, "profile-coins", coins=wallet.balance), id=""),
             MenuItem(text=Localization.get(requesting_user.locale, "profile-gender", gender=gender_str), id=""),
             MenuItem(text=Localization.get(requesting_user.locale, "profile-bio", bio=bio_str), id=""),
         ]
@@ -9638,9 +9654,11 @@ PlayAural Server
         gender = normalize_gender(user_record.gender)
         gender_str = Localization.get(user.locale, gender.localization_key)
 
+        wallet = self._db.get_wallet(user_record.uuid)
         items = [
             MenuItem(text=Localization.get(user.locale, "profile-registration-date", date=date_str), id=""),
             MenuItem(text=Localization.get(user.locale, "profile-username", username=user_record.username), id=""),
+            MenuItem(text=Localization.get(user.locale, "profile-wallet-entry", coins=wallet.balance), id="wallet"),
             MenuItem(text=Localization.get(user.locale, "profile-email", email=email_str), id="edit_email"),
             MenuItem(text=Localization.get(user.locale, "profile-gender", gender=gender_str), id="edit_gender"),
             MenuItem(text=Localization.get(user.locale, "profile-bio", bio=bio_str), id="edit_bio"),
@@ -9657,7 +9675,9 @@ PlayAural Server
 
     async def _handle_profile_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle profile menu selection."""
-        if selection_id == "edit_email":
+        if selection_id == "wallet":
+            self._nav_push(user, self._show_wallet_menu)
+        elif selection_id == "edit_email":
             user_record = self._db.get_user(user.username)
             user.show_editbox(
                 "email_input",
@@ -9669,6 +9689,90 @@ PlayAural Server
             self._nav_push(user, self._show_gender_menu)
         elif selection_id == "edit_bio":
             self._nav_push(user, self._show_bio_actions_menu)
+        elif selection_id == "back":
+            self._nav_back(user)
+
+    def _show_wallet_menu(self, user: NetworkUser) -> None:
+        """Show the user's wallet and coin status menu."""
+        wallet = self._db.get_wallet(user.uuid)
+        can_claim, reason, seconds_left = self._db.can_claim_activity_bonus(user.uuid)
+
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "wallet-balance", coins=wallet.balance),
+                id="",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "wallet-total-won", coins=wallet.total_won),
+                id="",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "wallet-total-bet", coins=wallet.total_bet),
+                id="",
+            ),
+        ]
+
+        if can_claim:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "wallet-claim-bonus",
+                        amount=ACTIVITY_BONUS_COINS,
+                    ),
+                    id="claim_bonus",
+                )
+            )
+        elif reason == "cap_reached":
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "wallet-bonus-cap-reached",
+                        max_coins=MAX_BONUS_ELIGIBLE_COINS,
+                    ),
+                    id="",
+                )
+            )
+        else:
+            minutes_left = max(1, (seconds_left + 59) // 60)
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "wallet-bonus-cooldown",
+                        minutes=minutes_left,
+                    ),
+                    id="",
+                )
+            )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            "wallet_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "wallet_menu"}
+
+    async def _handle_wallet_selection(self, user: NetworkUser, selection_id: str) -> None:
+        """Handle wallet menu selection."""
+        if selection_id == "claim_bonus":
+            success, new_balance, reason = self._db.claim_activity_bonus(user.uuid)
+            if success:
+                user.play_sound("game_citadels/coins_small.ogg")
+                user.speak_l(
+                    "wallet-claimed-success",
+                    buffer="misc",
+                    amount=ACTIVITY_BONUS_COINS,
+                    balance=new_balance,
+                )
+                self._show_wallet_menu(user)
+            else:
+                user.speak_l("wallet-claim-failed", buffer="misc", reason=reason)
+                self._show_wallet_menu(user)
         elif selection_id == "back":
             self._nav_back(user)
 
@@ -10888,6 +10992,17 @@ PlayAural Server
                 and active_players_count < game.get_max_players()
             )
 
+            if can_join_as_player and getattr(table, "bet", 0) > 0:
+                wallet = self._db.get_wallet(user.uuid)
+                if wallet.balance < table.bet:
+                    can_join_as_player = False
+                    user.speak_l(
+                        "table-insufficient-coins-spectating",
+                        buffer="system",
+                        coins=wallet.balance,
+                        required=table.bet,
+                    )
+
             if can_join_as_player:
                 # Join as player
                 if not table.add_member(user.username, user, as_spectator=False):
@@ -11141,7 +11256,15 @@ PlayAural Server
         """Build items for the host management menu."""
         locale = user.locale
         privacy_key = "host-management-set-public" if table.is_private else "host-management-set-private"
-        items = [
+        items = []
+        if table.status == "waiting":
+            current_bet = getattr(table, "bet", 0)
+            if current_bet > 0:
+                bet_text = Localization.get(locale, "host-management-table-bet", coins=current_bet)
+            else:
+                bet_text = Localization.get(locale, "host-management-table-bet-friendly")
+            items.append(MenuItem(text=bet_text, id="table_bet"))
+        items.extend([
             MenuItem(text=Localization.get(locale, privacy_key), id="toggle_privacy"),
             MenuItem(text=Localization.get(locale, "host-management-invite"), id="invite_friend"),
             MenuItem(
@@ -11160,7 +11283,7 @@ PlayAural Server
                 text=Localization.get(locale, "host-management-table-stats"),
                 id="table_stats",
             ),
-        ]
+        ])
         if table.game and table.game.status == "playing":
             items.append(
                 MenuItem(
@@ -11235,7 +11358,10 @@ PlayAural Server
             self._return_to_game(user, table)
             return
 
-        if selection_id == "toggle_privacy":
+        if selection_id == "table_bet":
+            self._nav_push(user, self._show_table_bet_menu, table)
+
+        elif selection_id == "toggle_privacy":
             table.is_private = not table.is_private
             key = "host-management-table-now-private" if table.is_private else "host-management-table-now-public"
             if table.game:
@@ -13628,6 +13754,103 @@ PlayAural Server
                 items.append(MenuItem(text=f_name, id=f"invite_{f_name}"))
         items.append(MenuItem(text=Localization.get(locale, "back"), id="back"))
         return items
+
+    def _show_table_bet_menu(self, user: NetworkUser, table: "Table") -> None:
+        """Show menu to select the table buy-in/bet amount."""
+        active_table = self._tables.get_table(table.table_id)
+        if active_table is not table:
+            self._return_to_game(user, active_table)
+            return
+        if not self._can_manage_table(user, table):
+            self._return_to_game(user, table)
+            return
+        if table.status != "waiting":
+            self._return_to_game(user, table)
+            return
+
+        locale = user.locale
+        current_bet = getattr(table, "bet", 0)
+        items = [
+            MenuItem(
+                text=Localization.get(locale, "table-bet-friendly") + (" *" if current_bet == 0 else ""),
+                id="bet_0",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=10) + (" *" if current_bet == 10 else ""),
+                id="bet_10",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=25) + (" *" if current_bet == 25 else ""),
+                id="bet_25",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=50) + (" *" if current_bet == 50 else ""),
+                id="bet_50",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=100) + (" *" if current_bet == 100 else ""),
+                id="bet_100",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=250) + (" *" if current_bet == 250 else ""),
+                id="bet_250",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=500) + (" *" if current_bet == 500 else ""),
+                id="bet_500",
+            ),
+            MenuItem(text=Localization.get(locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            HOST_TABLE_BET_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {
+            "menu": HOST_TABLE_BET_MENU,
+            "table_id": table.table_id,
+        }
+
+    async def _handle_table_bet_selection(
+        self, user: NetworkUser, selection_id: str, state: dict
+    ) -> None:
+        """Handle selection in the table bet menu."""
+        table_id = state.get("table_id")
+        table = self._tables.get_table(table_id)
+        if not table or not self._can_manage_table(user, table) or table.status != "waiting":
+            self._return_to_game(user, table)
+            return
+
+        if selection_id == "back":
+            self._nav_back(user)
+            return
+
+        if selection_id.startswith("bet_"):
+            try:
+                amount = int(selection_id.split("_")[1])
+            except ValueError:
+                return
+
+            if amount > 0:
+                wallet = self._db.get_wallet(user.uuid)
+                if wallet.balance < amount:
+                    user.speak_l(
+                        "table-error-host-cannot-afford-bet",
+                        buffer="system",
+                        coins=wallet.balance,
+                        required=amount,
+                    )
+                    return
+
+            if table.set_bet(amount):
+                if table.game:
+                    if amount > 0:
+                        table.game.broadcast_l("table-bet-changed", buffer="system", coins=amount)
+                    else:
+                        table.game.broadcast_l("table-bet-changed-friendly", buffer="system")
+                self.on_tables_changed()
+            self._nav_back(user)
 
     def _show_host_invite_menu(self, user: NetworkUser, table: "Table") -> None:
         """Show the invite friends menu."""
@@ -18365,6 +18588,8 @@ PlayAural Server
                 )
             elif menu == HOST_TABLE_STATS_MENU:
                 self._show_table_stats_menu(user, table)
+            elif menu == HOST_TABLE_BET_MENU:
+                self._show_table_bet_menu(user, table)
             else:
                 self._return_to_game(user, table)
             if username in self._user_states:
@@ -18537,6 +18762,8 @@ PlayAural Server
             self._show_my_game_stats(user, frame.get("game_type", ""))
         elif menu == "profile_menu":
             self._show_profile_menu(user)
+        elif menu == "wallet_menu":
+            self._show_wallet_menu(user)
         elif menu == "gender_menu":
             self._show_gender_menu(user)
         elif menu == "bio_actions_menu":

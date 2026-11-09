@@ -72,6 +72,31 @@ class LobbyActionsMixin:
         # preparing a game.
         self.stop_music(fade_ms=0)
         self.broadcast_l("game-starting", buffer="system")
+
+        # Escrow deduction for table bet
+        table = getattr(self, "_table", None)
+        if table and getattr(table, "bet", 0) > 0:
+            table_bet = table.bet
+            db = getattr(table, "_db", None) or getattr(getattr(table, "_server", None), "_db", None)
+            if db:
+                if hasattr(table, "_pot_contributors"):
+                    table._pot_contributors.clear()
+                else:
+                    table._pot_contributors = set()
+                pot_accumulated = 0
+                for p in self.get_active_players():
+                    if not p.is_bot:
+                        try:
+                            db.adjust_wallet_balance(p.id, -table_bet, is_bet=True)
+                            table._pot_contributors.add(p.id)
+                            pot_accumulated += table_bet
+                        except Exception:
+                            pass
+                table.pot = pot_accumulated
+                if pot_accumulated > 0:
+                    self.play_sound("game_citadels/coins_small.ogg")
+                    self.broadcast_l("table-pot-started", buffer="game", pot=pot_accumulated, bet=table_bet)
+
         self.on_start()
         self._focus_initial_gameplay_menu_items()
         self._clear_team_arrangement_state()
@@ -741,7 +766,7 @@ class LobbyActionsMixin:
         if self.team_arrangement_active:
             return
 
-        # If currently a spectator trying to become a player, check capacity
+        # If currently a spectator trying to become a player, check capacity and coins
         if player.is_spectator:
             active_players = sum(1 for p in self.players if not p.is_spectator)
             if active_players >= self.get_max_players():
@@ -749,6 +774,23 @@ class LobbyActionsMixin:
                 if user:
                     user.speak_l("table-full", buffer="game")
                 return
+
+            table = getattr(self, "_table", None)
+            if table and getattr(table, "bet", 0) > 0 and not player.is_bot:
+                table_bet = table.bet
+                db = getattr(table, "_db", None) or getattr(getattr(table, "_server", None), "_db", None)
+                if db:
+                    wallet = db.get_wallet(player.id)
+                    if wallet.balance < table_bet:
+                        user = self.get_user(player)
+                        if user:
+                            user.speak_l(
+                                "table-error-insufficient-coins-self",
+                                buffer="game",
+                                coins=wallet.balance,
+                                required=table_bet,
+                            )
+                        return
 
         rate_limit_reason = self._role_change_rate_limit_reason(
             player,

@@ -344,6 +344,7 @@ class TestGameRegistryIntegration:
             "pusoydos": "cards",
             "rollingballs": "misc",
             "bingo": "misc",
+            "loteria": "misc",
             "scopa": "cards",
             "senet": "board",
             "skipbo": "cards",
