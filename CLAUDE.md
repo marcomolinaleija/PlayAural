@@ -902,6 +902,19 @@ maintenance, not server-power finalization. Route them through
   pre-migration backup before any existing schema is changed. Reject databases
   created by newer server versions. Opening SQLite must never run retention or
   compatibility cleanup; destructive cleanup is an explicit operation.
+- **Mandatory Schema Version Bump & Migration Rule**: Never add a new table,
+  column, constraint, or index only to `_create_tables_in_transaction()` and
+  canonical `_validate_schema()` without incrementing `CURRENT_SCHEMA_VERSION`.
+  `_create_tables_in_transaction()` runs exclusively on brand new, empty
+  databases (`schema_version == 0`). Existing databases in production run at the
+  previous `CURRENT_SCHEMA_VERSION` and evaluate `schema_version == CURRENT_SCHEMA_VERSION`,
+  skipping table creation and running `_validate_schema()` directly. If the version
+  is not incremented and an explicit migration path (e.g., `vN -> vN+1`) registered,
+  production databases will fail schema validation and crash at startup. Every
+  schema addition or alteration MUST:
+  1. Increment `Database.CURRENT_SCHEMA_VERSION`.
+  2. Add the previous version to the supported migration set in `_initialize_storage()`.
+  3. Execute the new DDL inside the backed-up migration transaction before validation.
 - Schema version 2 atomically rebuilds legacy `users.username_key` storage so
   version-zero and version-one databases acquire the canonical non-null identity
   contract without losing account ids or rows. Preserve this backed-up migration
