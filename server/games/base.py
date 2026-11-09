@@ -471,6 +471,24 @@ class Game(
         if not self.get_active_human_players():
             errors.append("action-start-needs-human-player")
 
+        table = getattr(self, "_table", None)
+        if table and getattr(table, "bet", 0) > 0:
+            table_bet = table.bet
+            db = getattr(table, "_db", None) or getattr(getattr(table, "_server", None), "_db", None)
+            if db:
+                for p in self.get_active_human_players():
+                    try:
+                        wallet = db.get_wallet(p.id)
+                        if wallet.balance < table_bet:
+                            errors.append(
+                                (
+                                    "table-error-insufficient-coins",
+                                    {"player": p.name, "coins": wallet.balance, "required": table_bet},
+                                )
+                            )
+                    except Exception:
+                        pass
+
         legacy_count_keys = {"action-need-more-players", "action-table-full"}
         for error in self.prestart_validate():
             key = error[0] if isinstance(error, tuple) else error

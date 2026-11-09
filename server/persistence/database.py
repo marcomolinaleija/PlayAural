@@ -127,6 +127,24 @@ class UserRecord:
     last_login_date: str = ""
 
 
+INITIAL_WALLET_COINS: int = 250
+ACTIVITY_BONUS_COINS: int = 150
+ACTIVITY_BONUS_COOLDOWN_SECONDS: int = 3600
+MAX_BONUS_ELIGIBLE_COINS: int = 3000
+
+
+@dataclass(frozen=True)
+class UserWallet:
+    """Authoritative virtual currency wallet for one account UUID."""
+
+    user_uuid: str
+    balance: int = INITIAL_WALLET_COINS
+    last_activity_bonus_utc: str = ""
+    total_won: int = 0
+    total_bet: int = 0
+    created_at_utc: str = ""
+
+
 @dataclass(frozen=True)
 class UsernameResolution:
     """Result of resolving one user-supplied username spelling."""
@@ -418,6 +436,7 @@ class Database:
             "tables",
             "user_blocks",
             "user_notifications",
+            "user_wallets",
             "users",
         }
     )
@@ -2638,6 +2657,22 @@ class Database:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_reset_tokens_user_uuid
             ON password_reset_tokens(user_uuid)
+        """)
+
+        # Virtual currency wallets table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_wallets (
+                user_uuid TEXT PRIMARY KEY,
+                balance INTEGER NOT NULL DEFAULT 250,
+                last_activity_bonus_utc TEXT NOT NULL DEFAULT '',
+                total_won INTEGER NOT NULL DEFAULT 0,
+                total_bet INTEGER NOT NULL DEFAULT 0,
+                created_at_utc TEXT NOT NULL DEFAULT ''
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_user_wallets_balance
+            ON user_wallets(balance DESC)
         """)
 
         # Additional indexes for fast lookups
@@ -4878,6 +4913,10 @@ class Database:
             )
             cursor.execute(
                 "DELETE FROM password_reset_tokens WHERE user_uuid = ?",
+                (user.uuid,),
+            )
+            cursor.execute(
+                "DELETE FROM user_wallets WHERE user_uuid = ?",
                 (user.uuid,),
             )
 
@@ -7288,3 +7327,187 @@ class Database:
                 break
 
         return entries
+
+    # ------------------------------------------------------------------ #
+    # Virtual Currency Wallets                                           #
+    # ------------------------------------------------------------------ #
+
+    def get_wallet(self, user_uuid: str, cursor: sqlite3.Cursor | None = None) -> UserWallet:
+        """Get or initialize the virtual wallet for one account UUID."""
+        if not user_uuid:
+            return UserWallet(user_uuid="")
+        cur = cursor if cursor is not None else self._conn.cursor()
+        cur.execute(
+            """
+            SELECT user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+            FROM user_wallets
+            WHERE user_uuid = ?
+            """,
+            (user_uuid,),
+        )
+        row = cur.fetchone()
+        if row:
+            return UserWallet(
+                user_uuid=str(row[0]),
+                balance=int(row[1]),
+                last_activity_bonus_utc=str(row[2]),
+                total_won=int(row[3]),
+                total_bet=int(row[4]),
+                created_at_utc=str(row[5]),
+            )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        if cursor is not None:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO user_wallets (
+                    user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+                ) VALUES (?, ?, ?, 0, 0, ?)
+                """,
+                (user_uuid, INITIAL_WALLET_COINS, now_iso, now_iso),
+            )
+            return UserWallet(
+                user_uuid=user_uuid,
+                balance=INITIAL_WALLET_COINS,
+                last_activity_bonus_utc=now_iso,
+                created_at_utc=now_iso,
+            )
+
+        try:
+            with self._transaction(immediate=True) as tx_cursor:
+                tx_cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO user_wallets (
+                        user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+                    ) VALUES (?, ?, ?, 0, 0, ?)
+                    """,
+                    (user_uuid, INITIAL_WALLET_COINS, now_iso, now_iso),
+                )
+                tx_cursor.execute(
+                    """
+                    SELECT user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+                    FROM user_wallets
+                    WHERE user_uuid = ?
+                    """,
+                    (user_uuid,),
+                )
+                row = tx_cursor.fetchone()
+                if row:
+                    return UserWallet(
+                        user_uuid=str(row[0]),
+                        balance=int(row[1]),
+                        last_activity_bonus_utc=str(row[2]),
+                        total_won=int(row[3]),
+                        total_bet=int(row[4]),
+                        created_at_utc=str(row[5]),
+                    )
+        except Exception:
+            pass
+        return UserWallet(user_uuid=user_uuid, balance=INITIAL_WALLET_COINS)
+
+    def adjust_wallet_balance(
+        self,
+        user_uuid: str,
+        delta: int,
+        *,
+        is_win: bool = False,
+        is_bet: bool = False,
+        cursor: sqlite3.Cursor | None = None,
+    ) -> tuple[bool, int]:
+        """Atomically adjust an account's wallet balance.
+
+        Returns (success, new_balance). If delta < 0 and balance would drop below 0,
+        returns (False, current_balance) without mutating the balance.
+        """
+        if not user_uuid:
+            return False, 0
+
+        if cursor is not None:
+            wallet = self.get_wallet(user_uuid, cursor=cursor)
+            current_balance = wallet.balance
+            if delta < 0 and current_balance + delta < 0:
+                return False, current_balance
+
+            new_balance = current_balance + delta
+            new_won = wallet.total_won + (delta if is_win and delta > 0 else 0)
+            new_bet = wallet.total_bet + (abs(delta) if is_bet and delta < 0 else 0)
+
+            cursor.execute(
+                """
+                UPDATE user_wallets
+                SET balance = ?, total_won = ?, total_bet = ?
+                WHERE user_uuid = ?
+                """,
+                (new_balance, new_won, new_bet, user_uuid),
+            )
+            return True, new_balance
+
+        with self._transaction(immediate=True) as tx_cursor:
+            wallet = self.get_wallet(user_uuid, cursor=tx_cursor)
+            current_balance = wallet.balance
+            if delta < 0 and current_balance + delta < 0:
+                return False, current_balance
+
+            new_balance = current_balance + delta
+            new_won = wallet.total_won + (delta if is_win and delta > 0 else 0)
+            new_bet = wallet.total_bet + (abs(delta) if is_bet and delta < 0 else 0)
+
+            tx_cursor.execute(
+                """
+                UPDATE user_wallets
+                SET balance = ?, total_won = ?, total_bet = ?
+                WHERE user_uuid = ?
+                """,
+                (new_balance, new_won, new_bet, user_uuid),
+            )
+            return True, new_balance
+
+    def can_claim_activity_bonus(self, user_uuid: str) -> tuple[bool, str, int]:
+        """Check if an account can claim the periodic activity bonus.
+
+        Returns (can_claim, reason_code, seconds_remaining).
+        Reason codes: 'available', 'cap_reached', 'cooldown'.
+        """
+        wallet = self.get_wallet(user_uuid)
+        if wallet.balance >= MAX_BONUS_ELIGIBLE_COINS:
+            return False, "cap_reached", 0
+        if not wallet.last_activity_bonus_utc:
+            return True, "available", 0
+        try:
+            last_dt = datetime.fromisoformat(wallet.last_activity_bonus_utc)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            elapsed = (now - last_dt).total_seconds()
+            if elapsed < ACTIVITY_BONUS_COOLDOWN_SECONDS:
+                remaining = int(ACTIVITY_BONUS_COOLDOWN_SECONDS - elapsed)
+                return False, "cooldown", max(1, remaining)
+        except Exception:
+            pass
+        return True, "available", 0
+
+    def claim_activity_bonus(self, user_uuid: str) -> tuple[bool, int, str]:
+        """Atomically claim the 150-coin activity bonus.
+
+        Returns (success, new_balance, reason_if_failed).
+        """
+        if not user_uuid:
+            return False, 0, "invalid_user"
+        with self._transaction(immediate=True) as cursor:
+            can_claim, reason, _ = self.can_claim_activity_bonus(user_uuid)
+            if not can_claim:
+                wallet = self.get_wallet(user_uuid)
+                return False, wallet.balance, reason
+
+            wallet = self.get_wallet(user_uuid)
+            new_balance = wallet.balance + ACTIVITY_BONUS_COINS
+            now_iso = datetime.now(timezone.utc).isoformat()
+            cursor.execute(
+                """
+                UPDATE user_wallets
+                SET balance = ?, last_activity_bonus_utc = ?
+                WHERE user_uuid = ?
+                """,
+                (new_balance, now_iso, user_uuid),
+            )
+            return True, new_balance, ""
