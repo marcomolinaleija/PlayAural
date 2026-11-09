@@ -120,6 +120,11 @@ DATABASE_STORAGE_SIZE_UNITS = (
     ("mib", 1024**2),
     ("kib", 1024),
 )
+GRANT_COINS_MENU = "grant_coins_menu"
+GRANT_COINS_AMOUNT_MENU = "grant_coins_amount_menu"
+GRANT_COINS_INPUT = "grant_coins_input"
+GRANT_COINS_PRESET_AMOUNTS = (100, 500, 1000, 5000, 10000, 50000)
+
 
 
 def _localized_database_size(locale: str, size_bytes: int) -> str:
@@ -242,6 +247,9 @@ ADMIN_MENU_IDS = {
     ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
     ADMIN_INFILTRADO_ADD_CATEGORY_INPUT,
     ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT,
+    GRANT_COINS_MENU,
+    GRANT_COINS_AMOUNT_MENU,
+    GRANT_COINS_INPUT,
 }
 
 
@@ -780,6 +788,7 @@ class AdministrationManager:
             "unban": self._show_unban_menu,
             "mute": self._show_mute_menu,
             "unmute": self._show_unmute_menu,
+            "grant_coins": self._show_grant_coins_menu,
         }.get(mode)
         if show_fn is None:
             self._return_to_admin_root(user)
@@ -2605,6 +2614,11 @@ class AdministrationManager:
                 id="kick_user",
             ),
             MenuItem(
+                text=Localization.get(user.locale, "admin-grant-coins"),
+                id="grant_coins",
+                description_key="admin-desc-grant-coins",
+            ),
+            MenuItem(
                 text=Localization.get(user.locale, "manage-motd"),
                 id="manage_motd",
             ),
@@ -2951,6 +2965,10 @@ class AdministrationManager:
              await self._handle_mute_reason_selection(user, selection_id, state)
         elif current_menu == "unmute_menu":
              await self._handle_unmute_selection(user, selection_id, state)
+        elif current_menu == GRANT_COINS_MENU:
+             await self._handle_grant_coins_selection(user, selection_id, state)
+        elif current_menu == GRANT_COINS_AMOUNT_MENU:
+             await self._handle_grant_coins_amount_selection(user, selection_id, state)
         elif current_menu == "manage_motd_menu":
              await self._handle_manage_motd_selection(user, selection_id, state)
         elif current_menu == "view_motd_menu":
@@ -3045,6 +3063,11 @@ class AdministrationManager:
                 user.speak_l("no-users-to-kick", buffer="system")
                 return
             self.server._nav_push(user, self._show_kick_menu)
+        elif selection_id == "grant_coins":
+            if self._search_grant_coins_targets(user, "", 1).total == 0:
+                user.speak_l("admin-grant-coins-no-users", buffer="system")
+                return
+            self.server._nav_push(user, self._show_grant_coins_menu)
         elif selection_id == "broadcast_announcement":
             self._show_broadcast_input_menu(user)
         elif selection_id == "manage_motd":
@@ -4624,6 +4647,27 @@ class AdministrationManager:
                 # Cancelled or empty
                 self.server._restore_input_parent(user, state)
             return True
+        elif menu_id == GRANT_COINS_INPUT and input_id == "grant_coins_custom_amount":
+            target_username = state.get("target_username")
+            if not target_username:
+                self.server._restore_input_parent(user, state)
+                return True
+            if not value or not value.strip():
+                self.server._restore_input_parent(user, state)
+                return True
+            try:
+                amount = int(value.strip())
+                if amount <= 0:
+                    user.speak_l("admin-grant-coins-error-positive", buffer="system")
+                    self.server._restore_input_parent(user, state)
+                    return True
+            except ValueError:
+                user.speak_l("admin-grant-coins-error-invalid", buffer="system")
+                self.server._restore_input_parent(user, state)
+                return True
+
+            await self._grant_coins_to_user(user, target_username, amount)
+            return True
         elif (
             menu_id == "server_power_custom_delay_input"
             and input_id == "server_power_custom_delay_input"
@@ -6031,6 +6075,196 @@ class AdministrationManager:
             str(state.get("search_query", "")),
             int(state.get("target_page", 1) or 1),
         )
+
+    # ------------------------------------------------------------------ #
+    # Grant Coins to Players                                             #
+    # ------------------------------------------------------------------ #
+
+    def _search_grant_coins_targets(
+        self, user: NetworkUser, query: str, page: int
+    ) -> PaginatedMenuPage[str]:
+        return self._search_user_targets_page(
+            query,
+            page,
+            approved=True,
+        )
+
+    def _show_grant_coins_menu(
+        self,
+        user: NetworkUser,
+        query: str = "",
+        page: int = 1,
+        *,
+        focus_page_start: bool = False,
+    ) -> None:
+        """Show searchable list of users to grant coins."""
+        self._show_admin_target_menu(
+            user,
+            menu_id=GRANT_COINS_MENU,
+            mode="grant_coins",
+            action_prefix="grant_coins",
+            targets=self._search_grant_coins_targets(user, query, page),
+            empty_key="admin-grant-coins-no-users",
+            query=query,
+            focus_page_start=focus_page_start,
+        )
+
+    async def _handle_grant_coins_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        if selection_id == "back":
+            self.server._nav_back(user)
+        elif selection_id == "search":
+            self._handle_target_search_selection(user, state)
+        elif self._handle_target_page_selection(user, selection_id, state):
+            return
+        elif selection_id.startswith("grant_coins_"):
+            target_username = selection_id[len("grant_coins_"):]
+            self.server._nav_push(user, self._show_grant_coins_amount_menu, target_username)
+
+    def _show_grant_coins_amount_menu(
+        self, user: NetworkUser, target_username: str
+    ) -> None:
+        """Show amount options to grant coins to the selected user."""
+        resolution = self.server.db.resolve_user(target_username)
+        target_record = resolution.user
+        current_balance = 0
+        if target_record:
+            wallet = self.server.db.get_wallet(target_record.uuid)
+            current_balance = wallet.balance
+            display_name = target_record.username
+        else:
+            display_name = target_username
+
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-grant-coins-target-balance",
+                    player=display_name,
+                    coins=current_balance,
+                ),
+                id="target_balance",
+                read_only=True,
+            )
+        ]
+
+        for amount in GRANT_COINS_PRESET_AMOUNTS:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "coins-amount-option",
+                        coins=amount,
+                    ),
+                    id=f"amount_{amount}",
+                )
+            )
+
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-grant-coins-custom-amount",
+                ),
+                id="amount_custom",
+            )
+        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            GRANT_COINS_AMOUNT_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": GRANT_COINS_AMOUNT_MENU,
+            "target_username": target_username,
+        }
+
+    async def _handle_grant_coins_amount_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        target_username = state.get("target_username")
+        if not target_username:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "back":
+            self.server._nav_back(user)
+        elif selection_id == "amount_custom":
+            user.show_editbox(
+                "grant_coins_custom_amount",
+                Localization.get(user.locale, "admin-grant-coins-prompt-amount"),
+            )
+            self.server.enter_input_state(
+                user,
+                GRANT_COINS_INPUT,
+                target_username=target_username,
+            )
+        elif selection_id.startswith("amount_"):
+            try:
+                amount = int(selection_id[len("amount_"):])
+                if amount > 0:
+                    await self._grant_coins_to_user(user, target_username, amount)
+            except ValueError:
+                self.server._nav_back(user)
+
+    @require_admin
+    async def _grant_coins_to_user(
+        self, admin: NetworkUser, target_username: str, amount: int
+    ) -> None:
+        """Grant virtual coins to a player and broadcast audio and speech notifications."""
+        if amount <= 0:
+            admin.speak_l("admin-grant-coins-error-positive", buffer="system")
+            return
+
+        resolution = self.server.db.resolve_user(target_username)
+        if resolution.ambiguous:
+            admin.speak_l(
+                "username-ambiguous",
+                buffer="system",
+                username=target_username,
+            )
+            self._return_to_admin_root(admin, "grant_coins")
+            return
+
+        target_record = resolution.user
+        if not target_record:
+            admin.speak_l("auth-error-user-not-found", buffer="system")
+            self._return_to_admin_root(admin, "grant_coins")
+            return
+
+        success, new_balance = self.server.db.adjust_wallet_balance(
+            target_record.uuid,
+            amount,
+        )
+        if not success:
+            admin.speak_l("auth-registration-error", buffer="system")
+            self._return_to_admin_root(admin, "grant_coins")
+            return
+
+        admin.play_sound("coins_grant.ogg")
+        admin.speak_l(
+            "admin-grant-coins-success",
+            buffer="system",
+            player=target_record.username,
+            amount=amount,
+            balance=new_balance,
+        )
+
+        target_user = self.server.users.get(target_record.username)
+        if target_user and target_user.username != admin.username:
+            target_user.play_sound("coins_grant.ogg")
+            target_user.speak_l(
+                "coins-granted-notification",
+                buffer="system",
+                amount=amount,
+                balance=new_balance,
+            )
+
+        self._return_to_admin_root(admin, "grant_coins")
 
     # ------------------------------------------------------------------ #
     # Infiltrado Word Pairs Management                                  #
