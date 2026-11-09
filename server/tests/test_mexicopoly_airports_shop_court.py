@@ -171,6 +171,7 @@ def test_car_purchase_roll_with_three_dice_and_fuel_refill():
 
     # Roll with car (use 1)
     p1.position = 0
+    p1.in_jail = False
     game.phase = PHASE_AWAIT_ROLL
     game.decision_player_id = p1.id
     game._action_roll_car(p1, "roll_car")
@@ -180,6 +181,8 @@ def test_car_purchase_roll_with_three_dice_and_fuel_refill():
     # Use remaining 3 fuel
     for remaining in (2, 1, 0):
         game.active_sequences.clear()
+        p1.position = 0
+        p1.in_jail = False
         game.phase = PHASE_AWAIT_ROLL
         game.decision_player_id = p1.id
         game._action_roll_car(p1, "roll_car")
@@ -187,6 +190,7 @@ def test_car_purchase_roll_with_three_dice_and_fuel_refill():
 
     # Out of fuel: roll_car is disabled
     game.active_sequences.clear()
+    p1.in_jail = False
     game.phase = PHASE_AWAIT_ROLL
     game.decision_player_id = p1.id
     assert game._is_roll_car_enabled(p1) == "mexicopoly-error-no-gasoline"
@@ -196,6 +200,9 @@ def test_car_purchase_roll_with_three_dice_and_fuel_refill():
     game._action_open_shop(p1, "open_shop", "fuel")
     assert game.car_fuel[p1.id] == 4
     assert p1.cash == cash_before - FUEL_PRICE
+    p1.in_jail = False
+    game.phase = PHASE_AWAIT_ROLL
+    game.decision_player_id = p1.id
     assert game._is_roll_car_enabled(p1) is None
 
 
