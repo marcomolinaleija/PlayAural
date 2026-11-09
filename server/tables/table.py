@@ -2097,7 +2097,7 @@ class Table(DataClassJSONMixin):
 
     def _refund_pot(self, reason: str = "cancelled") -> None:
         """Refund all contributed bets from escrow back to human players."""
-        if self.pot <= 0 or not self._pot_contributors:
+        if self.pot <= 0:
             self.pot = 0
             self._pot_contributors.clear()
             return
@@ -2106,13 +2106,22 @@ class Table(DataClassJSONMixin):
         if not db and self._server:
             db = getattr(self._server, "_db", None)
 
-        refund_amount = self.bet
+        if not self._pot_contributors:
+            for member in self.members:
+                user = self._users.get(member.username)
+                if user and not getattr(user, "is_bot", False) and getattr(user, "uuid", None):
+                    self._pot_contributors.add(user.uuid)
+
+        contributors_count = len(self._pot_contributors)
+        refund_amount = self.pot // contributors_count if contributors_count > 0 else self.bet
         if db and refund_amount > 0:
-            for contributor_uuid in self._pot_contributors:
+            for contributor_uuid in list(self._pot_contributors):
                 try:
                     db.adjust_wallet_balance(contributor_uuid, refund_amount, is_bet=False)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logging.getLogger("playaural.table").exception(
+                        "Failed to refund pot of %s to %s: %s", refund_amount, contributor_uuid, exc
+                    )
 
         self.broadcast_sound("game_citadels/coins_small.ogg")
         if reason == "no_winner":
@@ -2146,6 +2155,8 @@ class Table(DataClassJSONMixin):
                 winner_ids = [str(w) for w in w_ids if w]
             elif result.custom_data.get("winner_id"):
                 winner_ids = [str(result.custom_data["winner_id"])]
+            elif result.custom_data.get("winner"):
+                winner_ids = [str(result.custom_data["winner"])]
 
         # Find human winners who were part of this table/pot
         human_winners: list[str] = []
@@ -2155,8 +2166,8 @@ class Table(DataClassJSONMixin):
             else:
                 for member in self.members:
                     user = self._users.get(member.username)
-                    if user and str(getattr(user, "uuid", "")) == winner_id:
-                        human_winners.append(winner_id)
+                    if user and (str(getattr(user, "uuid", "")) == winner_id or member.username == winner_id):
+                        human_winners.append(user.uuid)
                         break
 
         # Deduplicate preserving order

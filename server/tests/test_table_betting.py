@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import tempfile
 import pytest
+from unittest import mock
 from unittest.mock import MagicMock
 
 from server.core.server import Server, HOST_TABLE_BET_MENU
@@ -308,25 +309,94 @@ def test_game_refund_when_bot_wins_or_no_human_winner(temp_db):
 
 def test_game_reset_or_destroy_refunds_pot(temp_db):
     p1 = temp_db.create_user("Canceller", "hash")
+    p2 = temp_db.create_user("Canceller2", "hash")
     u1 = make_user("Canceller", p1.uuid)
+    u2 = make_user("Canceller2", p2.uuid)
 
     game = LoteriaGame()
     table = Table(table_id="tbl60", game_type="loteria", host="Canceller")
-    table.bet = 50
+    table.bet = 60
     table._db = temp_db
     table.game = game
     game._table = table
 
     table.add_member("Canceller", u1)
+    table.add_member("Canceller2", u2)
     game.add_player("Canceller", u1)
+    game.add_player("Canceller2", u2)
 
     game._start_game_from_lobby()
-    assert temp_db.get_wallet(p1.uuid).balance == 200
-    assert table.pot == 50
+    assert temp_db.get_wallet(p1.uuid).balance == 190
+    assert temp_db.get_wallet(p2.uuid).balance == 190
+    assert table.pot == 120
 
     # Reset game mid-match
     table.reset_game()
 
-    # Refunded!
+    # Both players refunded!
     assert temp_db.get_wallet(p1.uuid).balance == 250
+    assert temp_db.get_wallet(p2.uuid).balance == 250
     assert table.pot == 0
+
+
+@pytest.mark.asyncio
+async def test_custom_table_bet_ui_and_input(temp_db):
+    server = Server(db_path=temp_db.db_path)
+    server._db = temp_db
+
+    host_acc = temp_db.create_user("CustomHost", "hash")
+    host_user = make_user("CustomHost", host_acc.uuid)
+
+    table = Table(table_id="tbl70", game_type="loteria", host="CustomHost")
+    table._server = server
+    table._db = temp_db
+    table.add_member("CustomHost", host_user, as_spectator=False)
+    server._tables._tables["tbl70"] = table
+
+    server._nav_push(host_user, server._show_host_management_menu, table)
+    server._nav_push(host_user, server._show_table_bet_menu, table)
+
+    # Bet menu shows custom_bet item
+    server._show_table_bet_menu(host_user, table)
+    _, items = host_user.show_menu.call_args[0][:2]
+    assert any(item.id == "custom_bet" for item in items)
+
+    # Select custom_bet: editbox prompt is opened
+    state = server._user_states[host_user.username]
+    await server._handle_table_bet_selection(host_user, "custom_bet", state)
+    host_user.show_editbox.assert_called_with(
+        "custom_table_bet_input",
+        mock.ANY,
+        default_value="",
+    )
+    assert server._user_states[host_user.username]["menu"] == "custom_table_bet_input"
+
+    server._users[host_user.username] = host_user
+
+    # Submit valid custom bet of 120
+    input_packet = {"type": "input", "input_id": "custom_table_bet_input", "text": "120"}
+    await server._handle_editbox(host_user, input_packet)
+    assert table.bet == 120
+
+    # Submit excessive custom bet of 500 (balance is 250)
+    server._enter_input_state(host_user, "custom_table_bet_input", table_id=table.table_id)
+    input_packet = {"type": "input", "input_id": "custom_table_bet_input", "text": "500"}
+    await server._handle_editbox(host_user, input_packet)
+    # Bet unchanged because 500 > 250
+    assert table.bet == 120
+    host_user.speak_l.assert_called_with(
+        "table-error-host-cannot-afford-bet",
+        buffer="system",
+        coins=250,
+        required=500,
+    )
+
+    # Submit invalid text
+    server._enter_input_state(host_user, "custom_table_bet_input", table_id=table.table_id)
+    input_packet = {"type": "input", "input_id": "custom_table_bet_input", "text": "abc"}
+    await server._handle_editbox(host_user, input_packet)
+    assert table.bet == 120
+    host_user.speak_l.assert_called_with(
+        "table-error-invalid-bet-amount",
+        buffer="system",
+    )

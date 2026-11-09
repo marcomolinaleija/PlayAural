@@ -501,7 +501,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
-        HOST_TABLE_STATS_MENU, HOST_TABLE_BET_MENU, "global_voice_chat_menu",
+        HOST_TABLE_STATS_MENU, HOST_TABLE_BET_MENU, "custom_table_bet_input", "global_voice_chat_menu",
         "table_invite_prompt", "game_over",
     }
 
@@ -13799,6 +13799,10 @@ PlayAural Server
                 text=Localization.get(locale, "table-bet-coins", coins=500) + (" *" if current_bet == 500 else ""),
                 id="bet_500",
             ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-custom") + (f" ({current_bet} *)" if current_bet not in (0, 10, 25, 50, 100, 250, 500) else ""),
+                id="custom_bet",
+            ),
             MenuItem(text=Localization.get(locale, "back"), id="back"),
         ]
         user.show_menu(
@@ -13824,6 +13828,15 @@ PlayAural Server
 
         if selection_id == "back":
             self._nav_back(user)
+            return
+
+        if selection_id == "custom_bet":
+            user.show_editbox(
+                "custom_table_bet_input",
+                Localization.get(user.locale, "table-enter-custom-bet"),
+                default_value=str(table.bet) if table.bet > 0 else "",
+            )
+            self._enter_input_state(user, "custom_table_bet_input", table_id=table.table_id)
             return
 
         if selection_id.startswith("bet_"):
@@ -17420,6 +17433,47 @@ PlayAural Server
                         expected_uuid=target_uuid,
                     )
 
+                self._restore_input_parent(user, user_state)
+                return
+
+            elif menu_id == "custom_table_bet_input":
+                table_id = user_state.get("table_id")
+                table = self._tables.get_table(table_id) if table_id else None
+                if not table or not self._can_manage_table(user, table) or table.status != "waiting":
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                val_str = str(value or "").strip()
+                if not val_str.isdigit():
+                    user.speak_l("table-error-invalid-bet-amount", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                amount = int(val_str)
+                if amount < 0 or amount > 50000:
+                    user.speak_l("table-error-invalid-bet-amount", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                if amount > 0:
+                    wallet = self._db.get_wallet(user.uuid)
+                    if wallet.balance < amount:
+                        user.speak_l(
+                            "table-error-host-cannot-afford-bet",
+                            buffer="system",
+                            coins=wallet.balance,
+                            required=amount,
+                        )
+                        self._restore_input_parent(user, user_state)
+                        return
+
+                if table.set_bet(amount):
+                    if table.game:
+                        if amount > 0:
+                            table.game.broadcast_l("table-bet-changed", buffer="system", coins=amount)
+                        else:
+                            table.game.broadcast_l("table-bet-changed-friendly", buffer="system")
+                    self.on_tables_changed()
                 self._restore_input_parent(user, user_state)
                 return
 

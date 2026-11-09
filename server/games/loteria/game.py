@@ -78,15 +78,6 @@ VERSES_LABELS = {
     VERSES_NAMES_ONLY: "loteria-verses-names-only",
 }
 
-BET_CHOICES = ["0", "10", "25", "50", "100"]
-BET_LABELS = {
-    "0": "loteria-bet-0",
-    "10": "loteria-bet-10",
-    "25": "loteria-bet-25",
-    "50": "loteria-bet-50",
-    "100": "loteria-bet-100",
-}
-
 CALL_WARMUP_TICKS = 3 * TICKS_PER_SECOND
 CALL_DRAW_DELAY_TICKS = loteria_audio.sound_ticks(loteria_audio.SOUND_DRAW)
 
@@ -173,18 +164,6 @@ class LoteriaOptions(GameOptions):
             choice_labels=VERSES_LABELS,
         )
     )
-    bet: str = option_field(
-        MenuOption(
-            choices=BET_CHOICES,
-            default="0",
-            value_key="coins",
-            label="loteria-set-bet",
-            prompt="loteria-select-bet",
-            change_msg="loteria-option-changed-bet",
-            description="loteria-desc-bet",
-            choice_labels=BET_LABELS,
-        )
-    )
 
 
 # --------------------------------------------------------------------- #
@@ -199,7 +178,6 @@ class LoteriaGame(GridGameMixin, Game):
 
     players: list[LoteriaPlayer] = field(default_factory=list)
     options: LoteriaOptions = field(default_factory=LoteriaOptions)
-    pot: int = 0
 
     grid_rows: int = CARD_ROWS
     grid_cols: int = CARD_COLS
@@ -425,7 +403,8 @@ class LoteriaGame(GridGameMixin, Game):
                 include_spectators=True,
             )
         )
-        if int(self.options.bet if self.options.bet.isdigit() else "0") > 0:
+        table = getattr(self, "_table", None)
+        if table and getattr(table, "bet", 0) > 0:
             action_set.add(
                 Action(
                     id="check_pot",
@@ -534,7 +513,8 @@ class LoteriaGame(GridGameMixin, Game):
         return None if self.status == "playing" else "action-not-playing"
 
     def _is_check_pot_hidden(self, player: Player) -> Visibility:
-        if self.status == "playing" and self.is_touch_client(self.get_user(player)):
+        table = getattr(self, "_table", None)
+        if self.status == "playing" and self.is_touch_client(self.get_user(player)) and table and getattr(table, "bet", 0) > 0:
             return Visibility.VISIBLE
         return Visibility.HIDDEN
 
@@ -626,11 +606,13 @@ class LoteriaGame(GridGameMixin, Game):
     def _action_check_pot(self, player: Player, action_id: str) -> None:
         user = self.get_user(player)
         if user:
-            bet_amount = int(self.options.bet) if self.options.bet.isdigit() else 0
+            table = getattr(self, "_table", None)
+            pot_amount = getattr(table, "pot", 0) if table else 0
+            bet_amount = getattr(table, "bet", 0) if table else 0
             user.speak_l(
                 "loteria-check-pot-info",
                 buffer="game",
-                pot=self.pot,
+                pot=pot_amount,
                 bet=bet_amount,
             )
 
@@ -752,27 +734,6 @@ class LoteriaGame(GridGameMixin, Game):
             errors.append(("loteria-error-invalid-pattern", {"value": self.options.pattern}))
         if self.options.verses not in VERSES_CHOICES:
             errors.append(("loteria-error-invalid-verses", {"value": self.options.verses}))
-        if self.options.bet not in BET_CHOICES:
-            errors.append(("loteria-error-invalid-bet", {"value": self.options.bet}))
-
-        bet_amount = int(self.options.bet) if self.options.bet.isdigit() else 0
-        if bet_amount > 0:
-            db = self._get_database()
-            if db is not None:
-                for player in self.get_active_players():
-                    if not player.is_bot:
-                        wallet = db.get_wallet(player.id)
-                        if wallet.balance < bet_amount:
-                            errors.append(
-                                (
-                                    "loteria-error-insufficient-coins",
-                                    {
-                                        "player": player.name,
-                                        "coins": wallet.balance,
-                                        "required": bet_amount,
-                                    },
-                                )
-                            )
         return errors
 
     def on_start(self) -> None:
@@ -789,7 +750,6 @@ class LoteriaGame(GridGameMixin, Game):
         self.call_countdown_ticks = CALL_WARMUP_TICKS
         self.pending_call_card = None
         self.pending_claim_player_id = None
-        self.pot = 0
 
         active_players = [
             player
@@ -801,22 +761,6 @@ class LoteriaGame(GridGameMixin, Game):
         self._init_grid()
         self.grid_col_labels = [str(i + 1) for i in range(CARD_COLS)]
         self.grid_row_labels = [str(i + 1) for i in range(CARD_ROWS)]
-
-        bet_amount = int(self.options.bet) if self.options.bet.isdigit() else 0
-        if bet_amount > 0:
-            db = self._get_database()
-            for player in active_players:
-                if not player.is_bot and db is not None:
-                    db.adjust_wallet_balance(player.id, -bet_amount, is_bet=True)
-                self.pot += bet_amount
-            if self.pot > 0:
-                self.play_sound("game_citadels/coins_small.ogg")
-                self.broadcast_l(
-                    "loteria-pot-started",
-                    buffer="game",
-                    bet=bet_amount,
-                    pot=self.pot,
-                )
 
         for player in active_players:
             player.tabla, player.marked = self._generate_tabla()
@@ -1092,19 +1036,6 @@ class LoteriaGame(GridGameMixin, Game):
         player.has_loteria = True
         self.winner_ids.append(player.id)
 
-        if self.pot > 0:
-            db = self._get_database()
-            if not player.is_bot and db is not None:
-                db.adjust_wallet_balance(player.id, self.pot, is_win=True)
-            self.play_sound("game_citadels/coins_large.ogg")
-            self.broadcast_l(
-                "loteria-winner-won-pot",
-                buffer="game",
-                player=player.name,
-                pot=self.pot,
-            )
-            self.pot = 0
-
         if winning_cards and self.options.pattern != PATTERN_LLENO:
             self.broadcast_personal_l(
                 player,
@@ -1128,19 +1059,6 @@ class LoteriaGame(GridGameMixin, Game):
     def _finish_no_further_calls(self) -> None:
         if self.status != "playing":
             return
-        if self.pot > 0:
-            bet_amount = int(self.options.bet) if self.options.bet.isdigit() else 0
-            db = self._get_database()
-            if bet_amount > 0 and db is not None:
-                for player in self.get_active_players():
-                    if not player.is_bot:
-                        db.adjust_wallet_balance(player.id, bet_amount, is_bet=False)
-            self.broadcast_l(
-                "loteria-pot-refunded",
-                buffer="game",
-                bet=bet_amount,
-            )
-            self.pot = 0
         for listener in self.players:
             user = self.get_user(listener)
             if user:

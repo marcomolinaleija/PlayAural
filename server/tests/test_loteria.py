@@ -4,6 +4,7 @@ import random
 from pathlib import Path
 
 from ..core.server import Server
+from ..tables.table import Table
 from ..game_utils.actions import Visibility
 from ..game_utils.grid_mixin import GridCursor, grid_cell_id
 from ..game_utils.sequence_runner_mixin import SequenceBeat
@@ -526,16 +527,21 @@ def test_loteria_betting_validation_insufficient_coins():
         # u1 only has 25 coins
         db.adjust_wallet_balance(u1.uuid, -225)
 
-        game = LoteriaGame(options=LoteriaOptions(bet="100"))
-        game._db = db
+        game = LoteriaGame()
+        table = Table(table_id="tbl_lot_1", game_type="loteria", host="Rico")
+        table.bet = 100
+        table._db = db
+        table.game = game
+        game._table = table
+
         user1 = MockUser(u1.username, locale="es", uuid=u1.uuid)
         user2 = MockUser(u2.username, locale="es", uuid=u2.uuid)
         game.add_player(u1.username, user1)
         game.add_player(u2.username, user2)
 
-        errors = game.prestart_validate()
+        errors = game.validate_start()
         assert any(
-            isinstance(e, tuple) and e[0] == "loteria-error-insufficient-coins"
+            isinstance(e, tuple) and e[0] == "table-error-insufficient-coins"
             for e in errors
         )
     finally:
@@ -549,23 +555,30 @@ def test_loteria_betting_pot_and_winner_payout():
         u1 = db.create_user("JugadorUno", "hash")
         u2 = db.create_user("JugadorDos", "hash")
 
-        game = LoteriaGame(options=LoteriaOptions(bet="50"))
-        game._db = db
+        game = LoteriaGame()
+        table = Table(table_id="tbl_lot_2", game_type="loteria", host="JugadorUno")
+        table.bet = 50
+        table._db = db
+        table.game = game
+        game._table = table
+
         user1 = MockUser(u1.username, locale="es", uuid=u1.uuid)
         user2 = MockUser(u2.username, locale="es", uuid=u2.uuid)
+        table.add_member(u1.username, user1)
+        table.add_member(u2.username, user2)
         game.add_player(u1.username, user1)
         game.add_player(u2.username, user2)
 
-        game.on_start()
+        game._start_game_from_lobby()
         # 50 deducted from each player -> pot = 100
-        assert game.pot == 100
+        assert table.pot == 100
         assert db.get_wallet(u1.uuid).balance == 200
         assert db.get_wallet(u2.uuid).balance == 200
 
         # Player 1 wins
         p1 = game.players[0]
         game._declare_winner(p1, winning_cards=[1, 2, 3, 4])
-        assert game.pot == 0
+        assert table.pot == 0
         assert db.get_wallet(u1.uuid).balance == 300  # 200 + 100 pot
         assert db.get_wallet(u1.uuid).total_won == 100
     finally:
@@ -579,21 +592,28 @@ def test_loteria_betting_refund_on_exhaustion():
         u1 = db.create_user("JugadorA", "hash")
         u2 = db.create_user("JugadorB", "hash")
 
-        game = LoteriaGame(options=LoteriaOptions(bet="50"))
-        game._db = db
+        game = LoteriaGame()
+        table = Table(table_id="tbl_lot_3", game_type="loteria", host="JugadorA")
+        table.bet = 50
+        table._db = db
+        table.game = game
+        game._table = table
+
         user1 = MockUser(u1.username, locale="es", uuid=u1.uuid)
         user2 = MockUser(u2.username, locale="es", uuid=u2.uuid)
+        table.add_member(u1.username, user1)
+        table.add_member(u2.username, user2)
         game.add_player(u1.username, user1)
         game.add_player(u2.username, user2)
 
-        game.on_start()
-        assert game.pot == 100
+        game._start_game_from_lobby()
+        assert table.pot == 100
         assert db.get_wallet(u1.uuid).balance == 200
         assert db.get_wallet(u2.uuid).balance == 200
 
         # Deck exhaustion without winner
         game._finish_no_further_calls()
-        assert game.pot == 0
+        assert table.pot == 0
         # Bets refunded
         assert db.get_wallet(u1.uuid).balance == 250
         assert db.get_wallet(u2.uuid).balance == 250
@@ -602,8 +622,13 @@ def test_loteria_betting_refund_on_exhaustion():
 
 
 def test_loteria_check_pot_action():
-    game = make_game(player_count=2, bet="25")
-    game.pot = 50
+    game = make_game(player_count=2)
+    table = Table(table_id="tbl_lot_4", game_type="loteria", host="Player1")
+    table.bet = 25
+    table.pot = 50
+    table.game = game
+    game._table = table
+
     p1 = game.players[0]
     actions = game.create_standard_action_set(p1)
     assert actions.get_action("check_pot") is not None
