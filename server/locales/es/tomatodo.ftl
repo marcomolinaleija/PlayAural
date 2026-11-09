@@ -73,3 +73,4 @@ tomatodo-face-toma_todo = Toma todo
 
 tomatodo-error-insufficient-coins = { $player } no tiene suficientes monedas en su monedero (tiene { $coins }, se requieren al menos { $required }).
 tomatodo-error-player-bankrupt = Estás en bancarrota y no puedes girar la pirinola.
+tomatodo-error-bots-not-supported = Toma Todo se juega con monedas del monedero y no admite bots. Todos los jugadores deben ser humanos.

@@ -153,6 +153,8 @@ class TomaTodoOptions(GameOptions):
 class TomaTodoGame(Game):
     """Toma Todo - Traditional Mexican spinning top game using platform coins."""
 
+    supports_bots: ClassVar[bool] = False
+
     players: list[TomaTodoPlayer] = field(default_factory=list)
     options: TomaTodoOptions = field(default_factory=TomaTodoOptions)
 
@@ -226,6 +228,11 @@ class TomaTodoGame(Game):
 
     def setup_keybinds(self) -> None:
         super().setup_keybinds()
+        self._keybinds.pop("shift+b", None)
+        if "b" in self._keybinds:
+            self._keybinds["b"] = [
+                k for k in self._keybinds["b"] if "add_bot" not in k.actions
+            ]
         self.define_keybind(
             "space",
             "Spin top",
@@ -259,6 +266,25 @@ class TomaTodoGame(Game):
             state=KeybindState.ACTIVE,
             include_spectators=True,
         )
+
+    def create_lobby_action_set(self, player: Player) -> ActionSet:
+        actions = super().create_lobby_action_set(player)
+        for action_id in ("add_bot", "remove_bot"):
+            if action_id in actions._actions:
+                actions.remove(action_id)
+        return actions
+
+    def _is_add_bot_enabled(self, player: Player) -> str | None:
+        return "tomatodo-error-bots-not-supported"
+
+    def _is_add_bot_hidden(self, player: Player) -> Visibility:
+        return Visibility.HIDDEN
+
+    def _is_remove_bot_enabled(self, player: Player) -> str | None:
+        return "tomatodo-error-bots-not-supported"
+
+    def _is_remove_bot_hidden(self, player: Player) -> Visibility:
+        return Visibility.HIDDEN
 
     def _player_locale(self, player: Player) -> str:
         user = self.get_user(player)
@@ -410,6 +436,8 @@ class TomaTodoGame(Game):
 
     def prestart_validate(self) -> list[str | tuple[str, dict]]:
         errors = super().prestart_validate()
+        if any(p.is_bot for p in self.get_active_players()):
+            errors.append("tomatodo-error-bots-not-supported")
         ante_amount = self._get_ante_amount()
         db = self._get_database()
 
@@ -456,19 +484,16 @@ class TomaTodoGame(Game):
         db = self._get_database()
         ante = self._get_ante_amount()
 
-        # Initialize player coin balances from wallet or bot balance
+        # Initialize player coin balances from wallet
         for player in active_players:
             player.bankrupt = False
             player.total_won = 0
             player.total_lost = 0
-            if player.is_bot:
-                player.coins = BOT_STARTING_BALANCE
+            if db is not None:
+                wallet = db.get_wallet(player.id)
+                player.coins = wallet.balance
             else:
-                if db is not None:
-                    wallet = db.get_wallet(player.id)
-                    player.coins = wallet.balance
-                else:
-                    player.coins = BOT_STARTING_BALANCE
+                player.coins = 100
 
         # Ante collection
         pot_accumulated = 0
@@ -500,13 +525,12 @@ class TomaTodoGame(Game):
         player.coins -= actual
         player.total_lost += actual
 
-        if not player.is_bot:
-            db = self._get_database()
-            if db is not None:
-                try:
-                    db.adjust_wallet_balance(player.id, -actual, is_bet=True)
-                except Exception:
-                    pass
+        db = self._get_database()
+        if db is not None:
+            try:
+                db.adjust_wallet_balance(player.id, -actual, is_bet=True)
+            except Exception:
+                pass
 
         if player.coins <= 0:
             player.bankrupt = True
@@ -519,13 +543,12 @@ class TomaTodoGame(Game):
         player.coins += amount
         player.total_won += amount
 
-        if not player.is_bot:
-            db = self._get_database()
-            if db is not None:
-                try:
-                    db.adjust_wallet_balance(player.id, amount, is_win=True)
-                except Exception:
-                    pass
+        db = self._get_database()
+        if db is not None:
+            try:
+                db.adjust_wallet_balance(player.id, amount, is_win=True)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------ #
     # Spin Execution via Sequence                                         #
@@ -780,22 +803,13 @@ class TomaTodoGame(Game):
                 break
 
     # ------------------------------------------------------------------ #
-    # Bot Turn handling                                                  #
+    # Ticks & Flow                                                       #
     # ------------------------------------------------------------------ #
 
     def on_tick(self) -> None:
         super().on_tick()
         self.process_scheduled_sounds()
         self.process_sequences()
-        if self.status != "playing" or self.has_active_sequence():
-            return
-
-        current = self.current_player
-        if current and current.is_bot and isinstance(current, TomaTodoPlayer) and not current.bankrupt:
-            current.bot_think_ticks += 1
-            if current.bot_think_ticks >= 20:  # ~1 second delay
-                current.bot_think_ticks = 0
-                self._execute_spin(current)
 
     # ------------------------------------------------------------------ #
     # Results & Cleanup                                                   #

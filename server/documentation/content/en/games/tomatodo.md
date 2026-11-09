@@ -2,7 +2,7 @@
 
 **What is Toma Todo?**
 
-Toma Todo is the traditional Mexican spinning top (pirinola) game, adapted for PlayAural using platform virtual wallet coins. It is a fast-paced and thrilling game for 2 to 8 players where the outcome of each spin can award you the entire pot or send you into bankruptcy!
+Toma Todo is the traditional Mexican spinning top (pirinola) game, adapted for PlayAural using platform virtual wallet coins. It is a fast-paced and thrilling game for 2 to 8 human players (bots are not permitted, as coins flow directly from each participant's wallet) where the outcome of each spin can award you the entire pot or send you into bankruptcy!
 
 **Game Rules**
 
@@ -31,3 +31,4 @@ When the game begins, every player contributes an initial ante to the central po
 
 * **Space / Enter / G:** Spin the pirinola on your turn.
 * **Standard actions menu:** Check the current pot, check coin balances of all players, and check the last spin result.
+

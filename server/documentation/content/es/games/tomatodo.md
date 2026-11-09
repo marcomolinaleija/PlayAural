@@ -2,7 +2,7 @@
 
 **¿Qué es Toma Todo?**
 
-Toma Todo es el juego tradicional mexicano de la pirinola de seis caras, adaptado para jugar en PlayAural con las monedas de tu monedero virtual. Es un juego dinámico y emocionante para 2 a 8 jugadores donde la suerte de cada giro puede hacerte ganar el pozo entero o dejarte en bancarrota.
+Toma Todo es el juego tradicional mexicano de la pirinola de seis caras, adaptado para jugar en PlayAural con las monedas de tu monedero virtual. Es un juego dinámico y emocionante para 2 a 8 jugadores humanos (no admite bots, ya que las monedas en juego provienen directamente de los monederos de los participantes) donde la suerte de cada giro puede hacerte ganar el pozo entero o dejarte en bancarrota.
 
 **Reglas del juego**
 
@@ -31,3 +31,4 @@ Al iniciar la partida, cada jugador aporta una apuesta inicial (ante) al pozo ce
 
 * **Barra espaciadora / Enter / G:** Girar la pirinola en tu turno.
 * **Menú de acciones estándar:** Consultar el pozo acumulado, ver las monedas de todos los jugadores y revisar el resultado del último giro.
+

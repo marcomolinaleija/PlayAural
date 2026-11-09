@@ -73,3 +73,4 @@ tomatodo-face-toma_todo = Take all
 
 tomatodo-error-insufficient-coins = { $player } does not have enough coins in wallet ({ $coins } available, at least { $required } required).
 tomatodo-error-player-bankrupt = You are bankrupt and cannot spin the top.
+tomatodo-error-bots-not-supported = Toma Todo is played with wallet coins and does not support bots. All players must be humans.

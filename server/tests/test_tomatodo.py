@@ -296,29 +296,26 @@ def test_tomatodo_on_discard_refunds_pot():
     assert p2.coins == p2_before + 5
 
 
-def test_tomatodo_bot_turns_on_tick():
-    """Test bot player spins automatically when thinking timer elapses."""
+def test_tomatodo_prohibits_bots():
+    """Verify that Toma Todo strictly rejects bots to protect wallet balances."""
+    assert TomaTodoGame.supports_bots is False
+
     game = TomaTodoGame()
     game.setup_keybinds()
-    user = MockUser("HumanPlayer", uuid="uuid-h1")
-    game.add_player(user.username, user)
-    bot_user = Bot("PirinolaBot")
-    bot = game.add_player(bot_user.username, bot_user)
+    user = MockUser("HumanHost", uuid="uuid-h1")
+    player = game.add_player(user.username, user)
     game.host = user.username
-    game.on_start()
 
-    # Advance turn to bot
-    game.turn_index = 1
-    assert game.current_player == bot
+    # Lobby actions do not expose add_bot or remove_bot
+    lobby_actions = game.create_lobby_action_set(player)
+    assert "add_bot" not in lobby_actions._actions
+    assert "remove_bot" not in lobby_actions._actions
 
-    # Tick 19 times: bot is still thinking
-    for _ in range(19):
-        game.on_tick()
-    assert not game.has_active_sequence()
-
-    # Tick 20: bot fires spin sequence
-    game.on_tick()
-    assert game.has_active_sequence()
+    # Prestart validation blocks bots if present
+    bot_user = Bot("BotPlayer")
+    game.add_player(bot_user.username, bot_user)
+    errors = game.prestart_validate()
+    assert "tomatodo-error-bots-not-supported" in errors
 
 
 def test_tomatodo_audio_measurements():

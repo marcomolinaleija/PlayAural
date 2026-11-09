@@ -3,3 +3,4 @@
 from .game import TomaTodoGame
 
 __all__ = ["TomaTodoGame"]
+
