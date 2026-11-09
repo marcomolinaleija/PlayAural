@@ -405,7 +405,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 3
+    CURRENT_SCHEMA_VERSION = 4
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -1560,37 +1560,45 @@ class Database:
         # used canonical rather than compatibility normalization. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2}:
+        if schema_version not in {0, 1, 2, 3}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
-        if schema_version in {1, 2} and application_id != self.APPLICATION_ID:
+        if schema_version in {1, 2, 3} and application_id != self.APPLICATION_ID:
             raise sqlite3.DatabaseError(
                 f"version-{schema_version} database is missing the PlayAural "
                 "identifier"
             )
+        allowed_migration_triggers = (
+            {"protect_users_immutable_identity"} if schema_version >= 3 else set()
+        )
         unexpected_migration_objects = sorted(
             f"{row['type']} {row['name']}"
             for row in schema_rows
-            if str(row["type"]) in {"trigger", "view"}
+            if str(row["type"]) == "view"
+            or (
+                str(row["type"]) == "trigger"
+                and str(row["name"]) not in allowed_migration_triggers
+            )
         )
         if unexpected_migration_objects:
             raise sqlite3.DatabaseError(
                 "legacy database schema contains unexpected objects: "
                 + ", ".join(unexpected_migration_objects)
             )
-        unknown_tables = table_names - self.LEGACY_V0_TABLE_NAMES
-        if has_application_schema and (not table_names or unknown_tables):
-            detail = (
-                ": " + ", ".join(sorted(unknown_tables))
-                if unknown_tables
-                else ""
-            )
-            raise sqlite3.DatabaseError(
-                "unversioned SQLite database is not a recognizable PlayAural "
-                f"database; refusing to modify it{detail}"
-            )
-        if schema_version in {1, 2}:
+        if schema_version == 0:
+            unknown_tables = table_names - self.LEGACY_V0_TABLE_NAMES
+            if has_application_schema and (not table_names or unknown_tables):
+                detail = (
+                    ": " + ", ".join(sorted(unknown_tables))
+                    if unknown_tables
+                    else ""
+                )
+                raise sqlite3.DatabaseError(
+                    "unversioned SQLite database is not a recognizable PlayAural "
+                    f"database; refusing to modify it{detail}"
+                )
+        if schema_version in {1, 2, 3}:
             self._validate_schema(
                 expected_schema_version=schema_version,
                 allowed_column_attributes=(
@@ -1602,7 +1610,8 @@ class Database:
                     if schema_version == 1
                     else None
                 ),
-                legacy_identity_contract=True,
+                legacy_identity_contract=schema_version in {1, 2},
+                legacy_wallets_contract=schema_version < 4,
             )
 
         migration_backup: DatabaseBackupResult | None = None
@@ -1920,6 +1929,7 @@ class Database:
         ]
         | None = None,
         legacy_identity_contract: bool = False,
+        legacy_wallets_contract: bool = False,
     ) -> None:
         """Require the canonical schema contract without repairing drift."""
         executor = cursor if cursor is not None else self._conn
@@ -1978,8 +1988,6 @@ class Database:
                 history_index[3],
                 history_index[4].replace("username_key_v3(", "username_key("),
             )
-        canonical_table_names = frozenset(canonical_columns)
-
         actual_table_sql = {
             str(row[0]): str(row[1] or "")
             for row in executor.execute(
@@ -1991,6 +1999,16 @@ class Database:
             ).fetchall()
         }
         actual_tables = set(actual_table_sql)
+        if legacy_wallets_contract and "user_wallets" not in actual_tables:
+            canonical_columns = dict(canonical_columns)
+            canonical_columns.pop("user_wallets", None)
+            canonical_indexes = dict(canonical_indexes)
+            canonical_indexes.pop("idx_user_wallets_balance", None)
+            canonical_unique_keys = dict(canonical_unique_keys)
+            canonical_unique_keys.pop("user_wallets", None)
+            canonical_foreign_keys = dict(canonical_foreign_keys)
+            canonical_foreign_keys.pop("user_wallets", None)
+        canonical_table_names = frozenset(canonical_columns)
         missing_tables = sorted(canonical_table_names - actual_tables)
         unexpected_tables = sorted(actual_tables - canonical_table_names)
         if missing_tables or unexpected_tables:

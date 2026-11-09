@@ -1176,6 +1176,74 @@ def test_version_two_identity_contract_migrates_atomically(tmp_path):
         backup.close()
 
 
+def test_version_three_database_migrates_atomically_to_version_four(tmp_path):
+    db_path = tmp_path / "version-three.db"
+    backup_dir = tmp_path / "migration-backups"
+    database = Database(db_path)
+    database.connect()
+    retained_user = database.create_user("Version Three User", "hash")
+    database.close()
+
+    connection = sqlite3.connect(db_path)
+    try:
+        connection.execute("DROP TABLE user_wallets")
+        connection.execute("PRAGMA user_version = 3")
+        connection.commit()
+    finally:
+        connection.close()
+
+    database = Database(db_path)
+    database.connect(migration_backup_dir=backup_dir)
+    try:
+        assert database.get_user("Version Three User").uuid == retained_user.uuid
+        assert database._conn.execute("PRAGMA user_version").fetchone()[0] == 4
+        wallet = database.get_wallet(retained_user.uuid)
+        assert wallet.balance == 250
+    finally:
+        database.close()
+
+    backups = list(backup_dir.glob("*.sqlite3"))
+    assert len(backups) == 1
+    backup = sqlite3.connect(backups[0])
+    try:
+        assert backup.execute("PRAGMA user_version").fetchone()[0] == 3
+        tables = {
+            row[0]
+            for row in backup.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+        assert "user_wallets" not in tables
+    finally:
+        backup.close()
+
+
+def test_version_three_with_existing_wallets_migrates_atomically(tmp_path):
+    db_path = tmp_path / "version-three-wallets.db"
+    backup_dir = tmp_path / "migration-backups"
+    database = Database(db_path)
+    database.connect()
+    retained_user = database.create_user("Version Three Wallet User", "hash")
+    database.adjust_wallet_balance(retained_user.uuid, 500)
+    database.close()
+
+    connection = sqlite3.connect(db_path)
+    try:
+        connection.execute("PRAGMA user_version = 3")
+        connection.commit()
+    finally:
+        connection.close()
+
+    database = Database(db_path)
+    database.connect(migration_backup_dir=backup_dir)
+    try:
+        assert database._conn.execute("PRAGMA user_version").fetchone()[0] == 4
+        wallet = database.get_wallet(retained_user.uuid)
+        assert wallet.balance == 750
+    finally:
+        database.close()
+
+
 @pytest.mark.parametrize("corruption", ["duplicate", "empty", "malformed"])
 def test_version_two_migration_rejects_corrupt_account_ids_without_changes(
     tmp_path,
