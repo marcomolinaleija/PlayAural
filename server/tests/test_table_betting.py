@@ -62,10 +62,10 @@ def test_table_bet_save_and_checkpoint_serialization():
     table.pot = 150
     table._pot_contributors.add("uuid-123")
 
-    # User save (include_checkpoint_state=False): bet is preserved, pot is not
+    # User manual save (include_checkpoint_state=False): bet and pot are runtime-only
     saved_json = table.serialize_saved_state(include_checkpoint_state=False)
     restored_data = Table.deserialize_saved_state(saved_json, include_checkpoint_state=False)
-    assert restored_data["bet"] == 75
+    assert "bet" not in restored_data
     assert "pot" not in restored_data
 
     # Checkpoint (include_checkpoint_state=True): bet, pot and contributors are preserved

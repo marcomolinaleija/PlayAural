@@ -202,7 +202,7 @@ class Table(DataClassJSONMixin):
     )
     bet: int = field(
         default=0,
-        metadata={SAVED_TABLE_PROPERTY: "bet"},
+        metadata={CHECKPOINT_TABLE_PROPERTY: "bet"},
     )
     pot: int = field(
         default=0,
