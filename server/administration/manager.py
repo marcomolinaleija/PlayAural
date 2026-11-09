@@ -73,6 +73,7 @@ from ..menu_pagination import (
     pagination_menu_items,
     paginate_sequence,
 )
+from ..games.infiltrado.words import InfiltradoWordManager
 
 if TYPE_CHECKING:
     from ..core.server import Server
@@ -83,6 +84,19 @@ ADMIN_LOCALIZED_TEXT_MENU = "admin_localized_text_menu"
 ADMIN_LOCALIZED_TEXT_INPUT = "admin_localized_text_input"
 ADMIN_SOUND_EVENTS_MENU = "admin_sound_events_menu"
 ADMIN_SOUND_PICKER_MENU = "admin_sound_picker_menu"
+ADMIN_INFILTRADO_WORDS_MENU = "admin_infiltrado_words_menu"
+ADMIN_INFILTRADO_PAIRS_LIST_MENU = "admin_infiltrado_pairs_list_menu"
+ADMIN_INFILTRADO_PAIR_DETAIL_MENU = "admin_infiltrado_pair_detail_menu"
+ADMIN_INFILTRADO_CATEGORIES_MENU = "admin_infiltrado_categories_menu"
+ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU = "admin_infiltrado_category_detail_menu"
+ADMIN_INFILTRADO_SELECT_CATEGORY_MENU = "admin_infiltrado_select_category_menu"
+ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU = "admin_infiltrado_delete_category_confirm_menu"
+ADMIN_INFILTRADO_ADD_WORD1_INPUT = "admin_infiltrado_add_word1_input"
+ADMIN_INFILTRADO_ADD_WORD2_INPUT = "admin_infiltrado_add_word2_input"
+ADMIN_INFILTRADO_EDIT_WORD1_INPUT = "admin_infiltrado_edit_word1_input"
+ADMIN_INFILTRADO_EDIT_WORD2_INPUT = "admin_infiltrado_edit_word2_input"
+ADMIN_INFILTRADO_ADD_CATEGORY_INPUT = "admin_infiltrado_add_category_input"
+ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT = "admin_infiltrado_rename_category_input"
 ADMIN_MODERATION_MENU = "admin_moderation_menu"
 ADMIN_MODERATION_REPORTS_MENU = "admin_moderation_reports_menu"
 ADMIN_MODERATION_REPORT_DETAIL_MENU = "admin_moderation_report_detail_menu"
@@ -215,6 +229,19 @@ ADMIN_MENU_IDS = {
     "server_power_custom_delay_input",
     ADMIN_TARGET_SEARCH_INPUT,
     ADMIN_MODERATION_HISTORY_INPUT,
+    ADMIN_INFILTRADO_WORDS_MENU,
+    ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+    ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+    ADMIN_INFILTRADO_CATEGORIES_MENU,
+    ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+    ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
+    ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU,
+    ADMIN_INFILTRADO_ADD_WORD1_INPUT,
+    ADMIN_INFILTRADO_ADD_WORD2_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD1_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
+    ADMIN_INFILTRADO_ADD_CATEGORY_INPUT,
+    ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT,
 }
 
 
@@ -2613,6 +2640,13 @@ class AdministrationManager:
         )
         items.append(
             MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-words"),
+                id="manage_infiltrado_words",
+                description_key="admin-desc-infiltrado-words",
+            )
+        )
+        items.append(
+            MenuItem(
                 text=Localization.get(user.locale, "admin-switch-server"),
                 id="switch_server",
                 description_key="admin-desc-switch-server",
@@ -2936,6 +2970,20 @@ class AdministrationManager:
              await self._handle_smtp_settings_selection(user, selection_id)
         elif current_menu == "smtp_encryption_menu":
              await self._handle_smtp_encryption_selection(user, selection_id)
+        elif current_menu == ADMIN_INFILTRADO_WORDS_MENU:
+             await self._handle_infiltrado_words_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_PAIRS_LIST_MENU:
+             await self._handle_infiltrado_pairs_list_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_PAIR_DETAIL_MENU:
+             await self._handle_infiltrado_pair_detail_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_CATEGORIES_MENU:
+             await self._handle_infiltrado_categories_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU:
+             await self._handle_infiltrado_category_detail_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_SELECT_CATEGORY_MENU:
+             await self._handle_infiltrado_select_category_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU:
+             await self._handle_infiltrado_delete_category_confirm_selection(user, selection_id, state)
 
     async def _handle_admin_menu_selection(
         self, user: NetworkUser, selection_id: str
@@ -3027,6 +3075,11 @@ class AdministrationManager:
                 user.speak_l("admin-only-action", buffer="system")
                 return
             self.server._nav_push(user, self._show_sound_events_menu)
+        elif selection_id == "manage_infiltrado_words":
+            if user.trust_level < ADMIN_TRUST_LEVEL:
+                user.speak_l("admin-only-action", buffer="system")
+                return
+            self.server._nav_push(user, self._show_infiltrado_words_menu)
         elif selection_id == "switch_server":
             await self.server._complete_switch_server(user)
         elif selection_id == "back":
@@ -4659,6 +4712,129 @@ class AdministrationManager:
             self.server._restore_input_parent(user, state)
             return True
 
+        elif menu_id == ADMIN_INFILTRADO_ADD_WORD1_INPUT:
+            if value:
+                clean_w1 = str(value).strip()
+                parent = dict(state.get("_parent_frame") or {})
+                target_cat = state.get("draft_category")
+                self.server.enter_input_state(
+                    user,
+                    ADMIN_INFILTRADO_ADD_WORD2_INPUT,
+                    draft_word1=clean_w1,
+                    draft_category=target_cat,
+                    _parent_frame=parent,
+                )
+                user.show_editbox(
+                    "infiltrado_add_word2",
+                    Localization.get(user.locale, "admin-infiltrado-prompt-word2"),
+                )
+            else:
+                self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_ADD_WORD2_INPUT:
+            word1 = state.get("draft_word1")
+            clean_w2 = str(value or "").strip()
+            target_cat = state.get("draft_category")
+            parent = dict(state.get("_parent_frame") or {})
+            if word1 and clean_w2:
+                if target_cat:
+                    pair = InfiltradoWordManager.add_pair(word1, clean_w2, category=target_cat)
+                    user.speak_l(
+                        "admin-infiltrado-pair-added",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                        category=pair.category,
+                    )
+                    user.play_sound("menuenter.ogg")
+                    self.server._restore_input_parent(user, state)
+                else:
+                    self._show_infiltrado_select_category_menu(
+                        user, draft_word1=word1, draft_word2=clean_w2, parent_frame=parent
+                    )
+            else:
+                self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_ADD_CATEGORY_INPUT:
+            cat_name = str(value or "").strip()
+            parent = dict(state.get("_parent_frame") or {})
+            draft_w1 = state.get("draft_word1")
+            draft_w2 = state.get("draft_word2")
+            if cat_name:
+                added = InfiltradoWordManager.add_category(cat_name)
+                if not added:
+                    user.speak_l("admin-infiltrado-category-already-exists", buffer="system")
+                else:
+                    user.speak_l(
+                        "admin-infiltrado-category-added", buffer="system", category=cat_name
+                    )
+                    user.play_sound("menuenter.ogg")
+                    if draft_w1 and draft_w2:
+                        pair = InfiltradoWordManager.add_pair(
+                            draft_w1, draft_w2, category=cat_name
+                        )
+                        user.speak_l(
+                            "admin-infiltrado-pair-added",
+                            buffer="system",
+                            word1=pair.word1,
+                            word2=pair.word2,
+                            category=pair.category,
+                        )
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT:
+            old_cat = state.get("category")
+            new_name = str(value or "").strip()
+            if old_cat and new_name:
+                renamed = InfiltradoWordManager.rename_category(old_cat, new_name)
+                if renamed:
+                    user.speak_l(
+                        "admin-infiltrado-category-renamed",
+                        buffer="system",
+                        old_category=old_cat,
+                        new_category=new_name,
+                    )
+                    user.play_sound("menuenter.ogg")
+                else:
+                    user.speak_l("admin-infiltrado-category-already-exists", buffer="system")
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_EDIT_WORD1_INPUT:
+            pair_id = state.get("pair_id")
+            clean_w1 = str(value or "").strip()
+            if pair_id and clean_w1:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), word1=clean_w1)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-updated",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                    )
+                    user.play_sound("menuenter.ogg")
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_EDIT_WORD2_INPUT:
+            pair_id = state.get("pair_id")
+            clean_w2 = str(value or "").strip()
+            if pair_id and clean_w2:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), word2=clean_w2)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-updated",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                    )
+                    user.play_sound("menuenter.ogg")
+            self.server._restore_input_parent(user, state)
+            return True
+
         return False
 
     def _show_smtp_settings_menu(self, user: NetworkUser) -> None:
@@ -5855,3 +6031,560 @@ class AdministrationManager:
             str(state.get("search_query", "")),
             int(state.get("target_page", 1) or 1),
         )
+
+    # ------------------------------------------------------------------ #
+    # Infiltrado Word Pairs Management                                  #
+    # ------------------------------------------------------------------ #
+
+    def _show_infiltrado_words_menu(self, user: NetworkUser) -> None:
+        """Show Infiltrado word pairs management hub."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        total_pairs = InfiltradoWordManager.count_pairs()
+        total_cats = len(InfiltradoWordManager.get_categories())
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-add-pair"),
+                id="add_pair",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-manage-categories", total=total_cats
+                ),
+                id="manage_categories",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-list-pairs", total=total_pairs
+                ),
+                id="list_pairs",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_INFILTRADO_WORDS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_WORDS_MENU,
+        }
+
+    async def _handle_infiltrado_words_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in Infiltrado word pairs hub."""
+        if selection_id == "add_pair":
+            self.server.enter_input_state(user, ADMIN_INFILTRADO_ADD_WORD1_INPUT)
+            user.show_editbox(
+                "infiltrado_add_word1",
+                Localization.get(user.locale, "admin-infiltrado-prompt-word1"),
+            )
+        elif selection_id == "manage_categories":
+            self.server._nav_push(user, self._show_infiltrado_categories_menu)
+        elif selection_id == "list_pairs":
+            self.server._nav_push(user, self._show_infiltrado_pairs_list_menu, 1, None)
+        elif selection_id == "back":
+            self.server._nav_back(user)
+
+    def _show_infiltrado_pairs_list_menu(
+        self, user: NetworkUser, page: int = 1, category: str | None = None
+    ) -> None:
+        """Show paginated list of word pairs, optionally filtered by category."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        pairs = InfiltradoWordManager.get_pairs_by_category(category)
+        page_size = 20
+        paginated = paginate_sequence(pairs, page, page_size=page_size)
+
+        items: list[MenuItem] = []
+        if category:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "admin-infiltrado-category-pairs-title",
+                        category=category,
+                        total=len(pairs),
+                    ),
+                    id="",
+                    read_only=True,
+                )
+            )
+
+        if not pairs:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-infiltrado-empty-pairs"),
+                    id="",
+                    read_only=True,
+                )
+            )
+        else:
+            for pair in paginated.items:
+                cat_tag = f" [{pair.category}]" if not category else ""
+                items.append(
+                    MenuItem(
+                        text=f"{pair.id}. {pair.word1} / {pair.word2}{cat_tag}",
+                        id=f"pair_{pair.id}",
+                    )
+                )
+
+        if paginated.total_pages > 1:
+            items.extend(
+                pagination_menu_items(user.locale, paginated, include_refresh=True)
+            )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+            "page": paginated.page,
+            "total_pages": paginated.total_pages,
+            "category": category,
+        }
+
+    async def _handle_infiltrado_pairs_list_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in paginated pairs list."""
+        category = state.get("category")
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+
+        if is_page_navigation(selection_id) or selection_id in MENU_PAGE_IDS:
+            current_page = state.get("page", 1)
+            total_pages = state.get("total_pages", 1)
+            target_page = page_for_selection(selection_id, current_page, total_pages)
+            if target_page is not None:
+                if is_page_refresh(selection_id):
+                    announce_page_refresh(user)
+                self._show_infiltrado_pairs_list_menu(user, target_page, category)
+            return
+
+        if selection_id.startswith("pair_"):
+            try:
+                pair_id = int(selection_id.split("_")[1])
+                self.server._nav_push(user, self._show_infiltrado_pair_detail_menu, pair_id)
+            except (ValueError, IndexError):
+                pass
+
+    def _show_infiltrado_pair_detail_menu(
+        self, user: NetworkUser, pair_id: int
+    ) -> None:
+        """Show detail / actions menu for a specific word pair."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        pair = InfiltradoWordManager.get_pair_by_id(pair_id)
+        if not pair:
+            user.speak_l("admin-infiltrado-empty-pairs", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-infiltrado-pair-current-with-cat",
+                    id=pair.id,
+                    word1=pair.word1,
+                    word2=pair.word2,
+                    category=pair.category,
+                ),
+                id="",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-edit-word1", word=pair.word1
+                ),
+                id="edit_word1",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-edit-word2", word=pair.word2
+                ),
+                id="edit_word2",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-change-category", category=pair.category
+                ),
+                id="change_category",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-delete-pair"),
+                id="delete_pair",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+
+        user.show_menu(
+            ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+            "pair_id": pair_id,
+        }
+
+    async def _handle_infiltrado_pair_detail_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle edit/delete action for a word pair."""
+        pair_id = state.get("pair_id")
+        if not pair_id:
+            self.server._nav_back(user)
+            return
+
+        pair = InfiltradoWordManager.get_pair_by_id(int(pair_id))
+        if not pair:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "edit_word1":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_EDIT_WORD1_INPUT,
+                pair_id=pair.id,
+            )
+            user.show_editbox(
+                "infiltrado_edit_word1",
+                Localization.get(
+                    user.locale, "admin-infiltrado-prompt-edit-word1", word=pair.word1
+                ),
+                default_value=pair.word1,
+            )
+        elif selection_id == "edit_word2":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
+                pair_id=pair.id,
+            )
+            user.show_editbox(
+                "infiltrado_edit_word2",
+                Localization.get(
+                    user.locale, "admin-infiltrado-prompt-edit-word2", word=pair.word2
+                ),
+                default_value=pair.word2,
+            )
+        elif selection_id == "change_category":
+            self.server._nav_push(
+                user, self._show_infiltrado_select_category_menu, None, None, int(pair.id)
+            )
+        elif selection_id == "delete_pair":
+            InfiltradoWordManager.delete_pair(pair.id)
+            user.speak_l("admin-infiltrado-pair-deleted", buffer="system")
+            user.play_sound("menuenter.ogg")
+            self.server._nav_back(user)
+        elif selection_id == "back":
+            self.server._nav_back(user)
+
+    # ------------------------------------------------------------------ #
+    # Categories Management                                              #
+    # ------------------------------------------------------------------ #
+
+    def _show_infiltrado_categories_menu(self, user: NetworkUser) -> None:
+        """Show Infiltrado categories list and actions."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        categories = InfiltradoWordManager.get_categories()
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-add-category"),
+                id="add_category",
+            )
+        ]
+        for cat in categories:
+            cnt = InfiltradoWordManager.count_pairs_by_category(cat)
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale, "admin-infiltrado-category-item", category=cat, count=cnt
+                    ),
+                    id=f"cat_{cat}",
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_CATEGORIES_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_CATEGORIES_MENU,
+        }
+
+    async def _handle_infiltrado_categories_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in categories list."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "add_category":
+            self.server.enter_input_state(user, ADMIN_INFILTRADO_ADD_CATEGORY_INPUT)
+            user.show_editbox(
+                "infiltrado_add_category",
+                Localization.get(user.locale, "admin-infiltrado-prompt-category-name"),
+            )
+            return
+
+        if selection_id.startswith("cat_"):
+            cat_name = selection_id[4:]
+            self.server._nav_push(user, self._show_infiltrado_category_detail_menu, cat_name)
+
+    def _show_infiltrado_category_detail_menu(
+        self, user: NetworkUser, category: str
+    ) -> None:
+        """Show detail and options for a specific category."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        cnt = InfiltradoWordManager.count_pairs_by_category(category)
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-category-current", category=category, count=cnt
+                ),
+                id="",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-list-category-pairs"),
+                id="list_pairs",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-add-pair-to-category"),
+                id="add_pair_to_category",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-rename-category"),
+                id="rename_category",
+            ),
+        ]
+        if category.lower() != "general":
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-infiltrado-delete-category"),
+                    id="delete_category",
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+            "category": category,
+        }
+
+    async def _handle_infiltrado_category_detail_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle actions on a category."""
+        cat = state.get("category")
+        if not cat:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "list_pairs":
+            self.server._nav_push(user, self._show_infiltrado_pairs_list_menu, 1, cat)
+            return
+
+        if selection_id == "add_pair_to_category":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_ADD_WORD1_INPUT,
+                draft_category=cat,
+            )
+            user.show_editbox(
+                "infiltrado_add_word1",
+                Localization.get(user.locale, "admin-infiltrado-prompt-word1"),
+            )
+            return
+
+        if selection_id == "rename_category":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT,
+                category=cat,
+            )
+            user.show_editbox(
+                "infiltrado_rename_category",
+                Localization.get(user.locale, "admin-infiltrado-prompt-rename-category", category=cat),
+                default_value=cat,
+            )
+            return
+
+        if selection_id == "delete_category":
+            if cat.lower() == "general":
+                user.speak_l("admin-infiltrado-category-cannot-delete-general", buffer="system")
+                return
+            cnt = InfiltradoWordManager.count_pairs_by_category(cat)
+            show_confirmation_menu(
+                user,
+                ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU,
+                prompt_key="admin-infiltrado-delete-category-confirm",
+                prompt_kwargs={"category": cat, "count": cnt},
+                confirm_choice=ConfirmationChoice("confirm", "confirm-yes"),
+                cancel_choice=ConfirmationChoice("back", "confirm-no"),
+                buffer="system",
+            )
+            self.server.user_states[user.username] = {
+                "menu": ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU,
+                "category": cat,
+            }
+            return
+
+    async def _handle_infiltrado_delete_category_confirm_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle confirmation of category deletion."""
+        cat = state.get("category")
+        if selection_id == "confirm" and cat:
+            InfiltradoWordManager.delete_category(cat, reassign_to="General")
+            user.speak_l(
+                "admin-infiltrado-category-deleted", buffer="system", category=cat
+            )
+            user.play_sound("menuenter.ogg")
+            self.server._nav_back(user)
+        else:
+            self.server._nav_back(user)
+
+    def _show_infiltrado_select_category_menu(
+        self,
+        user: NetworkUser,
+        draft_word1: str | None = None,
+        draft_word2: str | None = None,
+        pair_id: int | None = None,
+        parent_frame: dict[str, Any] | None = None,
+    ) -> None:
+        """Show category selection picker for a pair."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        categories = InfiltradoWordManager.get_categories()
+        items = []
+        for cat in categories:
+            items.append(
+                MenuItem(
+                    text=cat,
+                    id=f"sel_cat_{cat}",
+                )
+            )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-category-create-new"),
+                id="create_new_cat",
+            )
+        )
+        items.append(MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
+            "draft_word1": draft_word1,
+            "draft_word2": draft_word2,
+            "pair_id": pair_id,
+            "_parent_frame": parent_frame,
+        }
+
+    async def _handle_infiltrado_select_category_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle category selection for a pair."""
+        draft_w1 = state.get("draft_word1")
+        draft_w2 = state.get("draft_word2")
+        pair_id = state.get("pair_id")
+        parent = state.get("_parent_frame")
+
+        if selection_id == "cancel":
+            if parent:
+                self.server._restore_input_parent(user, state)
+            else:
+                self.server._nav_back(user)
+            return
+
+        if selection_id == "create_new_cat":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_ADD_CATEGORY_INPUT,
+                draft_word1=draft_w1,
+                draft_word2=draft_w2,
+                _parent_frame=parent,
+            )
+            user.show_editbox(
+                "infiltrado_add_category",
+                Localization.get(user.locale, "admin-infiltrado-prompt-category-name"),
+            )
+            return
+
+        if selection_id.startswith("sel_cat_"):
+            cat_name = selection_id[8:]
+            if draft_w1 and draft_w2:
+                pair = InfiltradoWordManager.add_pair(draft_w1, draft_w2, category=cat_name)
+                user.speak_l(
+                    "admin-infiltrado-pair-added",
+                    buffer="system",
+                    word1=pair.word1,
+                    word2=pair.word2,
+                    category=pair.category,
+                )
+                user.play_sound("menuenter.ogg")
+            elif pair_id:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), category=cat_name)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-category-updated",
+                        buffer="system",
+                        category=cat_name,
+                    )
+                    user.play_sound("menuenter.ogg")
+
+            if parent:
+                self.server._restore_input_parent(user, state)
+            else:
+                self.server._nav_back(user)
