@@ -17899,19 +17899,23 @@ PlayAural Server
 
                 # Transition to password confirmation editbox
                 policy = self._db.get_nick_change_policy()
-                prompt_text = (
-                    Localization.get(
-                        user.locale,
-                        "nick-confirm-password-paid-prompt",
-                        new_nick=new_nick,
-                        price=policy.bypass_price,
-                    )
+                prompt_key = (
+                    "nick-confirm-password-paid-prompt"
                     if use_paid_bypass
-                    else Localization.get(
-                        user.locale,
-                        "nick-confirm-password-prompt",
-                        new_nick=new_nick,
-                    )
+                    else "nick-confirm-password-prompt"
+                )
+                prompt_text = Localization.get(
+                    user.locale,
+                    prompt_key,
+                    new_nick=new_nick,
+                    price=policy.bypass_price,
+                )
+                user.speak_l(
+                    prompt_key,
+                    buffer="system",
+                    history=False,
+                    new_nick=new_nick,
+                    price=policy.bypass_price,
                 )
                 user.show_editbox(
                     "nick_password_input",

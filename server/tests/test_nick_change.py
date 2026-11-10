@@ -84,13 +84,20 @@ async def test_first_nick_change_with_password_and_admin_approval(tmp_path) -> N
         )
         assert server._user_states[user.username]["menu"] == "nick_new_input"
 
-        # 4. Enter desired new nick -> prompts for password confirmation
+        # 4. Enter desired new nick -> prompts for password confirmation and speaks prompt
+        user.get_queued_messages()
         await server._handle_editbox(
             SimpleNamespace(username=user.username),
             {"input_id": "nick_new_input", "text": "Campeon99"},
         )
         assert server._user_states[user.username]["menu"] == "nick_password_input"
         assert server._user_states[user.username]["pending_new_nick"] == "Campeon99"
+        pw_prompt_packets = user.get_queued_messages()
+        assert any(
+            p.get("type") == "speak"
+            and "confirma tu contraseña para continuar" in p.get("text", "").lower()
+            for p in pw_prompt_packets
+        )
 
         # 5. Wrong password rejects submission without creating a request
         await server._handle_editbox(
