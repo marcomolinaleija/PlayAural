@@ -1597,6 +1597,7 @@ nick-error-reserved = That nick is reserved by the system and cannot be used.
 nick-error-already-pending = You already have a pending nick change request awaiting review.
 nick-error-cooldown-active = The cooldown period for a free nick change has not elapsed yet.
 nick-change-approved-user = An administrator approved your nick change. Your new username is { $new_nick }.
+nick-change-approved-reconnect-user = Your new nick ({ $new_nick }) has been approved by an administrator. In { $seconds } seconds you will be reconnected with the new nick.
 nick-change-rejected-user = Your request to change your nick to { $new_nick } was rejected. Reason: { $reason }.
 nick-change-rejected-refunded-user = Your request to change your nick to { $new_nick } was rejected. Reason: { $reason }. { $coins } coins were refunded (balance: { $balance }).
 

@@ -4779,13 +4779,14 @@ class AdministrationManager:
             outcome.old_username,
             outcome.new_username,
         )
-        admin.play_sound("accountapprove.ogg")
-        admin.speak_l(
-            "admin-nick-approved-feedback",
-            buffer="system",
-            old_nick=outcome.old_username,
-            new_nick=outcome.new_username,
-        )
+        if target_user is not admin:
+            admin.play_sound("accountapprove.ogg")
+            admin.speak_l(
+                "admin-nick-approved-feedback",
+                buffer="system",
+                old_nick=outcome.old_username,
+                new_nick=outcome.new_username,
+            )
         self.server._notify_admins(
             "account-action",
             "accountactionnotify.ogg",
@@ -4795,9 +4796,15 @@ class AdministrationManager:
         if target_user is not None:
             target_user.play_sound("accountapprove.ogg")
             target_user.speak_l(
-                "nick-change-approved-user",
+                "nick-change-approved-reconnect-user",
                 buffer="system",
                 new_nick=outcome.new_username,
+                seconds=5,
+            )
+            self.server.schedule_nick_change_reconnect(
+                target_user,
+                outcome.new_username,
+                delay_seconds=5.0,
             )
 
         self.refresh_pending_nick_changes_menus(exclude_username=admin.username)
@@ -4839,21 +4846,23 @@ class AdministrationManager:
             self.server._nav_back(admin)
             return
 
-        if outcome.refunded_coins > 0:
-            admin.speak_l(
-                "admin-nick-rejected-refunded-feedback",
-                buffer="system",
-                player=outcome.old_username,
-                new_nick=outcome.new_username,
-                coins=outcome.refunded_coins,
-            )
-        else:
-            admin.speak_l(
-                "admin-nick-rejected-feedback",
-                buffer="system",
-                player=outcome.old_username,
-                new_nick=outcome.new_username,
-            )
+        if target_user is not admin:
+            admin.play_sound("accountdeni.ogg")
+            if outcome.refunded_coins > 0:
+                admin.speak_l(
+                    "admin-nick-rejected-refunded-feedback",
+                    buffer="system",
+                    player=outcome.old_username,
+                    new_nick=outcome.new_username,
+                    coins=outcome.refunded_coins,
+                )
+            else:
+                admin.speak_l(
+                    "admin-nick-rejected-feedback",
+                    buffer="system",
+                    player=outcome.old_username,
+                    new_nick=outcome.new_username,
+                )
 
         self.server._notify_admins(
             "account-action",
@@ -4862,6 +4871,7 @@ class AdministrationManager:
         )
 
         if target_user is not None:
+            target_user.play_sound("accountdeni.ogg")
             if outcome.refunded_coins > 0:
                 target_user.play_sound("game_citadels/coins_small.ogg")
                 target_user.speak_l(

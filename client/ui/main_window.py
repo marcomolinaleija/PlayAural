@@ -2518,20 +2518,50 @@ class MainWindow(wx.Frame):
              self._reconnect_delay = min(self._reconnect_delay * 2, 10)
              wx.CallLater(self._reconnect_delay * 1000, self._attempt_silent_reconnect)
 
+    def _apply_username_update(self, canonical_username):
+        """Update in-memory and saved credentials when the server renames the account."""
+        if not isinstance(canonical_username, str) or not canonical_username:
+            return
+        previous_username = self.credentials.get("username")
+        self.credentials["username"] = canonical_username
+        if self.network:
+            self.network.username = canonical_username
+        account_id = self.credentials.get("account_id")
+        if (
+            previous_username != canonical_username
+            and self.config_manager
+            and self.server_id
+            and account_id
+        ):
+            self.config_manager.update_account(
+                self.server_id,
+                account_id,
+                username=canonical_username,
+            )
+
+    def on_username_updated(self, packet):
+        """Handle immediate username update packet from server."""
+        self._apply_username_update(packet.get("username"))
+
     def on_server_disconnect(self, packet):
         """Handle server disconnect packet."""
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.current_table_context_id = ""
+        if packet.get("username"):
+            self._apply_username_update(packet.get("username"))
         should_reconnect = packet.get("reconnect", False)
 
         if should_reconnect:
-            # Server is restarting, reconnect after 3 seconds
+            self.connected = False
             self.expecting_reconnect = True
-            self.speaker.speak(
-                Localization.get("main-reconnecting-in-3s"), interrupt=False
-            )
+            reconnect_immediate = bool(packet.get("reconnect_immediate", False))
+            if not reconnect_immediate:
+                self.speaker.speak(
+                    Localization.get("main-reconnecting-in-3s"), interrupt=False
+                )
 
             def reconnect():
+                self.reconnect_attempts = 0
                 server_url = self.credentials.get("server_url")
                 username = self.credentials.get("username")
                 password = self.credentials.get("password", "")
@@ -2539,7 +2569,12 @@ class MainWindow(wx.Frame):
                     self.speaker.speak(Localization.get("main-reconnecting"), interrupt=False)
                     self._do_reconnect(server_url, username, password)
 
-            wx.CallLater(3000, reconnect)
+            delay_ms = (
+                200
+                if reconnect_immediate
+                else int(packet.get("reconnect_after_ms", 3000) or 3000)
+            )
+            wx.CallLater(delay_ms, reconnect)
             return
 
         # Explicit disconnect, close the client

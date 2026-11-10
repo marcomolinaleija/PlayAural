@@ -117,6 +117,11 @@ async def test_first_nick_change_with_password_and_admin_approval(tmp_path) -> N
         assert pending is not None
         assert pending.requested_username == "Campeon99"
         assert pending.coins_paid == 0
+        admin_queued = admin.get_queued_messages()
+        assert any(
+            p.get("type") == "audio" and p.get("asset") == "accountrequest.ogg"
+            for p in admin_queued
+        )
 
         # 7. Admin opens Users submenu -> "Cambios pendientes" -> approves request
         server.admin_manager._show_admin_users_menu(admin)
@@ -141,11 +146,27 @@ async def test_first_nick_change_with_password_and_admin_approval(tmp_path) -> N
             == ADMIN_NICK_CHANGE_ACTIONS_MENU
         )
 
+        user.get_queued_messages()
         await server.admin_manager._handle_pending_nick_change_actions_selection(
             admin, "approve", server._user_states[admin.username]
         )
 
-        # 8. Verify username renamed in DB and live runtime, and 90-day cooldown started
+        # 8. Verify username renamed in DB and live runtime, notification sound & reconnect message sent, and 90-day cooldown started
+        user_queued = user.get_queued_messages()
+        assert any(
+            p.get("type") == "audio" and p.get("asset") == "accountapprove.ogg"
+            for p in user_queued
+        )
+        assert any(
+            p.get("type") == "speak"
+            and "aprobado por un administrador" in p.get("text", "")
+            and "reconectado con el nuevo nick" in p.get("text", "")
+            for p in user_queued
+        )
+        assert any(
+            p.get("type") == "username_updated" and p.get("username") == "Campeon99"
+            for p in user_queued
+        )
         assert user.username == "Campeon99"
         assert "Campeon99" in server._users
         assert "jugador1" not in server._users
@@ -320,11 +341,17 @@ async def test_paid_bypass_rejection_with_and_without_refund_and_collision_warni
             server._user_states[admin.username]["menu"]
             == ADMIN_NICK_REJECT_REFUND_MENU
         )
+        user.get_queued_messages()
         await server.admin_manager._handle_pending_nick_reject_refund_selection(
             admin, "reject_refund", server._user_states[admin.username]
         )
 
-        # Verify 30,000 coins were refunded
+        # Verify 30,000 coins were refunded and rejection sound played
+        user_reject_queued = user.get_queued_messages()
+        assert any(
+            p.get("type") == "audio" and p.get("asset") == "accountdeni.ogg"
+            for p in user_reject_queued
+        )
         assert server._db.get_wallet(record.uuid).balance == initial_balance
         resolved_req = server._db.get_nick_change_request(req.id)
         assert resolved_req is not None

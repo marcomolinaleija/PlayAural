@@ -135,6 +135,14 @@ export type DisconnectPacket = {
   type: "disconnect";
   reason?: string;
   reconnect?: boolean;
+  reconnect_immediate?: boolean;
+  reconnect_after_ms?: number;
+  username?: string;
+};
+
+export type UsernameUpdatedPacket = {
+  type: "username_updated";
+  username?: string;
 };
 
 export type ForceExitPacket = {
@@ -317,6 +325,7 @@ export type ServerPacket =
   | ChatPacket
   | ClearUiPacket
   | DisconnectPacket
+  | UsernameUpdatedPacket
   | ForceExitPacket
   | LoginFailedPacket
   | MenuPacket

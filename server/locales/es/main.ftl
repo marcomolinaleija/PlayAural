@@ -1823,6 +1823,7 @@ nick-error-reserved = Ese nick está reservado por el sistema y no puede utiliza
 nick-error-already-pending = Ya tienes una solicitud de cambio de nick pendiente de revisión.
 nick-error-cooldown-active = Aún no han transcurrido los días de espera para solicitar un cambio de nick gratuito.
 nick-change-approved-user = Un administrador aprobó tu cambio de nick. Tu nuevo nombre de usuario es { $new_nick }.
+nick-change-approved-reconnect-user = Tu nuevo nick ({ $new_nick }) ha sido aprobado por un administrador. En { $seconds } segundos serás reconectado con el nuevo nick.
 nick-change-rejected-user = Tu solicitud para cambiar el nick a { $new_nick } fue rechazada. Motivo: { $reason }.
 nick-change-rejected-refunded-user = Tu solicitud para cambiar el nick a { $new_nick } fue rechazada. Motivo: { $reason }. Se te devolvieron { $coins } monedas (saldo: { $balance }).
 

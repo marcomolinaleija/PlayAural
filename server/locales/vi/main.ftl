@@ -1487,6 +1487,7 @@ nick-error-reserved = Tên này được hệ thống bảo lưu.
 nick-error-already-pending = Bạn đã có một yêu cầu đổi tên đang chờ duyệt.
 nick-error-cooldown-active = Chưa hết thời gian chờ để đổi tên miễn phí.
 nick-change-approved-user = Quản trị viên đã duyệt yêu cầu đổi tên. Tên mới của bạn là { $new_nick }.
+nick-change-approved-reconnect-user = Tên mới của bạn ({ $new_nick }) đã được quản trị viên duyệt. Sau { $seconds } giây bạn sẽ được kết nối lại với tên mới.
 nick-change-rejected-user = Yêu cầu đổi tên thành { $new_nick } đã bị từ chối. Lý do: { $reason }.
 nick-change-rejected-refunded-user = Yêu cầu đổi tên thành { $new_nick } đã bị từ chối. Lý do: { $reason }. Đã hoàn lại { $coins } xu (số dư: { $balance }).
 

@@ -2645,8 +2645,21 @@ export function PlayAuralApp() {
           return;
         }
 
+        if (packet.type === "username_updated") {
+          const nextName = String((packet as { username?: string }).username || "");
+          if (nextName) {
+            credentialsRef.current.username = nextName;
+            setUsername(nextName);
+          }
+          return;
+        }
+
         if (packet.type === "disconnect") {
           const disconnectPacket = packet as DisconnectPacket;
+          if (disconnectPacket.username) {
+            credentialsRef.current.username = disconnectPacket.username;
+            setUsername(disconnectPacket.username);
+          }
           const shouldExitApplication = isTerminalExitReason(disconnectPacket.reason);
           const reason = localizeSystemMessage(disconnectPacket.reason, "status-disconnected");
           leaveVoiceChat({
@@ -2662,9 +2675,15 @@ export function PlayAuralApp() {
             allowReconnectRef.current = true;
             expectingReconnectRef.current = true;
             sessionEstablishedRef.current = true;
-            const reconnectMessage = localization.t("reconnect-server-restarting");
+            const immediate = disconnectPacket.reconnect_immediate === true;
+            const delayMs = immediate
+              ? 200
+              : (Number(disconnectPacket.reconnect_after_ms) || 3000);
+            const reconnectMessage = immediate
+              ? localization.t("status-connecting")
+              : localization.t("reconnect-server-restarting");
             setAuthStatusText(reconnectMessage);
-            queueReconnectAttempt(3000, reconnectMessage, true);
+            queueReconnectAttempt(delayMs, reconnectMessage, !immediate);
             return;
           }
 

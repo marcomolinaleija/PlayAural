@@ -2610,6 +2610,15 @@ class PlayAuralWebApp {
       case "disconnect":
         this.handleServerDisconnect(packet);
         break;
+      case "username_updated":
+        if (packet.username) {
+          this.lastUser = packet.username;
+          if (this.elements.username) {
+            this.elements.username.value = packet.username;
+          }
+          this.saveLocalConfig();
+        }
+        break;
       case "force_exit":
       case "switch_server":
         this.handleForceExit(packet);
@@ -2795,6 +2804,13 @@ class PlayAuralWebApp {
   }
 
   handleServerDisconnect(packet) {
+    if (packet.username) {
+      this.lastUser = packet.username;
+      if (this.elements.username) {
+        this.elements.username.value = packet.username;
+      }
+      this.saveLocalConfig();
+    }
     if (packet.reconnect === true) {
       this.shouldReconnect = true;
       this.manualDisconnect = false;
@@ -2802,11 +2818,15 @@ class PlayAuralWebApp {
       this.cleanupRuntime();
       this.network.disconnect();
       this.store.setConnection({ authenticated: false, status: "disconnected" });
+      const immediate = packet.reconnect_immediate === true;
+      const delayMs = immediate
+        ? 200
+        : (Number(packet.reconnect_after_ms) || SERVER_RESTART_RECONNECT_DELAY_MS);
       this.startReconnectWindow({
-        initialDelayMs: SERVER_RESTART_RECONNECT_DELAY_MS,
-        statusKey: "main-reconnecting-in-3s",
-        params: { seconds: Math.round(SERVER_RESTART_RECONNECT_DELAY_MS / 1000) },
-        speak: true,
+        initialDelayMs: delayMs,
+        statusKey: immediate ? "main-reconnecting" : "main-reconnecting-in-3s",
+        params: { seconds: Math.round(delayMs / 1000) },
+        speak: !immediate,
       });
       return;
     }

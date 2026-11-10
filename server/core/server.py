@@ -2633,6 +2633,7 @@ PlayAural Server
                     new_nick=req.requested_username,
                 )
             elif req.status == "rejected":
+                user.play_sound("accountdeni.ogg")
                 if req.refunded and req.coins_paid > 0:
                     wallet = self._db.get_wallet(user.uuid)
                     user.play_sound("game_citadels/coins_small.ogg")
@@ -10094,10 +10095,22 @@ PlayAural Server
             target_user.set_username(new_username)
             if getattr(target_user, "connection", None) is not None:
                 target_user.connection.username = new_username
+                if self._ws_server is not None:
+                    self._ws_server.unregister_client_username(
+                        old_username, target_user.connection
+                    )
+                    self._ws_server.register_client_username(
+                        target_user.connection.address, new_username
+                    )
             self._users[new_username] = target_user
 
         if old_username in self._user_states:
             self._user_states[new_username] = self._user_states.pop(old_username)
+
+        if old_username in self._audio_input_devices_by_user:
+            self._audio_input_devices_by_user[new_username] = (
+                self._audio_input_devices_by_user.pop(old_username)
+            )
 
         if old_username in self._voice_presence_by_user:
             presence = self._voice_presence_by_user.pop(old_username)
@@ -10149,6 +10162,54 @@ PlayAural Server
             self.on_user_presence_changed()
 
         return target_user
+
+    def schedule_nick_change_reconnect(
+        self,
+        user: NetworkUser,
+        new_username: str,
+        *,
+        delay_seconds: float = 5.0,
+    ) -> None:
+        """Immediately update client credentials and reconnect after ``delay_seconds``."""
+        user._queue_packet({"type": "username_updated", "username": new_username})
+        client = getattr(user, "connection", None)
+        if self._ws_server is not None and client is not None:
+            asyncio.create_task(
+                self._delayed_nick_reconnect(
+                    client,
+                    user.uuid,
+                    new_username,
+                    delay_seconds,
+                )
+            )
+
+    async def _delayed_nick_reconnect(
+        self,
+        client: ClientConnection,
+        user_uuid: str,
+        new_username: str,
+        delay_seconds: float,
+    ) -> None:
+        """Wait for the approval speech to finish, then trigger client reconnection."""
+        try:
+            await asyncio.sleep(max(0.0, float(delay_seconds)))
+        except asyncio.CancelledError:
+            return
+        if self._stopping or getattr(client, "retired", False):
+            return
+        current_name = self._db.get_user_name_by_uuid(user_uuid) or new_username
+        client.retired = True
+        await client.send_control(
+            {
+                "type": "disconnect",
+                "reason": "",
+                "reconnect": True,
+                "reconnect_immediate": True,
+                "reconnect_after_ms": 200,
+                "username": current_name,
+            }
+        )
+        await client.close()
 
     def _show_wallet_menu(self, user: NetworkUser) -> None:
         """Show the user's wallet and coin status menu."""
@@ -17886,6 +17947,7 @@ PlayAural Server
                     use_paid_bypass=use_paid_bypass,
                 )
                 if outcome.ok and outcome.request is not None:
+                    user.play_sound("accountrequest.ogg")
                     if outcome.request.coins_paid > 0:
                         user.play_sound("game_citadels/coins_small.ogg")
                         user.speak_l(
@@ -17903,7 +17965,7 @@ PlayAural Server
                         )
                     self._notify_admins(
                         "admin-nick-change-requested-notify",
-                        "accountregnotify.ogg",
+                        "accountrequest.ogg",
                         player=outcome.request.old_username,
                         new_nick=outcome.request.requested_username,
                     )
