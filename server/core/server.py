@@ -1665,6 +1665,12 @@ PlayAural Server
         spec = PRESENCE_EVENT_SPECS[is_online]
         friend_uuids = set(self._db.get_friends(player_uuid))
         socially_blocked_uuids = self._db.get_socially_blocked_ids(player_uuid)
+        player_gender = (
+            self._users[player_name].gender
+            if player_name in self._users
+            else self._db.get_user_gender_by_uuid(player_uuid)
+        )
+        player_gender_kwargs = gender_localization_kwargs(player_gender, "player")
 
         for user in tuple(self._users.values()):
             if (
@@ -1693,6 +1699,7 @@ PlayAural Server
                 str(message_id),
                 buffer="system",
                 player=player_name,
+                **player_gender_kwargs,
             )
             user.play_sound(spec["sounds"][sound_role])
         return True
@@ -7676,14 +7683,22 @@ PlayAural Server
                         f_data["last_seen"],
                         now=now,
                     )
+                    gender_kwargs = self._account_gender_localization_kwargs(
+                        f_name, "player"
+                    )
                     status = (
                         Localization.get(
                             user.locale,
                             "friend-status-offline-last-online",
                             relative_time=relative_time,
+                            **gender_kwargs,
                         )
                         if relative_time
-                        else Localization.get(user.locale, "friend-status-offline")
+                        else Localization.get(
+                            user.locale,
+                            "friend-status-offline",
+                            **gender_kwargs,
+                        )
                     )
                 else:
                     status = self._format_presence_status(user.locale, f_name)
@@ -7836,7 +7851,18 @@ PlayAural Server
                     items.append(MenuItem(text=Localization.get(user.locale, "join-table"), id="join_table"))
 
         if self._find_current_friend_record(user, target_username):
-            items.append(MenuItem(text=Localization.get(user.locale, "remove-friend"), id="remove_friend"))
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "remove-friend",
+                        **self._account_gender_localization_kwargs(
+                            target_username, "friend"
+                        ),
+                    ),
+                    id="remove_friend",
+                )
+            )
         report_item = self._get_report_action_item(user, target_username)
         if report_item:
             items.append(report_item)
@@ -8231,6 +8257,9 @@ PlayAural Server
                 "friend-accepted-success",
                 buffer="system",
                 username=target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
             )
             user.play_sound("friend_accepted.ogg")
             target_user = self._users.get(target_record.username)
@@ -8239,6 +8268,9 @@ PlayAural Server
                     "friend-accepted-notify",
                     buffer="system",
                     username=user.username,
+                    **self._account_gender_localization_kwargs(
+                        user.username, "username"
+                    ),
                 )
                 target_user.play_sound("friend_accepted.ogg")
             else:
@@ -8256,6 +8288,9 @@ PlayAural Server
                 "friend-request-sent",
                 buffer="system",
                 username=target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
             )
             user.play_sound("friend_request_sent.ogg")
             target_user = self._users.get(target_record.username)
@@ -8264,6 +8299,9 @@ PlayAural Server
                     "friend-request-received",
                     buffer="system",
                     username=user.username,
+                    **self._account_gender_localization_kwargs(
+                        user.username, "username"
+                    ),
                 )
                 target_user.play_sound(self.get_sound_for_event("friend_request"))
             else:
@@ -8300,7 +8338,12 @@ PlayAural Server
             user,
             FRIEND_REMOVE_CONFIRM_MENU,
             prompt_key="friend-remove-confirm",
-            prompt_kwargs={"username": target_record.username},
+            prompt_kwargs={
+                "username": target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
+            },
             buffer="system",
         )
         self._user_states[user.username] = {
@@ -8357,6 +8400,9 @@ PlayAural Server
             "friend-removed-success",
             buffer="system",
             username=target_record.username,
+            **self._account_gender_localization_kwargs(
+                target_record.username, "username"
+            ),
         )
         user.play_sound("friend_removed.ogg")
 
@@ -8439,7 +8485,12 @@ PlayAural Server
             user,
             USER_BLOCK_CONFIRM_MENU,
             prompt_key="block-confirm",
-            prompt_kwargs={"username": target_record.username},
+            prompt_kwargs={
+                "username": target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
+            },
             buffer="system",
         )
         self._user_states[user.username] = {
@@ -9169,13 +9220,27 @@ PlayAural Server
             # Attempt to accept
             success = self._db.accept_friend_request(target_record.uuid, user.uuid)
             if success:
-                user.speak_l("friend-accepted-success", buffer="system", username=target_record.username)
+                user.speak_l(
+                    "friend-accepted-success",
+                    buffer="system",
+                    username=target_record.username,
+                    **self._account_gender_localization_kwargs(
+                        target_record.username, "username"
+                    ),
+                )
                 user.play_sound("friend_accepted.ogg")
 
                 # Notify target
                 target_user = self._users.get(target_record.username)
                 if target_user:
-                    target_user.speak_l("friend-accepted-notify", buffer="system", username=user.username)
+                    target_user.speak_l(
+                        "friend-accepted-notify",
+                        buffer="system",
+                        username=user.username,
+                        **self._account_gender_localization_kwargs(
+                            user.username, "username"
+                        ),
+                    )
                     target_user.play_sound("friend_accepted.ogg")
                 else:
                     self._db.add_notification(target_record.uuid, user.username, "friend_accepted")
@@ -9204,6 +9269,9 @@ PlayAural Server
                     "friend-declined-notify",
                     buffer="system",
                     username=user.username,
+                    **self._account_gender_localization_kwargs(
+                        user.username, "username"
+                    ),
                 )
                 target_user.play_sound("friend_declined.ogg")
             else:
@@ -9485,7 +9553,12 @@ PlayAural Server
             user,
             FRIEND_REQUEST_CANCEL_CONFIRM_MENU,
             prompt_key="friend-request-cancel-confirm",
-            prompt_kwargs={"username": target_record.username},
+            prompt_kwargs={
+                "username": target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
+            },
             buffer="system",
         )
         self._user_states[user.username] = {
@@ -13912,7 +13985,11 @@ PlayAural Server
         invitee_user = self._users.get(invitee_name)
 
         if not invitee_user:
-            user.speak_l("host-invite-friend-unavailable", buffer="system")
+            user.speak_l(
+                "host-invite-friend-unavailable",
+                buffer="system",
+                **self._account_gender_localization_kwargs(invitee_name, "friend"),
+            )
             self._nav_refresh(user, self._show_host_invite_menu, table)
             return
         sent = await self._send_table_invite(user, table, invitee_user)
@@ -13935,7 +14012,13 @@ PlayAural Server
                     pending_invite,
                 )
             ):
-                host_user.speak_l("host-invite-already-pending", buffer="system")
+                host_user.speak_l(
+                    "host-invite-already-pending",
+                    buffer="system",
+                    **self._account_gender_localization_kwargs(
+                        invitee_name, "friend"
+                    ),
+                )
                 return False
             stale_invite_id = str(pending_invite.get("invite_id", ""))
             self._cancel_matching_social_invites(
@@ -13950,7 +14033,11 @@ PlayAural Server
             invitee_user,
         )
         if eligibility_error:
-            host_user.speak_l(eligibility_error, buffer="system")
+            host_user.speak_l(
+                eligibility_error,
+                buffer="system",
+                **self._account_gender_localization_kwargs(invitee_name, "friend"),
+            )
             return False
 
         rate_limit_rejection = self._table_interaction_rate_limiter.try_consume(
@@ -13969,6 +14056,7 @@ PlayAural Server
                 message_key,
                 buffer="system",
                 seconds=rate_limit_rejection.seconds,
+                **self._account_gender_localization_kwargs(invitee_name, "friend"),
             )
             return False
 

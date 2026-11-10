@@ -1100,6 +1100,14 @@ gender-term-reflexive =
         [female] herself
        *[other] themself
     }
+gender-term-friend =
+    { $gender ->
+       *[other] friend
+    }
+gender-term-friend-capitalized =
+    { $gender ->
+       *[other] Friend
+    }
 
 action-set-edit = Set / Edit
 action-delete = Delete
@@ -1166,6 +1174,10 @@ decline = Decline
 friend-accepted-success = You are now friends with { $username }.
 request-not-found = Friend request no longer exists.
 friend-declined-success = Friend request declined.
+friend-removed-notify = { $username } removed you from their friends list.
+friend-accepted-notify = { $username } accepted your friend request.
+friend-declined-notify = { $username } declined your friend request.
+friend-request-received = You received a friend request from { $username }.
 friend-request-manage-sent = Manage Sent Friend Request
 friend-request-accept-action = Accept Friend Request
 friend-request-cancel-action = Cancel Friend Request

@@ -294,8 +294,10 @@ class NetworkUser(User):
         to allow client-side translation/overrides.
         """
         # Try to format on server
-        text = Localization.get(self.locale, message_id, **kwargs)
-        
+        localized_kwargs = dict(kwargs)
+        localized_kwargs.setdefault("user_gender", self.gender.selector)
+        text = Localization.get(self.locale, message_id, **localized_kwargs)
+
         packet = {
             "type": "speak",
             "text": text,        # Result of server translation (or key if missing)

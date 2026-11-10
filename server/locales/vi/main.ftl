@@ -1051,6 +1051,14 @@ gender-term-reflexive =
         [female] chính cô ấy
        *[other] chính họ
     }
+gender-term-friend =
+    { $gender ->
+       *[other] bạn
+    }
+gender-term-friend-capitalized =
+    { $gender ->
+       *[other] Bạn
+    }
 
 action-set-edit = Đặt / Chỉnh sửa
 action-delete = Xóa

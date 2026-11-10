@@ -330,7 +330,9 @@ class User(ABC):
             history: Whether clients should retain the message in their history buffer.
             **kwargs: Variables to substitute into the message.
         """
-        text = Localization.get(self.locale, message_id, **kwargs)
+        localized_kwargs = dict(kwargs)
+        localized_kwargs.setdefault("user_gender", self.gender.selector)
+        text = Localization.get(self.locale, message_id, **localized_kwargs)
         self.speak(text, buffer=buffer, history=history)
 
     @abstractmethod

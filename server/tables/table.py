@@ -12,6 +12,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 
 from ..game_utils.bot_names import bot_name_key, normalize_bot_name
 from ..games.registry import get_game_class
+from ..gender import Gender, normalize_gender
 from ..users.bot import Bot
 from ..voice.settings import (
     MAX_VOICE_SETTINGS_IDENTITIES,
@@ -1392,7 +1393,20 @@ class Table(DataClassJSONMixin):
         self.host = new_host
         if self._game:
             self._game.host = new_host
-            self._game.broadcast_l(message_key, buffer="system", player=new_host)
+            new_host_user = self._users.get(new_host)
+            if new_host_user is not None:
+                new_host_gender = normalize_gender(getattr(new_host_user, "gender", None))
+            elif self._db and hasattr(self._db, "get_user"):
+                user_rec = self._db.get_user(new_host)
+                new_host_gender = normalize_gender(user_rec.gender if user_rec else None)
+            else:
+                new_host_gender = Gender.UNSPECIFIED
+            self._game.broadcast_l(
+                message_key,
+                buffer="system",
+                player=new_host,
+                player_gender=new_host_gender.selector,
+            )
             if hasattr(self._game, "refresh_menus"):
                 self._game.refresh_menus()
         if self._server and hasattr(self._server, "on_tables_changed"):
@@ -2046,7 +2060,18 @@ class Table(DataClassJSONMixin):
 
         # 10. Announce new host if changed
         if old_host != self.host:
-             new_game.broadcast_l("table-new-host-promoted", buffer="system", player=self.host)
+             host_user = self._users.get(self.host)
+             host_gender = (
+                 normalize_gender(getattr(host_user, "gender", None))
+                 if host_user is not None
+                 else Gender.UNSPECIFIED
+             )
+             new_game.broadcast_l(
+                 "table-new-host-promoted",
+                 buffer="system",
+                 player=self.host,
+                 player_gender=host_gender.selector,
+             )
 
         # 11. Transfer scheduled sounds only for the normal game-over flow.
         # Manual host restarts must discard every delayed gameplay artifact.
