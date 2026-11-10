@@ -57,6 +57,15 @@ OFFICIAL_SERVERS = [
         "port": "443",
     },
 ]
+if not getattr(sys, "frozen", False):
+    OFFICIAL_SERVERS.append(
+        {
+            "server_id": "playaural_local",
+            "name": "Servidor local (localhost:8000)",
+            "host": "ws://localhost",
+            "port": "8000",
+        }
+    )
 
 
 class LoginDialog(wx.Dialog):

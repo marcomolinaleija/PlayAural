@@ -1396,6 +1396,8 @@ class MainWindow(wx.Frame):
         "ban_custom_reason_input", "mute_custom_reason_input",
         "admin_target_search_input",
         "grant_coins_menu", "grant_coins_amount_menu", "grant_coins_input",
+        "admin_nick_changes_menu", "admin_nick_change_actions_menu",
+        "admin_nick_reject_reason_input", "admin_nick_reject_refund_menu",
     })
     # Options-family menus.
     _OPTIONS_MENU_IDS = frozenset({
