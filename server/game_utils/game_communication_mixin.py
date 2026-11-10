@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, Callable
 
-from ..gender import Gender
+from ..gender import Gender, normalize_gender
 from .player import Player
 
 if TYPE_CHECKING:
@@ -139,6 +139,17 @@ class GameCommunicationMixin:
                     f"{name}_gender",
                     self.get_player_gender(matched_player).selector,
                 )
+            elif isinstance(value, str):
+                table = getattr(self, "_table", None)
+                if table is not None:
+                    table_users = getattr(table, "_users", {})
+                    if value in table_users:
+                        user_obj = table_users[value]
+                        gender_obj = getattr(user_obj, "gender", Gender.UNSPECIFIED)
+                        resolved.setdefault(
+                            f"{name}_gender",
+                            normalize_gender(gender_obj).selector,
+                        )
         return resolved
 
     def label_l(self, message_id: str) -> Callable[["Game", "Player"], str]:

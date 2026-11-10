@@ -33,6 +33,8 @@ GENDER_TERM_FORMS = frozenset(
         "possessive-determiner-capitalized",
         "possessive-pronoun",
         "reflexive",
+        "friend",
+        "friend-capitalized",
     }
 )
 GENDER_TERM_CONTEXT_MAX_LENGTH = 64

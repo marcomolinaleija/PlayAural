@@ -43,7 +43,10 @@ game-winner = ¡{ $player } gana!
 game-winner-you = ¡Ganaste!
 game-winner-score = ¡{ $player } gana con { $score } puntos!
 game-tiebreaker = ¡Es un empate! ¡Ronda de desempate!
-game-eliminated = { $player } fue eliminado con { $score } puntos.
+game-eliminated = { $player_gender ->
+    [female] { $player } fue eliminada con { $score } puntos.
+   *[other] { $player } fue eliminado con { $score } puntos.
+}
 
 game-set-target-score = Puntuación objetivo: { $score }
 game-enter-target-score = Ingresa la puntuación objetivo:
