@@ -97,6 +97,13 @@ SOUND_VOICE_ROULETTE_SURVIVE = "game_deadmansdeck/voice_roulette_survive.ogg"
 SOUND_VOICE_ROULETTE_DEATH = "game_deadmansdeck/voice_roulette_death.ogg"
 SOUND_VOICE_GAME_OVER = "game_deadmansdeck/voice_game_over.ogg"
 
+# 3D Cosmos spatial positions for the tavern croupier in the listener's frame
+# (+Y ahead across the table, +X right, -X left, +Z elevated above the table).
+NARRATOR_DEALER_POSITION: tuple[float, float, float] = (-0.65, 1.55, 0.45)
+NARRATOR_CENTER_POSITION: tuple[float, float, float] = (0.35, 1.25, 0.30)
+NARRATOR_ROULETTE_POSITION: tuple[float, float, float] = (0.85, 0.75, 0.25)
+NARRATOR_TAVERN_POSITION: tuple[float, float, float] = (-0.45, 1.75, 0.50)
+
 SOUND_SHUFFLES = [
     "game_cards/shuffle1.ogg",
     "game_cards/shuffle2.ogg",
@@ -138,18 +145,18 @@ AUDIO_DURATIONS_TICKS = {
     "game_deadmansdeck/body_fall1.ogg": 14,
     "game_deadmansdeck/body_fall2.ogg": 13,
     "game_deadmansdeck/game_over.ogg": 87,
-    SOUND_VOICE_INTRO: 314,
-    SOUND_VOICE_TARGET_ACE: 210,
-    SOUND_VOICE_TARGET_KING: 204,
-    SOUND_VOICE_TARGET_QUEEN: 176,
-    SOUND_VOICE_CHALLENGE: 199,
-    SOUND_VOICE_CHALLENGE_FORCED: 136,
-    SOUND_VOICE_BLUFF_CAUGHT: 166,
-    SOUND_VOICE_TRUTH_REVEALED: 163,
-    SOUND_VOICE_ROULETTE_COCK: 97,
-    SOUND_VOICE_ROULETTE_SURVIVE: 140,
-    SOUND_VOICE_ROULETTE_DEATH: 130,
-    SOUND_VOICE_GAME_OVER: 247,
+    SOUND_VOICE_INTRO: 172,
+    SOUND_VOICE_TARGET_ACE: 100,
+    SOUND_VOICE_TARGET_KING: 114,
+    SOUND_VOICE_TARGET_QUEEN: 90,
+    SOUND_VOICE_CHALLENGE: 100,
+    SOUND_VOICE_CHALLENGE_FORCED: 72,
+    SOUND_VOICE_BLUFF_CAUGHT: 90,
+    SOUND_VOICE_TRUTH_REVEALED: 88,
+    SOUND_VOICE_ROULETTE_COCK: 53,
+    SOUND_VOICE_ROULETTE_SURVIVE: 69,
+    SOUND_VOICE_ROULETTE_DEATH: 76,
+    SOUND_VOICE_GAME_OVER: 114,
 }
 REVOLVER_PREPARATION_DELAY_TICKS = (
     AUDIO_DURATIONS_TICKS[SOUND_REVOLVER_SPIN] + RELOAD_EXTRA_WAIT_TICKS
@@ -410,7 +417,10 @@ class DeadMansDeckGame(Game):
                 (
                     0,
                     2,
-                    SequenceOperation.sound_op(SOUND_VOICE_INTRO),
+                    SequenceOperation.sound_op(
+                        SOUND_VOICE_INTRO,
+                        position=NARRATOR_DEALER_POSITION,
+                    ),
                 )
             )
 
@@ -527,7 +537,12 @@ class DeadMansDeckGame(Game):
             if target_voice:
                 round_beats.append(
                     SequenceBeat(
-                        ops=[SequenceOperation.sound_op(target_voice)],
+                        ops=[
+                            SequenceOperation.sound_op(
+                                target_voice,
+                                position=NARRATOR_DEALER_POSITION,
+                            )
+                        ],
                         delay_after_ticks=self._sound_ticks(target_voice),
                     )
                 )
@@ -1520,7 +1535,12 @@ class DeadMansDeckGame(Game):
             )
             challenge_beats.append(
                 SequenceBeat(
-                    ops=[SequenceOperation.sound_op(challenge_voice)],
+                    ops=[
+                        SequenceOperation.sound_op(
+                            challenge_voice,
+                            position=NARRATOR_CENTER_POSITION,
+                        )
+                    ],
                     delay_after_ticks=self._sound_ticks(challenge_voice),
                 )
             )
@@ -1550,7 +1570,12 @@ class DeadMansDeckGame(Game):
             )
             challenge_beats.append(
                 SequenceBeat(
-                    ops=[SequenceOperation.sound_op(verdict_voice)],
+                    ops=[
+                        SequenceOperation.sound_op(
+                            verdict_voice,
+                            position=NARRATOR_CENTER_POSITION,
+                        )
+                    ],
                     delay_after_ticks=self._sound_ticks(verdict_voice),
                 )
             )
@@ -1644,7 +1669,12 @@ class DeadMansDeckGame(Game):
             if self.options.natural_voices:
                 beats.append(
                     SequenceBeat(
-                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_COCK)],
+                        ops=[
+                            SequenceOperation.sound_op(
+                                SOUND_VOICE_ROULETTE_COCK,
+                                position=NARRATOR_ROULETTE_POSITION,
+                            )
+                        ],
                         delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_COCK),
                     )
                 )
@@ -1667,7 +1697,12 @@ class DeadMansDeckGame(Game):
             if self.options.natural_voices:
                 beats.append(
                     SequenceBeat(
-                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_DEATH)],
+                        ops=[
+                            SequenceOperation.sound_op(
+                                SOUND_VOICE_ROULETTE_DEATH,
+                                position=NARRATOR_ROULETTE_POSITION,
+                            )
+                        ],
                         delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_DEATH),
                     )
                 )
@@ -1687,7 +1722,12 @@ class DeadMansDeckGame(Game):
             if self.options.natural_voices:
                 beats.append(
                     SequenceBeat(
-                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_COCK)],
+                        ops=[
+                            SequenceOperation.sound_op(
+                                SOUND_VOICE_ROULETTE_COCK,
+                                position=NARRATOR_ROULETTE_POSITION,
+                            )
+                        ],
                         delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_COCK),
                     )
                 )
@@ -1707,7 +1747,12 @@ class DeadMansDeckGame(Game):
             if self.options.natural_voices:
                 beats.append(
                     SequenceBeat(
-                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_SURVIVE)],
+                        ops=[
+                            SequenceOperation.sound_op(
+                                SOUND_VOICE_ROULETTE_SURVIVE,
+                                position=NARRATOR_ROULETTE_POSITION,
+                            )
+                        ],
                         delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_SURVIVE),
                     )
                 )
@@ -1796,7 +1841,12 @@ class DeadMansDeckGame(Game):
         if self.options.natural_voices:
             game_over_beats.append(
                 SequenceBeat(
-                    ops=[SequenceOperation.sound_op(SOUND_VOICE_GAME_OVER)],
+                    ops=[
+                        SequenceOperation.sound_op(
+                            SOUND_VOICE_GAME_OVER,
+                            position=NARRATOR_TAVERN_POSITION,
+                        )
+                    ],
                     delay_after_ticks=self._sound_ticks(SOUND_VOICE_GAME_OVER),
                 )
             )

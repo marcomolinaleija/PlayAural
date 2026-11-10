@@ -8,6 +8,10 @@ from server.games.deadmansdeck.game import (
     COCK_TO_OUTCOME_DELAY_TICKS,
     LATEST_REVOLVER_PREPARATION_START_TICKS,
     MAX_CLAIM_CARDS,
+    NARRATOR_CENTER_POSITION,
+    NARRATOR_DEALER_POSITION,
+    NARRATOR_ROULETTE_POSITION,
+    NARRATOR_TAVERN_POSITION,
     PHASE_CHALLENGE,
     PHASE_CLAIM,
     PHASE_PLAYING,
@@ -988,8 +992,14 @@ def test_natural_voices_option_plays_narrator_catalog() -> None:
     assert advance_until(game, lambda: game.phase == PHASE_PLAYING and game.round == 1, max_ticks=700)
     target_voice = SOUND_VOICE_TARGETS[game.target_rank]
     for player in game.players:
-        sounds = sound_names(game.get_user(player))
+        user = game.get_user(player)
+        sounds = sound_names(user)
         assert_subsequence(sounds, [SOUND_INTRO, SOUND_VOICE_INTRO, SOUND_ROUND_START, target_voice])
+        intro_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_INTRO
+        )
+        assert tuple(intro_msg.data["position"]) == NARRATOR_DEALER_POSITION
 
     # Bluff challenge + roulette survival + next round
     alice = game.current_player
@@ -1044,7 +1054,8 @@ def test_natural_voices_option_plays_narrator_catalog() -> None:
     assert advance_until(game, lambda: game.status == "finished" or game._destroyed, max_ticks=1500)
 
     for player in game.players:
-        sounds = sound_names(game.get_user(player))
+        user = game.get_user(player)
+        sounds = sound_names(user)
         assert_subsequence(
             sounds,
             [
@@ -1060,4 +1071,19 @@ def test_natural_voices_option_plays_narrator_catalog() -> None:
                 SOUND_VOICE_GAME_OVER,
             ],
         )
+        challenge_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_CHALLENGE_FORCED
+        )
+        cock_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_ROULETTE_COCK
+        )
+        over_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_GAME_OVER
+        )
+        assert tuple(challenge_msg.data["position"]) == NARRATOR_CENTER_POSITION
+        assert tuple(cock_msg.data["position"]) == NARRATOR_ROULETTE_POSITION
+        assert tuple(over_msg.data["position"]) == NARRATOR_TAVERN_POSITION
 
