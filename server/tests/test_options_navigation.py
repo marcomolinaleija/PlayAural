@@ -1481,3 +1481,34 @@ async def test_restore_frame_game_options_and_category(tmp_path) -> None:
         assert _user_state(server, user.username).get("pref_field") == "dice_keeping_style"
     finally:
         server._db.close()
+
+
+@pytest.mark.asyncio
+async def test_toggle_limit_unfocused_audio_in_audio_submenu(tmp_path) -> None:
+    server, user = _make_server(tmp_path)
+    synced_prefs = []
+    server._sync_pref_to_client = lambda u, k, v: synced_prefs.append((u.username, k, v))
+
+    try:
+        server._show_options_menu(user)
+        server._nav_push(user, server._show_audio_submenu)
+        assert _current_menu(server, user.username) == "options_audio_submenu"
+
+        item_ids = [item.id for item in user.menus["options_audio_submenu"]["items"]]
+        assert "toggle_limit_unfocused_audio" in item_ids
+
+        # Initially False
+        assert user.preferences.limit_unfocused_audio is False
+
+        # Toggle to True
+        await server._handle_audio_submenu_selection(user, "toggle_limit_unfocused_audio")
+        assert user.preferences.limit_unfocused_audio is True
+        assert ("NavTester", "audio/limit_unfocused_audio_and_tts", True) in synced_prefs
+
+        # Toggle back to False
+        await server._handle_audio_submenu_selection(user, "toggle_limit_unfocused_audio")
+        assert user.preferences.limit_unfocused_audio is False
+        assert ("NavTester", "audio/limit_unfocused_audio_and_tts", False) in synced_prefs
+    finally:
+        server._db.close()
+

@@ -2887,6 +2887,12 @@ class MainWindow(wx.Frame):
                     preferences["desktop_audio_input_device_name"],
                     create_mode=True,
                 )
+            if "limit_unfocused_audio" in preferences:
+                self.config_manager.set_client_option(
+                    "audio/limit_unfocused_audio_and_tts",
+                    bool(preferences["limit_unfocused_audio"]),
+                    create_mode=True,
+                )
             
             # Social
             if "mute_global_chat" in preferences:
