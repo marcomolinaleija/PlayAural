@@ -18,6 +18,7 @@ EXPECTED_TO_DICT_KEYS = {
     "active_tables_filter", "game_category_filter",
     "allow_custom_bot_names", "confirm_destructive_actions",
     "voice_noise_suppression", "voice_spatial_audio", "voice_auto_gain", "limit_unfocused_audio",
+    "profile_privacy",
     "clear_kept_on_roll", "dice_keeping_style", "game_overrides",
 }
 

@@ -49,7 +49,7 @@ def test_table_shortcuts_dispatch_from_the_real_desktop_key_handler():
         current_menu_id="turn_menu", current_menu_item_ids=["whos_at_table"],
         current_menu_item_read_only=[False], network=SimpleNamespace(send_packet=sent.append),
     )
-    for key, control, alt in (("W", False, False), ("W", True, False), ("U", True, False), ("W", False, True)):
+    for key, control, alt in (("W", False, False), ("W", True, False), ("J", True, False), ("W", False, True)):
         event = SimpleNamespace(
             GetKeyCode=lambda: ord(key),
             GetModifiers=lambda: (wx.MOD_CONTROL if control else 0) | (wx.MOD_ALT if alt else 0),
@@ -67,17 +67,18 @@ def test_table_shortcuts_dispatch_from_the_real_desktop_key_handler():
     scope["on_char_hook"](window, event)
     assert len(sent) == 4
 
-    # Ctrl+F skips so it reaches the AcceleratorTable for Friends Hub.
+    # Ctrl+F and Ctrl+U skip so they reach the AcceleratorTable.
     window.current_mode = "list"
     skipped = []
-    ctrl_f_event = SimpleNamespace(
-        GetKeyCode=lambda: ord("F"),
-        GetModifiers=lambda: wx.MOD_CONTROL,
-        ControlDown=lambda: True, AltDown=lambda: False, ShiftDown=lambda: False,
-        Skip=lambda: skipped.append(True),
-    )
-    scope["on_char_hook"](window, ctrl_f_event)
-    assert len(skipped) == 1
+    for skip_key in ("F", "U"):
+        skip_event = SimpleNamespace(
+            GetKeyCode=lambda k=skip_key: ord(k),
+            GetModifiers=lambda: wx.MOD_CONTROL,
+            ControlDown=lambda: True, AltDown=lambda: False, ShiftDown=lambda: False,
+            Skip=lambda: skipped.append(True),
+        )
+        scope["on_char_hook"](window, skip_event)
+    assert len(skipped) == 2
     assert len(sent) == 4
 
 
@@ -85,6 +86,7 @@ def test_desktop_hotkeys_layout_in_source() -> None:
     source = _source()
     # Check accelerator entries for updated layout
     assert 'wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB)' in source
+    assert 'ord("U"), self.ID_LIST_ONLINE_WITH_GAMES' in source
     assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F5, self.ID_TOGGLE_TABLE_CHAT)' in source
     assert 'wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F5, self.ID_TOGGLE_GLOBAL_CHAT)' in source
     assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F6, self.ID_CYCLE_VOLUME)' in source

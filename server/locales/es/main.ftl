@@ -882,6 +882,30 @@ profile-email = Correo: { $email }
 admin-view-email = Vista de administrador - Correo: { $email }
 profile-gender = Género: { $gender }
 profile-bio = Biografía: { $bio }
+profile-privacy-setting = Privacidad del perfil: { $status }
+profile-privacy-everyone = Todos (público)
+profile-privacy-friends = Solo amigos
+profile-privacy-private = Nadie (privado)
+profile-privacy-menu-title = Privacidad del perfil
+profile-privacy-changed = Privacidad del perfil establecida en { $status }.
+general-desc-profile-privacy = Configura quién puede ver la información de tu perfil.
+profile-view-friends-only = { $target_gender ->
+    [female] Esta usuaria solo permite que sus amigas y amigos vean su información.
+    [male] Este usuario solo permite que sus amigos vean su información.
+   *[other] Este usuario solo permite que sus amigos vean su información.
+}
+profile-view-private = { $target_gender ->
+    [female] Esta usuaria tiene su perfil privado.
+    [male] Este usuario tiene su perfil privado.
+   *[other] Este usuario tiene su perfil privado.
+}
+user-not-in-table = { $target_gender ->
+    [female] Esta usuaria no está en ninguna mesa.
+    [male] Este usuario no está en ninguna mesa.
+   *[other] Este usuario no está en ninguna mesa.
+}
+invite-to-table = Invitar a la mesa
+host-invite-no-players = (No hay jugadores disponibles para invitar)
 profile-bio-empty = Sin definir
 profile-email-empty = Sin definir
 profile-date-unknown = Desconocida

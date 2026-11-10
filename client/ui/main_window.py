@@ -619,6 +619,9 @@ class MainWindow(wx.Frame):
             wx.AcceleratorEntry(
                 wx.ACCEL_SHIFT, wx.WXK_F2, self.ID_LIST_ONLINE_WITH_GAMES
             ),
+            wx.AcceleratorEntry(
+                wx.ACCEL_CTRL, ord("U"), self.ID_LIST_ONLINE_WITH_GAMES
+            ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("P"), self.ID_PING),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB),
             wx.AcceleratorEntry(
@@ -1860,8 +1863,8 @@ class MainWindow(wx.Frame):
                 key_name = "enter"
         # Handle letter keys (case insensitive)
         elif 65 <= key_code <= 90:  # A-Z
-            # Ctrl+F is handled by the accelerator table for Friends Hub.
-            if event.ControlDown() and key_code == ord("F") and not event.AltDown() and not event.ShiftDown():
+            # Ctrl+F and Ctrl+U are handled by the accelerator table.
+            if event.ControlDown() and key_code in [ord("F"), ord("U")] and not event.AltDown() and not event.ShiftDown():
                 event.Skip()
                 return
             # Alt shortcuts are handled by the accelerator table.
