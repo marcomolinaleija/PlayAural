@@ -47,6 +47,11 @@ from ..users.identity import (
     legacy_username_key_v2,
     normalize_username,
     username_key,
+    username_validation_error,
+)
+from ..users.nick_policy import (
+    NickChangePolicy,
+    cooldown_remaining,
 )
 from ..users.system_identities import is_reserved_system_username
 from ..gender import Gender, normalize_gender, require_gender
@@ -151,6 +156,64 @@ class UsernameResolution:
 
     user: UserRecord | None = None
     ambiguous: bool = False
+
+
+NICK_REQUEST_PENDING = "pending"
+NICK_REQUEST_APPROVED = "approved"
+NICK_REQUEST_REJECTED = "rejected"
+MAX_NICK_REJECT_REASON_LENGTH = 200
+
+
+@dataclass(frozen=True)
+class NickChangeState:
+    """Cooldown bookkeeping for one account UUID."""
+
+    user_uuid: str
+    last_changed_at_utc: str = ""
+    cooldown_reduced: bool = False
+
+
+@dataclass(frozen=True)
+class NickChangeRequest:
+    """One nick-change request awaiting, or retaining, administrator review."""
+
+    id: int
+    user_uuid: str
+    old_username: str
+    requested_username: str
+    status: str
+    coins_paid: int
+    created_at_utc: str
+    reviewed_at_utc: str = ""
+    reviewed_by_uuid: str = ""
+    reviewed_by_username: str = ""
+    reject_reason: str = ""
+    refunded: bool = False
+    applied_at_utc: str = ""
+    user_notified: bool = False
+
+    @property
+    def is_open(self) -> bool:
+        """Return whether the request still reserves its requested nick."""
+        return self.status == NICK_REQUEST_PENDING or (
+            self.status == NICK_REQUEST_APPROVED and not self.applied_at_utc
+        )
+
+
+@dataclass(frozen=True)
+class NickChangeOutcome:
+    """Result code plus the affected request/balance for a nick operation."""
+
+    code: str
+    request: NickChangeRequest | None = None
+    balance: int = 0
+    refunded_coins: int = 0
+    old_username: str = ""
+    new_username: str = ""
+
+    @property
+    def ok(self) -> bool:
+        return self.code == "ok"
 
 
 @dataclass(frozen=True)
@@ -4937,6 +5000,7 @@ class Database:
                 "DELETE FROM user_wallets WHERE user_uuid = ?",
                 (user.uuid,),
             )
+            self._delete_nick_change_data_for_user(cursor, user.uuid)
 
             # Global-chat messages and reports deliberately retain immutable
             # UUID and username snapshots until a developer explicitly clears
@@ -7529,3 +7593,835 @@ class Database:
                 (new_balance, now_iso, user_uuid),
             )
             return True, new_balance, ""
+
+    # ------------------------------------------------------------------ #
+    # User Nickname Change Operations                                    #
+    # ------------------------------------------------------------------ #
+
+    NICK_CHANGE_POLICY_SETTING_KEY = "nick_change_policy"
+    NICK_CHANGE_STATES_SETTING_KEY = "nick_change_states"
+    NICK_CHANGE_REQUESTS_SETTING_KEY = "nick_change_requests"
+
+    def _read_setting_json_in_tx(
+        self,
+        cursor: sqlite3.Cursor,
+        setting_key: str,
+        default: Any,
+    ) -> Any:
+        cursor.execute(
+            "SELECT value_json FROM server_settings WHERE setting_key = ?",
+            (setting_key,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return default
+        try:
+            return json.loads(str(row[0]))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return default
+
+    def _write_setting_json_in_tx(
+        self,
+        cursor: sqlite3.Cursor,
+        setting_key: str,
+        value: Any,
+    ) -> None:
+        updated_at_utc = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+        cursor.execute(
+            """
+            INSERT INTO server_settings (
+                setting_key, value_json, updated_at_utc
+            ) VALUES (?, ?, ?)
+            ON CONFLICT(setting_key) DO UPDATE SET
+                value_json = excluded.value_json,
+                updated_at_utc = excluded.updated_at_utc
+            """,
+            (setting_key, json.dumps(value), updated_at_utc),
+        )
+
+    def _delete_nick_change_data_for_user(
+        self,
+        cursor: sqlite3.Cursor,
+        user_uuid: str,
+    ) -> None:
+        states = self._read_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_STATES_SETTING_KEY, {}
+        )
+        if isinstance(states, dict) and user_uuid in states:
+            states.pop(user_uuid, None)
+            self._write_setting_json_in_tx(
+                cursor, self.NICK_CHANGE_STATES_SETTING_KEY, states
+            )
+        req_store = self._read_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_REQUESTS_SETTING_KEY, {"next_id": 1, "items": []}
+        )
+        if isinstance(req_store, dict) and isinstance(req_store.get("items"), list):
+            old_items = req_store["items"]
+            new_items = [
+                item
+                for item in old_items
+                if isinstance(item, dict) and str(item.get("user_uuid", "")) != user_uuid
+            ]
+            if len(new_items) != len(old_items):
+                req_store["items"] = new_items
+                self._write_setting_json_in_tx(
+                    cursor, self.NICK_CHANGE_REQUESTS_SETTING_KEY, req_store
+                )
+
+    def get_nick_change_policy(
+        self, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangePolicy:
+        """Return the server-authoritative nick change policy."""
+        cur = cursor if cursor is not None else self._conn.cursor()
+        raw = self._read_setting_json_in_tx(
+            cur, self.NICK_CHANGE_POLICY_SETTING_KEY, None
+        )
+        if not isinstance(raw, dict):
+            return NickChangePolicy()
+        try:
+            return NickChangePolicy(
+                cooldown_days=max(
+                    1, int(raw.get("cooldown_days", NickChangePolicy.cooldown_days))
+                ),
+                reduced_cooldown_days=max(
+                    1,
+                    int(
+                        raw.get(
+                            "reduced_cooldown_days",
+                            NickChangePolicy.reduced_cooldown_days,
+                        )
+                    ),
+                ),
+                bypass_price=max(
+                    0, int(raw.get("bypass_price", NickChangePolicy.bypass_price))
+                ),
+                reduction_price=max(
+                    0,
+                    int(
+                        raw.get(
+                            "reduction_price",
+                            NickChangePolicy.reduction_price,
+                        )
+                    ),
+                ),
+            )
+        except (TypeError, ValueError):
+            return NickChangePolicy()
+
+    def set_nick_change_policy(self, policy: NickChangePolicy) -> None:
+        """Persist custom server nick change policy parameters."""
+        with self._transaction(immediate=True) as cursor:
+            self._write_setting_json_in_tx(
+                cursor,
+                self.NICK_CHANGE_POLICY_SETTING_KEY,
+                {
+                    "cooldown_days": int(policy.cooldown_days),
+                    "reduced_cooldown_days": int(policy.reduced_cooldown_days),
+                    "bypass_price": int(policy.bypass_price),
+                    "reduction_price": int(policy.reduction_price),
+                },
+            )
+
+    def get_nick_change_state(
+        self, user_uuid: str, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangeState:
+        """Return the cooldown state for one account UUID."""
+        if not user_uuid:
+            return NickChangeState(user_uuid="")
+        cur = cursor if cursor is not None else self._conn.cursor()
+        states = self._read_setting_json_in_tx(
+            cur, self.NICK_CHANGE_STATES_SETTING_KEY, {}
+        )
+        if not isinstance(states, dict):
+            return NickChangeState(user_uuid=user_uuid)
+        entry = states.get(user_uuid)
+        if not isinstance(entry, dict):
+            return NickChangeState(user_uuid=user_uuid)
+        return NickChangeState(
+            user_uuid=user_uuid,
+            last_changed_at_utc=str(entry.get("last_changed_at_utc", "") or ""),
+            cooldown_reduced=bool(entry.get("cooldown_reduced", False)),
+        )
+
+    def _set_nick_change_state_in_tx(
+        self, cursor: sqlite3.Cursor, state: NickChangeState
+    ) -> None:
+        states = self._read_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_STATES_SETTING_KEY, {}
+        )
+        if not isinstance(states, dict):
+            states = {}
+        states[state.user_uuid] = {
+            "last_changed_at_utc": state.last_changed_at_utc,
+            "cooldown_reduced": bool(state.cooldown_reduced),
+        }
+        self._write_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_STATES_SETTING_KEY, states
+        )
+
+    @staticmethod
+    def _nick_request_from_dict(data: dict[str, Any]) -> NickChangeRequest:
+        return NickChangeRequest(
+            id=int(data.get("id", 0)),
+            user_uuid=str(data.get("user_uuid", "")),
+            old_username=str(data.get("old_username", "")),
+            requested_username=str(data.get("requested_username", "")),
+            status=str(data.get("status", NICK_REQUEST_PENDING)),
+            coins_paid=int(data.get("coins_paid", 0)),
+            created_at_utc=str(data.get("created_at_utc", "")),
+            reviewed_at_utc=str(data.get("reviewed_at_utc", "") or ""),
+            reviewed_by_uuid=str(data.get("reviewed_by_uuid", "") or ""),
+            reviewed_by_username=str(data.get("reviewed_by_username", "") or ""),
+            reject_reason=str(data.get("reject_reason", "") or ""),
+            refunded=bool(data.get("refunded", False)),
+            applied_at_utc=str(data.get("applied_at_utc", "") or ""),
+            user_notified=bool(data.get("user_notified", False)),
+        )
+
+    @staticmethod
+    def _nick_request_to_dict(req: NickChangeRequest) -> dict[str, Any]:
+        return {
+            "id": int(req.id),
+            "user_uuid": req.user_uuid,
+            "old_username": req.old_username,
+            "requested_username": req.requested_username,
+            "status": req.status,
+            "coins_paid": int(req.coins_paid),
+            "created_at_utc": req.created_at_utc,
+            "reviewed_at_utc": req.reviewed_at_utc,
+            "reviewed_by_uuid": req.reviewed_by_uuid,
+            "reviewed_by_username": req.reviewed_by_username,
+            "reject_reason": req.reject_reason,
+            "refunded": bool(req.refunded),
+            "applied_at_utc": req.applied_at_utc,
+            "user_notified": bool(req.user_notified),
+        }
+
+    def _load_nick_requests_store(
+        self, cursor: sqlite3.Cursor | None = None
+    ) -> tuple[int, list[NickChangeRequest]]:
+        cur = cursor if cursor is not None else self._conn.cursor()
+        raw = self._read_setting_json_in_tx(
+            cur, self.NICK_CHANGE_REQUESTS_SETTING_KEY, {"next_id": 1, "items": []}
+        )
+        if not isinstance(raw, dict):
+            return 1, []
+        next_id = max(1, int(raw.get("next_id", 1) or 1))
+        items_raw = raw.get("items", [])
+        if not isinstance(items_raw, list):
+            return next_id, []
+        requests: list[NickChangeRequest] = []
+        for item in items_raw:
+            if isinstance(item, dict):
+                try:
+                    req = self._nick_request_from_dict(item)
+                    if req.id > 0 and req.user_uuid:
+                        requests.append(req)
+                except (TypeError, ValueError):
+                    continue
+        if requests:
+            next_id = max(next_id, max(r.id for r in requests) + 1)
+        return next_id, requests
+
+    def _save_nick_requests_store_in_tx(
+        self,
+        cursor: sqlite3.Cursor,
+        next_id: int,
+        requests: list[NickChangeRequest],
+    ) -> None:
+        self._write_setting_json_in_tx(
+            cursor,
+            self.NICK_CHANGE_REQUESTS_SETTING_KEY,
+            {
+                "next_id": int(next_id),
+                "items": [self._nick_request_to_dict(r) for r in requests],
+            },
+        )
+
+    def get_nick_change_request(
+        self, request_id: int, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangeRequest | None:
+        """Return one nick change request by ID."""
+        _, requests = self._load_nick_requests_store(cursor)
+        for req in requests:
+            if req.id == int(request_id):
+                return req
+        return None
+
+    def get_user_pending_nick_request(
+        self, user_uuid: str, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangeRequest | None:
+        """Return the active pending nick change request for one user, if any."""
+        if not user_uuid:
+            return None
+        _, requests = self._load_nick_requests_store(cursor)
+        for req in requests:
+            if req.user_uuid == user_uuid and req.status == NICK_REQUEST_PENDING:
+                return req
+        return None
+
+    def count_pending_nick_requests(self) -> int:
+        """Return the number of pending nick change requests."""
+        _, requests = self._load_nick_requests_store()
+        return sum(1 for req in requests if req.status == NICK_REQUEST_PENDING)
+
+    def list_pending_nick_requests(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[NickChangeRequest]:
+        """Return pending nick change requests ordered oldest-first."""
+        _, requests = self._load_nick_requests_store()
+        pending = [req for req in requests if req.status == NICK_REQUEST_PENDING]
+        pending.sort(key=lambda r: (r.created_at_utc, r.id))
+        safe_offset = max(0, int(offset))
+        if limit is None:
+            return pending[safe_offset:]
+        safe_limit = max(1, int(limit))
+        return pending[safe_offset : safe_offset + safe_limit]
+
+    def find_nick_collision_usernames(
+        self,
+        requested_username: str,
+        *,
+        exclude_uuid: str = "",
+        cursor: sqlite3.Cursor | None = None,
+    ) -> list[str]:
+        """Return existing usernames that collide (exact, case-insensitive, or folded) with requested_username."""
+        normalized = normalize_username(requested_username)
+        lookup_key = username_key(normalized)
+        if not normalized:
+            return []
+        cur = cursor if cursor is not None else self._conn.cursor()
+        cur.execute(
+            """
+            SELECT username FROM users
+            WHERE (username_key = ? OR LOWER(username) = LOWER(?))
+              AND uuid != ?
+            ORDER BY username COLLATE BINARY ASC
+            """,
+            (lookup_key, normalized, str(exclude_uuid or "")),
+        )
+        return [str(row[0]) for row in cur.fetchall()]
+
+    def get_nick_cooldown_remaining(
+        self,
+        user_uuid: str,
+        *,
+        now: datetime | None = None,
+    ) -> timedelta:
+        """Return the remaining cooldown timedelta for one user."""
+        policy = self.get_nick_change_policy()
+        state = self.get_nick_change_state(user_uuid)
+        return cooldown_remaining(
+            state.last_changed_at_utc,
+            policy=policy,
+            reduced=state.cooldown_reduced,
+            now=now,
+        )
+
+    def reduce_nick_change_cooldown(
+        self,
+        user_uuid: str,
+        *,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically charge 15,000 coins to shorten a 90-day nick cooldown to 30 days."""
+        if not user_uuid:
+            return NickChangeOutcome(code="unknown_user")
+        with self._transaction(immediate=True) as cursor:
+            cursor.execute(
+                "SELECT username FROM users WHERE uuid = ?",
+                (user_uuid,),
+            )
+            user_row = cursor.fetchone()
+            if not user_row:
+                return NickChangeOutcome(code="unknown_user")
+
+            pending = self.get_user_pending_nick_request(user_uuid, cursor=cursor)
+            if pending is not None:
+                return NickChangeOutcome(code="already_pending", request=pending)
+
+            policy = self.get_nick_change_policy(cursor=cursor)
+            state = self.get_nick_change_state(user_uuid, cursor=cursor)
+            remaining = cooldown_remaining(
+                state.last_changed_at_utc,
+                policy=policy,
+                reduced=state.cooldown_reduced,
+                now=now,
+            )
+            if remaining.total_seconds() <= 0:
+                wallet = self.get_wallet(user_uuid, cursor=cursor)
+                return NickChangeOutcome(code="no_cooldown", balance=wallet.balance)
+            if state.cooldown_reduced:
+                wallet = self.get_wallet(user_uuid, cursor=cursor)
+                return NickChangeOutcome(code="already_reduced", balance=wallet.balance)
+
+            ok, new_balance = self.adjust_wallet_balance(
+                user_uuid,
+                -policy.reduction_price,
+                cursor=cursor,
+            )
+            if not ok:
+                return NickChangeOutcome(
+                    code="insufficient_coins",
+                    balance=new_balance,
+                )
+
+            new_state = NickChangeState(
+                user_uuid=user_uuid,
+                last_changed_at_utc=state.last_changed_at_utc,
+                cooldown_reduced=True,
+            )
+            self._set_nick_change_state_in_tx(cursor, new_state)
+            return NickChangeOutcome(
+                code="ok",
+                balance=new_balance,
+            )
+
+    def submit_nick_change_request(
+        self,
+        user_uuid: str,
+        requested_username: str,
+        *,
+        use_paid_bypass: bool = False,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically validate and submit a nick change request for admin approval."""
+        if not user_uuid:
+            return NickChangeOutcome(code="unknown_user")
+        normalized = normalize_username(requested_username)
+        val_err = username_validation_error(normalized)
+        if val_err is not None:
+            return NickChangeOutcome(code=f"invalid_{val_err}")
+        if is_reserved_system_username(normalized):
+            return NickChangeOutcome(code="reserved_username")
+
+        now_dt = now if now is not None else datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+        now_iso = now_dt.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+        with self._transaction(immediate=True) as cursor:
+            cursor.execute(
+                "SELECT username FROM users WHERE uuid = ?",
+                (user_uuid,),
+            )
+            user_row = cursor.fetchone()
+            if not user_row:
+                return NickChangeOutcome(code="unknown_user")
+            current_username = str(user_row[0])
+            if normalized == current_username:
+                return NickChangeOutcome(code="same_username")
+
+            pending = self.get_user_pending_nick_request(user_uuid, cursor=cursor)
+            if pending is not None:
+                return NickChangeOutcome(code="already_pending", request=pending)
+
+            policy = self.get_nick_change_policy(cursor=cursor)
+            state = self.get_nick_change_state(user_uuid, cursor=cursor)
+            remaining = cooldown_remaining(
+                state.last_changed_at_utc,
+                policy=policy,
+                reduced=state.cooldown_reduced,
+                now=now_dt,
+            )
+            if remaining.total_seconds() > 0 and not use_paid_bypass:
+                wallet = self.get_wallet(user_uuid, cursor=cursor)
+                return NickChangeOutcome(
+                    code="cooldown_active",
+                    balance=wallet.balance,
+                )
+
+            coins_paid = 0
+            wallet = self.get_wallet(user_uuid, cursor=cursor)
+            new_balance = wallet.balance
+            if use_paid_bypass:
+                ok, new_balance = self.adjust_wallet_balance(
+                    user_uuid,
+                    -policy.bypass_price,
+                    cursor=cursor,
+                )
+                if not ok:
+                    return NickChangeOutcome(
+                        code="insufficient_coins",
+                        balance=new_balance,
+                    )
+                coins_paid = policy.bypass_price
+
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            new_req = NickChangeRequest(
+                id=next_id,
+                user_uuid=user_uuid,
+                old_username=current_username,
+                requested_username=normalized,
+                status=NICK_REQUEST_PENDING,
+                coins_paid=coins_paid,
+                created_at_utc=now_iso,
+            )
+            requests.append(new_req)
+            self._save_nick_requests_store_in_tx(cursor, next_id + 1, requests)
+            return NickChangeOutcome(
+                code="ok",
+                request=new_req,
+                balance=new_balance,
+                old_username=current_username,
+                new_username=normalized,
+            )
+
+    def _rename_account_username_in_transaction(
+        self,
+        cursor: sqlite3.Cursor,
+        user_uuid: str,
+        old_username: str,
+        new_username: str,
+    ) -> None:
+        """Atomically rename users.username and update dependent username-keyed rows."""
+        new_key = username_key(new_username)
+        cursor.execute("DROP TRIGGER IF EXISTS protect_users_immutable_identity")
+        try:
+            cursor.execute(
+                """
+                UPDATE users
+                SET username = ?, username_key = ?
+                WHERE uuid = ?
+                """,
+                (new_username, new_key, user_uuid),
+            )
+        finally:
+            cursor.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS protect_users_immutable_identity
+                BEFORE UPDATE OF username, uuid ON users
+                FOR EACH ROW
+                WHEN NEW.username IS NOT OLD.username OR NEW.uuid IS NOT OLD.uuid
+                BEGIN
+                    SELECT RAISE(ABORT, 'account username and id are immutable');
+                END
+                """
+            )
+
+        cursor.execute(
+            "UPDATE saved_tables SET username = ? WHERE username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "SELECT id, members_json, game_json FROM saved_tables"
+        )
+        for row in cursor.fetchall():
+            save_id = int(row[0])
+            members_json = str(row[1] or "[]")
+            game_json = str(row[2] or "{}")
+            updated_members = self._replace_username_in_members_json(
+                members_json, old_username, new_username
+            )
+            updated_game = self._replace_username_in_game_json(
+                game_json, user_uuid, old_username, new_username
+            )
+            if updated_members != members_json or updated_game != game_json:
+                cursor.execute(
+                    "UPDATE saved_tables SET members_json = ?, game_json = ? WHERE id = ?",
+                    (updated_members, updated_game, save_id),
+                )
+
+        cursor.execute(
+            "UPDATE tables SET host = ? WHERE host = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "SELECT table_id, members_json, game_json FROM tables"
+        )
+        for row in cursor.fetchall():
+            table_id = str(row[0])
+            members_json = str(row[1] or "[]")
+            game_json = str(row[2] or "")
+            updated_members = self._replace_username_in_members_json(
+                members_json, old_username, new_username
+            )
+            updated_game = (
+                self._replace_username_in_game_json(
+                    game_json, user_uuid, old_username, new_username
+                )
+                if game_json
+                else game_json
+            )
+            if updated_members != members_json or updated_game != game_json:
+                cursor.execute(
+                    "UPDATE tables SET members_json = ?, game_json = ? WHERE table_id = ?",
+                    (updated_members, updated_game, table_id),
+                )
+
+        cursor.execute(
+            "UPDATE bans SET username = ? WHERE username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE bans SET admin_username = ? WHERE admin_username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE mutes SET username = ? WHERE username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE mutes SET admin_username = ? WHERE admin_username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE user_notifications SET source_username = ? WHERE source_username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE game_result_players SET player_name = ? WHERE player_id = ?",
+            (new_username, user_uuid),
+        )
+
+    @staticmethod
+    def _replace_username_in_members_json(
+        members_json: str, old_username: str, new_username: str
+    ) -> str:
+        try:
+            members = json.loads(members_json)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return members_json
+        if not isinstance(members, list):
+            return members_json
+        changed = False
+        for member in members:
+            if isinstance(member, dict) and member.get("username") == old_username:
+                member["username"] = new_username
+                changed = True
+        return json.dumps(members) if changed else members_json
+
+    @staticmethod
+    def _replace_username_in_game_json(
+        game_json: str, user_uuid: str, old_username: str, new_username: str
+    ) -> str:
+        try:
+            game_data = json.loads(game_json)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return game_json
+        if not isinstance(game_data, dict):
+            return game_json
+        changed = False
+        players = game_data.get("players")
+        if isinstance(players, list):
+            for player in players:
+                if not isinstance(player, dict):
+                    continue
+                if player.get("id") == user_uuid or (
+                    not player.get("is_bot") and player.get("name") == old_username
+                ):
+                    if not player.get("is_bot") and player.get("name") != new_username:
+                        player["name"] = new_username
+                        changed = True
+        return json.dumps(game_data) if changed else game_json
+
+    def approve_nick_change_request(
+        self,
+        request_id: int,
+        *,
+        reviewer_uuid: str,
+        reviewer_username: str,
+        mark_notified: bool = False,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically approve a pending nick change request and rename the user."""
+        now_dt = now if now is not None else datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+        now_iso = now_dt.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+        with self._transaction(immediate=True) as cursor:
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            target_idx = -1
+            target_req: NickChangeRequest | None = None
+            for idx, req in enumerate(requests):
+                if req.id == int(request_id):
+                    target_idx = idx
+                    target_req = req
+                    break
+            if target_req is None or target_req.status != NICK_REQUEST_PENDING:
+                return NickChangeOutcome(code="not_pending", request=target_req)
+
+            cursor.execute(
+                "SELECT username FROM users WHERE uuid = ?",
+                (target_req.user_uuid,),
+            )
+            user_row = cursor.fetchone()
+            if not user_row:
+                return NickChangeOutcome(code="unknown_user", request=target_req)
+            current_username = str(user_row[0])
+            new_username = target_req.requested_username
+
+            # Check if another account currently holds the exact case-insensitive
+            # username in SQLite `users` (which has UNIQUE COLLATE NOCASE).
+            cursor.execute(
+                """
+                SELECT username FROM users
+                WHERE LOWER(username) = LOWER(?) AND uuid != ?
+                LIMIT 1
+                """,
+                (new_username, target_req.user_uuid),
+            )
+            if cursor.fetchone() is not None:
+                return NickChangeOutcome(
+                    code="username_taken",
+                    request=target_req,
+                    old_username=current_username,
+                    new_username=new_username,
+                )
+
+            self._rename_account_username_in_transaction(
+                cursor,
+                target_req.user_uuid,
+                current_username,
+                new_username,
+            )
+
+            # Reset the 90-day cooldown starting now.
+            self._set_nick_change_state_in_tx(
+                cursor,
+                NickChangeState(
+                    user_uuid=target_req.user_uuid,
+                    last_changed_at_utc=now_iso,
+                    cooldown_reduced=False,
+                ),
+            )
+
+            approved_req = NickChangeRequest(
+                id=target_req.id,
+                user_uuid=target_req.user_uuid,
+                old_username=current_username,
+                requested_username=new_username,
+                status=NICK_REQUEST_APPROVED,
+                coins_paid=target_req.coins_paid,
+                created_at_utc=target_req.created_at_utc,
+                reviewed_at_utc=now_iso,
+                reviewed_by_uuid=str(reviewer_uuid or ""),
+                reviewed_by_username=str(reviewer_username or ""),
+                applied_at_utc=now_iso,
+                user_notified=bool(mark_notified),
+            )
+            requests[target_idx] = approved_req
+            self._save_nick_requests_store_in_tx(cursor, next_id, requests)
+            wallet = self.get_wallet(target_req.user_uuid, cursor=cursor)
+            return NickChangeOutcome(
+                code="ok",
+                request=approved_req,
+                balance=wallet.balance,
+                old_username=current_username,
+                new_username=new_username,
+            )
+
+    def reject_nick_change_request(
+        self,
+        request_id: int,
+        *,
+        reviewer_uuid: str,
+        reviewer_username: str,
+        reason: str,
+        refund_coins: bool = False,
+        mark_notified: bool = False,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically reject a pending nick change request with a reason and optional coin refund."""
+        clean_reason = " ".join(str(reason or "").split()).strip()
+        if not clean_reason:
+            return NickChangeOutcome(code="invalid_reason")
+        clean_reason = clean_reason[:MAX_NICK_REJECT_REASON_LENGTH]
+
+        now_dt = now if now is not None else datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+        now_iso = now_dt.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+        with self._transaction(immediate=True) as cursor:
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            target_idx = -1
+            target_req: NickChangeRequest | None = None
+            for idx, req in enumerate(requests):
+                if req.id == int(request_id):
+                    target_idx = idx
+                    target_req = req
+                    break
+            if target_req is None or target_req.status != NICK_REQUEST_PENDING:
+                return NickChangeOutcome(code="not_pending", request=target_req)
+
+            refunded_coins = 0
+            wallet = self.get_wallet(target_req.user_uuid, cursor=cursor)
+            new_balance = wallet.balance
+            if refund_coins and target_req.coins_paid > 0:
+                ok, new_balance = self.adjust_wallet_balance(
+                    target_req.user_uuid,
+                    target_req.coins_paid,
+                    cursor=cursor,
+                )
+                if ok:
+                    refunded_coins = target_req.coins_paid
+
+            rejected_req = NickChangeRequest(
+                id=target_req.id,
+                user_uuid=target_req.user_uuid,
+                old_username=target_req.old_username,
+                requested_username=target_req.requested_username,
+                status=NICK_REQUEST_REJECTED,
+                coins_paid=target_req.coins_paid,
+                created_at_utc=target_req.created_at_utc,
+                reviewed_at_utc=now_iso,
+                reviewed_by_uuid=str(reviewer_uuid or ""),
+                reviewed_by_username=str(reviewer_username or ""),
+                reject_reason=clean_reason,
+                refunded=bool(refunded_coins > 0),
+                user_notified=bool(mark_notified),
+            )
+            requests[target_idx] = rejected_req
+            self._save_nick_requests_store_in_tx(cursor, next_id, requests)
+            return NickChangeOutcome(
+                code="ok",
+                request=rejected_req,
+                balance=new_balance,
+                refunded_coins=refunded_coins,
+                old_username=target_req.old_username,
+                new_username=target_req.requested_username,
+            )
+
+    def pop_unnotified_nick_change_resolutions(
+        self, user_uuid: str
+    ) -> list[NickChangeRequest]:
+        """Return and mark as notified any approved/rejected nick change requests for user_uuid."""
+        if not user_uuid:
+            return []
+        with self._transaction(immediate=True) as cursor:
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            resolved: list[NickChangeRequest] = []
+            changed = False
+            for idx, req in enumerate(requests):
+                if (
+                    req.user_uuid == user_uuid
+                    and req.status in (NICK_REQUEST_APPROVED, NICK_REQUEST_REJECTED)
+                    and not req.user_notified
+                ):
+                    resolved.append(req)
+                    requests[idx] = NickChangeRequest(
+                        id=req.id,
+                        user_uuid=req.user_uuid,
+                        old_username=req.old_username,
+                        requested_username=req.requested_username,
+                        status=req.status,
+                        coins_paid=req.coins_paid,
+                        created_at_utc=req.created_at_utc,
+                        reviewed_at_utc=req.reviewed_at_utc,
+                        reviewed_by_uuid=req.reviewed_by_uuid,
+                        reviewed_by_username=req.reviewed_by_username,
+                        reject_reason=req.reject_reason,
+                        refunded=req.refunded,
+                        applied_at_utc=req.applied_at_utc,
+                        user_notified=True,
+                    )
+                    changed = True
+            if changed:
+                self._save_nick_requests_store_in_tx(cursor, next_id, requests)
+            return resolved
+

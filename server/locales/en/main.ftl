@@ -1576,3 +1576,54 @@ admin-grant-coins-success = Granted { $amount } coins to { $player }. New balanc
 coins-amount-option = { $coins } coins
 coins-granted-notification = You received { $amount } coins from an administrator. Current balance: { $balance } coins.
 
+# User nick change
+nick-change-action = Change nick
+nick-change-pending-status = Pending admin approval: change to { $requested }
+nick-cooldown-counter = Remaining time for free change: { $days } days, { $hours } hours, and { $minutes } minutes
+nick-bypass-cooldown-option = Remove limit and change nick now for { $price } coins (balance: { $balance })
+nick-reduce-cooldown-option = Shorten cooldown to { $days } days for { $price } coins (balance: { $balance })
+nick-cooldown-already-reduced = Cooldown reduction to { $days } days already applied for this period
+confirm-nick-reduce-cooldown = Do you want to pay { $price } coins to shorten the nick change cooldown from 90 to { $days } days?
+nick-cooldown-reduced-success = Deducted { $price } coins. Nick change cooldown shortened to { $days } days. Current balance: { $balance } coins.
+enter-new-nick = Enter your new nick:
+nick-confirm-password-prompt = Enter your password to confirm requesting a nick change to { $new_nick }:
+nick-confirm-password-paid-prompt = Enter your password to confirm changing your nick to { $new_nick } for { $price } coins:
+nick-request-submitted = Your request to change your nick to { $new_nick } has been submitted and is pending administrator approval.
+nick-request-submitted-paid = Deducted { $price } coins and submitted your request to change your nick to { $new_nick } for administrator review. Current balance: { $balance } coins.
+nick-error-insufficient-coins = You do not have enough coins. You need { $required } coins and have { $balance }.
+nick-error-wrong-password = Incorrect password. The nick change request was not submitted.
+nick-error-invalid = The entered nick is invalid. Use 3 to 20 alphanumeric characters, hyphens, or underscores.
+nick-error-reserved = That nick is reserved by the system and cannot be used.
+nick-error-already-pending = You already have a pending nick change request awaiting review.
+nick-error-cooldown-active = The cooldown period for a free nick change has not elapsed yet.
+nick-change-approved-user = An administrator approved your nick change. Your new username is { $new_nick }.
+nick-change-rejected-user = Your request to change your nick to { $new_nick } was rejected. Reason: { $reason }.
+nick-change-rejected-refunded-user = Your request to change your nick to { $new_nick } was rejected. Reason: { $reason }. { $coins } coins were refunded (balance: { $balance }).
+
+# Admin pending nick changes
+admin-pending-nick-changes = Pending changes
+admin-desc-pending-nick-changes = Review, approve, or reject pending user nick change requests.
+admin-no-pending-nick-changes = There are no pending nick changes.
+admin-nick-change-requested-notify = { $player } has requested to change their nick to { $new_nick }.
+admin-nick-change-row = { $old_nick } -> { $new_nick }
+admin-nick-change-row-paid = { $old_nick } -> { $new_nick } (paid { $coins } coins)
+admin-nick-change-row-collision = { $old_nick } -> { $new_nick } [WARNING: collides with { $collision }]
+admin-nick-change-row-paid-collision = { $old_nick } -> { $new_nick } (paid { $coins } coins) [WARNING: collides with { $collision }]
+admin-nick-detail-summary = Request: change from { $old_nick } to { $new_nick }
+admin-nick-detail-free = Mode: standard free change
+admin-nick-detail-paid = Mode: paid change ({ $coins } coins)
+admin-nick-detail-collision-warning = Warning: the requested nick collides with an existing account ({ $collision }).
+admin-nick-approve = Validate change
+admin-nick-reject = Reject change
+admin-nick-reject-reason-prompt = Enter the rejection reason for { $player }'s change to { $new_nick }:
+admin-nick-reject-reason-empty = You must provide a reason to reject the nick change.
+admin-nick-reject-refund-prompt = { $player } paid { $coins } coins for this change. Do you want to refund their coins upon rejection?
+admin-nick-reject-with-refund = Reject and refund { $coins } coins
+admin-nick-reject-without-refund = Reject without refunding coins
+admin-nick-approved-feedback = Validated nick change from { $old_nick } to { $new_nick }.
+admin-nick-rejected-feedback = Rejected nick change from { $player } to { $new_nick }.
+admin-nick-rejected-refunded-feedback = Rejected nick change from { $player } to { $new_nick } and refunded { $coins } coins.
+admin-nick-error-not-pending = This nick change request is no longer pending.
+admin-nick-error-already-taken = Cannot validate because the nick { $new_nick } is still in use by another active account.
+
+

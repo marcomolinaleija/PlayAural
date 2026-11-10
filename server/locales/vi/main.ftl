@@ -1465,3 +1465,54 @@ global-voice-chat-status-changed = Trò chuyện thoại chung hiện { $status 
 global-voice-chat-quality-option = Chất lượng thoại chung: { $quality }
 global-voice-chat-desc-quality = Thay đổi cấu hình chất lượng âm thanh trò chuyện thoại chung
 global-voice-chat-quality-changed = Chất lượng thoại chung được đặt thành { $quality }.
+
+# User nick change
+nick-change-action = Đổi tên người dùng
+nick-change-pending-status = Đang chờ quản trị viên duyệt: đổi thành { $requested }
+nick-cooldown-counter = Thời gian chờ đổi miễn phí còn lại: { $days } ngày, { $hours } giờ và { $minutes } phút
+nick-bypass-cooldown-option = Xóa giới hạn và đổi tên ngay với { $price } xu (số dư: { $balance })
+nick-reduce-cooldown-option = Giảm thời gian chờ xuống { $days } ngày với { $price } xu (số dư: { $balance })
+nick-cooldown-already-reduced = Đã áp dụng giảm thời gian chờ xuống { $days } ngày trong kỳ này
+confirm-nick-reduce-cooldown = Bạn có muốn trả { $price } xu để giảm thời gian chờ đổi tên từ 90 xuống { $days } ngày không?
+nick-cooldown-reduced-success = Đã trừ { $price } xu. Thời gian chờ đổi tên giảm xuống { $days } ngày. Số dư: { $balance } xu.
+enter-new-nick = Nhập tên người dùng mới:
+nick-confirm-password-prompt = Nhập mật khẩu để xác nhận yêu cầu đổi tên thành { $new_nick }:
+nick-confirm-password-paid-prompt = Nhập mật khẩu để xác nhận đổi tên thành { $new_nick } với { $price } xu:
+nick-request-submitted = Yêu cầu đổi tên thành { $new_nick } đã được gửi và đang chờ quản trị viên duyệt.
+nick-request-submitted-paid = Đã trừ { $price } xu và gửi yêu cầu đổi tên thành { $new_nick }. Số dư: { $balance } xu.
+nick-error-insufficient-coins = Bạn không đủ xu. Cần { $required } xu nhưng hiện có { $balance }.
+nick-error-wrong-password = Mật khẩu không đúng. Chưa gửi yêu cầu đổi tên.
+nick-error-invalid = Tên mới không hợp lệ.
+nick-error-reserved = Tên này được hệ thống bảo lưu.
+nick-error-already-pending = Bạn đã có một yêu cầu đổi tên đang chờ duyệt.
+nick-error-cooldown-active = Chưa hết thời gian chờ để đổi tên miễn phí.
+nick-change-approved-user = Quản trị viên đã duyệt yêu cầu đổi tên. Tên mới của bạn là { $new_nick }.
+nick-change-rejected-user = Yêu cầu đổi tên thành { $new_nick } đã bị từ chối. Lý do: { $reason }.
+nick-change-rejected-refunded-user = Yêu cầu đổi tên thành { $new_nick } đã bị từ chối. Lý do: { $reason }. Đã hoàn lại { $coins } xu (số dư: { $balance }).
+
+# Admin pending nick changes
+admin-pending-nick-changes = Thay đổi đang chờ
+admin-desc-pending-nick-changes = Xem xét, duyệt hoặc từ chối các yêu cầu đổi tên đang chờ.
+admin-no-pending-nick-changes = Không có yêu cầu đổi tên nào đang chờ.
+admin-nick-change-requested-notify = { $player } đã yêu cầu đổi tên thành { $new_nick }.
+admin-nick-change-row = { $old_nick } -> { $new_nick }
+admin-nick-change-row-paid = { $old_nick } -> { $new_nick } (đã trả { $coins } xu)
+admin-nick-change-row-collision = { $old_nick } -> { $new_nick } [CẢNH BÁO: trùng với { $collision }]
+admin-nick-change-row-paid-collision = { $old_nick } -> { $new_nick } (đã trả { $coins } xu) [CẢNH BÁO: trùng với { $collision }]
+admin-nick-detail-summary = Yêu cầu: đổi từ { $old_nick } thành { $new_nick }
+admin-nick-detail-free = Hình thức: đổi miễn phí tiêu chuẩn
+admin-nick-detail-paid = Hình thức: đổi trả phí ({ $coins } xu)
+admin-nick-detail-collision-warning = Cảnh báo: tên yêu cầu trùng với tài khoản hiện có ({ $collision }).
+admin-nick-approve = Duyệt thay đổi
+admin-nick-reject = Từ chối thay đổi
+admin-nick-reject-reason-prompt = Nhập lý do từ chối yêu cầu đổi tên của { $player } thành { $new_nick }:
+admin-nick-reject-reason-empty = Bạn phải nhập lý do từ chối.
+admin-nick-reject-refund-prompt = { $player } đã trả { $coins } xu cho yêu cầu này. Bạn có muốn hoàn xu khi từ chối không?
+admin-nick-reject-with-refund = Từ chối và hoàn lại { $coins } xu
+admin-nick-reject-without-refund = Từ chối không hoàn xu
+admin-nick-approved-feedback = Đã duyệt đổi tên từ { $old_nick } thành { $new_nick }.
+admin-nick-rejected-feedback = Đã từ chối đổi tên của { $player } thành { $new_nick }.
+admin-nick-rejected-refunded-feedback = Đã từ chối đổi tên của { $player } thành { $new_nick } và hoàn lại { $coins } xu.
+admin-nick-error-not-pending = Yêu cầu đổi tên này không còn ở trạng thái chờ.
+admin-nick-error-already-taken = Không thể duyệt vì tên { $new_nick } đang được tài khoản khác sử dụng.
+

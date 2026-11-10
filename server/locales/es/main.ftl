@@ -1802,3 +1802,54 @@ admin-grant-coins-success = Se otorgaron { $amount } monedas a { $player }. Nuev
 coins-amount-option = { $coins } monedas
 coins-granted-notification = Has recibido { $amount } monedas de un administrador. Saldo actual: { $balance } monedas.
 
+# Cambio de nick de usuario
+nick-change-action = Cambiar nick
+nick-change-pending-status = Solicitud pendiente de aprobación: cambio a { $requested }
+nick-cooldown-counter = Tiempo restante para cambio gratuito: { $days } días, { $hours } horas y { $minutes } minutos
+nick-bypass-cooldown-option = Eliminar límite y cambiar nick ahora por { $price } monedas (saldo: { $balance })
+nick-reduce-cooldown-option = Reducir espera a { $days } días por { $price } monedas (saldo: { $balance })
+nick-cooldown-already-reduced = Reducción de espera a { $days } días ya aplicada en este periodo
+confirm-nick-reduce-cooldown = ¿Deseas pagar { $price } monedas para reducir la espera del cambio de nick de 90 a { $days } días?
+nick-cooldown-reduced-success = Se descontaron { $price } monedas. La espera del cambio de nick se redujo a { $days } días. Saldo actual: { $balance } monedas.
+enter-new-nick = Escribe tu nuevo nick:
+nick-confirm-password-prompt = Ingresa tu contraseña para confirmar la solicitud de cambio de nick a { $new_nick }:
+nick-confirm-password-paid-prompt = Ingresa tu contraseña para confirmar el cambio de nick a { $new_nick } por { $price } monedas:
+nick-request-submitted = Tu solicitud para cambiar tu nick a { $new_nick } fue enviada y está pendiente de aprobación por un administrador.
+nick-request-submitted-paid = Se descontaron { $price } monedas y tu solicitud para cambiar tu nick a { $new_nick } fue enviada a los administradores. Saldo actual: { $balance } monedas.
+nick-error-insufficient-coins = No tienes suficientes monedas. Necesitas { $required } monedas y tienes { $balance }.
+nick-error-wrong-password = Contraseña incorrecta. No se envió la solicitud de cambio de nick.
+nick-error-invalid = El nick ingresado no es válido. Usa entre 3 y 20 caracteres alfanuméricos, guiones o guiones bajos.
+nick-error-reserved = Ese nick está reservado por el sistema y no puede utilizarse.
+nick-error-already-pending = Ya tienes una solicitud de cambio de nick pendiente de revisión.
+nick-error-cooldown-active = Aún no han transcurrido los días de espera para solicitar un cambio de nick gratuito.
+nick-change-approved-user = Un administrador aprobó tu cambio de nick. Tu nuevo nombre de usuario es { $new_nick }.
+nick-change-rejected-user = Tu solicitud para cambiar el nick a { $new_nick } fue rechazada. Motivo: { $reason }.
+nick-change-rejected-refunded-user = Tu solicitud para cambiar el nick a { $new_nick } fue rechazada. Motivo: { $reason }. Se te devolvieron { $coins } monedas (saldo: { $balance }).
+
+# Administración de cambios de nick pendientes
+admin-pending-nick-changes = Cambios pendientes
+admin-desc-pending-nick-changes = Revisar, validar o rechazar solicitudes pendientes de cambio de nick.
+admin-no-pending-nick-changes = No hay cambios de nick pendientes.
+admin-nick-change-requested-notify = { $player } ha solicitado cambiar su nick a { $new_nick }.
+admin-nick-change-row = { $old_nick } -> { $new_nick }
+admin-nick-change-row-paid = { $old_nick } -> { $new_nick } (pagó { $coins } monedas)
+admin-nick-change-row-collision = { $old_nick } -> { $new_nick } [ADVERTENCIA: coincide con { $collision }]
+admin-nick-change-row-paid-collision = { $old_nick } -> { $new_nick } (pagó { $coins } monedas) [ADVERTENCIA: coincide con { $collision }]
+admin-nick-detail-summary = Solicitud: cambiar de { $old_nick } a { $new_nick }
+admin-nick-detail-free = Modalidad: cambio estándar gratuito
+admin-nick-detail-paid = Modalidad: cambio con pago de { $coins } monedas
+admin-nick-detail-collision-warning = Advertencia: el nick solicitado coincide con una cuenta existente ({ $collision }).
+admin-nick-approve = Validar cambio
+admin-nick-reject = Rechazar cambio
+admin-nick-reject-reason-prompt = Ingresa el motivo del rechazo para el cambio de { $player } a { $new_nick }:
+admin-nick-reject-reason-empty = Debes indicar un motivo para rechazar el cambio de nick.
+admin-nick-reject-refund-prompt = { $player } pagó { $coins } monedas por este cambio. ¿Deseas devolverle sus monedas al rechazar?
+admin-nick-reject-with-refund = Rechazar y devolver { $coins } monedas
+admin-nick-reject-without-refund = Rechazar sin devolver monedas
+admin-nick-approved-feedback = Se validó el cambio de nick de { $old_nick } a { $new_nick }.
+admin-nick-rejected-feedback = Se rechazó el cambio de nick de { $player } a { $new_nick }.
+admin-nick-rejected-refunded-feedback = Se rechazó el cambio de nick de { $player } a { $new_nick } y se devolvieron { $coins } monedas.
+admin-nick-error-not-pending = Esta solicitud de cambio de nick ya no está pendiente.
+admin-nick-error-already-taken = No se puede validar porque el nick { $new_nick } sigue en uso por otra cuenta activa.
+
+

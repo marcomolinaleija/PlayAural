@@ -81,6 +81,10 @@ class NetworkUser(User):
     def username(self) -> str:
         return self._username
 
+    def set_username(self, username: str) -> None:
+        """Update the user's canonical username after an approved nick change."""
+        self._username = str(username)
+
     @property
     def locale(self) -> str:
         return self._locale

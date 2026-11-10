@@ -105,6 +105,7 @@ ADMIN_SYSTEM_MENU = "admin_system_menu"
 ADMIN_SUBMENU_ROOT_ITEM_MAP = {
     "account_approval": "admin_users",
     "toggle_account_approval": "admin_users",
+    "pending_nick_changes": "admin_users",
     "promote_admin": "admin_users",
     "demote_admin": "admin_users",
     "grant_coins": "admin_users",
@@ -122,6 +123,10 @@ ADMIN_SUBMENU_ROOT_ITEM_MAP = {
     "database_management": "admin_system",
     "smtp_settings": "admin_system",
 }
+ADMIN_NICK_CHANGES_MENU = "admin_nick_changes_menu"
+ADMIN_NICK_CHANGE_ACTIONS_MENU = "admin_nick_change_actions_menu"
+ADMIN_NICK_REJECT_REASON_INPUT = "admin_nick_reject_reason_input"
+ADMIN_NICK_REJECT_REFUND_MENU = "admin_nick_reject_refund_menu"
 ADMIN_MODERATION_MENU = "admin_moderation_menu"
 ADMIN_MODERATION_REPORTS_MENU = "admin_moderation_reports_menu"
 ADMIN_MODERATION_REPORT_DETAIL_MENU = "admin_moderation_report_detail_menu"
@@ -279,6 +284,10 @@ ADMIN_MENU_IDS = {
     GRANT_COINS_MENU,
     GRANT_COINS_AMOUNT_MENU,
     GRANT_COINS_INPUT,
+    ADMIN_NICK_CHANGES_MENU,
+    ADMIN_NICK_CHANGE_ACTIONS_MENU,
+    ADMIN_NICK_REJECT_REASON_INPUT,
+    ADMIN_NICK_REJECT_REFUND_MENU,
 }
 
 
@@ -2651,6 +2660,11 @@ class AdministrationManager:
                 description_key="admin-desc-account-approval-toggle",
             ),
             MenuItem(
+                text=Localization.get(user.locale, "admin-pending-nick-changes"),
+                id="pending_nick_changes",
+                description_key="admin-desc-pending-nick-changes",
+            ),
+            MenuItem(
                 text=Localization.get(user.locale, "promote-admin"),
                 id="promote_admin",
             ),
@@ -2868,6 +2882,263 @@ class AdministrationManager:
             "pending_username": pending_username,
         }
 
+    def _pending_nick_requests_page(self, page: int) -> PaginatedMenuPage[Any]:
+        total = self.server.db.count_pending_nick_requests()
+        safe_page = clamp_page(page, total, ADMIN_TARGET_PAGE_SIZE)
+        offset = (safe_page - 1) * ADMIN_TARGET_PAGE_SIZE
+        return PaginatedMenuPage(
+            items=self.server.db.list_pending_nick_requests(
+                limit=ADMIN_TARGET_PAGE_SIZE,
+                offset=offset,
+            ),
+            total=total,
+            page=safe_page,
+            page_size=ADMIN_TARGET_PAGE_SIZE,
+        )
+
+    def refresh_pending_nick_changes_menus(self, *, exclude_username: str = "") -> None:
+        """Refresh open pending nick-change menus after the queue changes."""
+        for username, user in self.server.users.items():
+            if username == exclude_username:
+                continue
+            state = self.server.user_states.get(username, {})
+            if state.get("menu") != ADMIN_NICK_CHANGES_MENU:
+                continue
+            self.server._nav_refresh(
+                user,
+                self._show_pending_nick_changes_menu,
+                state.get("nick_changes_page", 1),
+            )
+
+    def _show_pending_nick_changes_menu(
+        self, user: NetworkUser, page: int = 1, *, focus_page_start: bool = False
+    ) -> None:
+        """Show paginated menu of pending user nick-change requests."""
+        pending = self._pending_nick_requests_page(page)
+        items: list[MenuItem] = []
+        focus_position: int | None = None
+        if not pending.items:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-no-pending-nick-changes"),
+                    id="",
+                    read_only=True,
+                )
+            )
+            items.extend(
+                pagination_menu_items(user.locale, pending, include_refresh=True)
+            )
+        else:
+            if focus_page_start:
+                focus_position = len(items) + 1
+            for req in pending.items:
+                collisions = self.server.db.find_nick_collision_usernames(
+                    req.requested_username,
+                    exclude_uuid=req.user_uuid,
+                )
+                if req.coins_paid > 0 and collisions:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row-paid-collision",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                        coins=req.coins_paid,
+                        collision=", ".join(collisions),
+                    )
+                elif req.coins_paid > 0:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row-paid",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                        coins=req.coins_paid,
+                    )
+                elif collisions:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row-collision",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                        collision=", ".join(collisions),
+                    )
+                else:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                    )
+                items.append(
+                    MenuItem(
+                        text=row_text,
+                        id=f"nick_req_{req.id}",
+                    )
+                )
+            if pending.total_pages > 1:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "menu-page-summary",
+                            start=pending.start_index,
+                            end=pending.end_index,
+                            total=pending.total,
+                            page=pending.page,
+                            pages=pending.total_pages,
+                        ),
+                        id="page_summary",
+                        read_only=True,
+                    )
+                )
+            items.extend(
+                pagination_menu_items(user.locale, pending, include_refresh=True)
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            ADMIN_NICK_CHANGES_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+            position=focus_position,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_NICK_CHANGES_MENU,
+            "nick_changes_page": pending.page,
+            "nick_changes_page_count": pending.total_pages,
+        }
+
+    def _show_pending_nick_change_actions_menu(
+        self, user: NetworkUser, request_id: int
+    ) -> None:
+        """Show details and actions (validate, reject) for one pending nick change request."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            user.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        collisions = self.server.db.find_nick_collision_usernames(
+            req.requested_username,
+            exclude_uuid=req.user_uuid,
+        )
+        items: list[MenuItem] = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-detail-summary",
+                    old_nick=req.old_username,
+                    new_nick=req.requested_username,
+                ),
+                id="nick_detail_summary",
+                read_only=True,
+            ),
+            MenuItem(
+                text=(
+                    Localization.get(
+                        user.locale,
+                        "admin-nick-detail-paid",
+                        coins=req.coins_paid,
+                    )
+                    if req.coins_paid > 0
+                    else Localization.get(user.locale, "admin-nick-detail-free")
+                ),
+                id="nick_detail_paid",
+                read_only=True,
+            ),
+        ]
+        if collisions:
+            collision_str = ", ".join(collisions)
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "admin-nick-detail-collision-warning",
+                        collision=collision_str,
+                    ),
+                    id="nick_detail_collision",
+                    read_only=True,
+                )
+            )
+            user.speak_l(
+                "admin-nick-detail-collision-warning",
+                buffer="system",
+                collision=collision_str,
+            )
+
+        items.extend(
+            [
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-nick-approve"),
+                    id="approve",
+                ),
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-nick-reject"),
+                    id="reject",
+                ),
+                MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+            ]
+        )
+        user.show_menu(
+            ADMIN_NICK_CHANGE_ACTIONS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_NICK_CHANGE_ACTIONS_MENU,
+            "nick_request_id": int(request_id),
+        }
+
+    def _show_pending_nick_reject_refund_menu(
+        self, user: NetworkUser, request_id: int, reason: str
+    ) -> None:
+        """Ask the admin whether to refund the 30,000 coins when rejecting a paid nick change."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            user.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-reject-refund-prompt",
+                    player=req.old_username,
+                    coins=req.coins_paid,
+                ),
+                id="nick_reject_refund_prompt",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-reject-with-refund",
+                    coins=req.coins_paid,
+                ),
+                id="reject_refund",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-reject-without-refund",
+                ),
+                id="reject_no_refund",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_NICK_REJECT_REFUND_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_NICK_REJECT_REFUND_MENU,
+            "nick_request_id": int(request_id),
+            "reject_reason": reason,
+        }
+
     def _show_promote_admin_menu(
         self,
         user: NetworkUser,
@@ -3037,6 +3308,16 @@ class AdministrationManager:
             await self._handle_account_approval_selection(user, selection_id, state)
         elif current_menu == "pending_user_actions_menu":
             await self._handle_pending_user_actions_selection(user, selection_id, state)
+        elif current_menu == ADMIN_NICK_CHANGES_MENU:
+            await self._handle_pending_nick_changes_selection(user, selection_id, state)
+        elif current_menu == ADMIN_NICK_CHANGE_ACTIONS_MENU:
+            await self._handle_pending_nick_change_actions_selection(
+                user, selection_id, state
+            )
+        elif current_menu == ADMIN_NICK_REJECT_REFUND_MENU:
+            await self._handle_pending_nick_reject_refund_selection(
+                user, selection_id, state
+            )
         elif current_menu == "promote_admin_menu":
             await self._handle_promote_admin_selection(user, selection_id, state)
         elif current_menu == "demote_admin_menu":
@@ -3150,6 +3431,11 @@ class AdministrationManager:
                 user.speak_l("no-pending-accounts", buffer="system")
                 return
             self.server._nav_push(user, self._show_account_approval_menu)
+        elif selection_id == "pending_nick_changes":
+            if self.server.db.count_pending_nick_requests() == 0:
+                user.speak_l("admin-no-pending-nick-changes", buffer="system")
+                return
+            self.server._nav_push(user, self._show_pending_nick_changes_menu)
         elif selection_id == "toggle_account_approval":
             new_value = not self.server.account_approval_required
             self.server.set_account_approval_required(new_value)
@@ -4362,6 +4648,250 @@ class AdministrationManager:
         elif selection_id == "back":
             self.server._nav_back(user)
 
+    async def _handle_pending_nick_changes_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in the pending nick-changes queue menu."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+        elif selection_id in MENU_PAGE_IDS:
+            next_page = page_for_selection(
+                selection_id,
+                state.get("nick_changes_page", 1),
+                state.get("nick_changes_page_count", 1),
+            )
+            if next_page is None:
+                return
+            if is_page_refresh(selection_id):
+                announce_page_refresh(user)
+            self.server._nav_refresh(
+                user,
+                self._show_pending_nick_changes_menu,
+                next_page,
+                focus_page_start=is_page_navigation(selection_id),
+            )
+        elif selection_id.startswith("nick_req_"):
+            try:
+                req_id = int(selection_id[len("nick_req_") :])
+            except ValueError:
+                return
+            self.server._nav_push(
+                user, self._show_pending_nick_change_actions_menu, req_id
+            )
+
+    async def _handle_pending_nick_change_actions_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle validate/reject actions for one pending nick change request."""
+        try:
+            request_id = int(state.get("nick_request_id", 0) or 0)
+        except (TypeError, ValueError):
+            request_id = 0
+        if request_id <= 0:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "approve":
+            await self._approve_nick_change_request(user, request_id)
+        elif selection_id == "reject":
+            req = self.server.db.get_nick_change_request(request_id)
+            if req is None or req.status != "pending":
+                user.speak_l("admin-nick-error-not-pending", buffer="system")
+                self.server._nav_back(user)
+                return
+            user.show_editbox(
+                ADMIN_NICK_REJECT_REASON_INPUT,
+                Localization.get(
+                    user.locale,
+                    "admin-nick-reject-reason-prompt",
+                    player=req.old_username,
+                    new_nick=req.requested_username,
+                ),
+                multiline=False,
+                max_length=200,
+            )
+            self.server.enter_input_state(
+                user,
+                ADMIN_NICK_REJECT_REASON_INPUT,
+                nick_request_id=request_id,
+            )
+        elif selection_id == "back":
+            self.server._nav_back(user)
+
+    async def _handle_pending_nick_reject_refund_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle refund choice when rejecting a paid nick change request."""
+        try:
+            request_id = int(state.get("nick_request_id", 0) or 0)
+        except (TypeError, ValueError):
+            request_id = 0
+        reason = str(state.get("reject_reason") or "").strip()
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if request_id <= 0 or not reason:
+            self.server._nav_back(user)
+            return
+        if selection_id == "reject_refund":
+            await self._complete_reject_nick_change_request(
+                user, request_id, reason, refund_coins=True
+            )
+        elif selection_id == "reject_no_refund":
+            await self._complete_reject_nick_change_request(
+                user, request_id, reason, refund_coins=False
+            )
+
+    @require_admin
+    async def _approve_nick_change_request(
+        self, admin: NetworkUser, request_id: int
+    ) -> None:
+        """Approve a pending nick change request and propagate the new username."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        target_online = any(
+            u.uuid == req.user_uuid for u in self.server.users.values()
+        )
+        outcome = self.server.db.approve_nick_change_request(
+            request_id,
+            reviewer_uuid=admin.uuid,
+            reviewer_username=admin.username,
+            mark_notified=target_online,
+        )
+        if outcome.code == "username_taken":
+            admin.speak_l(
+                "admin-nick-error-already-taken",
+                buffer="system",
+                new_nick=outcome.new_username or req.requested_username,
+            )
+            return
+        if not outcome.ok or outcome.request is None:
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        target_user = self.server.apply_runtime_username_change(
+            outcome.request.user_uuid,
+            outcome.old_username,
+            outcome.new_username,
+        )
+        admin.play_sound("accountapprove.ogg")
+        admin.speak_l(
+            "admin-nick-approved-feedback",
+            buffer="system",
+            old_nick=outcome.old_username,
+            new_nick=outcome.new_username,
+        )
+        self.server._notify_admins(
+            "account-action",
+            "accountactionnotify.ogg",
+            exclude_username=admin.username,
+        )
+
+        if target_user is not None:
+            target_user.play_sound("accountapprove.ogg")
+            target_user.speak_l(
+                "nick-change-approved-user",
+                buffer="system",
+                new_nick=outcome.new_username,
+            )
+
+        self.refresh_pending_nick_changes_menus(exclude_username=admin.username)
+        if self.server.db.count_pending_nick_requests() > 0:
+            self.server._nav_back(admin)
+        else:
+            self._return_to_admin_root(admin, "pending_nick_changes")
+
+    @require_admin
+    async def _complete_reject_nick_change_request(
+        self,
+        admin: NetworkUser,
+        request_id: int,
+        reason: str,
+        *,
+        refund_coins: bool,
+    ) -> None:
+        """Reject a pending nick change request with a reason and optional coin refund."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        target_user = next(
+            (u for u in self.server.users.values() if u.uuid == req.user_uuid),
+            None,
+        )
+        outcome = self.server.db.reject_nick_change_request(
+            request_id,
+            reviewer_uuid=admin.uuid,
+            reviewer_username=admin.username,
+            reason=reason,
+            refund_coins=refund_coins,
+            mark_notified=target_user is not None,
+        )
+        if not outcome.ok or outcome.request is None:
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        if outcome.refunded_coins > 0:
+            admin.speak_l(
+                "admin-nick-rejected-refunded-feedback",
+                buffer="system",
+                player=outcome.old_username,
+                new_nick=outcome.new_username,
+                coins=outcome.refunded_coins,
+            )
+        else:
+            admin.speak_l(
+                "admin-nick-rejected-feedback",
+                buffer="system",
+                player=outcome.old_username,
+                new_nick=outcome.new_username,
+            )
+
+        self.server._notify_admins(
+            "account-action",
+            "accountactionnotify.ogg",
+            exclude_username=admin.username,
+        )
+
+        if target_user is not None:
+            if outcome.refunded_coins > 0:
+                target_user.play_sound("game_citadels/coins_small.ogg")
+                target_user.speak_l(
+                    "nick-change-rejected-refunded-user",
+                    buffer="system",
+                    new_nick=outcome.new_username,
+                    reason=outcome.request.reject_reason,
+                    coins=outcome.refunded_coins,
+                    balance=outcome.balance,
+                )
+            else:
+                target_user.speak_l(
+                    "nick-change-rejected-user",
+                    buffer="system",
+                    new_nick=outcome.new_username,
+                    reason=outcome.request.reject_reason,
+                )
+            self.server.refresh_user_nick_menu_if_open(target_user)
+
+        self.refresh_pending_nick_changes_menus(exclude_username=admin.username)
+        if self.server.db.count_pending_nick_requests() > 0:
+            # Pop back to the pending list
+            while (
+                self.server.user_states.get(admin.username, {}).get("menu")
+                in (ADMIN_NICK_REJECT_REFUND_MENU, ADMIN_NICK_CHANGE_ACTIONS_MENU)
+            ):
+                self.server._nav_back(admin)
+        else:
+            self._return_to_admin_root(admin, "pending_nick_changes")
+
     async def _handle_promote_admin_selection(
         self, user: NetworkUser, selection_id: str, state: dict[str, Any]
     ) -> None:
@@ -5015,6 +5545,35 @@ class AdministrationManager:
                     )
                     user.play_sound("menuenter.ogg")
             self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_NICK_REJECT_REASON_INPUT:
+            try:
+                request_id = int(state.get("nick_request_id", 0) or 0)
+            except (TypeError, ValueError):
+                request_id = 0
+            clean_reason = " ".join(str(value or "").split()).strip()
+            if not clean_reason:
+                user.speak_l("admin-nick-reject-reason-empty", buffer="system")
+                self.server._restore_input_parent(user, state)
+                return True
+            req = self.server.db.get_nick_change_request(request_id)
+            if req is None or req.status != "pending":
+                user.speak_l("admin-nick-error-not-pending", buffer="system")
+                self.server._restore_input_parent(user, state)
+                return True
+            if req.coins_paid > 0:
+                self.server._nav_push_from_input(
+                    user,
+                    self._show_pending_nick_reject_refund_menu,
+                    request_id,
+                    clean_reason,
+                )
+            else:
+                self.server._restore_input_parent(user, state)
+                await self._complete_reject_nick_change_request(
+                    user, request_id, clean_reason, refund_coins=False
+                )
             return True
 
         return False

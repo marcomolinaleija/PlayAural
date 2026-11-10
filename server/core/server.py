@@ -69,10 +69,16 @@ from ..administration.manager import (
     ADMIN_MODERATION_REPORT_DETAIL_MENU,
     ADMIN_MODERATION_REPORTS_MENU,
     ADMIN_MODERATION_SENDER_RESULTS_MENU,
+    ADMIN_NICK_CHANGES_MENU,
+    ADMIN_NICK_CHANGE_ACTIONS_MENU,
+    ADMIN_NICK_REJECT_REFUND_MENU,
     ADMIN_SOUND_EVENTS_MENU,
     ADMIN_SOUND_PICKER_MENU,
     AdministrationManager,
 )
+from ..users.nick_policy import split_remaining
+from ..users.identity import normalize_username, username_validation_error
+from ..users.system_identities import is_reserved_system_username
 from .sound_events import AVAILABLE_SOUND_ASSETS, SOUND_EVENTS
 from ..network.websocket_server import WebSocketServer, ClientConnection
 from ..persistence.database import (
@@ -497,7 +503,9 @@ class Server:
         "saved_tables_menu", "saved_table_actions_menu",
         "leaderboards_menu", "leaderboard_types_menu", "game_leaderboard",
         "my_stats_menu", "my_game_stats", "profile_menu", "wallet_menu", "gender_menu",
-        "bio_actions_menu", "email_confirm_menu", *FRIENDS_MENU_IDS,
+        "bio_actions_menu", "email_confirm_menu", "nick_change_menu",
+        "nick_reduce_confirm_menu", "nick_new_input", "nick_password_input",
+        *FRIENDS_MENU_IDS,
         "online_users",
         *ADMIN_MENU_IDS, "logout_confirm_menu",
         "documentation_menu", "doc_games_menu", "doc_viewer", "email_input",
@@ -2615,6 +2623,35 @@ PlayAural Server
 
     def _process_offline_notifications(self, user: NetworkUser) -> None:
         """Fetch, group, and announce offline notifications for a user."""
+        nick_resolutions = self._db.pop_unnotified_nick_change_resolutions(user.uuid)
+        for req in nick_resolutions:
+            if req.status == "approved":
+                user.play_sound("accountapprove.ogg")
+                user.speak_l(
+                    "nick-change-approved-user",
+                    buffer="system",
+                    new_nick=req.requested_username,
+                )
+            elif req.status == "rejected":
+                if req.refunded and req.coins_paid > 0:
+                    wallet = self._db.get_wallet(user.uuid)
+                    user.play_sound("game_citadels/coins_small.ogg")
+                    user.speak_l(
+                        "nick-change-rejected-refunded-user",
+                        buffer="system",
+                        new_nick=req.requested_username,
+                        reason=req.reject_reason,
+                        coins=req.coins_paid,
+                        balance=wallet.balance,
+                    )
+                else:
+                    user.speak_l(
+                        "nick-change-rejected-user",
+                        buffer="system",
+                        new_nick=req.requested_username,
+                        reason=req.reject_reason,
+                    )
+
         notifications = self._db.get_and_clear_notifications(user.uuid)
         if not notifications:
             return
@@ -6828,6 +6865,10 @@ PlayAural Server
             await self._handle_my_game_stats_selection(user, selection_id, state)
         elif current_menu == "profile_menu":
             await self._handle_profile_selection(user, selection_id)
+        elif current_menu == "nick_change_menu":
+            await self._handle_nick_change_menu_selection(user, selection_id, state)
+        elif current_menu == "nick_reduce_confirm_menu":
+            await self._handle_nick_reduce_confirm_selection(user, selection_id, state)
         elif current_menu == "wallet_menu":
             await self._handle_wallet_selection(user, selection_id)
         elif current_menu == "gender_menu":
@@ -9754,7 +9795,7 @@ PlayAural Server
         wallet = self._db.get_wallet(user_record.uuid)
         items = [
             MenuItem(text=Localization.get(user.locale, "profile-registration-date", date=date_str), id=""),
-            MenuItem(text=Localization.get(user.locale, "profile-username", username=user_record.username), id=""),
+            MenuItem(text=Localization.get(user.locale, "profile-username", username=user_record.username), id="edit_nick"),
             MenuItem(text=Localization.get(user.locale, "profile-wallet-entry", coins=wallet.balance), id="wallet"),
             MenuItem(text=Localization.get(user.locale, "profile-email", email=email_str), id="edit_email"),
             MenuItem(text=Localization.get(user.locale, "profile-gender", gender=gender_str), id="edit_gender"),
@@ -9772,7 +9813,9 @@ PlayAural Server
 
     async def _handle_profile_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle profile menu selection."""
-        if selection_id == "wallet":
+        if selection_id == "edit_nick":
+            self._nav_push(user, self._show_nick_change_menu)
+        elif selection_id == "wallet":
             self._nav_push(user, self._show_wallet_menu)
         elif selection_id == "edit_email":
             user_record = self._db.get_user(user.username)
@@ -9788,6 +9831,324 @@ PlayAural Server
             self._nav_push(user, self._show_bio_actions_menu)
         elif selection_id == "back":
             self._nav_back(user)
+
+    def _verify_user_password(self, user_record: UserRecord, password: str) -> bool:
+        """Verify a user's password against their stored Argon2 hash."""
+        if not password:
+            return False
+        auth = self._auth if self._auth is not None else AuthManager(self._db)
+        return auth.verify_password(password, user_record.password_hash)
+
+    def _show_nick_change_menu(
+        self,
+        user: NetworkUser,
+        snapshot: dict[str, Any] | None = None,
+    ) -> None:
+        """Show the nick change submenu from the user's profile.
+
+        If the 90-day (or reduced 30-day) cooldown has not elapsed since the
+        previous nick change, displays the remaining cooldown counter at the top
+        (snapshot captured at the moment the section is opened, without live-ticking
+        until reopened) and options to eliminate (30,000 coins) or reduce to
+        30 days (15,000 coins) the cooldown limit.
+        """
+        user_record = self._db.get_user_by_uuid(user.uuid) or self._db.get_user(user.username)
+        if not user_record:
+            self._nav_back(user)
+            return
+
+        policy = self._db.get_nick_change_policy()
+        state = self._db.get_nick_change_state(user_record.uuid)
+        pending = self._db.get_user_pending_nick_request(user_record.uuid)
+        wallet = self._db.get_wallet(user_record.uuid)
+
+        if snapshot is None:
+            remaining = self._db.get_nick_cooldown_remaining(user_record.uuid)
+            days, hours, minutes = split_remaining(remaining)
+            snap = {
+                "active": remaining.total_seconds() > 0,
+                "days": days,
+                "hours": hours,
+                "minutes": minutes,
+                "reduced": state.cooldown_reduced,
+            }
+        else:
+            snap = dict(snapshot)
+
+        items: list[MenuItem] = []
+        if pending is not None:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "nick-change-pending-status",
+                        requested=pending.requested_username,
+                    ),
+                    id="nick_pending_status",
+                    read_only=True,
+                )
+            )
+        elif not snap.get("active"):
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "profile-username",
+                        username=user_record.username,
+                    ),
+                    id="nick_current",
+                    read_only=True,
+                )
+            )
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "nick-change-action"),
+                    id="change_nick",
+                )
+            )
+        else:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "nick-cooldown-counter",
+                        days=int(snap.get("days", 0)),
+                        hours=int(snap.get("hours", 0)),
+                        minutes=int(snap.get("minutes", 0)),
+                    ),
+                    id="nick_cooldown_counter",
+                    read_only=True,
+                )
+            )
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "nick-bypass-cooldown-option",
+                        price=policy.bypass_price,
+                        balance=wallet.balance,
+                    ),
+                    id="bypass_cooldown",
+                )
+            )
+            if not state.cooldown_reduced:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "nick-reduce-cooldown-option",
+                            price=policy.reduction_price,
+                            days=policy.reduced_cooldown_days,
+                            balance=wallet.balance,
+                        ),
+                        id="reduce_cooldown",
+                    )
+                )
+            else:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "nick-cooldown-already-reduced",
+                            days=policy.reduced_cooldown_days,
+                        ),
+                        id="nick_cooldown_reduced_info",
+                        read_only=True,
+                    )
+                )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            "nick_change_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {
+            "menu": "nick_change_menu",
+            "cooldown_snapshot": snap,
+        }
+
+    async def _handle_nick_change_menu_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selections inside the user's nick change submenu."""
+        if selection_id == "back":
+            self._nav_back(user)
+            return
+
+        policy = self._db.get_nick_change_policy()
+        wallet = self._db.get_wallet(user.uuid)
+
+        if selection_id == "change_nick":
+            user.show_editbox(
+                "nick_new_input",
+                Localization.get(user.locale, "enter-new-nick"),
+                default_value="",
+                max_length=20,
+            )
+            self._enter_input_state(user, "nick_new_input", use_paid_bypass=False)
+        elif selection_id == "bypass_cooldown":
+            if wallet.balance < policy.bypass_price:
+                user.speak_l(
+                    "nick-error-insufficient-coins",
+                    buffer="system",
+                    required=policy.bypass_price,
+                    balance=wallet.balance,
+                )
+                return
+            user.show_editbox(
+                "nick_new_input",
+                Localization.get(user.locale, "enter-new-nick"),
+                default_value="",
+                max_length=20,
+            )
+            self._enter_input_state(user, "nick_new_input", use_paid_bypass=True)
+        elif selection_id == "reduce_cooldown":
+            if wallet.balance < policy.reduction_price:
+                user.speak_l(
+                    "nick-error-insufficient-coins",
+                    buffer="system",
+                    required=policy.reduction_price,
+                    balance=wallet.balance,
+                )
+                return
+            self._nav_push(user, self._show_nick_reduce_confirm_menu)
+
+    def _show_nick_reduce_confirm_menu(self, user: NetworkUser) -> None:
+        """Show confirmation menu to spend 15,000 coins to shorten cooldown from 90 to 30 days."""
+        policy = self._db.get_nick_change_policy()
+        show_confirmation_menu(
+            user,
+            "nick_reduce_confirm_menu",
+            prompt_key="confirm-nick-reduce-cooldown",
+            prompt_kwargs={
+                "price": policy.reduction_price,
+                "days": policy.reduced_cooldown_days,
+            },
+            buffer="system",
+        )
+        self._user_states[user.username] = {"menu": "nick_reduce_confirm_menu"}
+
+    async def _handle_nick_reduce_confirm_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle confirmation for reducing nick cooldown from 90 days to 30 days."""
+        if selection_id == "yes":
+            policy = self._db.get_nick_change_policy()
+            outcome = self._db.reduce_nick_change_cooldown(user.uuid)
+            if outcome.ok:
+                user.play_sound("game_citadels/coins_small.ogg")
+                user.speak_l(
+                    "nick-cooldown-reduced-success",
+                    buffer="system",
+                    price=policy.reduction_price,
+                    days=policy.reduced_cooldown_days,
+                    balance=outcome.balance,
+                )
+            elif outcome.code == "insufficient_coins":
+                user.speak_l(
+                    "nick-error-insufficient-coins",
+                    buffer="system",
+                    required=policy.reduction_price,
+                    balance=outcome.balance,
+                )
+            elif outcome.code == "already_reduced":
+                user.speak_l(
+                    "nick-cooldown-already-reduced",
+                    buffer="system",
+                    days=policy.reduced_cooldown_days,
+                )
+            # Pop the confirmation frame and re-evaluate the cooldown snapshot fresh
+            current = self._user_states.get(user.username, {})
+            stack = list(current.get("_stack", []))
+            if stack and stack[-1].get("menu") == "nick_change_menu":
+                stack[-1] = {"menu": "nick_change_menu", "cooldown_snapshot": None}
+                current["_stack"] = stack
+            self._nav_back(user)
+        elif selection_id == "no":
+            self._nav_back(user)
+
+    def refresh_user_nick_menu_if_open(self, user: NetworkUser) -> None:
+        """Refresh the user's profile or nick change menu if currently open."""
+        state = self._user_states.get(user.username, {})
+        current_menu = state.get("menu")
+        if current_menu == "nick_change_menu":
+            self._nav_refresh(user, self._show_nick_change_menu, None)
+        elif current_menu == "profile_menu":
+            self._nav_refresh(user, self._show_profile_menu)
+
+    def apply_runtime_username_change(
+        self, user_uuid: str, old_username: str, new_username: str
+    ) -> NetworkUser | None:
+        """Propagate an approved username rename across live Server and Table state."""
+        target_user = self._users.pop(old_username, None)
+        if target_user is None:
+            for key, candidate in list(self._users.items()):
+                if candidate.uuid == user_uuid:
+                    target_user = self._users.pop(key, None)
+                    old_username = key
+                    break
+
+        if target_user is not None:
+            target_user.set_username(new_username)
+            if getattr(target_user, "connection", None) is not None:
+                target_user.connection.username = new_username
+            self._users[new_username] = target_user
+
+        if old_username in self._user_states:
+            self._user_states[new_username] = self._user_states.pop(old_username)
+
+        if old_username in self._voice_presence_by_user:
+            presence = self._voice_presence_by_user.pop(old_username)
+            presence.username = new_username
+            self._voice_presence_by_user[new_username] = presence
+
+        if old_username in self._voice_join_authorizations_by_user:
+            auth = self._voice_join_authorizations_by_user.pop(old_username)
+            auth.username = new_username
+            self._voice_join_authorizations_by_user[new_username] = auth
+
+        if old_username in self._tables._username_to_table:
+            self._tables._username_to_table[new_username] = (
+                self._tables._username_to_table.pop(old_username)
+            )
+
+        for table in self._tables.get_all_tables():
+            changed = False
+            if table.host == old_username:
+                table.host = new_username
+                changed = True
+            for member in table.members:
+                if member.username == old_username:
+                    member.username = new_username
+                    changed = True
+            if old_username in table._users:
+                table._users[new_username] = table._users.pop(old_username)
+                changed = True
+            if old_username in table._member_joined_at:
+                table._member_joined_at[new_username] = table._member_joined_at.pop(
+                    old_username
+                )
+            if old_username in table._member_offline_since:
+                table._member_offline_since[new_username] = (
+                    table._member_offline_since.pop(old_username)
+                )
+            if table.game is not None:
+                player = table.game.get_player_by_id(user_uuid)
+                if player is not None and not player.is_bot:
+                    player.name = new_username
+                    changed = True
+                if changed:
+                    if hasattr(table.game, "reconcile_bot_names"):
+                        table.game.reconcile_bot_names()
+                    table.game.refresh_menus()
+
+        if target_user is not None:
+            self.refresh_user_nick_menu_if_open(target_user)
+            self.on_user_presence_changed()
+
+        return target_user
 
     def _show_wallet_menu(self, user: NetworkUser) -> None:
         """Show the user's wallet and coin status menu."""
@@ -17455,6 +17816,116 @@ PlayAural Server
                 self._nav_back(user)
                 return
 
+            elif menu_id == "nick_new_input":
+                new_nick = normalize_username(str(value or ""))
+                use_paid_bypass = bool(user_state.get("use_paid_bypass"))
+                if not new_nick:
+                    self._restore_input_parent(user, user_state)
+                    return
+                val_err = username_validation_error(new_nick)
+                if val_err is not None:
+                    user.speak_l("nick-error-invalid", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+                if is_reserved_system_username(new_nick):
+                    user.speak_l("nick-error-reserved", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+                if new_nick == user.username:
+                    user.speak_l("no-changes-made", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                # Transition to password confirmation editbox
+                policy = self._db.get_nick_change_policy()
+                prompt_text = (
+                    Localization.get(
+                        user.locale,
+                        "nick-confirm-password-paid-prompt",
+                        new_nick=new_nick,
+                        price=policy.bypass_price,
+                    )
+                    if use_paid_bypass
+                    else Localization.get(
+                        user.locale,
+                        "nick-confirm-password-prompt",
+                        new_nick=new_nick,
+                    )
+                )
+                user.show_editbox(
+                    "nick_password_input",
+                    prompt_text,
+                    default_value="",
+                )
+                self._user_states[user.username] = {
+                    **user_state,
+                    "menu": "nick_password_input",
+                    "pending_new_nick": new_nick,
+                    "use_paid_bypass": use_paid_bypass,
+                }
+                return
+
+            elif menu_id == "nick_password_input":
+                password = str(value or "")
+                new_nick = str(user_state.get("pending_new_nick") or "").strip()
+                use_paid_bypass = bool(user_state.get("use_paid_bypass"))
+                user_record = self._db.get_user_by_uuid(user.uuid) or self._db.get_user(
+                    user.username
+                )
+                if not user_record or not new_nick:
+                    self._restore_input_parent(user, user_state)
+                    return
+                if not self._verify_user_password(user_record, password):
+                    user.speak_l("nick-error-wrong-password", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                outcome = self._db.submit_nick_change_request(
+                    user_record.uuid,
+                    new_nick,
+                    use_paid_bypass=use_paid_bypass,
+                )
+                if outcome.ok and outcome.request is not None:
+                    if outcome.request.coins_paid > 0:
+                        user.play_sound("game_citadels/coins_small.ogg")
+                        user.speak_l(
+                            "nick-request-submitted-paid",
+                            buffer="system",
+                            new_nick=outcome.request.requested_username,
+                            price=outcome.request.coins_paid,
+                            balance=outcome.balance,
+                        )
+                    else:
+                        user.speak_l(
+                            "nick-request-submitted",
+                            buffer="system",
+                            new_nick=outcome.request.requested_username,
+                        )
+                    self._notify_admins(
+                        "admin-nick-change-requested-notify",
+                        "accountregnotify.ogg",
+                        player=outcome.request.old_username,
+                        new_nick=outcome.request.requested_username,
+                    )
+                    self.admin_manager.refresh_pending_nick_changes_menus()
+                elif outcome.code == "insufficient_coins":
+                    policy = self._db.get_nick_change_policy()
+                    user.speak_l(
+                        "nick-error-insufficient-coins",
+                        buffer="system",
+                        required=policy.bypass_price,
+                        balance=outcome.balance,
+                    )
+                elif outcome.code == "already_pending":
+                    user.speak_l("nick-error-already-pending", buffer="system")
+                elif outcome.code == "cooldown_active":
+                    user.speak_l("nick-error-cooldown-active", buffer="system")
+                else:
+                    user.speak_l("nick-error-invalid", buffer="system")
+
+                self._restore_input_parent(user, user_state)
+                return
+
             elif menu_id == "send_friend_request_input":
                 value = str(value or "").strip()
                 if not value:
@@ -18951,6 +19422,10 @@ PlayAural Server
             self._show_my_game_stats(user, frame.get("game_type", ""))
         elif menu == "profile_menu":
             self._show_profile_menu(user)
+        elif menu == "nick_change_menu":
+            self._show_nick_change_menu(user, snapshot=frame.get("cooldown_snapshot"))
+        elif menu == "nick_reduce_confirm_menu":
+            self._show_nick_reduce_confirm_menu(user)
         elif menu == "wallet_menu":
             self._show_wallet_menu(user)
         elif menu == "gender_menu":
@@ -19080,6 +19555,29 @@ PlayAural Server
                     user,
                     frame.get("account_approval_page", 1),
                 )
+        elif menu == ADMIN_NICK_CHANGES_MENU:
+            self.admin_manager._show_pending_nick_changes_menu(
+                user,
+                frame.get("nick_changes_page", 1),
+            )
+        elif menu == ADMIN_NICK_CHANGE_ACTIONS_MENU:
+            req_id = int(frame.get("nick_request_id", 0) or 0)
+            if req_id > 0:
+                self.admin_manager._show_pending_nick_change_actions_menu(user, req_id)
+            else:
+                self.admin_manager._show_pending_nick_changes_menu(
+                    user,
+                    frame.get("nick_changes_page", 1),
+                )
+        elif menu == ADMIN_NICK_REJECT_REFUND_MENU:
+            req_id = int(frame.get("nick_request_id", 0) or 0)
+            reason = str(frame.get("reject_reason") or "")
+            if req_id > 0 and reason:
+                self.admin_manager._show_pending_nick_reject_refund_menu(
+                    user, req_id, reason
+                )
+            else:
+                self.admin_manager._show_pending_nick_changes_menu(user, 1)
         elif menu == "promote_admin_menu":
             self.admin_manager._show_promote_admin_menu(
                 user,
