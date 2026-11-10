@@ -1,5 +1,9 @@
 game-name-deadmansdeck = Dead Man's Deck
 
+deadmansdeck-set-natural-voices = Use natural TTS voices: { $enabled }
+deadmansdeck-option-changed-natural-voices = Use natural TTS voices set to { $enabled }.
+deadmansdeck-desc-natural-voices = Plays dramatic narrator voice lines during the intro, rounds, challenges, roulette, and game end.
+
 deadmansdeck-call-liar = Call liar
 deadmansdeck-play-selected = Play selected cards
 deadmansdeck-clear-selection = Clear selection

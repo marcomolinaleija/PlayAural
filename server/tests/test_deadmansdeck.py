@@ -8,6 +8,10 @@ from server.games.deadmansdeck.game import (
     COCK_TO_OUTCOME_DELAY_TICKS,
     LATEST_REVOLVER_PREPARATION_START_TICKS,
     MAX_CLAIM_CARDS,
+    NARRATOR_CENTER_POSITION,
+    NARRATOR_DEALER_POSITION,
+    NARRATOR_ROULETTE_POSITION,
+    NARRATOR_TAVERN_POSITION,
     PHASE_CHALLENGE,
     PHASE_CLAIM,
     PHASE_PLAYING,
@@ -30,6 +34,16 @@ from server.games.deadmansdeck.game import (
     SOUND_REVEAL,
     SOUND_REVOLVER_SPIN,
     SOUND_ROUND_START,
+    SOUND_VOICE_BLUFF_CAUGHT,
+    SOUND_VOICE_CHALLENGE,
+    SOUND_VOICE_CHALLENGE_FORCED,
+    SOUND_VOICE_GAME_OVER,
+    SOUND_VOICE_INTRO,
+    SOUND_VOICE_ROULETTE_COCK,
+    SOUND_VOICE_ROULETTE_DEATH,
+    SOUND_VOICE_ROULETTE_SURVIVE,
+    SOUND_VOICE_TARGETS,
+    SOUND_VOICE_TRUTH_REVEALED,
     DeadMansDeckCard,
     DeadMansDeckClaim,
     DeadMansDeckGame,
@@ -967,3 +981,109 @@ def test_bot_game_completes() -> None:
 
     reached = advance_until(game, lambda: game.status == "finished" or game._destroyed, max_ticks=20000)
     assert reached
+
+
+def test_natural_voices_option_plays_narrator_catalog() -> None:
+    random.seed(77)
+    game = make_game(2)
+    game.options.natural_voices = True
+    game.on_start()
+
+    assert advance_until(game, lambda: game.phase == PHASE_PLAYING and game.round == 1, max_ticks=700)
+    target_voice = SOUND_VOICE_TARGETS[game.target_rank]
+    for player in game.players:
+        user = game.get_user(player)
+        sounds = sound_names(user)
+        assert_subsequence(sounds, [SOUND_INTRO, SOUND_VOICE_INTRO, SOUND_ROUND_START, target_voice])
+        intro_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_INTRO
+        )
+        assert tuple(intro_msg.data["position"]) == NARRATOR_DEALER_POSITION
+
+    # Bluff challenge + roulette survival + next round
+    alice = game.current_player
+    bob = next(p for p in game.players if p != alice)
+    game.target_rank = "king"
+    alice.bullet_position = 5
+    alice.chamber_index = 0
+    alice.hand = [
+        DeadMansDeckCard(id=301, rank="queen"),
+        DeadMansDeckCard(id=302, rank="ace"),
+    ]
+    bob.hand = [DeadMansDeckCard(id=303, rank="king")]
+    alice.selected_card_ids = [301]
+    for player in game.players:
+        game.get_user(player).clear_messages()
+
+    game.execute_action(alice, "play_selected")
+    assert advance_until(game, lambda: game.phase == PHASE_PLAYING and game.current_player == bob)
+    game.execute_action(bob, "call_liar")
+    assert advance_until(game, lambda: game.phase == PHASE_PLAYING and game.round == 2, max_ticks=1200)
+
+    for player in game.players:
+        sounds = sound_names(game.get_user(player))
+        assert_subsequence(
+            sounds,
+            [
+                SOUND_CHALLENGE,
+                SOUND_VOICE_CHALLENGE,
+                SOUND_REVEAL,
+                SOUND_CHALLENGE_SUCCESS,
+                SOUND_VOICE_BLUFF_CAUGHT,
+                SOUND_COCK,
+                SOUND_VOICE_ROULETTE_COCK,
+                SOUND_EMPTY_CLICK,
+                SOUND_VOICE_ROULETTE_SURVIVE,
+            ],
+        )
+
+    # Forced truthful challenge + roulette elimination + game over
+    starter = game.current_player
+    challenger = next(p for p in game.players if p != starter)
+    game.target_rank = "ace"
+    challenger.bullet_position = 0
+    challenger.chamber_index = 0
+    starter.hand = [DeadMansDeckCard(id=401, rank="ace")]
+    challenger.hand = []
+    starter.selected_card_ids = [401]
+    for player in game.players:
+        game.get_user(player).clear_messages()
+
+    game.execute_action(starter, "play_selected")
+    assert advance_until(game, lambda: game.status == "finished" or game._destroyed, max_ticks=1500)
+
+    for player in game.players:
+        user = game.get_user(player)
+        sounds = sound_names(user)
+        assert_subsequence(
+            sounds,
+            [
+                SOUND_CHALLENGE,
+                SOUND_VOICE_CHALLENGE_FORCED,
+                SOUND_REVEAL,
+                SOUND_VOICE_TRUTH_REVEALED,
+                SOUND_COCK,
+                SOUND_VOICE_ROULETTE_COCK,
+                SOUND_GUNSHOT,
+                SOUND_VOICE_ROULETTE_DEATH,
+                SOUND_GAME_OVER,
+                SOUND_VOICE_GAME_OVER,
+            ],
+        )
+        challenge_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_CHALLENGE_FORCED
+        )
+        cock_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_ROULETTE_COCK
+        )
+        over_msg = next(
+            msg for msg in user.messages
+            if msg.type == "play_sound" and msg.data["name"] == SOUND_VOICE_GAME_OVER
+        )
+        assert tuple(challenge_msg.data["position"]) == NARRATOR_CENTER_POSITION
+        assert tuple(cock_msg.data["position"]) == NARRATOR_ROULETTE_POSITION
+        assert tuple(over_msg.data["position"]) == NARRATOR_TAVERN_POSITION
+
