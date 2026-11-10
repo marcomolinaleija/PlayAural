@@ -626,6 +626,11 @@ class MainWindow(wx.Frame):
                 ord("A"),
                 self.ID_OPEN_ADMIN_MENU,
             ),
+            wx.AcceleratorEntry(
+                wx.ACCEL_CTRL | wx.ACCEL_SHIFT,
+                ord("A"),
+                self.ID_OPEN_ADMIN_MENU,
+            ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("O"), self.ID_OPEN_OPTIONS),
         ]
 
@@ -1377,7 +1382,9 @@ class MainWindow(wx.Frame):
     })
     # Administration-family menus. Permission remains enforced by the server.
     _ADMIN_MENU_IDS = frozenset({
-        "admin_menu", "account_approval_menu", "pending_user_actions_menu",
+        "admin_menu", "admin_users_menu", "admin_moderation_menu", "admin_sanctions_menu",
+        "admin_server_content_menu", "admin_system_menu",
+        "account_approval_menu", "pending_user_actions_menu",
         "promote_admin_menu", "demote_admin_menu", "promote_confirm_menu",
         "demote_confirm_menu", "kick_menu", "kick_confirm_menu",
         "broadcast_choice_menu", "ban_menu", "ban_duration_menu",
@@ -3271,6 +3278,19 @@ class MainWindow(wx.Frame):
         )  # Check if message should be muted (no TTS)
         store_in_history = packet.get("history", True) is not False
 
+        limit_unfocused = self.config_manager.get_client_option(
+            "audio/limit_unfocused_audio_and_tts", False
+        )
+        if limit_unfocused and not self.IsActive():
+            key = str(packet.get("key") or "")
+            is_turn = key == "game-turn-start-you"
+            if not is_turn:
+                is_muted = True
+            else:
+                is_muted = False
+                if hasattr(self, "sound_manager") and self.sound_manager:
+                    self.sound_manager.play_sound("turn.ogg")
+
         if text:
             self.add_history(
                 text,
@@ -3317,6 +3337,15 @@ class MainWindow(wx.Frame):
         buffer_name = packet.get("buffer")
         if buffer_name and self.buffer_system.is_effectively_muted(buffer_name):
             return
+
+        limit_unfocused = self.config_manager.get_client_option(
+            "audio/limit_unfocused_audio_and_tts", False
+        )
+        if limit_unfocused and not self.IsActive():
+            asset = str(packet.get("asset") or "").lower()
+            if "turn" not in asset:
+                return
+
         self.sound_manager.handle_audio_command(packet)
 
     def on_table_create(self, packet):

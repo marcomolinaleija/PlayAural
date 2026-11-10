@@ -162,6 +162,7 @@ options-tab-social = Xã hội
 options-tab-interface = Giao diện
 options-reset-saved = Khôi phục từ thiết lập đã lưu
 options-audio-hotkeys-note = Lưu ý: phím F7-F10 cũng điều chỉnh âm lượng nhạc nền và âm thanh môi trường.
+options-limit-unfocused-audio = Tắt âm thanh và đọc khi cửa sổ không hoạt động (chỉ cảnh báo khi đến lượt)
 options-mute-global-chat = Tắt tiếng &kênh chung
 options-mute-table-chat = Tắt tiếng trò chuyện trong &bàn
 options-invert-multiline-enter = Đảo cách dùng &Enter trong ô nhập nhiều dòng

@@ -196,6 +196,7 @@ class ConfigManager:
                 "spatial_audio": "headphones",
                 "input_device_id": "",
                 "input_device_name": "",
+                "limit_unfocused_audio_and_tts": False,
             },
             "social": {
                 "mute_global_chat": False,

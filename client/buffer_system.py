@@ -15,7 +15,7 @@ class BufferSystem:
     BUFFER_ALIASES = {
         "chats": "chat",
     }
-    DEFAULT_MAX_ITEMS_PER_BUFFER = 500
+    DEFAULT_MAX_ITEMS_PER_BUFFER = 8000
 
     def __init__(self, max_items_per_buffer: int = DEFAULT_MAX_ITEMS_PER_BUFFER):
         """Initialize the buffer system."""

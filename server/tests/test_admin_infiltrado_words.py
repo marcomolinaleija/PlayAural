@@ -73,7 +73,13 @@ async def test_admin_menu_shows_infiltrado_words(admin_server):
     menu = admin.menus.get("admin_menu")
     assert menu is not None
     item_ids = [item.id if hasattr(item, "id") else item for item in menu["items"]]
-    assert "manage_infiltrado_words" in item_ids
+    assert "admin_server_content" in item_ids
+
+    server.admin_manager._show_admin_server_content_menu(admin)
+    content_menu = admin.menus.get("admin_server_content_menu")
+    assert content_menu is not None
+    content_item_ids = [item.id if hasattr(item, "id") else item for item in content_menu["items"]]
+    assert "manage_infiltrado_words" in content_item_ids
 
 
 @pytest.mark.asyncio

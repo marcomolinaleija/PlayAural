@@ -72,7 +72,11 @@ async def test_admin_menu_has_grant_coins_item(admin_server):
     server.admin_manager._show_admin_menu(admin)
 
     items = admin.get_current_menu_items("admin_menu") or []
-    grant_item = next((i for i in items if i.id == "grant_coins"), None)
+    assert any(i.id == "admin_users" for i in items)
+
+    server.admin_manager._show_admin_users_menu(admin)
+    user_items = admin.get_current_menu_items("admin_users_menu") or []
+    grant_item = next((i for i in user_items if i.id == "grant_coins"), None)
     assert grant_item is not None
     assert Localization.get("es", "admin-grant-coins") in grant_item.text
 
@@ -86,9 +90,10 @@ async def test_grant_coins_empty_users_speaks_error(admin_server):
 
     server.admin_manager._show_admin_menu(admin)
     admin.clear_messages()
-    await _select(server, admin, "admin_menu", "grant_coins")
+    await _select(server, admin, "admin_menu", "admin_users")
+    await _select(server, admin, "admin_users_menu", "grant_coins")
 
-    assert server._user_states[admin.username]["menu"] == "admin_menu"
+    assert server._user_states[admin.username]["menu"] == "admin_users_menu"
     assert Localization.get("es", "admin-grant-coins-no-users") in admin.get_spoken_messages()
 
 
@@ -100,7 +105,8 @@ async def test_grant_coins_menu_lists_and_searches_users(admin_server):
     _create_approved_user(server, "Charlie")
 
     server.admin_manager._show_admin_menu(admin)
-    await _select(server, admin, "admin_menu", "grant_coins")
+    await _select(server, admin, "admin_menu", "admin_users")
+    await _select(server, admin, "admin_users_menu", "grant_coins")
 
     assert server._user_states[admin.username]["menu"] == GRANT_COINS_MENU
     item_ids = [item.id for item in admin.get_current_menu_items(GRANT_COINS_MENU) or []]
@@ -174,9 +180,9 @@ async def test_grant_coins_preset_amount_success_online_recipient(admin_server):
     assert "500" in alice_spoken
     assert str(new_balance) in alice_spoken
 
-    # Admin returned to admin root with focus on grant_coins
+    # Admin returned to admin root with focus on admin_users
     assert server._user_states[admin.username]["menu"] == "admin_menu"
-    assert server._user_states[admin.username].get("_last_selection_id") == "grant_coins"
+    assert server._user_states[admin.username].get("_last_selection_id") == "admin_users"
 
 
 @pytest.mark.asyncio
@@ -290,7 +296,8 @@ async def test_grant_coins_navigation_back_stack(admin_server):
     _create_approved_user(server, "Alice")
 
     server.admin_manager._show_admin_menu(admin)
-    await _select(server, admin, "admin_menu", "grant_coins")
+    await _select(server, admin, "admin_menu", "admin_users")
+    await _select(server, admin, "admin_users_menu", "grant_coins")
     assert server._user_states[admin.username]["menu"] == GRANT_COINS_MENU
 
     await _select(server, admin, GRANT_COINS_MENU, "grant_coins_Alice")
@@ -300,9 +307,9 @@ async def test_grant_coins_navigation_back_stack(admin_server):
     await _select(server, admin, GRANT_COINS_AMOUNT_MENU, "back")
     assert server._user_states[admin.username]["menu"] == GRANT_COINS_MENU
 
-    # Back from grant_coins_menu -> admin_menu
+    # Back from grant_coins_menu -> admin_users_menu
     await _select(server, admin, GRANT_COINS_MENU, "back")
-    assert server._user_states[admin.username]["menu"] == "admin_menu"
+    assert server._user_states[admin.username]["menu"] == "admin_users_menu"
 
 
 @pytest.mark.asyncio

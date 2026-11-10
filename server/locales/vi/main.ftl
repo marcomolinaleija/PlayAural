@@ -813,6 +813,14 @@ admin-broadcast-prompt = Nhập tin nhắn để thông báo cho tất cả ngư
 admin-broadcast-sent = Đã gửi thông báo đến { $count } người dùng.
 
 manage-motd = Quản lý thông báo ngày (MOTD)
+admin-section-users = Quản lý người dùng
+admin-desc-section-users = Quản lý phê duyệt tài khoản, thăng cấp, giáng cấp và xu.
+admin-section-moderation = Kiểm duyệt và xử phạt
+admin-desc-section-moderation = Trung tâm kiểm duyệt, báo cáo, đuổi, tắt tiếng và cấm.
+admin-section-server-content = Máy chủ và nội dung
+admin-desc-section-server-content = Thông báo chung, thông điệp trong ngày, cài đặt âm thanh và từ Infiltrado.
+admin-section-system = Bảo trì hệ thống
+admin-desc-section-system = Quản lý nguồn máy chủ, cơ sở dữ liệu và cài đặt SMTP.
 admin-switch-server = Chuyển máy chủ
 admin-desc-switch-server = Ngắt kết nối và quay lại bộ chọn máy chủ của ứng dụng.
 admin-account-approval-toggle = Yêu cầu phê duyệt tài khoản: { $status }

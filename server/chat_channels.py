@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 
-MAX_CHAT_MESSAGE_LENGTH = 500
+MAX_CHAT_MESSAGE_LENGTH = 8000
 
 
 @dataclass(frozen=True, slots=True)

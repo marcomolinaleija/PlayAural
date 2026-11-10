@@ -1432,11 +1432,13 @@ class TestFriendsSystem:
             alice_user.connection,
             {"text": "x" * (MAX_CHAT_MESSAGE_LENGTH + 1)},
         )
-        assert any(
-            message.get("key") == "chat-message-too-long"
-            for message in alice_user.get_queued_messages()
-        )
+        assert [
+            m.get("params", {}).get("message")
+            for m in bob_user.get_queued_messages()
+            if m.get("key") == "pm-received"
+        ] == ["x" * MAX_CHAT_MESSAGE_LENGTH]
 
+        self.server._chat_rate_limiter._buckets.clear()
         self.server._user_states[alice.username] = {
             "menu": "send_pm_input",
             "target_username": bob.username,

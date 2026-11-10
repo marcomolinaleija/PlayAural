@@ -547,8 +547,10 @@ def test_admin_power_menu_is_dev_only(tmp_path) -> None:
     server.admin_manager._show_admin_menu(admin)
     server.admin_manager._show_admin_menu(dev)
 
-    assert "server_power" not in _item_ids(admin.get_current_menu_items("admin_menu"))
-    assert "server_power" in _item_ids(dev.get_current_menu_items("admin_menu"))
+    assert "admin_system" not in _item_ids(admin.get_current_menu_items("admin_menu"))
+    assert "admin_system" in _item_ids(dev.get_current_menu_items("admin_menu"))
+    server.admin_manager._show_admin_system_menu(dev)
+    assert "server_power" in _item_ids(dev.get_current_menu_items("admin_system_menu"))
 
 
 @pytest.mark.asyncio

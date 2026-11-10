@@ -43,6 +43,10 @@ from .release_artifacts import (
 from .tick import TickScheduler
 from ..administration.manager import (
     ADMIN_DATABASE_BACKUP_CONFIRM_MENU,
+    ADMIN_USERS_MENU,
+    ADMIN_SANCTIONS_MENU,
+    ADMIN_SERVER_CONTENT_MENU,
+    ADMIN_SYSTEM_MENU,
     ADMIN_DATABASE_COMPACT_CONFIRM_MENU,
     ADMIN_DATABASE_MENU,
     ADMIN_DATABASE_STORAGE_ANALYSIS_MENU,
@@ -17554,12 +17558,8 @@ PlayAural Server
                 target_uuid = str(user_state.get("target_uuid") or "")
                 value = str(value or "").strip()
                 if len(value) > MAX_CHAT_MESSAGE_LENGTH:
-                    user.speak_l(
-                        "chat-message-too-long",
-                        buffer="system",
-                        limit=MAX_CHAT_MESSAGE_LENGTH,
-                    )
-                elif not value:
+                    value = value[:MAX_CHAT_MESSAGE_LENGTH]
+                if not value:
                     user.speak_l("pm-error-message-required", buffer="system")
                 elif not normalize_chat_content(value):
                     user.speak_l("chat-invalid-message", buffer="system")
@@ -17639,12 +17639,7 @@ PlayAural Server
             sender.speak_l("pm-error-message-required", buffer="system")
             return
         if len(message) > MAX_CHAT_MESSAGE_LENGTH:
-            sender.speak_l(
-                "chat-message-too-long",
-                buffer="system",
-                limit=MAX_CHAT_MESSAGE_LENGTH,
-            )
-            return
+            message = message[:MAX_CHAT_MESSAGE_LENGTH]
         if not normalize_chat_content(message):
             sender.speak_l("chat-invalid-message", buffer="system")
             return
@@ -17862,12 +17857,7 @@ PlayAural Server
         if not message:
             return
         if len(message) > MAX_CHAT_MESSAGE_LENGTH:
-            user.speak_l(
-                "chat-message-too-long",
-                buffer="system",
-                limit=MAX_CHAT_MESSAGE_LENGTH,
-            )
-            return
+            message = message[:MAX_CHAT_MESSAGE_LENGTH]
         if not normalize_chat_content(message):
             user.speak_l("chat-invalid-message", buffer="system")
             return
@@ -18990,6 +18980,14 @@ PlayAural Server
         # Admin menus — delegate to admin_manager's show functions
         elif menu == "admin_menu":
             self.admin_manager._show_admin_menu(user)
+        elif menu == ADMIN_USERS_MENU:
+            self.admin_manager._show_admin_users_menu(user)
+        elif menu == ADMIN_SANCTIONS_MENU:
+            self.admin_manager._show_admin_sanctions_menu(user)
+        elif menu == ADMIN_SERVER_CONTENT_MENU:
+            self.admin_manager._show_admin_server_content_menu(user)
+        elif menu == ADMIN_SYSTEM_MENU:
+            self.admin_manager._show_admin_system_menu(user)
         elif menu == ADMIN_MODERATION_MENU:
             self.admin_manager._show_moderation_menu(user)
         elif menu == ADMIN_MODERATION_REPORTS_MENU:

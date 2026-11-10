@@ -162,6 +162,7 @@ options-tab-social = Social
 options-tab-interface = Interface
 options-reset-saved = Reset from Saved
 options-audio-hotkeys-note = Note: F6-F8 hotkeys cycle and adjust audio channel volumes, and F9 opens Personal and Options.
+options-limit-unfocused-audio = Mute audio and TTS when window is unfocused (alert on my turn only)
 options-mute-global-chat = Mute &Global Chat
 options-mute-table-chat = Mute &Table Chat
 options-invert-multiline-enter = Invert Multiline &Enter Behavior

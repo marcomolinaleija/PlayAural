@@ -60,15 +60,21 @@ def admin_room():
 async def test_admin_sound_settings_menu_permissions(admin_room):
     server, admin, dev, regular = admin_room
 
-    # Admin sees sound_settings in admin_menu
+    # Admin sees admin_server_content in admin_menu and sound_settings in admin_server_content_menu
     server.admin_manager._show_admin_menu(admin)
     items = [i.id for i in admin.get_current_menu_items("admin_menu")]
-    assert "sound_settings" in items
+    assert "admin_server_content" in items
+    server.admin_manager._show_admin_server_content_menu(admin)
+    content_items = [i.id for i in admin.get_current_menu_items("admin_server_content_menu")]
+    assert "sound_settings" in content_items
 
-    # Developer also sees sound_settings in admin_menu
+    # Developer also sees sound_settings in admin_server_content_menu
     server.admin_manager._show_admin_menu(dev)
     items_dev = [i.id for i in dev.get_current_menu_items("admin_menu")]
-    assert "sound_settings" in items_dev
+    assert "admin_server_content" in items_dev
+    server.admin_manager._show_admin_server_content_menu(dev)
+    content_items_dev = [i.id for i in dev.get_current_menu_items("admin_server_content_menu")]
+    assert "sound_settings" in content_items_dev
 
     # Regular user cannot open sound settings
     server.admin_manager._show_sound_events_menu(regular)
@@ -82,7 +88,8 @@ async def test_sound_events_menu_display_and_navigation(admin_room):
 
     server._show_main_menu(admin)
     server.admin_manager._show_admin_menu(admin)
-    await _select(server, admin, "admin_menu", "sound_settings")
+    await _select(server, admin, "admin_menu", "admin_server_content")
+    await _select(server, admin, "admin_server_content_menu", "sound_settings")
 
     assert _current_menu(server, admin.username) == ADMIN_SOUND_EVENTS_MENU
     items = admin.get_current_menu_items(ADMIN_SOUND_EVENTS_MENU)
@@ -93,9 +100,9 @@ async def test_sound_events_menu_display_and_navigation(admin_room):
 
     assert "back" in item_ids
 
-    # Back navigates back to admin_menu
+    # Back navigates back to admin_server_content_menu
     await _select(server, admin, ADMIN_SOUND_EVENTS_MENU, "back")
-    assert _current_menu(server, admin.username) == "admin_menu"
+    assert _current_menu(server, admin.username) == "admin_server_content_menu"
 
 
 @pytest.mark.asyncio
@@ -103,7 +110,8 @@ async def test_sound_picker_menu_structure_and_preview_sound(admin_room):
     server, admin, _, _ = admin_room
 
     server.admin_manager._show_admin_menu(admin)
-    await _select(server, admin, "admin_menu", "sound_settings")
+    await _select(server, admin, "admin_menu", "admin_server_content")
+    await _select(server, admin, "admin_server_content_menu", "sound_settings")
 
     # Select table_created event
     await _select(server, admin, ADMIN_SOUND_EVENTS_MENU, "table_created")
@@ -134,7 +142,8 @@ async def test_sound_picker_selection_and_persistence(admin_room):
     server, admin, _, _ = admin_room
 
     server.admin_manager._show_admin_menu(admin)
-    await _select(server, admin, "admin_menu", "sound_settings")
+    await _select(server, admin, "admin_menu", "admin_server_content")
+    await _select(server, admin, "admin_server_content_menu", "sound_settings")
     await _select(server, admin, ADMIN_SOUND_EVENTS_MENU, "table_created")
 
     # Select a new sound (e.g. gamewin.ogg)
