@@ -1,5 +1,9 @@
 game-name-deadmansdeck = Bộ Bài Tử Thần
 
+deadmansdeck-set-natural-voices = Dùng giọng đọc TTS tự nhiên: { $enabled }
+deadmansdeck-option-changed-natural-voices = Dùng giọng đọc TTS tự nhiên đã đặt thành { $enabled }.
+deadmansdeck-desc-natural-voices = Phát giọng người dẫn chuyện kịch tính trong phần mở đầu, bắt đầu vòng, vạch mặt, cò quay và kết thúc ván.
+
 deadmansdeck-call-liar = Vạch mặt
 deadmansdeck-play-selected = Đánh các lá đã chọn
 deadmansdeck-clear-selection = Xóa lựa chọn

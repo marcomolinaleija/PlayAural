@@ -14,6 +14,7 @@ from ..registry import register_game
 from ...game_utils.actions import Action, ActionSet, Visibility
 from ...game_utils.bot_helper import BotHelper
 from ...game_utils.game_result import GameResult, PlayerResult
+from ...game_utils.options import BoolOption, option_field
 from ...game_utils.stats_helpers import (
     RATING_COMPETITORS_KEY,
     rating_competitors_from_scores,
@@ -78,6 +79,24 @@ SOUND_BODY_FALLS = [
 ]
 SOUND_GAME_OVER = "game_deadmansdeck/game_over.ogg"
 
+SOUND_VOICE_INTRO = "game_deadmansdeck/voice_intro.ogg"
+SOUND_VOICE_TARGET_ACE = "game_deadmansdeck/voice_target_ace.ogg"
+SOUND_VOICE_TARGET_KING = "game_deadmansdeck/voice_target_king.ogg"
+SOUND_VOICE_TARGET_QUEEN = "game_deadmansdeck/voice_target_queen.ogg"
+SOUND_VOICE_TARGETS = {
+    RANK_ACE: SOUND_VOICE_TARGET_ACE,
+    RANK_KING: SOUND_VOICE_TARGET_KING,
+    RANK_QUEEN: SOUND_VOICE_TARGET_QUEEN,
+}
+SOUND_VOICE_CHALLENGE = "game_deadmansdeck/voice_challenge.ogg"
+SOUND_VOICE_CHALLENGE_FORCED = "game_deadmansdeck/voice_challenge_forced.ogg"
+SOUND_VOICE_BLUFF_CAUGHT = "game_deadmansdeck/voice_bluff_caught.ogg"
+SOUND_VOICE_TRUTH_REVEALED = "game_deadmansdeck/voice_truth_revealed.ogg"
+SOUND_VOICE_ROULETTE_COCK = "game_deadmansdeck/voice_roulette_cock.ogg"
+SOUND_VOICE_ROULETTE_SURVIVE = "game_deadmansdeck/voice_roulette_survive.ogg"
+SOUND_VOICE_ROULETTE_DEATH = "game_deadmansdeck/voice_roulette_death.ogg"
+SOUND_VOICE_GAME_OVER = "game_deadmansdeck/voice_game_over.ogg"
+
 SOUND_SHUFFLES = [
     "game_cards/shuffle1.ogg",
     "game_cards/shuffle2.ogg",
@@ -119,6 +138,18 @@ AUDIO_DURATIONS_TICKS = {
     "game_deadmansdeck/body_fall1.ogg": 14,
     "game_deadmansdeck/body_fall2.ogg": 13,
     "game_deadmansdeck/game_over.ogg": 87,
+    SOUND_VOICE_INTRO: 314,
+    SOUND_VOICE_TARGET_ACE: 210,
+    SOUND_VOICE_TARGET_KING: 204,
+    SOUND_VOICE_TARGET_QUEEN: 176,
+    SOUND_VOICE_CHALLENGE: 199,
+    SOUND_VOICE_CHALLENGE_FORCED: 136,
+    SOUND_VOICE_BLUFF_CAUGHT: 166,
+    SOUND_VOICE_TRUTH_REVEALED: 163,
+    SOUND_VOICE_ROULETTE_COCK: 97,
+    SOUND_VOICE_ROULETTE_SURVIVE: 140,
+    SOUND_VOICE_ROULETTE_DEATH: 130,
+    SOUND_VOICE_GAME_OVER: 247,
 }
 REVOLVER_PREPARATION_DELAY_TICKS = (
     AUDIO_DURATIONS_TICKS[SOUND_REVOLVER_SPIN] + RELOAD_EXTRA_WAIT_TICKS
@@ -169,7 +200,16 @@ class DeadMansDeckPlayer(Player):
 
 @dataclass
 class DeadMansDeckOptions(GameOptions):
-    """Dead Man's Deck uses fixed canonical rules in this first version."""
+    """Configurable options for Dead Man's Deck."""
+
+    natural_voices: bool = option_field(
+        BoolOption(
+            default=False,
+            label="deadmansdeck-set-natural-voices",
+            change_msg="deadmansdeck-option-changed-natural-voices",
+            description="deadmansdeck-desc-natural-voices",
+        )
+    )
 
 
 @dataclass
@@ -365,6 +405,14 @@ class DeadMansDeckGame(Game):
                 SequenceOperation.callback_op("announce_prepare_revolvers"),
             )
         ]
+        if self.options.natural_voices:
+            events.append(
+                (
+                    0,
+                    2,
+                    SequenceOperation.sound_op(SOUND_VOICE_INTRO),
+                )
+            )
 
         for index, player in enumerate(players):
             start_tick = load_start_ticks[index]
@@ -387,16 +435,21 @@ class DeadMansDeckGame(Game):
                 )
             )
 
+        finish_tick = (
+            max(PREPARATION_INTRO_TICKS, self._sound_ticks(SOUND_VOICE_INTRO))
+            if self.options.natural_voices
+            else PREPARATION_INTRO_TICKS
+        )
         events.append(
             (
-                PREPARATION_INTRO_TICKS,
+                finish_tick,
                 50,
                 SequenceOperation.callback_op("start_preparation_music"),
             )
         )
         events.append(
             (
-                PREPARATION_INTRO_TICKS,
+                finish_tick,
                 99,
                 SequenceOperation.callback_op("finish_preparation"),
             )
@@ -459,21 +512,33 @@ class DeadMansDeckGame(Game):
         self.refresh_menus()
 
         shuffle_sound = self._random_shuffle_sound()
+        round_beats = [
+            SequenceBeat(
+                ops=[SequenceOperation.sound_op(SOUND_ROUND_START)],
+                delay_after_ticks=self._sound_ticks(SOUND_ROUND_START),
+            ),
+            SequenceBeat(
+                ops=[SequenceOperation.sound_op(shuffle_sound)],
+                delay_after_ticks=self._sound_ticks(shuffle_sound),
+            ),
+        ]
+        if self.options.natural_voices:
+            target_voice = SOUND_VOICE_TARGETS.get(self.target_rank)
+            if target_voice:
+                round_beats.append(
+                    SequenceBeat(
+                        ops=[SequenceOperation.sound_op(target_voice)],
+                        delay_after_ticks=self._sound_ticks(target_voice),
+                    )
+                )
+        round_beats.append(
+            SequenceBeat(
+                ops=[SequenceOperation.callback_op("announce_round_start")],
+            )
+        )
         self.start_sequence(
             "deadmansdeck_round_start",
-            [
-                SequenceBeat(
-                    ops=[SequenceOperation.sound_op(SOUND_ROUND_START)],
-                    delay_after_ticks=self._sound_ticks(SOUND_ROUND_START),
-                ),
-                SequenceBeat(
-                    ops=[SequenceOperation.sound_op(shuffle_sound)],
-                    delay_after_ticks=self._sound_ticks(shuffle_sound),
-                ),
-                SequenceBeat(
-                    ops=[SequenceOperation.callback_op("announce_round_start")],
-                ),
-            ],
+            round_beats,
             tag="deadmansdeck_round_start",
             lock_scope=self.SEQUENCE_LOCK_GAMEPLAY,
             pause_bots=True,
@@ -1437,19 +1502,30 @@ class DeadMansDeckGame(Game):
             if self.pending_challenge_success
             else SOUND_CHALLENGE_FAIL
         )
-        self.start_sequence(
-            "deadmansdeck_challenge",
-            [
+        challenge_beats = [
+            SequenceBeat(
+                ops=[
+                    SequenceOperation.sound_op(SOUND_CHALLENGE),
+                    SequenceOperation.callback_op(
+                        "announce_challenge",
+                        {"challenger_id": challenger.id, "forced": forced},
+                    ),
+                ],
+                delay_after_ticks=self._sound_ticks(SOUND_CHALLENGE),
+            ),
+        ]
+        if self.options.natural_voices:
+            challenge_voice = (
+                SOUND_VOICE_CHALLENGE_FORCED if forced else SOUND_VOICE_CHALLENGE
+            )
+            challenge_beats.append(
                 SequenceBeat(
-                    ops=[
-                        SequenceOperation.sound_op(SOUND_CHALLENGE),
-                        SequenceOperation.callback_op(
-                            "announce_challenge",
-                            {"challenger_id": challenger.id, "forced": forced},
-                        ),
-                    ],
-                    delay_after_ticks=self._sound_ticks(SOUND_CHALLENGE),
-                ),
+                    ops=[SequenceOperation.sound_op(challenge_voice)],
+                    delay_after_ticks=self._sound_ticks(challenge_voice),
+                )
+            )
+        challenge_beats.extend(
+            [
                 SequenceBeat(
                     ops=[
                         SequenceOperation.sound_op(SOUND_REVEAL),
@@ -1464,10 +1540,28 @@ class DeadMansDeckGame(Game):
                     ],
                     delay_after_ticks=self._sound_ticks(result_sound),
                 ),
+            ]
+        )
+        if self.options.natural_voices:
+            verdict_voice = (
+                SOUND_VOICE_BLUFF_CAUGHT
+                if self.pending_challenge_success
+                else SOUND_VOICE_TRUTH_REVEALED
+            )
+            challenge_beats.append(
                 SequenceBeat(
-                    ops=[SequenceOperation.callback_op("finish_challenge")],
-                ),
-            ],
+                    ops=[SequenceOperation.sound_op(verdict_voice)],
+                    delay_after_ticks=self._sound_ticks(verdict_voice),
+                )
+            )
+        challenge_beats.append(
+            SequenceBeat(
+                ops=[SequenceOperation.callback_op("finish_challenge")],
+            )
+        )
+        self.start_sequence(
+            "deadmansdeck_challenge",
+            challenge_beats,
             tag="deadmansdeck_challenge",
             lock_scope=self.SEQUENCE_LOCK_GAMEPLAY,
             pause_bots=True,
@@ -1546,22 +1640,42 @@ class DeadMansDeckGame(Game):
                     ops=[SequenceOperation.sound_op(SOUND_COCK)],
                     delay_after_ticks=COCK_TO_OUTCOME_DELAY_TICKS,
                 ),
-                SequenceBeat(
-                    ops=[
-                        SequenceOperation.sound_op(SOUND_GUNSHOT),
-                        SequenceOperation.sound_op(SOUND_BULLET_HIT),
-                        SequenceOperation.callback_op("announce_roulette_elimination"),
-                    ],
-                    delay_after_ticks=self._sound_ticks(SOUND_GUNSHOT),
-                ),
-                SequenceBeat(
-                    ops=[SequenceOperation.sound_op(body_fall)],
-                    delay_after_ticks=self._sound_ticks(body_fall),
-                ),
+            ]
+            if self.options.natural_voices:
+                beats.append(
+                    SequenceBeat(
+                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_COCK)],
+                        delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_COCK),
+                    )
+                )
+            beats.extend(
+                [
+                    SequenceBeat(
+                        ops=[
+                            SequenceOperation.sound_op(SOUND_GUNSHOT),
+                            SequenceOperation.sound_op(SOUND_BULLET_HIT),
+                            SequenceOperation.callback_op("announce_roulette_elimination"),
+                        ],
+                        delay_after_ticks=self._sound_ticks(SOUND_GUNSHOT),
+                    ),
+                    SequenceBeat(
+                        ops=[SequenceOperation.sound_op(body_fall)],
+                        delay_after_ticks=self._sound_ticks(body_fall),
+                    ),
+                ]
+            )
+            if self.options.natural_voices:
+                beats.append(
+                    SequenceBeat(
+                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_DEATH)],
+                        delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_DEATH),
+                    )
+                )
+            beats.append(
                 SequenceBeat(
                     ops=[SequenceOperation.callback_op("finish_roulette_elimination")],
-                ),
-            ]
+                )
+            )
         else:
             casing_sound = self._random_empty_casing_sound()
             beats = [
@@ -1569,6 +1683,15 @@ class DeadMansDeckGame(Game):
                     ops=[SequenceOperation.sound_op(SOUND_COCK)],
                     delay_after_ticks=COCK_TO_OUTCOME_DELAY_TICKS,
                 ),
+            ]
+            if self.options.natural_voices:
+                beats.append(
+                    SequenceBeat(
+                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_COCK)],
+                        delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_COCK),
+                    )
+                )
+            beats.append(
                 SequenceBeat(
                     ops=[
                         SequenceOperation.sound_op(SOUND_EMPTY_CLICK),
@@ -1579,11 +1702,20 @@ class DeadMansDeckGame(Game):
                         self._sound_ticks(SOUND_EMPTY_CLICK),
                         self._sound_ticks(casing_sound),
                     ),
-                ),
+                )
+            )
+            if self.options.natural_voices:
+                beats.append(
+                    SequenceBeat(
+                        ops=[SequenceOperation.sound_op(SOUND_VOICE_ROULETTE_SURVIVE)],
+                        delay_after_ticks=self._sound_ticks(SOUND_VOICE_ROULETTE_SURVIVE),
+                    )
+                )
+            beats.append(
                 SequenceBeat(
                     ops=[SequenceOperation.callback_op("finish_roulette_survival")],
-                ),
-            ]
+                )
+            )
 
         self.start_sequence(
             "deadmansdeck_roulette",
@@ -1652,20 +1784,30 @@ class DeadMansDeckGame(Game):
         self.cancel_sequences_by_tag("deadmansdeck_claim")
         self.cancel_sequences_by_tag("deadmansdeck_challenge")
         self.cancel_sequences_by_tag("deadmansdeck_roulette")
+        game_over_beats = [
+            SequenceBeat(
+                ops=[
+                    SequenceOperation.sound_op(SOUND_GAME_OVER),
+                    SequenceOperation.callback_op("announce_game_over"),
+                ],
+                delay_after_ticks=self._sound_ticks(SOUND_GAME_OVER),
+            ),
+        ]
+        if self.options.natural_voices:
+            game_over_beats.append(
+                SequenceBeat(
+                    ops=[SequenceOperation.sound_op(SOUND_VOICE_GAME_OVER)],
+                    delay_after_ticks=self._sound_ticks(SOUND_VOICE_GAME_OVER),
+                )
+            )
+        game_over_beats.append(
+            SequenceBeat(
+                ops=[SequenceOperation.callback_op("finish_game")],
+            )
+        )
         self.start_sequence(
             "deadmansdeck_game_over",
-            [
-                SequenceBeat(
-                    ops=[
-                        SequenceOperation.sound_op(SOUND_GAME_OVER),
-                        SequenceOperation.callback_op("announce_game_over"),
-                    ],
-                    delay_after_ticks=self._sound_ticks(SOUND_GAME_OVER),
-                ),
-                SequenceBeat(
-                    ops=[SequenceOperation.callback_op("finish_game")],
-                ),
-            ],
+            game_over_beats,
             tag="deadmansdeck_game_over",
             lock_scope=self.SEQUENCE_LOCK_GAMEPLAY,
             pause_bots=True,
