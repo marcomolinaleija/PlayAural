@@ -4127,6 +4127,20 @@ PlayAural Server
                 description_key="general-desc-voice-auto-gain",
             )
         )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "options-limit-unfocused-audio-toggle",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if prefs.limit_unfocused_audio else "option-off",
+                    ),
+                ),
+                id="toggle_limit_unfocused_audio",
+                description_key="general-desc-limit-unfocused-audio",
+            )
+        )
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "options_audio_submenu",
@@ -10695,6 +10709,13 @@ PlayAural Server
             self._sync_pref_to_client(user, "audio/voice_auto_gain", prefs.voice_auto_gain)
             status_str = Localization.get(user.locale, "option-on" if prefs.voice_auto_gain else "option-off")
             user.speak_l("voice-auto-gain-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_audio_submenu)
+        elif selection_id == "toggle_limit_unfocused_audio":
+            prefs.limit_unfocused_audio = not prefs.limit_unfocused_audio
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(user, "audio/limit_unfocused_audio_and_tts", prefs.limit_unfocused_audio)
+            status_str = Localization.get(user.locale, "option-on" if prefs.limit_unfocused_audio else "option-off")
+            user.speak_l("options-limit-unfocused-audio-changed", buffer="system", status=status_str)
             self._nav_refresh(user, self._show_audio_submenu)
 
     async def _handle_volume_selection(
