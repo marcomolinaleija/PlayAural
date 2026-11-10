@@ -3394,6 +3394,9 @@ PlayAural Server
                     locale,
                     "table-composition-spectator-host",
                     host=table.host,
+                    **self._account_gender_localization_kwargs(
+                        table.host, "host"
+                    ),
                 ),
             )
 
@@ -7879,13 +7882,16 @@ PlayAural Server
         target_record = self._db.get_user(target_username)
         if not target_record or target_record.uuid == user.uuid:
             return None
+        target_kwargs = self._account_gender_localization_kwargs(
+            target_username, "target"
+        )
         if self._db.has_blocked(user.uuid, target_record.uuid):
             return MenuItem(
-                text=Localization.get(user.locale, "unblock-user"),
+                text=Localization.get(user.locale, "unblock-user", **target_kwargs),
                 id="unblock",
             )
         return MenuItem(
-            text=Localization.get(user.locale, "block-user"),
+            text=Localization.get(user.locale, "block-user", **target_kwargs),
             id="block",
         )
 
@@ -7897,7 +7903,13 @@ PlayAural Server
         if not target_record or target_record.uuid == user.uuid:
             return None
         return MenuItem(
-            text=Localization.get(user.locale, "report-user"),
+            text=Localization.get(
+                user.locale,
+                "report-user",
+                **self._account_gender_localization_kwargs(
+                    target_username, "target"
+                ),
+            ),
             id="report",
         )
 
@@ -12125,7 +12137,14 @@ PlayAural Server
                 read_only=True,
             ),
             MenuItem(
-                text=Localization.get(locale, "table-stats-host", host=table.host),
+                text=Localization.get(
+                    locale,
+                    "table-stats-host",
+                    host=table.host,
+                    **self._account_gender_localization_kwargs(
+                        table.host, "host"
+                    ),
+                ),
                 id="stat_host",
                 read_only=True,
             ),
@@ -14418,7 +14437,14 @@ PlayAural Server
                         status=self._table_member_status_text(locale, row),
                     )
                 elif row["is_spectator"]:
-                    label = f"{row['name']} {spectator_suffix}"
+                    spec_suffix = Localization.get(
+                        locale,
+                        "table-spectator-suffix",
+                        **self._account_gender_localization_kwargs(
+                            row["name"], "player"
+                        ),
+                    )
+                    label = f"{row['name']} {spec_suffix}"
                 else:
                     label = row["name"]
                 candidates.append((row["name"], label))
@@ -14795,14 +14821,37 @@ PlayAural Server
     def _table_member_status_text(self, locale: str, row: dict[str, Any]) -> str:
         """Return all concurrent table statuses for one roster row."""
         statuses: list[str] = []
+        player_kwargs = (
+            self._account_gender_localization_kwargs(row["name"], "player")
+            if row.get("name")
+            else {}
+        )
         if row.get("is_host"):
-            statuses.append(Localization.get(locale, "table-member-status-host"))
+            statuses.append(
+                Localization.get(
+                    locale,
+                    "table-member-status-host",
+                    **player_kwargs,
+                )
+            )
         if row.get("is_bot"):
             statuses.append(Localization.get(locale, "table-member-status-bot"))
         elif row.get("is_spectator"):
-            statuses.append(Localization.get(locale, "table-member-status-spectator"))
+            statuses.append(
+                Localization.get(
+                    locale,
+                    "table-member-status-spectator",
+                    **player_kwargs,
+                )
+            )
         else:
-            statuses.append(Localization.get(locale, "table-member-status-player"))
+            statuses.append(
+                Localization.get(
+                    locale,
+                    "table-member-status-player",
+                    **player_kwargs,
+                )
+            )
         if row["kind"] == "user":
             if row.get("in_voice_chat"):
                 statuses.append(

@@ -1137,6 +1137,13 @@ and cleanup rules required for genuinely persistent data.
   concatenate pronouns in Python. Missing contextual forms fall back to shared
   forms and unspecified/non-binary values fall back to the locale's neutral
   form.
+- **Gender Variants in Selectors (Mandatory)**: When authoring or updating localized
+  strings that vary by gender (or identity-bearing strings referring to players, users,
+  friends, hosts, or participants), always author explicit arms for at least `[male]`
+  and `[female]` in Fluent select expressions (e.g. `[male]`, `[female]`), with `*[other]`
+  serving as the neutral/unspecified fallback. Never omit `[male]` or collapse it
+  implicitly into `*[other]` when authoring strings in Spanish (`es`) or other gendered
+  locales. Both male and female variants must be explicitly defined and tested.
 - Spanish (ES) is the sole mandatory language in PlayAural for all new strings,
   options, features, and documentation. English (EN), Vietnamese (VI), and other
   community locales are optional.

@@ -553,6 +553,10 @@ participants; do not reuse game-player error strings for account lookups.
   vocabulary, an allowlisted context backed by
   `<context>-gender-term-<form>`. Unspecified and non-binary values use the
   locale's neutral fallback.
+- **Gender variants rule (mandatory)**: When authoring or updating strings that vary
+  by gender in Spanish (`es`) or other gendered languages, always include explicit
+  arms for at least `[male]` and `[female]`, with `*[other]` as neutral/unspecified
+  fallback. Never omit `[male]` or collapse it implicitly into `*[other]`.
 - Spanish (ES) is the sole mandatory language for all new strings, options,
   features, and documentation. English (EN), Vietnamese (VI), and other community
   locales are optional.

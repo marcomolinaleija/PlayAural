@@ -45,6 +45,7 @@ game-winner-score = ¡{ $player } gana con { $score } puntos!
 game-tiebreaker = ¡Es un empate! ¡Ronda de desempate!
 game-eliminated = { $player_gender ->
     [female] { $player } fue eliminada con { $score } puntos.
+    [male] { $player } fue eliminado con { $score } puntos.
    *[other] { $player } fue eliminado con { $score } puntos.
 }
 

@@ -118,6 +118,10 @@ def test_spanish_friends_menu_status_and_actions() -> None:
     )
     assert (
         Localization.get("es", "friend-remove-confirm", username="Juan", username_gender="male")
+        == "¿Eliminar a tu amigo Juan de tu lista de amigos?"
+    )
+    assert (
+        Localization.get("es", "friend-remove-confirm", username="Juan", username_gender="unspecified")
         == "¿Eliminar a Juan de tu lista de amigos?"
     )
 
@@ -405,3 +409,107 @@ def test_server_presence_broadcast_with_female_friend_in_spanish(tmp_path) -> No
         assert "Tu amiga Ariel ya está en línea." in messages
     finally:
         db.close()
+
+
+def test_all_gender_selects_in_spanish_locales_have_male_and_female_arms():
+    """Verify that every gender select expression in Spanish locales includes at least male and female."""
+    from fluent.syntax import FluentParser, ast
+
+    for rel_path in ["server/locales/es/main.ftl", "server/locales/es/games.ftl"]:
+        with open(rel_path, "r", encoding="utf-8") as f:
+            resource = FluentParser().parse(f.read())
+
+        for entry in resource.body:
+            if not isinstance(entry, ast.Message) or not entry.value:
+                continue
+
+            for element in entry.value.elements:
+                if (
+                    isinstance(element, ast.Placeable)
+                    and isinstance(element.expression, ast.SelectExpression)
+                    and isinstance(element.expression.selector, ast.VariableReference)
+                ):
+                    var_name = element.expression.selector.id.name
+                    if "gender" in var_name:
+                        variants = [v.key.name for v in element.expression.variants]
+                        assert "male" in variants, (
+                            f"{rel_path}: message '{entry.id.name}' uses '${var_name}' "
+                            f"without explicit [male] variant (variants: {variants})"
+                        )
+                        assert "female" in variants, (
+                            f"{rel_path}: message '{entry.id.name}' uses '${var_name}' "
+                            f"without explicit [female] variant (variants: {variants})"
+                        )
+
+
+def test_friend_remove_confirm_male_female_unspecified():
+    """Test friend-remove-confirm gives correct wording for male, female, and unspecified."""
+    female_msg = Localization.get(
+        "es",
+        "friend-remove-confirm",
+        username="Ariel",
+        username_gender="female",
+    )
+    assert "tu amiga Ariel" in female_msg
+
+    male_msg = Localization.get(
+        "es",
+        "friend-remove-confirm",
+        username="Carlos",
+        username_gender="male",
+    )
+    assert "tu amigo Carlos" in male_msg
+
+    unspec_msg = Localization.get(
+        "es",
+        "friend-remove-confirm",
+        username="Alex",
+        username_gender="unspecified",
+    )
+    assert "tu amiga" not in unspec_msg
+    assert "tu amigo" not in unspec_msg
+    assert "¿Eliminar a Alex de tu lista de amigos?" in unspec_msg
+
+
+def test_action_labels_gender_support():
+    """Verify that action labels reflect gender in Spanish."""
+    # Report user action
+    assert Localization.get("es", "report-user", target_gender="female") == "Reportar a una usuaria"
+    assert Localization.get("es", "report-user", target_gender="male") == "Reportar a un usuario"
+    assert Localization.get("es", "report-user", target_gender="unspecified") == "Reportar a un usuario"
+
+    # Block user action
+    assert Localization.get("es", "block-user", target_gender="female") == "Bloquear usuaria"
+    assert Localization.get("es", "block-user", target_gender="male") == "Bloquear usuario"
+
+    # Unblock user action
+    assert Localization.get("es", "unblock-user", target_gender="female") == "Desbloquear usuaria"
+    assert Localization.get("es", "unblock-user", target_gender="male") == "Desbloquear usuario"
+
+    # Table member statuses
+    assert Localization.get("es", "table-member-status-host", player_gender="female") == "Anfitriona"
+    assert Localization.get("es", "table-member-status-host", player_gender="male") == "Anfitrión"
+
+    assert Localization.get("es", "table-member-status-player", player_gender="female") == "Jugadora"
+    assert Localization.get("es", "table-member-status-player", player_gender="male") == "Jugador"
+
+    assert Localization.get("es", "table-member-status-spectator", player_gender="female") == "Espectadora"
+    assert Localization.get("es", "table-member-status-spectator", player_gender="male") == "Espectador"
+
+    assert Localization.get("es", "table-spectator-suffix", player_gender="female") == "(Espectadora)"
+    assert Localization.get("es", "table-spectator-suffix", player_gender="male") == "(Espectador)"
+
+    # Table stats & composition
+    assert Localization.get("es", "table-stats-host", host="Ariel", host_gender="female") == "Anfitriona: Ariel"
+    assert Localization.get("es", "table-stats-host", host="Carlos", host_gender="male") == "Anfitrión: Carlos"
+
+    assert Localization.get("es", "table-composition-spectator-host", host="Ariel", host_gender="female") == "Ariel (anfitriona)"
+    assert Localization.get("es", "table-composition-spectator-host", host="Carlos", host_gender="male") == "Ariel (anfitrión)".replace("Ariel", "Carlos")
+
+    # Friend success & error directed to user
+    assert Localization.get("es", "friend-accepted-success", username="Ariel", user_gender="female") == "Ahora eres amiga de Ariel."
+    assert Localization.get("es", "friend-accepted-success", username="Ariel", user_gender="male") == "Ahora eres amigo de Ariel."
+
+    assert Localization.get("es", "friend-error-already-friends", user_gender="female") == "Ya eres amiga de este usuario."
+    assert Localization.get("es", "friend-error-already-friends", user_gender="male") == "Ya eres amigo de este usuario."
+

@@ -57,10 +57,12 @@ context-menu = Menú contextual.
 no-actions-available = No hay acciones disponibles.
 table-new-host-promoted = { $player_gender ->
     [female] { $player } ahora es la anfitriona de la mesa.
+    [male] { $player } ahora es el anfitrión de la mesa.
    *[other] { $player } ahora es el anfitrión de la mesa.
 }
 table-new-host-promoted-you = { $user_gender ->
     [female] Ahora eres la anfitriona de la mesa.
+    [male] Ahora eres el anfitrión de la mesa.
    *[other] Ahora eres el anfitrión de la mesa.
 }
 return-to-table = Volver a la mesa
@@ -89,10 +91,12 @@ table-reconnected = { $player } se reconectó a la mesa.
 table-reconnected-you = Te reconectaste a la mesa.
 new-host = { $player_gender ->
     [female] { $player } ahora es la anfitriona.
+    [male] { $player } ahora es el anfitrión.
    *[other] { $player } ahora es el anfitrión.
 }
 new-host-you = { $user_gender ->
     [female] Ahora eres la anfitriona.
+    [male] Ahora eres el anfitrión.
    *[other] Ahora eres el anfitrión.
 }
 waiting-for-players = Esperando jugadores. Mínimo {$min}, máximo { $max }.
@@ -111,7 +115,11 @@ table-composition-spectators = { $count ->
    *[other] Espectadores
 }: { $names }
 table-composition-spectators-more = Espectadores: { $names }; y { $remaining } más
-table-composition-spectator-host = { $host } (anfitrión)
+table-composition-spectator-host = { $host_gender ->
+    [female] { $host } (anfitriona)
+    [male] { $host } (anfitrión)
+   *[other] { $host } (anfitrión)
+}
 table-composition-two = { $first }; { $second }
 table-composition-three = { $first }; { $second }; { $third }
 table-composition-empty = sin participantes
@@ -125,6 +133,7 @@ table-closed-disconnect-timeout = Partida cancelada y mesa cerrada: ningún juga
 table-paused-awaiting-return = No hay jugadores activos conectados. La mesa permanece en pausa hasta { $minutes } minutos mientras un jugador o el anfitrión se reconecta. Los bots no pueden continuar solos.
 table-host-disconnected = { $player_gender ->
     [female] La anfitriona { $player } perdió la conexión. La titularidad de la mesa queda reservada para que pueda reconectarse.
+    [male] El anfitrión { $player } perdió la conexión. La titularidad de la mesa queda reservada para que pueda reconectarse.
    *[other] El anfitrión { $player } perdió la conexión. La titularidad de la mesa queda reservada para que pueda reconectarse.
 }
 player-disconnected-grace = { $player } perdió la conexión. Se esperará hasta { $seconds } segundos antes de que un bot tome el control.
@@ -133,6 +142,7 @@ player-replaced-by-bot = { $bot } ha tomado el control del asiento de { $player 
 game-cancelled-last-player-left = { $player } salió. No quedan jugadores para continuar: la partida se cancela y la mesa se cierra.
 game-cancelled-last-player-left-you = { $user_gender ->
     [female] Saliste como última jugadora. La partida se cancela y la mesa se cierra.
+    [male] Saliste como último jugador. La partida se cancela y la mesa se cierra.
    *[other] Saliste como último jugador. La partida se cancela y la mesa se cierra.
 }
 game-cancelled-no-controller = Partida cancelada y mesa cerrada: no queda ningún jugador ni anfitrión para continuarla.
@@ -152,6 +162,7 @@ spectator-left = { $player } dejó de observar.
 
 welcome = { $user_gender ->
     [female] ¡Bienvenida a PlayAural!
+    [male] ¡Bienvenido a PlayAural!
    *[other] ¡Bienvenido a PlayAural!
 }
 goodbye = ¡Hasta luego!
@@ -160,10 +171,12 @@ user-online = { $player } se conectó.
 user-offline = { $player } se desconectó.
 friend-online = { $player_gender ->
     [female] Tu amiga { $player } ya está en línea.
+    [male] Tu amigo { $player } ya está en línea.
    *[other] Tu amigo { $player } ya está en línea.
 }
 friend-offline = { $player_gender ->
     [female] Tu amiga { $player } se desconectó.
+    [male] Tu amigo { $player } se desconectó.
    *[other] Tu amigo { $player } se desconectó.
 }
 permission-denied = No tienes permiso para realizar esta acción sobre un desarrollador.
@@ -173,6 +186,7 @@ kick-broadcast-actor = Expulsaste a { $target }.
 user-not-online = El usuario { $target } no está en línea.
 kick-confirm = { $user_gender ->
     [female] ¿Segura que quieres expulsar a { $player }?
+    [male] ¿Seguro que quieres expulsar a { $player }?
    *[other] ¿Seguro que quieres expulsar a { $player }?
 }
 no-users-to-kick = No hay usuarios disponibles para expulsar.
@@ -408,7 +422,11 @@ table-no-players = No hay jugadores.
 table-players-one = { $count } jugador: { $players }.
 table-players-many = { $count } jugadores: { $players }.
 table-spectators = Espectadores: { $spectators }.
-table-host-suffix = (Anfitrión)
+table-host-suffix = { $player_gender ->
+    [female] (Anfitriona)
+    [male] (Anfitrión)
+   *[other] (Anfitrión)
+}
 table-voice-chat-suffix = (en chat de voz)
 table-members-summary-compact = Resumen de la mesa: { $composition }.
 table-summary-human-players = { $count } { $count ->
@@ -425,9 +443,21 @@ table-summary-spectators = { $count } { $count ->
 }
 table-members-empty = No hay miembros de la mesa listados por ahora. Usa Atrás para volver y actualizar la vista de la mesa.
 table-member-entry = { $player }: { $status }
-table-member-status-host = Anfitrión
-table-member-status-player = Jugador
-table-member-status-spectator = Espectador
+table-member-status-host = { $player_gender ->
+    [female] Anfitriona
+    [male] Anfitrión
+   *[other] Anfitrión
+}
+table-member-status-player = { $player_gender ->
+    [female] Jugadora
+    [male] Jugador
+   *[other] Jugador
+}
+table-member-status-spectator = { $player_gender ->
+    [female] Espectadora
+    [male] Espectador
+   *[other] Espectador
+}
 table-member-status-bot = Bot
 table-member-status-voice-chat = en chat de voz
 table-member-status-bot-takeover = bot jugando en { GENDER_TERM($member_gender, "possessive-determiner") } nombre: { $bot }
@@ -495,6 +525,7 @@ my-stats-deepest-wave-reached = Oleada más profunda alcanzada: { $value }
 
 confirm-leave-game = { $user_gender ->
     [female] ¿Segura que quieres salir de la mesa?
+    [male] ¿Seguro que quieres salir de la mesa?
    *[other] ¿Seguro que quieres salir de la mesa?
 }
 confirm-yes = Sí
@@ -512,6 +543,7 @@ account-declined = La cuenta de { $player } fue rechazada y eliminada.
 waiting-for-approval = Tu cuenta está esperando la aprobación de un administrador. Por favor espera...
 account-approved-welcome = { $user_gender ->
     [female] ¡Tu cuenta fue aprobada! ¡Bienvenida a PlayAural!
+    [male] ¡Tu cuenta fue aprobada! ¡Bienvenido a PlayAural!
    *[other] ¡Tu cuenta fue aprobada! ¡Bienvenido a PlayAural!
 }
 account-declined-goodbye = Tu solicitud de cuenta fue rechazada.
@@ -692,6 +724,7 @@ user-account-unavailable = Esta cuenta de usuario ya no está disponible.
 
 logout-confirm-title = { $user_gender ->
     [female] ¿Segura que quieres cerrar sesión y salir del juego?
+    [male] ¿Seguro que quieres cerrar sesión y salir del juego?
    *[other] ¿Seguro que quieres cerrar sesión y salir del juego?
 }
 logout-confirm-yes = Sí, cerrar sesión
@@ -790,7 +823,11 @@ mobile-tts-rate-option = Velocidad de voz móvil: { $value }%
 mobile-tts-enter-rate = Ingresa la velocidad de voz móvil (50-200)
 mobile-tts-invalid-rate = Velocidad de voz móvil no válida. Usa un valor entre 50 y 200.
 
-player-kicked-offline = El jugador { $player } fue expulsado (desconectado).
+player-kicked-offline = { $player_gender ->
+    [female] La jugadora { $player } fue expulsada (desconectada).
+    [male] El jugador { $player } fue expulsado (desconectado).
+   *[other] El jugador { $player } fue expulsado (desconectado).
+}
 
 auth-error-username-length = El nombre de usuario debe tener entre 3 y 30 caracteres.
 auth-error-username-invalid-chars = El nombre de usuario solo puede contener letras, números y espacios (sin espacios consecutivos ni caracteres especiales).
@@ -881,6 +918,7 @@ friends-block-user = Bloquear a un usuario
 friends-list-empty = Aún no tienes amigos.
 friend-status-offline = { $player_gender ->
     [female] Desconectada
+    [male] Desconectado
    *[other] Desconectado
 }
 friend-list-entry = { $username } ({ $status })
@@ -889,23 +927,30 @@ view-profile = Ver perfil
 join-table = Unirse a la mesa
 remove-friend = { $friend_gender ->
     [female] Eliminar amiga
+    [male] Eliminar amigo
    *[other] Eliminar amigo
 }
 friend-remove-confirm = { $username_gender ->
     [female] ¿Eliminar a tu amiga { $username } de tu lista de amigos?
+    [male] ¿Eliminar a tu amigo { $username } de tu lista de amigos?
    *[other] ¿Eliminar a { $username } de tu lista de amigos?
 }
 friend-remove-not-friends = { $username } ya no está en tu lista de amigos.
 already-in-table = Ya estás en esta mesa.
 friend-removed-success = { $username_gender ->
     [female] { $username } fue eliminada de tu lista de amigos.
+    [male] { $username } fue eliminado de tu lista de amigos.
    *[other] { $username } fue eliminado de tu lista de amigos.
 }
 
 no-pending-requests = No hay solicitudes pendientes.
 accept = Aceptar
 decline = Rechazar
-friend-accepted-success = Ahora eres amigo de { $username }.
+friend-accepted-success = { $user_gender ->
+    [female] Ahora eres amiga de { $username }.
+    [male] Ahora eres amigo de { $username }.
+   *[other] Ahora eres amigo de { $username }.
+}
 request-not-found = La solicitud de amistad ya no existe.
 friend-declined-success = Solicitud de amistad rechazada.
 
@@ -913,9 +958,14 @@ enter-friend-username = Ingresa el nombre de usuario de la persona que quieres a
 enter-block-username = Ingresa el nombre de usuario de la persona que quieres bloquear:
 friend-error-self = { $user_gender ->
     [female] No puedes enviarte una solicitud de amistad a ti misma.
+    [male] No puedes enviarte una solicitud de amistad a ti mismo.
    *[other] No puedes enviarte una solicitud de amistad a ti mismo.
 }
-friend-error-already-friends = Ya eres amigo de este usuario.
+friend-error-already-friends = { $user_gender ->
+    [female] Ya eres amiga de este usuario.
+    [male] Ya eres amigo de este usuario.
+   *[other] Ya eres amigo de este usuario.
+}
 friend-error-duplicate = Ya tienes una solicitud de amistad pendiente con este usuario.
 friend-error-blocked = Las solicitudes de amistad no están disponibles entre tú y { $username }.
 friend-error-blocked-by-you = Bloqueaste a { $username }. Desbloquéa{ GENDER_TERM($username_gender, "object") } antes de enviarle una solicitud de amistad.
@@ -925,13 +975,22 @@ block-confirm = ¿Bloquear a { $username }? Esto elimina cualquier amistad y sol
 block-success = Bloqueaste a { $username }. El contacto social directo ya no está disponible entre ustedes, sus mensajes de chat normales quedan ocultos, y ninguno de los dos puede entrar de nuevo a una mesa organizada por el otro ni restaurar una mesa guardada que incluya a ambos usuarios.
 block-error-self = { $user_gender ->
     [female] No puedes bloquearte a ti misma.
+    [male] No puedes bloquearte a ti mismo.
    *[other] No puedes bloquearte a ti mismo.
 }
 block-already-active = Ya bloqueaste a { $username }.
 block-no-longer-active = Este bloqueo ya no está activo.
 unblock-success = Desbloqueaste a { $username }. Las amistades y solicitudes anteriores no se restauraron.
-unblock-user = Desbloquear usuario
-block-user = Bloquear usuario
+unblock-user = { $target_gender ->
+    [female] Desbloquear usuaria
+    [male] Desbloquear usuario
+   *[other] Desbloquear usuario
+}
+block-user = { $target_gender ->
+    [female] Bloquear usuaria
+    [male] Bloquear usuario
+   *[other] Bloquear usuario
+}
 friends-blocked-users = { $count ->
     [0] Usuarios Bloqueados
    *[other] Usuarios Bloqueados ({ $count })
@@ -943,6 +1002,7 @@ friends-grouped-accepted = Tus solicitudes de amistad fueron aceptadas por: { $u
 friends-grouped-declined = Tus solicitudes de amistad fueron rechazadas por: { $usernames }
 friends-grouped-removed = { $user_gender ->
     [female] Fuiste eliminada de la lista de amigos por: { $usernames }
+    [male] Fuiste eliminado de la lista de amigos por: { $usernames }
    *[other] Fuiste eliminado de la lista de amigos por: { $usernames }
 }
 friends-and-others = { $names } y { $count } { $count ->
@@ -957,6 +1017,7 @@ pm-error-blocked = Los mensajes privados no están disponibles entre tú y este 
 pm-error-offline = { $username } no está en línea en este momento.
 pm-error-self = { $user_gender ->
     [female] No puedes enviarte un mensaje privado a ti misma.
+    [male] No puedes enviarte un mensaje privado a ti mismo.
    *[other] No puedes enviarte un mensaje privado a ti mismo.
 }
 pm-error-message-required = Escribe un mensaje privado. Si usas el chat, incluye un nombre de usuario, por ejemplo: @Usuario hola.
@@ -964,7 +1025,11 @@ pm-sent-content = Tú a { $username }: { $message }
 pm-received = Mensaje privado de { $username }: { $message }
 
 host-management = Gestión del anfitrión
-table-spectator-suffix = (Espectador)
+table-spectator-suffix = { $player_gender ->
+    [female] (Espectadora)
+    [male] (Espectador)
+   *[other] (Espectador)
+}
 host-management-set-private = Establecer mesa como privada
 host-management-set-public = Establecer mesa como pública
 host-management-invite = Invitar a un amigo
@@ -980,7 +1045,11 @@ table-stats-user-duration = Tu tiempo en la mesa: { $duration }
 table-stats-peak = Pico de participantes: { $count }
 table-stats-total-visitors = Visitantes totales: { $count }
 table-stats-game = Tipo de actividad: { $game }
-table-stats-host = Anfitrión: { $host }
+table-stats-host = { $host_gender ->
+    [female] Anfitriona: { $host }
+    [male] Anfitrión: { $host }
+   *[other] Anfitrión: { $host }
+}
 table-stats-members = Participantes ({ $count }): { $members }
 table-stats-spectators = Espectadores ({ $count }): { $spectators }
 table-stats-spectators-none = Espectadores: Ninguno
@@ -994,14 +1063,17 @@ host-invite-no-friends = (No hay amigos disponibles para invitar)
 host-invite-sent = Invitación enviada a { $player }.
 host-invite-friend-unavailable = { $friend_gender ->
     [female] Esa amiga ya no está disponible para ser invitada.
+    [male] Ese amigo ya no está disponible para ser invitado.
    *[other] Ese amigo ya no está disponible para ser invitado.
 }
 host-invite-already-pending = { $friend_gender ->
     [female] Ya hay una invitación pendiente para esa amiga.
+    [male] Ya hay una invitación pendiente para ese amigo.
    *[other] Ya hay una invitación pendiente para ese amigo.
 }
 host-invite-friend-busy = { $friend_gender ->
     [female] Esa amiga ya está en una partida.
+    [male] Ese amigo ya está en una partida.
    *[other] Ese amigo ya está en una partida.
 }
 host-invite-declined = { $player } rechazó tu invitación a la mesa.
@@ -1012,19 +1084,23 @@ invite-accept = Aceptar invitación
 invite-decline = Rechazar invitación
 host-management-no-longer-host = { $user_gender ->
     [female] Ya no eres la anfitriona de esta mesa.
+    [male] Ya no eres el anfitrión de esta mesa.
    *[other] Ya no eres el anfitrión de esta mesa.
 }
 host-pass-no-candidates = (No hay jugadores disponibles para ceder el anfitrionazgo)
 host-pass-no-longer-host = { $user_gender ->
     [female] Cediste el anfitrionazgo a otro jugador. Ya no eres la anfitriona de esta mesa.
+    [male] Cediste el anfitrionazgo a otro jugador. Ya no eres el anfitrión de esta mesa.
    *[other] Cediste el anfitrionazgo a otro jugador. Ya no eres el anfitrión de esta mesa.
 }
 host-passed = { $player_gender ->
     [female] { $player } ahora es la anfitriona.
+    [male] { $player } ahora es el anfitrión.
    *[other] { $player } ahora es el anfitrión.
 }
 host-passed-you = { $user_gender ->
     [female] Ahora eres la anfitriona.
+    [male] Ahora eres el anfitrión.
    *[other] Ahora eres el anfitrión.
 }
 host-pass-failed = No se pudo transferir el anfitrionazgo. Es posible que el jugador se haya ido.
@@ -1032,10 +1108,12 @@ host-kick-no-candidates = (No hay jugadores disponibles para expulsar)
 host-kick-invalid-target = Objetivo de expulsión no válido.
 host-kick-broadcast = { $player_gender ->
     [female] { $player } fue expulsada de la mesa.
+    [male] { $player } fue expulsado de la mesa.
    *[other] { $player } fue expulsado de la mesa.
 }
 host-kick-ban-broadcast = { $player_gender ->
     [female] { $player } fue expulsada y baneada de la mesa.
+    [male] { $player } fue expulsado y baneado de la mesa.
    *[other] { $player } fue expulsado y baneado de la mesa.
 }
 host-kick-confirm = Expulsaste a { $player } de la mesa.
@@ -1044,6 +1122,7 @@ host-kick-you = { $host } te expulsó de la mesa.
 host-kick-ban-you = { $host } te expulsó y baneó de la mesa.
 table-you-are-banned = { $user_gender ->
     [female] Estás baneada de esta mesa.
+    [male] Estás baneado de esta mesa.
    *[other] Estás baneado de esta mesa.
 }
 table-private-invite-only = Esta mesa es privada. El anfitrión debe invitarte para que puedas unirte.
@@ -1063,10 +1142,12 @@ voice-status-disconnected = { $player } se desconectó del chat de voz.
 voice-status-disconnected-you = Te desconectaste del chat de voz.
 voice-status-connection-lost = { $player_gender ->
     [female] { $player } perdió la conexión y fue eliminada del chat de voz.
+    [male] { $player } perdió la conexión y fue eliminado del chat de voz.
    *[other] { $player } perdió la conexión y fue eliminado del chat de voz.
 }
 voice-status-connection-lost-you = { $user_gender ->
     [female] Perdiste la conexión y fuiste eliminada del chat de voz.
+    [male] Perdiste la conexión y fuiste eliminado del chat de voz.
    *[other] Perdiste la conexión y fuiste eliminado del chat de voz.
 }
 voice-status-left-table = { $player } salió de la mesa y del chat de voz.
@@ -1332,7 +1413,11 @@ chat-global-channel-required-send = Selecciona un idioma para el chat global ant
 chat-global-log-unavailable = El chat global no está disponible temporalmente porque este mensaje no se pudo guardar de forma segura. Inténtalo de nuevo más tarde.
 chat-global-temporarily-disabled-send = El desarrollador desactivó temporalmente el chat global.
 
-report-user = Reportar a un usuario
+report-user = { $target_gender ->
+    [female] Reportar a una usuaria
+    [male] Reportar a un usuario
+   *[other] Reportar a un usuario
+}
 enter-report-username = Escribe el nombre de usuario que quieres reportar.
 report-error-self = No puedes reportar tu propia cuenta.
 report-select-reason = Reportar a { $username }: selecciona el motivo que mejor describa su conducta.
@@ -1432,11 +1517,13 @@ gender-term-reflexive =
 gender-term-friend =
     { $gender ->
         [female] amiga
+        [male] amigo
        *[other] amigo
     }
 gender-term-friend-capitalized =
     { $gender ->
         [female] Amiga
+        [male] Amigo
        *[other] Amigo
     }
 
@@ -1446,22 +1533,27 @@ friends-sent-requests = { $count ->
 }
 friend-status-offline-last-online = { $player_gender ->
     [female] Desconectada, última conexión { $relative_time }
+    [male] Desconectado, última conexión { $relative_time }
    *[other] Desconectado, última conexión { $relative_time }
 }
 friend-removed-notify = { $username_gender ->
     [female] Tu amiga { $username } te eliminó de su lista de amigos.
+    [male] Tu amigo { $username } te eliminó de su lista de amigos.
    *[other] Tu amigo { $username } te eliminó de su lista de amigos.
 }
 friend-accepted-notify = { $username_gender ->
     [female] Tu amiga { $username } aceptó tu solicitud de amistad.
+    [male] Tu amigo { $username } aceptó tu solicitud de amistad.
    *[other] Tu amigo { $username } aceptó tu solicitud de amistad.
 }
 friend-declined-notify = { $username_gender ->
-    [female] { $username } rechazó tu solicitud de amistad.
+    [female] Tu amiga { $username } rechazó tu solicitud de amistad.
+    [male] Tu amigo { $username } rechazó tu solicitud de amistad.
    *[other] { $username } rechazó tu solicitud de amistad.
 }
 friend-request-received = { $username_gender ->
     [female] Recibiste una solicitud de amistad de { $username }.
+    [male] Recibiste una solicitud de amistad de { $username }.
    *[other] Recibiste una solicitud de amistad de { $username }.
 }
 no-sent-requests = No tienes solicitudes de amistad enviadas pendientes.
@@ -1566,6 +1658,7 @@ host-invite-pair-cooldown = Espera { $seconds ->
    *[other] { $seconds } segundos
 } antes de volver a invitar a { $friend_gender ->
     [female] esa amiga.
+    [male] ese amigo.
    *[other] ese amigo.
 }
 host-invite-rate-limited = Estás enviando invitaciones de mesa demasiado rápido. Inténtalo de nuevo dentro de { $seconds ->
