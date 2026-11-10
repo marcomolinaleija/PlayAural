@@ -592,6 +592,16 @@ class ConfigManager:
             self.identities.get("client_options", self._get_default_client_options())
         )
 
+    def get_client_option(self, key_path: str, default: Any = None) -> Any:
+        """Return a single client option by path, or default if not found."""
+        target = self.identities.get(
+            "client_options", self._get_default_client_options()
+        )
+        try:
+            return get_item_from_dict(target, key_path)
+        except (KeyError, TypeError, ValueError):
+            return default
+
     def set_client_option(
         self, key_path: str, value: Any, *, create_mode: bool = False
     ):
