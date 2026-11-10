@@ -155,7 +155,8 @@ async def test_motd_editor_requires_official_locales_and_skips_community(
     server, admin = _make_server(tmp_path)
     try:
         await _select(server, admin, "main_menu", "administration")
-        await _select(server, admin, "admin_menu", "manage_motd")
+        await _select(server, admin, "admin_menu", "admin_server_content")
+        await _select(server, admin, "admin_server_content_menu", "manage_motd")
         await _select(server, admin, "manage_motd_menu", "create_update")
 
         ids = _menu_ids(admin)
@@ -332,7 +333,8 @@ async def test_power_reason_editor_preserves_draft_and_falls_back_to_english(
     server, admin = _make_server(tmp_path)
     try:
         await _select(server, admin, "main_menu", "administration")
-        await _select(server, admin, "admin_menu", "server_power")
+        await _select(server, admin, "admin_menu", "admin_system")
+        await _select(server, admin, "admin_system_menu", "server_power")
         await _select(server, admin, "server_power_menu", "reboot")
         await _select(server, admin, "server_power_delay_menu", "delay_30")
         await _select(server, admin, "server_power_reason_menu", "reason_custom")

@@ -3420,8 +3420,8 @@ PlayAural Server
                 categories["human_players"].append(row["name"])
         return categories
 
-    @staticmethod
     def _format_active_table_spectators(
+        self,
         locale: str,
         table: "Table",
         names: list[str],

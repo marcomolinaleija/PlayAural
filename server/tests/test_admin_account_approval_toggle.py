@@ -51,15 +51,17 @@ async def test_account_approval_toggle_in_admin_menu(admin_server):
         ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY, default=False
     )
 
-    server.admin_manager._show_admin_menu(admin)
-    items = admin.get_current_menu_items("admin_menu")
+    server.admin_manager._show_admin_users_menu(admin)
+    items = admin.get_current_menu_items("admin_users_menu")
     toggle_item = next((i for i in items if i.id == "toggle_account_approval"), None)
     assert toggle_item is not None
     assert Localization.get("es", "option-off") in toggle_item.text
 
     # Toggle to True
     admin.clear_messages()
-    await server.admin_manager._handle_admin_menu_selection(admin, "toggle_account_approval")
+    await server.admin_manager._handle_admin_submenu_selection(
+        admin, "toggle_account_approval", "admin_users_menu"
+    )
     assert server.account_approval_required
     assert server._db.get_boolean_server_setting(
         ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY, default=False
@@ -72,13 +74,15 @@ async def test_account_approval_toggle_in_admin_menu(admin_server):
     assert "menuenter.ogg" in sounds
 
     # Menu reflects new state
-    items = admin.get_current_menu_items("admin_menu")
+    items = admin.get_current_menu_items("admin_users_menu")
     toggle_item = next(i for i in items if i.id == "toggle_account_approval")
     assert Localization.get("es", "option-on") in toggle_item.text
 
     # Toggle back to False
     admin.clear_messages()
-    await server.admin_manager._handle_admin_menu_selection(admin, "toggle_account_approval")
+    await server.admin_manager._handle_admin_submenu_selection(
+        admin, "toggle_account_approval", "admin_users_menu"
+    )
     assert not server.account_approval_required
     assert not server._db.get_boolean_server_setting(
         ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY, default=True
