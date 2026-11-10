@@ -66,3 +66,5 @@ PRIVATE_ANDROID_BUILD_GUIDE.md
 # Generated identity for the packaged desktop client.
 /client/release-build.json
 tools/
+# Local secrets written by `elevenlabs onboard`
+/.env
