@@ -813,6 +813,14 @@ admin-broadcast-prompt = Enter the message to broadcast to all online users. (Th
 admin-broadcast-sent = Broadcast sent to { $count } users.
 
 manage-motd = Manage MOTD
+admin-section-users = User Management
+admin-desc-section-users = Manage account approval, promotions, demotions, and coins.
+admin-section-moderation = Moderation & Sanctions
+admin-desc-section-moderation = Moderation center, reports, kicks, mutes, and bans.
+admin-section-server-content = Server & Content
+admin-desc-section-server-content = Global announcements, MOTD, sound settings, and Infiltrado words.
+admin-section-system = System Maintenance
+admin-desc-section-system = Server power management, database management, and SMTP settings.
 admin-switch-server = Switch Server
 admin-desc-switch-server = Disconnect and return to the client server selector.
 admin-account-approval-toggle = Require account approval: { $status }

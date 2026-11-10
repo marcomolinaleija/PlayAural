@@ -43,6 +43,22 @@ def _find_saved_account_id(
     return matching_ids[0] if matching_ids else None
 
 
+OFFICIAL_SERVERS = [
+    {
+        "server_id": "playaural_dev",
+        "name": "dev.playaural.app",
+        "host": "wss://dev.playaural.app",
+        "port": "443",
+    },
+    {
+        "server_id": "playaural_prod",
+        "name": "playaural.app",
+        "host": "wss://playaural.app",
+        "port": "443",
+    },
+]
+
+
 class LoginDialog(wx.Dialog):
     """Login dialog with simplified flow."""
 
@@ -69,50 +85,44 @@ class LoginDialog(wx.Dialog):
         # Initialize config manager
         self.config_manager = ConfigManager()
 
-        # Keep this deployment's accounts separate from the upstream service.
-        self.official_server_id = "marco_server"
-        if not self.config_manager.get_server_by_id(self.official_server_id):
-            self.config_manager.add_server(
-                "PlayAural Marco",
-                "wss://play.marco-ml.com",
-                "443",
-                server_id=self.official_server_id,
-            )
-
-        self.is_source_build = not getattr(sys, "frozen", False)
-        self.local_server_id = "local_dev_server"
-        if self.is_source_build:
-            if not self.config_manager.get_server_by_id(self.local_server_id):
+        # Fixed server list: dev.playaural.app and playaural.app
+        for srv in OFFICIAL_SERVERS:
+            if not self.config_manager.get_server_by_id(srv["server_id"]):
                 self.config_manager.add_server(
-                    "Local Dev Server",
-                    "localhost",
-                    "8000",
-                    server_id=self.local_server_id,
+                    srv["name"],
+                    srv["host"],
+                    srv["port"],
+                    server_id=srv["server_id"],
+                )
+            else:
+                self.config_manager.update_server(
+                    srv["server_id"],
+                    name=srv["name"],
+                    host=srv["host"],
+                    port=srv["port"],
                 )
 
+        official_ids = [s["server_id"] for s in OFFICIAL_SERVERS]
         if initial_server_url:
             srv_id, srv_name, srv_host, srv_port = parse_server_endpoint(
                 initial_server_url,
                 default_name=initial_server_name or "Custom Server",
             )
-            if srv_id:
-                self.config_manager.add_server(
-                    srv_name,
-                    srv_host,
-                    srv_port,
-                    server_id=srv_id,
-                )
+            if srv_id in official_ids:
                 self.server_id = srv_id
             else:
-                self.server_id = self.official_server_id
+                for srv in OFFICIAL_SERVERS:
+                    if srv["name"] in (initial_server_name or "") or srv["host"] in initial_server_url:
+                        self.server_id = srv["server_id"]
+                        break
+                else:
+                    self.server_id = OFFICIAL_SERVERS[0]["server_id"]
         else:
             last_srv = self.config_manager.get_last_server_id()
-            if last_srv and self.config_manager.get_server_by_id(last_srv):
+            if last_srv in official_ids:
                 self.server_id = last_srv
-            elif self.is_source_build:
-                self.server_id = self.local_server_id
             else:
-                self.server_id = self.official_server_id
+                self.server_id = OFFICIAL_SERVERS[0]["server_id"]
 
         self.server_url = self.config_manager.get_server_url(self.server_id)
 
@@ -153,14 +163,7 @@ class LoginDialog(wx.Dialog):
         self.server_choice = wx.Choice(self.panel)
         self._populate_server_choice()
         self.server_choice.Bind(wx.EVT_CHOICE, self.on_server_choice_changed)
-        server_box.Add(self.server_choice, 1, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
-
-        btn_add_server = wx.Button(
-            self.panel,
-            label=Localization.get("login-btn-add-server"),
-        )
-        btn_add_server.Bind(wx.EVT_BUTTON, self.on_add_custom_server)
-        server_box.Add(btn_add_server, 0, wx.ALIGN_CENTER_VERTICAL)
+        server_box.Add(self.server_choice, 1, wx.ALIGN_CENTER_VERTICAL)
         self.sizer.Add(server_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Content Sizers (swapped based on state)
@@ -265,14 +268,13 @@ class LoginDialog(wx.Dialog):
         self._verify_and_login(self.username, self.password)
 
     def _populate_server_choice(self):
-        """Populate server dropdown from config manager."""
+        """Populate server dropdown strictly with the 2 fixed servers."""
         self.server_choice.Clear()
         self._server_ids_in_choice = []
-        all_servers = self.config_manager.get_all_servers()
         selected_idx = 0
-        for idx, (s_id, s_info) in enumerate(all_servers.items()):
-            display_name = s_info.get("name") or s_id
-            self.server_choice.Append(display_name)
+        for idx, srv in enumerate(OFFICIAL_SERVERS):
+            s_id = srv["server_id"]
+            self.server_choice.Append(srv["name"])
             self._server_ids_in_choice.append(s_id)
             if s_id == self.server_id:
                 selected_idx = idx

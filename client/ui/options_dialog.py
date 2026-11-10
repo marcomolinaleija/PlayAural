@@ -171,6 +171,14 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
         sizer.Add(wx.StaticText(panel, label=Localization.get("options-audio-hotkeys-note")),
                   0, wx.ALL, 10)
 
+        self.limit_unfocused_check = wx.CheckBox(
+            panel, label=Localization.get("options-limit-unfocused-audio")
+        )
+        self.limit_unfocused_check.SetValue(
+            bool(self.options.get("audio", {}).get("limit_unfocused_audio_and_tts", False))
+        )
+        sizer.Add(self.limit_unfocused_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+
         panel.SetSizer(sizer)
         return panel
 
@@ -302,6 +310,11 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
         self.config_manager.set_client_option("audio/voice_volume", voice_volume, create_mode=True)
         self.config_manager.set_client_option(
             "audio/spatial_audio", self._selected_spatial_mode(), create_mode=True
+        )
+        self.config_manager.set_client_option(
+            "audio/limit_unfocused_audio_and_tts",
+            self.limit_unfocused_check.GetValue(),
+            create_mode=True,
         )
 
         mute_global = self.mute_global_check.GetValue()

@@ -162,6 +162,7 @@ options-tab-social = Social
 options-tab-interface = Interfaz
 options-reset-saved = Restablecer valores guardados
 options-audio-hotkeys-note = Nota: las teclas rápidas F6-F8 permiten seleccionar y ajustar el volumen de los canales de audio, y F9 abre Personal y opciones.
+options-limit-unfocused-audio = Silenciar audios y TTS fuera de la ventana (alertar solo en mi turno)
 options-mute-global-chat = Silenciar chat &global
 options-mute-table-chat = Silenciar chat de &mesa
 options-invert-multiline-enter = Invertir comportamiento de la tecla &Entrar en multilínea

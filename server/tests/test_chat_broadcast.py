@@ -769,14 +769,6 @@ async def test_non_admin_slash_commands_do_not_broadcast_as_chat(message: str) -
             {"convo": "global", "message": {"text": "hello"}, "type": "chat"},
             "chat-invalid-message",
         ),
-        (
-            {
-                "convo": "global",
-                "message": "x" * (MAX_CHAT_MESSAGE_LENGTH + 1),
-                "type": "chat",
-            },
-            "chat-message-too-long",
-        ),
     ],
 )
 async def test_forged_or_oversized_chat_packets_are_rejected(
@@ -787,6 +779,8 @@ async def test_forged_or_oversized_chat_packets_are_rejected(
     bob_connection = RecordingConnection()
     alice = _make_user("Alice", alice_connection)
     bob = _make_user("Bob", bob_connection)
+    alice.preferences.global_chat_channel = "en"
+    bob.preferences.global_chat_channel = "en"
     server._users = {"Alice": alice, "Bob": bob}
 
     await server._handle_chat(DummyClient("Alice"), packet)
@@ -798,3 +792,27 @@ async def test_forged_or_oversized_chat_packets_are_rejected(
         expected_key,
         limit=MAX_CHAT_MESSAGE_LENGTH,
     )
+
+
+@pytest.mark.asyncio
+async def test_oversized_chat_packet_is_truncated() -> None:
+    server = _make_server()
+    alice_connection = RecordingConnection()
+    bob_connection = RecordingConnection()
+    alice = _make_user("Alice", alice_connection)
+    bob = _make_user("Bob", bob_connection)
+    alice.preferences.global_chat_channel = "en"
+    bob.preferences.global_chat_channel = "en"
+    server._users = {"Alice": alice, "Bob": bob}
+
+    packet = {
+        "convo": "global",
+        "message": "x" * (MAX_CHAT_MESSAGE_LENGTH + 100),
+        "type": "chat",
+    }
+    await server._handle_chat(DummyClient("Alice"), packet)
+
+    assert len(bob_connection.sent) == 1
+    sent_msg = bob_connection.sent[0]["message"]
+    assert len(sent_msg) == MAX_CHAT_MESSAGE_LENGTH
+    assert sent_msg == "x" * MAX_CHAT_MESSAGE_LENGTH

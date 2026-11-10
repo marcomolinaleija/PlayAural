@@ -678,6 +678,14 @@ admin-broadcast-prompt = Ingresa el mensaje para anunciar a todos los usuarios e
 admin-broadcast-sent = Anuncio enviado a { $count } usuarios.
 
 manage-motd = Gestionar mensaje del día
+admin-section-users = Gestión de usuarios
+admin-desc-section-users = Gestionar aprobación de cuentas, ascensos, degradaciones y monedas.
+admin-section-moderation = Moderación y sanciones
+admin-desc-section-moderation = Panel de moderación del chat, reportes, expulsiones, silencios y baneos.
+admin-section-server-content = Servidor y contenido
+admin-desc-section-server-content = Anuncios generales, mensaje del día, sonidos y palabras de Infiltrado.
+admin-section-system = Mantenimiento del sistema
+admin-desc-section-system = Control de energía del servidor, base de datos y configuración SMTP.
 admin-switch-server = Cambiar de servidor
 admin-desc-switch-server = Desconectar y volver al selector de servidores del cliente.
 admin-account-approval-toggle = Requerir aprobación de cuentas: { $status }

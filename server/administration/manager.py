@@ -97,6 +97,31 @@ ADMIN_INFILTRADO_EDIT_WORD1_INPUT = "admin_infiltrado_edit_word1_input"
 ADMIN_INFILTRADO_EDIT_WORD2_INPUT = "admin_infiltrado_edit_word2_input"
 ADMIN_INFILTRADO_ADD_CATEGORY_INPUT = "admin_infiltrado_add_category_input"
 ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT = "admin_infiltrado_rename_category_input"
+ADMIN_USERS_MENU = "admin_users_menu"
+ADMIN_SANCTIONS_MENU = "admin_sanctions_menu"
+ADMIN_SERVER_CONTENT_MENU = "admin_server_content_menu"
+ADMIN_SYSTEM_MENU = "admin_system_menu"
+
+ADMIN_SUBMENU_ROOT_ITEM_MAP = {
+    "account_approval": "admin_users",
+    "toggle_account_approval": "admin_users",
+    "promote_admin": "admin_users",
+    "demote_admin": "admin_users",
+    "grant_coins": "admin_users",
+    "moderation": "admin_moderation",
+    "kick_user": "admin_moderation",
+    "mute_user": "admin_moderation",
+    "unmute_user": "admin_moderation",
+    "ban_user": "admin_moderation",
+    "unban_user": "admin_moderation",
+    "broadcast_announcement": "admin_server_content",
+    "manage_motd": "admin_server_content",
+    "sound_settings": "admin_server_content",
+    "manage_infiltrado_words": "admin_server_content",
+    "server_power": "admin_system",
+    "database_management": "admin_system",
+    "smtp_settings": "admin_system",
+}
 ADMIN_MODERATION_MENU = "admin_moderation_menu"
 ADMIN_MODERATION_REPORTS_MENU = "admin_moderation_reports_menu"
 ADMIN_MODERATION_REPORT_DETAIL_MENU = "admin_moderation_report_detail_menu"
@@ -185,6 +210,10 @@ ADMIN_LOCALIZED_TEXT_SPECS = {
 
 ADMIN_MENU_IDS = {
     "admin_menu",
+    ADMIN_USERS_MENU,
+    ADMIN_SANCTIONS_MENU,
+    ADMIN_SERVER_CONTENT_MENU,
+    ADMIN_SYSTEM_MENU,
     ADMIN_MODERATION_MENU,
     ADMIN_MODERATION_REPORTS_MENU,
     ADMIN_MODERATION_REPORT_DETAIL_MENU,
@@ -645,8 +674,9 @@ class AdministrationManager:
 
         restore_frame = dict(admin_frame or {"menu": "admin_menu"})
         if focus_id:
-            restore_frame["_restore_focus_id"] = focus_id
-            restore_frame["_last_selection_id"] = focus_id
+            mapped_focus = ADMIN_SUBMENU_ROOT_ITEM_MAP.get(focus_id, focus_id)
+            restore_frame["_restore_focus_id"] = mapped_focus
+            restore_frame["_last_selection_id"] = mapped_focus
             restore_frame.pop("_restore_focus_position", None)
             restore_frame.pop("_last_selection_position", None)
 
@@ -2557,12 +2587,51 @@ class AdministrationManager:
     # ==================== Menu Display Functions ====================
 
     def _show_admin_menu(self, user: NetworkUser) -> None:
-        """Show administration menu."""
+        """Show administration menu compacted into logical submenus."""
         items = [
             MenuItem(
-                text=Localization.get(user.locale, "admin-moderation"),
-                id="moderation",
+                text=Localization.get(user.locale, "admin-section-users"),
+                id="admin_users",
+                description_key="admin-desc-section-users",
             ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-section-moderation"),
+                id="admin_moderation",
+                description_key="admin-desc-section-moderation",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-section-server-content"),
+                id="admin_server_content",
+                description_key="admin-desc-section-server-content",
+            ),
+        ]
+        if user.trust_level >= DEVELOPER_TRUST_LEVEL:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-section-system"),
+                    id="admin_system",
+                    description_key="admin-desc-section-system",
+                )
+            )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "admin-switch-server"),
+                id="switch_server",
+                description_key="admin-desc-switch-server",
+            )
+        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            "admin_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": "admin_menu"}
+
+    def _show_admin_users_menu(self, user: NetworkUser) -> None:
+        """Show user and account administration submenu."""
+        items = [
             MenuItem(
                 text=Localization.get(user.locale, "account-approval"),
                 id="account_approval",
@@ -2590,12 +2659,30 @@ class AdministrationManager:
                 id="demote_admin",
             ),
             MenuItem(
-                text=Localization.get(user.locale, "ban-user"),
-                id="ban_user",
+                text=Localization.get(user.locale, "admin-grant-coins"),
+                id="grant_coins",
+                description_key="admin-desc-grant-coins",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_USERS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": ADMIN_USERS_MENU}
+
+    def _show_admin_sanctions_menu(self, user: NetworkUser) -> None:
+        """Show moderation and sanctions administration submenu."""
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "admin-moderation"),
+                id="moderation",
             ),
             MenuItem(
-                text=Localization.get(user.locale, "unban-user"),
-                id="unban_user",
+                text=Localization.get(user.locale, "kick-user"),
+                id="kick_user",
             ),
             MenuItem(
                 text=Localization.get(user.locale, "mute-user"),
@@ -2606,74 +2693,82 @@ class AdministrationManager:
                 id="unmute_user",
             ),
             MenuItem(
+                text=Localization.get(user.locale, "ban-user"),
+                id="ban_user",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "unban-user"),
+                id="unban_user",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_SANCTIONS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": ADMIN_SANCTIONS_MENU}
+
+    def _show_admin_server_content_menu(self, user: NetworkUser) -> None:
+        """Show server and content administration submenu."""
+        items = [
+            MenuItem(
                 text=Localization.get(user.locale, "broadcast-announcement"),
                 id="broadcast_announcement",
-            ),
-            MenuItem(
-                text=Localization.get(user.locale, "kick-user"),
-                id="kick_user",
-            ),
-            MenuItem(
-                text=Localization.get(user.locale, "admin-grant-coins"),
-                id="grant_coins",
-                description_key="admin-desc-grant-coins",
             ),
             MenuItem(
                 text=Localization.get(user.locale, "manage-motd"),
                 id="manage_motd",
             ),
-        ]
-        if user.trust_level >= DEVELOPER_TRUST_LEVEL:
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "server-power-management"),
-                    id="server_power",
-                )
-            )
-            items.append(
-                MenuItem(
-                    text=Localization.get(
-                        user.locale,
-                        "admin-database-management",
-                    ),
-                    id="database_management",
-                )
-            )
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "admin-smtp-settings"),
-                    id="smtp_settings",
-                )
-            )
-        items.append(
             MenuItem(
                 text=Localization.get(user.locale, "admin-sound-settings"),
                 id="sound_settings",
                 description_key="admin-desc-sound-settings",
-            )
-        )
-        items.append(
+            ),
             MenuItem(
                 text=Localization.get(user.locale, "admin-infiltrado-words"),
                 id="manage_infiltrado_words",
                 description_key="admin-desc-infiltrado-words",
-            )
-        )
-        items.append(
-            MenuItem(
-                text=Localization.get(user.locale, "admin-switch-server"),
-                id="switch_server",
-                description_key="admin-desc-switch-server",
-            )
-        )
-        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
         user.show_menu(
-            "admin_menu",
+            ADMIN_SERVER_CONTENT_MENU,
             items,
             multiletter=True,
             escape_behavior=EscapeBehavior.SELECT_LAST,
         )
-        self.server.user_states[user.username] = {"menu": "admin_menu"}
+        self.server.user_states[user.username] = {"menu": ADMIN_SERVER_CONTENT_MENU}
+
+    def _show_admin_system_menu(self, user: NetworkUser) -> None:
+        """Show developer-only system maintenance submenu."""
+        if user.trust_level < DEVELOPER_TRUST_LEVEL:
+            user.speak_l("dev-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "server-power-management"),
+                id="server_power",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-database-management"),
+                id="database_management",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-smtp-settings"),
+                id="smtp_settings",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_SYSTEM_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": ADMIN_SYSTEM_MENU}
 
     def _pending_users_page(self, page: int) -> PaginatedMenuPage[Any]:
         total = self.server.db.count_pending_users()
@@ -2869,6 +2964,13 @@ class AdministrationManager:
         """Main entry point for handling admin-related menu selections."""
         if current_menu == "admin_menu":
             await self._handle_admin_menu_selection(user, selection_id)
+        elif current_menu in (
+            ADMIN_USERS_MENU,
+            ADMIN_SANCTIONS_MENU,
+            ADMIN_SERVER_CONTENT_MENU,
+            ADMIN_SYSTEM_MENU,
+        ):
+            await self._handle_admin_submenu_selection(user, selection_id, current_menu)
         elif current_menu == ADMIN_MODERATION_MENU:
             await self._handle_moderation_selection(user, selection_id)
         elif current_menu == ADMIN_MODERATION_REPORTS_MENU:
@@ -3003,11 +3105,47 @@ class AdministrationManager:
         elif current_menu == ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU:
              await self._handle_infiltrado_delete_category_confirm_selection(user, selection_id, state)
 
+    async def _handle_admin_submenu_selection(
+        self, user: NetworkUser, selection_id: str, current_menu: str
+    ) -> None:
+        """Handle selection in an admin submenu."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if selection_id == "toggle_account_approval":
+            new_value = not self.server.account_approval_required
+            self.server.set_account_approval_required(new_value)
+            status_text = Localization.get(
+                user.locale,
+                "option-on" if new_value else "option-off",
+            )
+            user.speak_l(
+                "admin-account-approval-toggle-feedback",
+                buffer="system",
+                status=status_text,
+            )
+            user.play_sound("menuenter.ogg")
+            self._show_admin_users_menu(user)
+            return
+        await self._handle_admin_menu_selection(user, selection_id)
+
     async def _handle_admin_menu_selection(
         self, user: NetworkUser, selection_id: str
     ) -> None:
         """Handle admin menu selection."""
-        if selection_id == "account_approval":
+        if selection_id == "admin_users":
+            self.server._nav_push(user, self._show_admin_users_menu)
+        elif selection_id in ("admin_moderation", "admin_sanctions"):
+            self.server._nav_push(user, self._show_admin_sanctions_menu)
+        elif selection_id == "admin_server_content":
+            self.server._nav_push(user, self._show_admin_server_content_menu)
+        elif selection_id == "admin_system":
+            if user.trust_level >= DEVELOPER_TRUST_LEVEL:
+                self.server._nav_push(user, self._show_admin_system_menu)
+            else:
+                user.speak_l("dev-only-action", buffer="system")
+                self.server._nav_refresh(user, self._show_admin_menu)
+        elif selection_id == "account_approval":
             if self.server.db.count_pending_users() == 0:
                 user.speak_l("no-pending-accounts", buffer="system")
                 return

@@ -43,7 +43,7 @@ const WEB_CLIENT_CONFIG = window.PLAYAURAL_WEB_CONFIG || {};
 const DEFAULT_SERVER_URL = String(
   WEB_CLIENT_CONFIG.serverUrl
   || window.PLAYAURAL_SERVER_URL
-  || "wss://playaural.ddt.one:443",
+  || "wss://playaural.app:443",
 ).trim();
 const CONFIG_KEY = "playaural_config";
 const REMEMBER_KEY = "pa_remember";

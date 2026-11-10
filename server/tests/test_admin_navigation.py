@@ -24,6 +24,10 @@ from ..administration.manager import (
     ADMIN_MODERATION_REPORT_DETAIL_MENU,
     ADMIN_MODERATION_REPORTS_MENU,
     ADMIN_MODERATION_SENDER_RESULTS_MENU,
+    ADMIN_USERS_MENU,
+    ADMIN_SANCTIONS_MENU,
+    ADMIN_SERVER_CONTENT_MENU,
+    ADMIN_SYSTEM_MENU,
     _localized_database_size,
 )
 from ..ui.confirmation import CONFIRMATION_PROMPT_ITEM_ID
@@ -139,7 +143,7 @@ async def test_database_management_compacts_with_confirmation_and_restores_focus
         server._db.clear_global_chat_messages()
 
         await _select(server, developer, "main_menu", "administration")
-        assert "database_management" in _menu_item_ids(developer, "admin_menu")
+        assert "admin_system" in _menu_item_ids(developer, "admin_menu")
         await _select(
             server,
             developer,
@@ -414,7 +418,7 @@ async def test_database_management_is_hidden_and_forged_access_is_rejected(
         server._users[admin.username] = admin
         server.admin_manager._show_admin_menu(admin)
 
-        assert "database_management" not in _menu_item_ids(admin, "admin_menu")
+        assert "admin_system" not in _menu_item_ids(admin, "admin_menu")
         await server.admin_manager._handle_admin_menu_selection(
             admin,
             "database_management",
@@ -606,7 +610,7 @@ async def test_manual_moderation_review_exposes_identity_time_and_context(
         )
 
         await _select(server, admin, "main_menu", "administration")
-        assert "moderation" in _menu_item_ids(admin, "admin_menu")
+        assert "admin_moderation" in _menu_item_ids(admin, "admin_menu")
         await _select(server, admin, "admin_menu", "moderation")
         assert _current_menu(server, admin.username) == ADMIN_MODERATION_MENU
         await _select(server, admin, ADMIN_MODERATION_MENU, "reports_open")
@@ -1714,5 +1718,90 @@ async def test_admin_translation_editbox_cancel_restores_editor_and_back_path(
         await _select(server, admin, "admin_localized_text_menu", "back")
         assert _current_menu(server, admin.username) == "manage_motd_menu"
         assert admin.menus["manage_motd_menu"]["selection_id"] == "create_update"
+    finally:
+        server._db.close()
+
+
+@pytest.mark.asyncio
+async def test_admin_compacted_submenus_display_and_navigation(tmp_path) -> None:
+    server, developer = _make_admin_server(tmp_path)
+    try:
+        admin_rec = _create_approved_user(server, "RegularAdmin", ADMIN_TRUST_LEVEL)
+        admin = MockUser("RegularAdmin", uuid=admin_rec.uuid, locale="es")
+        admin.trust_level = ADMIN_TRUST_LEVEL
+        server._users[admin.username] = admin
+
+        # 1. Regular admin menu has 3 category submenus, switch_server, and back (no admin_system)
+        server.admin_manager._show_admin_menu(admin)
+        items = _menu_item_ids(admin, "admin_menu")
+        assert "admin_users" in items
+        assert "admin_moderation" in items
+        assert "admin_server_content" in items
+        assert "switch_server" in items
+        assert "back" in items
+        assert "admin_system" not in items
+
+        # 2. Developer admin menu also has admin_system
+        server.admin_manager._show_admin_menu(developer)
+        dev_items = _menu_item_ids(developer, "admin_menu")
+        assert "admin_system" in dev_items
+
+        # 3. Navigate into admin_users submenu
+        await _select(server, admin, "admin_menu", "admin_users")
+        assert _current_menu(server, admin.username) == ADMIN_USERS_MENU
+        user_items = _menu_item_ids(admin, ADMIN_USERS_MENU)
+        assert "account_approval" in user_items
+        assert "toggle_account_approval" in user_items
+        assert "promote_admin" in user_items
+        assert "demote_admin" in user_items
+        assert "grant_coins" in user_items
+        assert "back" in user_items
+
+        # Back from admin_users returns to admin_menu
+        await _select(server, admin, ADMIN_USERS_MENU, "back")
+        assert _current_menu(server, admin.username) == "admin_menu"
+
+        # 4. Navigate into admin_moderation (sanctions) submenu
+        await _select(server, admin, "admin_menu", "admin_moderation")
+        assert _current_menu(server, admin.username) == ADMIN_SANCTIONS_MENU
+        sanction_items = _menu_item_ids(admin, ADMIN_SANCTIONS_MENU)
+        assert "moderation" in sanction_items
+        assert "kick_user" in sanction_items
+        assert "mute_user" in sanction_items
+        assert "unmute_user" in sanction_items
+        assert "ban_user" in sanction_items
+        assert "unban_user" in sanction_items
+        assert "back" in sanction_items
+
+        # Back from sanctions returns to admin_menu
+        await _select(server, admin, ADMIN_SANCTIONS_MENU, "back")
+        assert _current_menu(server, admin.username) == "admin_menu"
+
+        # 5. Navigate into admin_server_content submenu
+        await _select(server, admin, "admin_menu", "admin_server_content")
+        assert _current_menu(server, admin.username) == ADMIN_SERVER_CONTENT_MENU
+        content_items = _menu_item_ids(admin, ADMIN_SERVER_CONTENT_MENU)
+        assert "broadcast_announcement" in content_items
+        assert "manage_motd" in content_items
+        assert "sound_settings" in content_items
+        assert "manage_infiltrado_words" in content_items
+        assert "back" in content_items
+
+        # Back from server content returns to admin_menu
+        await _select(server, admin, ADMIN_SERVER_CONTENT_MENU, "back")
+        assert _current_menu(server, admin.username) == "admin_menu"
+
+        # 6. Developer navigates into admin_system submenu
+        await _select(server, developer, "admin_menu", "admin_system")
+        assert _current_menu(server, developer.username) == ADMIN_SYSTEM_MENU
+        system_items = _menu_item_ids(developer, ADMIN_SYSTEM_MENU)
+        assert "server_power" in system_items
+        assert "database_management" in system_items
+        assert "smtp_settings" in system_items
+        assert "back" in system_items
+
+        # Back from system returns to admin_menu
+        await _select(server, developer, ADMIN_SYSTEM_MENU, "back")
+        assert _current_menu(server, developer.username) == "admin_menu"
     finally:
         server._db.close()
