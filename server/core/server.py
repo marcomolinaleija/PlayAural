@@ -504,7 +504,7 @@ class Server:
         "leaderboards_menu", "leaderboard_types_menu", "game_leaderboard",
         "my_stats_menu", "my_game_stats", "profile_menu", "wallet_menu", "gender_menu",
         "bio_actions_menu", "email_confirm_menu", "nick_change_menu",
-        "nick_reduce_confirm_menu", "nick_new_input", "nick_password_input",
+        "nick_reduce_confirm_menu", "nick_new_input", "nick_password_input", "profile_privacy_menu",
         *FRIENDS_MENU_IDS,
         "online_users",
         *ADMIN_MENU_IDS, "logout_confirm_menu",
@@ -6880,6 +6880,8 @@ PlayAural Server
             await self._handle_my_game_stats_selection(user, selection_id, state)
         elif current_menu == "profile_menu":
             await self._handle_profile_selection(user, selection_id)
+        elif current_menu == "profile_privacy_menu":
+            await self._handle_profile_privacy_selection(user, selection_id)
         elif current_menu == "nick_change_menu":
             await self._handle_nick_change_menu_selection(user, selection_id, state)
         elif current_menu == "nick_reduce_confirm_menu":
@@ -7913,6 +7915,17 @@ PlayAural Server
                 ):
                     items.append(MenuItem(text=Localization.get(user.locale, "join-table"), id="join_table"))
 
+        # Check if current user is table host and can invite target friend
+        user_table = self._tables.find_user_table(user.username)
+        target_user = self._users.get(target_username)
+        if (
+            user_table
+            and self._can_manage_table(user, user_table)
+            and target_user
+            and not self._table_invite_eligibility_error(user, user_table, target_user)
+        ):
+            items.append(MenuItem(text=Localization.get(user.locale, "invite-to-table"), id="invite_to_table"))
+
         if self._find_current_friend_record(user, target_username):
             items.append(
                 MenuItem(
@@ -7926,6 +7939,30 @@ PlayAural Server
                     id="remove_friend",
                 )
             )
+        # Check if they are online and in a table
+        if target_username in self._users:
+            table = self._tables.find_user_table(target_username)
+            if table:
+                if (
+                    (
+                        not table.is_private
+                        or self._has_private_table_access(user, table)
+                    )
+                    and not self._is_new_table_admission_blocked(user, table)
+                ):
+                    items.append(MenuItem(text=Localization.get(user.locale, "join-table"), id="join_table"))
+
+            # Check if current user is table host and can invite target
+            user_table = self._tables.find_user_table(user.username)
+            target_user = self._users.get(target_username)
+            if (
+                user_table
+                and self._can_manage_table(user, user_table)
+                and target_user
+                and not self._table_invite_eligibility_error(user, user_table, target_user)
+            ):
+                items.append(MenuItem(text=Localization.get(user.locale, "invite-to-table"), id="invite_to_table"))
+
         report_item = self._get_report_action_item(user, target_username)
         if report_item:
             items.append(report_item)
@@ -8114,9 +8151,56 @@ PlayAural Server
             return
 
         if selection_id == "view_profile":
+            can_view, error_key = self._can_view_profile(user, target_record)
+            if not can_view:
+                user.speak_l(
+                    error_key,
+                    buffer="system",
+                    **self._account_gender_localization_kwargs(
+                        target_username, "target"
+                    ),
+                )
+                self._nav_refresh(
+                    user,
+                    self._show_friend_actions_menu,
+                    target_username,
+                    expected_uuid=target_record.uuid,
+                )
+                return
             self._nav_push(
                 user,
                 self._show_public_profile,
+                target_username,
+                expected_uuid=target_record.uuid,
+            )
+
+        elif selection_id == "invite_to_table":
+            table = self._tables.find_user_table(user.username)
+            if not table or not self._can_manage_table(user, table):
+                user.speak_l("table-not-exists", buffer="system")
+                self._nav_refresh(
+                    user,
+                    self._show_friend_actions_menu,
+                    target_username,
+                    expected_uuid=target_record.uuid,
+                )
+                return
+            target_user = self._users.get(target_username)
+            if not target_user:
+                user.speak_l("user-not-online-anymore", buffer="system")
+                self._nav_refresh(
+                    user,
+                    self._show_friend_actions_menu,
+                    target_username,
+                    expected_uuid=target_record.uuid,
+                )
+                return
+            sent = await self._send_table_invite(user, table, target_user)
+            if sent:
+                user.speak_l("host-invite-sent", buffer="system", player=target_username)
+            self._nav_refresh(
+                user,
+                self._show_friend_actions_menu,
                 target_username,
                 expected_uuid=target_record.uuid,
             )
@@ -8167,14 +8251,6 @@ PlayAural Server
             )
 
         elif selection_id == "join_table":
-            if not self._get_current_friend_record(user, target_username):
-                self._nav_refresh(
-                    user,
-                    self._show_friend_actions_menu,
-                    target_username,
-                    expected_uuid=target_record.uuid,
-                )
-                return
             table = self._tables.find_user_table(target_username)
             if table:
                 # Check if we are already in a table
@@ -9713,6 +9789,18 @@ PlayAural Server
             )
             return
 
+        can_view, error_key = self._can_view_profile(requesting_user, target_record)
+        if not can_view:
+            requesting_user.speak_l(
+                error_key,
+                buffer="system",
+                **self._account_gender_localization_kwargs(
+                    target_username, "target"
+                ),
+            )
+            self._nav_back(requesting_user)
+            return
+
         date_str = (
             target_record.registration_date[:10]
             if target_record.registration_date
@@ -9815,6 +9903,18 @@ PlayAural Server
             MenuItem(text=Localization.get(user.locale, "profile-email", email=email_str), id="edit_email"),
             MenuItem(text=Localization.get(user.locale, "profile-gender", gender=gender_str), id="edit_gender"),
             MenuItem(text=Localization.get(user.locale, "profile-bio", bio=bio_str), id="edit_bio"),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "profile-privacy-setting",
+                    status=Localization.get(
+                        user.locale,
+                        f"profile-privacy-{user.preferences.profile_privacy}",
+                    ),
+                ),
+                id="edit_profile_privacy",
+                description_key="general-desc-profile-privacy",
+            ),
             MenuItem(text=Localization.get(user.locale, "back"), id="back")
         ]
 
@@ -9844,8 +9944,92 @@ PlayAural Server
             self._nav_push(user, self._show_gender_menu)
         elif selection_id == "edit_bio":
             self._nav_push(user, self._show_bio_actions_menu)
+        elif selection_id == "edit_profile_privacy":
+            self._nav_push(user, self._show_profile_privacy_menu)
         elif selection_id == "back":
             self._nav_back(user)
+
+    def _get_target_preferences(self, target_record: UserRecord) -> UserPreferences:
+        """Get preferences for a user, using live object if online or deserializing from record."""
+        if target_record.username in self._users:
+            return self._users[target_record.username].preferences
+        if target_record.preferences_json:
+            try:
+                return UserPreferences.from_dict(json.loads(target_record.preferences_json))
+            except Exception:
+                pass
+        return UserPreferences()
+
+    def _can_view_profile(
+        self, requesting_user: NetworkUser, target_record: UserRecord
+    ) -> tuple[bool, str]:
+        """Check if requesting_user has permission to view target_record's profile."""
+        if requesting_user.uuid == target_record.uuid:
+            return True, ""
+        if requesting_user.trust_level >= ADMIN_TRUST_LEVEL:
+            return True, ""
+
+        target_prefs = self._get_target_preferences(target_record)
+        privacy = getattr(target_prefs, "profile_privacy", "everyone")
+
+        if privacy == "private":
+            return False, "profile-view-private"
+        elif privacy == "friends":
+            if not self._find_current_friend_record(requesting_user, target_record.username):
+                return False, "profile-view-friends-only"
+
+        return True, ""
+
+    def _show_profile_privacy_menu(self, user: NetworkUser) -> None:
+        """Show menu to configure profile visibility."""
+        current_privacy = user.preferences.profile_privacy
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "profile-privacy-everyone")
+                + (" *" if current_privacy == "everyone" else ""),
+                id="privacy_everyone",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "profile-privacy-friends")
+                + (" *" if current_privacy == "friends" else ""),
+                id="privacy_friends",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "profile-privacy-private")
+                + (" *" if current_privacy == "private" else ""),
+                id="privacy_private",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            "profile_privacy_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "profile_privacy_menu"}
+
+    async def _handle_profile_privacy_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle profile privacy menu selection."""
+        if selection_id == "back":
+            self._nav_back(user)
+            return
+
+        choice_map = {
+            "privacy_everyone": "everyone",
+            "privacy_friends": "friends",
+            "privacy_private": "private",
+        }
+        if selection_id in choice_map:
+            user.preferences.profile_privacy = choice_map[selection_id]
+            self._save_user_preferences(user)
+            status_str = Localization.get(
+                user.locale, f"profile-privacy-{user.preferences.profile_privacy}"
+            )
+            user.speak_l("profile-privacy-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_profile_menu)
 
     def _verify_user_password(self, user_record: UserRecord, password: str) -> bool:
         """Verify a user's password against their stored Argon2 hash."""
@@ -14214,7 +14398,6 @@ PlayAural Server
             or not invitee_record
             or host_record.uuid != host_user.uuid
             or invitee_record.uuid != invitee_user.uuid
-            or not self._db.are_friends(host_record.uuid, invitee_record.uuid)
             or self._db.has_block_between(host_record.uuid, invitee_record.uuid)
             or table.is_banned(invitee_record.uuid)
         ):
@@ -14271,22 +14454,20 @@ PlayAural Server
         return f"{prefix}{invite_id}"
 
     def _get_invitable_friends(self, user: NetworkUser, table: "Table") -> list[str]:
-        """Return friends who are online, idle (not in any table), and not already invited."""
-        friend_uuids = self._db.get_friends(user.uuid)
+        """Return users who are online, idle (not in any table), and not already invited."""
         result = []
-        for f_uuid in friend_uuids:
-            if self._db.has_block_between(user.uuid, f_uuid):
+        for target_name, target_user in self._users.items():
+            if target_name == user.username:
                 continue
-            f_name = self._db.get_user_name_by_uuid(f_uuid)
-            if not f_name:
+            if self._tables.find_user_table(target_name):
                 continue
-            if f_name not in self._users:
-                continue  # offline
-            if self._tables.find_user_table(f_name):
-                continue  # already in a table
-            if f_name in self._pending_invites:
-                continue  # already has a pending invite
-            result.append(f_name)
+            if target_name in self._pending_invites:
+                continue
+            if self._db.has_block_between(user.uuid, target_user.uuid):
+                continue
+            if table.is_banned(target_user.uuid):
+                continue
+            result.append(target_name)
         return sorted(result, key=username_key)
 
     def _get_host_invite_menu_items(self, user: NetworkUser, table: "Table") -> list[MenuItem]:
@@ -17658,6 +17839,97 @@ PlayAural Server
         game.broadcast_l("table-saved-destroying", buffer="system")
         game.destroy()
 
+    async def _handle_ctrl_j_join_table(
+        self,
+        user: NetworkUser,
+        packet: dict,
+        current_menu: str,
+        state: dict,
+    ) -> bool:
+        """Handle Ctrl+J shortcut to join the table of the focused user."""
+        target_username = ""
+
+        if current_menu == "online_users":
+            item_id = packet.get("menu_item_id")
+            if not item_id and packet.get("menu_index"):
+                menu_data = user.menus.get("online_users", {})
+                items = menu_data.get("items", [])
+                idx = int(packet["menu_index"]) - 1
+                if 0 <= idx < len(items):
+                    item_id = items[idx].id
+            if item_id:
+                if item_id.startswith("online_"):
+                    target_username = item_id[7:]
+                elif item_id.startswith("readonly_online_"):
+                    target_username = item_id[16:]
+
+        elif current_menu == "friends_list_menu":
+            item_id = packet.get("menu_item_id")
+            if not item_id and packet.get("menu_index"):
+                menu_data = user.menus.get("friends_list_menu", {})
+                items = menu_data.get("items", [])
+                idx = int(packet["menu_index"]) - 1
+                if 0 <= idx < len(items):
+                    item_id = items[idx].id
+            if item_id and item_id.startswith("friend_"):
+                target_username = item_id[7:]
+
+        elif current_menu == "friend_actions_menu":
+            target_username = state.get("target_username", "")
+
+        if not target_username:
+            return False
+
+        if target_username == user.username:
+            user.speak_l("already-in-table", buffer="system")
+            return True
+
+        target_record = self._db.get_user(target_username)
+        if not target_record:
+            user.speak_l("user-account-unavailable", buffer="system")
+            return True
+
+        if target_username not in self._users:
+            user.speak_l("user-not-online-anymore", buffer="system")
+            return True
+
+        table = self._tables.find_user_table(target_username)
+        if not table:
+            user.speak_l(
+                "user-not-in-table",
+                buffer="system",
+                **self._account_gender_localization_kwargs(target_username, "target"),
+            )
+            return True
+
+        # Check if already in a table
+        current_table = self._tables.find_user_table(user.username)
+        if current_table:
+            if current_table == table:
+                user.speak_l("already-in-table", buffer="system")
+                return True
+
+        # Check block between users
+        if self._db.has_block_between(user.uuid, target_record.uuid):
+            user.speak_l("table-not-exists", buffer="system")
+            return True
+
+        # Check if table is banned for this user
+        if table.is_banned(user.uuid):
+            user.speak_l("table-banned-message", buffer="system")
+            return True
+
+        # Check if table is private and user does not have private access
+        if table.is_private and not self._has_private_table_access(user, table):
+            user.speak_l("table-private-invite-only", buffer="system")
+            return True
+
+        if self._is_new_table_admission_blocked(user, table):
+            return True
+
+        self._auto_join_table(user, table, table.game_type)
+        return True
+
     async def _handle_keybind(self, client: ClientConnection, packet: dict) -> None:
         """Handle keybind press."""
         username = client.username
@@ -17675,6 +17947,14 @@ PlayAural Server
                 packet,
             )
             state = self._user_states.get(username, {})
+
+        if packet.get("key") == "j" and packet.get("control") and not packet.get("alt") and user:
+            if await self._handle_ctrl_j_join_table(user, packet, current_menu, state):
+                return
+
+        if packet.get("key") == "u" and packet.get("control") and not packet.get("alt"):
+            await self._handle_list_online_with_games(client)
+            return
 
         if current_menu not in self.GLOBAL_SYSTEM_MENUS:
             table = self._tables.find_user_table(username)
@@ -19509,6 +19789,8 @@ PlayAural Server
             self._show_my_game_stats(user, frame.get("game_type", ""))
         elif menu == "profile_menu":
             self._show_profile_menu(user)
+        elif menu == "profile_privacy_menu":
+            self._show_profile_privacy_menu(user)
         elif menu == "nick_change_menu":
             self._show_nick_change_menu(user, snapshot=frame.get("cooldown_snapshot"))
         elif menu == "nick_reduce_confirm_menu":

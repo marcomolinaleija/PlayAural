@@ -109,6 +109,7 @@ class UserPreferences:
     mobile_tts_voice: str = ""  # Expo Speech voice identifier
 
     # Social preferences
+    profile_privacy: str = "everyone"  # "everyone", "friends", "private"
     mute_global_chat: bool = False
     global_chat_channel: str | None = None
     mute_table_chat: bool = False
@@ -202,6 +203,7 @@ class UserPreferences:
             "mobile_tts_engine": self.mobile_tts_engine,
             "mobile_tts_rate": self.mobile_tts_rate,
             "mobile_tts_voice": self.mobile_tts_voice,
+            "profile_privacy": self.profile_privacy,
             "mute_global_chat": self.mute_global_chat,
             "global_chat_channel": self.global_chat_channel,
             "mute_table_chat": self.mute_table_chat,
@@ -244,6 +246,7 @@ class UserPreferences:
             mobile_tts_engine=data.get("mobile_tts_engine", "system"),
             mobile_tts_rate=data.get("mobile_tts_rate", 100),
             mobile_tts_voice=data.get("mobile_tts_voice", ""),
+            profile_privacy=data.get("profile_privacy", "everyone"),
             mute_global_chat=data.get("mute_global_chat", False),
             global_chat_channel=normalize_global_chat_channel(
                 data.get("global_chat_channel")
