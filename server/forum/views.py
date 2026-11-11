@@ -26,6 +26,19 @@ def author(user, record) -> str:
     return record.author_name if record.author_uuid else label(user, "forum-deleted-account")
 
 
+def attachment_action(user, key: str, item_id: str, attachments) -> MenuItem:
+    """Keep attachment feedback on its action, including failed preparation."""
+    action = label(user, key)
+    if not attachments:
+        return MenuItem(text=action, id=item_id)
+    parts = [label(user, 'forum-media-selected-count', count=len(attachments))]
+    for state in ('ready', 'failed'):
+        count = sum(row['state'] == state for row in attachments)
+        if count or state == 'ready':
+            parts.append(label(user, 'forum-media-count-' + state, count=count))
+    return MenuItem(text=label(user, 'forum-media-action-summary', action=action, summary='; '.join(parts)), id=item_id)
+
+
 def age(user, timestamp: int) -> str:
     return format_relative_time(user.locale, datetime.fromtimestamp(timestamp, timezone.utc))
 

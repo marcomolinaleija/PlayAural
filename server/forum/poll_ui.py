@@ -8,7 +8,7 @@ from . import navigation as nav
 from .draft_state import update_draft
 from .models import Draft, ForumError
 from .polls import PollConfig, validate_config
-from .views import item, label
+from .views import attachment_action, item, label
 
 
 class PollController:
@@ -19,7 +19,8 @@ class PollController:
     def extras(self, user, draft: Draft) -> None:
         rows = [item(user, 'forum-poll-change' if draft.poll else 'forum-poll-add', 'poll')]
         if self.manager.media is not None:
-            rows.insert(0, item(user, 'forum-media-add', 'attachment'))
+            attachments = [self.service.attachments._row(key) for key in draft.attachment_ids]
+            rows.insert(0, attachment_action(user, 'forum-media-add', 'attachment', attachments))
         self.views.render(user, nav.EXTRAS, rows, title=label(user, 'forum-add-more'),
                           announcement=('forum-entry-simple', {'title': label(user, 'forum-add-more')}),
                           forum_draft=asdict(draft), forum_topic=draft.topic_id)

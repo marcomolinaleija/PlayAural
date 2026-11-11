@@ -1,6 +1,7 @@
 """Device-local picker/player lifecycle; all file access remains server-authorized."""
 
 from pathlib import Path
+import re
 import threading
 
 import wx
@@ -53,14 +54,21 @@ class NativeForumMedia:
         generation = self.generation
         try:
             media_endpoint(packet)
+            extensions = [extension for extension in packet.get('accepted_extensions', [])
+                          if isinstance(extension, str) and re.fullmatch(r'\.[a-z0-9]{1,10}', extension)]
+            wildcard = wx.FileSelectorDefaultWildcardStr
+            if extensions:
+                wildcard = (packet['labels']['file_filter'] + '|' + ';'.join('*' + ext for ext in extensions)
+                            + '|' + packet['labels']['all_files'] + '|*.*')
             with wx.FileDialog(self.window, message=packet['labels']['choose'],
+                               wildcard=wildcard,
                                style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
                 if dialog.ShowModal() != wx.ID_OK:
                     return
                 path = Path(dialog.GetPath())
             if generation != self.generation:
                 return
-            self.window.speaker.speak(packet['labels']['uploading'], interrupt=False)
+            self.window.speaker.speak(' '.join(filter(None, (packet['labels'].get('selected'), packet['labels']['uploading']))), interrupt=False)
             self.run(upload_file, packet, path, success=packet['labels']['processing'])
         except Exception:
             self.notify(packet['labels']['error'], self.generation)

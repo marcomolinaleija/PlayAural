@@ -6,6 +6,7 @@ from . import navigation as nav
 from .attachments import MAX_ATTACHMENTS
 from .draft_state import update_draft
 from .models import Draft, ForumError
+from .media_processing import PICKER_EXTENSIONS
 from .views import item, label
 
 
@@ -38,6 +39,7 @@ class MediaController:
         if len(draft.attachment_ids) >= MAX_ATTACHMENTS:
             raise ForumError('forum-error-media-quota', limit=MAX_ATTACHMENTS)
         user.queue_protocol_packet({'type': 'forum_file_picker', 'draft_token': draft.token,
+                                   'accepted_extensions': list(PICKER_EXTENSIONS),
                                    **self.transport.credentials(user), 'labels': self.labels(user)})
 
     def reserve(self, user, payload: dict) -> dict:
@@ -50,8 +52,16 @@ class MediaController:
             raise ForumError('forum-error-media-quota', limit=MAX_ATTACHMENTS)
         row = self.service.attachments.reserve(user.uuid, payload.get('name'), payload.get('size'), payload.get('description', ''),
                                                topic_id=draft.topic_id, private=draft.kind == 'private')
-        update_draft(state, replace(draft, attachment_ids=(*draft.attachment_ids, row['id'])))
+        draft = replace(draft, attachment_ids=(*draft.attachment_ids, row['id']))
+        update_draft(state, draft)
+        self.refresh_draft(user, draft, state)
         return row
+
+    def refresh_draft(self, user, draft: Draft, state: dict) -> None:
+        if state['menu'] == nav.COMPOSER:
+            self.server._nav_refresh(user, self.manager.composer.show, draft)
+        elif state['menu'] == nav.EXTRAS:
+            self.server._nav_refresh(user, self.manager.polls.extras, draft)
 
     def completed(self, viewer: str, attachment_id: str, error_key: str | None) -> None:
         # The worker callback itself runs on the server loop, never in FFmpeg's
@@ -72,9 +82,8 @@ class MediaController:
                 except ForumError:
                     pass
                 return
-            if state['menu'] == nav.COMPOSER:
-                self.server._nav_refresh(user, self.manager.composer.show, draft)
-            elif state['menu'] == nav.ATTACHMENT and state.get('forum_attachment') == attachment_id:
+            self.refresh_draft(user, draft, state)
+            if state['menu'] == nav.ATTACHMENT and state.get('forum_attachment') == attachment_id:
                 self.server._nav_refresh(user, self.attachment, draft, attachment_id)
             row = self.service.attachments._row(attachment_id)
             if error_key:
@@ -105,6 +114,7 @@ class MediaController:
             'play', 'pause', 'position', 'volume', 'speed', 'close', 'download', 'zoom_in', 'zoom_out',
             'fullscreen', 'uploading', 'processing', 'error', 'choose', 'description', 'saved', 'size_error',
             'captions', 'captions_on', 'captions_off', 'captions_error',
+            'selected', 'file_filter', 'all_files',
         )}
 
     def open(self, user, attachment_id: str) -> None:

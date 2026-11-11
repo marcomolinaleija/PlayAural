@@ -277,3 +277,18 @@ admin-moderation-scope-forum = Foro público
 forum-report-evidence = { $kind }. Hilo { $topic }, mensaje { $post }, revisión { $revision }. Título al reportar: { $title }
 forum-report-evidence-unavailable = La copia del contenido no está disponible. Los datos del reporte se conservan para revisión.
 forum-report-view-current = Ver publicación actual
+
+## Estado de selección en las acciones de adjuntos
+forum-media-action-summary = { $action }: { $summary }
+forum-media-selected-count = { $count ->
+    [1] 1 archivo seleccionado
+   *[other] { $count } archivos seleccionados
+    }
+forum-media-count-ready = { $count ->
+    [1] 1 preparado
+   *[other] { $count } preparados
+    }
+forum-media-count-failed = { $count } con errores
+forum-media-control-selected = 1 archivo seleccionado.
+forum-media-control-file_filter = Archivos compatibles
+forum-media-control-all_files = Todos los archivos

@@ -21,6 +21,7 @@ export function forumPacketDefinition(type, direction) {
   if (type === "forum_file_picker") {
     properties.draft_token = { type: "string" };
     properties.labels = { type: "object" };
+    properties.accepted_extensions = { type: 'array', items: { type: 'string', pattern: '^\\.[a-z0-9]{1,10}$' }, maxItems: 64 };
   }
   if (type === "forum_open_media") {
     properties.attachment = { type: "object" };
@@ -28,7 +29,7 @@ export function forumPacketDefinition(type, direction) {
     properties.labels = { type: "object" };
     properties.captions_url = { type: 'string' };
   }
-  return { properties, required: Object.keys(properties).filter((key) => key !== 'captions_url'), additionalProperties: false };
+  return { properties, required: Object.keys(properties).filter((key) => !['captions_url', 'accepted_extensions'].includes(key)), additionalProperties: false };
 }
 
 export function mediaBaseURL(value) {
@@ -165,6 +166,9 @@ export class ForumMedia {
     const surface = this.surface(labels.choose, labels);
     const input = this.element("input");
     input.type = "file";
+    if (Array.isArray(packet.accepted_extensions)) {
+      input.accept = packet.accepted_extensions.filter((extension) => /^\.[a-z0-9]{1,10}$/.test(extension)).join(',');
+    }
     input.setAttribute("aria-label", labels.choose);
     surface.content.append(input);
     input.focus();
@@ -172,7 +176,7 @@ export class ForumMedia {
       const file = input.files?.[0];
       if (!file || !this.dialog) return;
       input.disabled = true;
-      surface.status.textContent = labels.uploading;
+      surface.status.textContent = [labels.selected, labels.uploading].filter(Boolean).join(' ');
       const progress = this.element("progress");
       progress.setAttribute("aria-label", labels.uploading);
       surface.content.append(progress);

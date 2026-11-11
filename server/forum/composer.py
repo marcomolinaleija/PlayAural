@@ -7,7 +7,7 @@ from ..users.base import MenuItem
 from . import navigation as nav
 from .models import Draft, ForumError, MAX_BODY_LENGTH, MAX_TITLE_LENGTH
 from .text import excerpt, validate_text
-from .views import item, label
+from .views import attachment_action, item, label
 from .poll_ui import draft_poll
 from .polls import validate_config
 
@@ -39,8 +39,10 @@ class ForumComposer:
                              question=draft.poll['question'] or label(user, 'forum-not-written')))
             rows.extend(MenuItem(text=option, id=f'poll_preview:{index}', read_only=True)
                         for index, option in enumerate(draft.poll['options']))
+        attachments = []
         for attachment_id in draft.attachment_ids:
             attachment = self.service.attachments._row(attachment_id)
+            attachments.append(attachment)
             rows.append(item(user, 'forum-media-row', f'attachment:{attachment_id}', name=attachment['name'],
                              status=label(user, 'forum-media-approval-' + attachment['approval']) if attachment['state'] == 'ready'
                              else label(user, 'forum-media-' + attachment['state'])))
@@ -50,7 +52,7 @@ class ForumComposer:
             rows.append(item(user, 'forum-private-recipients', 'recipients',
                              names=', '.join(names) or label(user, 'forum-not-written')))
         if draft.kind != 'edit':
-            rows.append(item(user, 'forum-add-more', 'extras'))
+            rows.append(attachment_action(user, 'forum-add-more', 'extras', attachments))
         rows.append(item(user, "forum-save-edit" if draft.kind == "edit" else "forum-publish", "publish"))
         self.views.render(user, nav.COMPOSER, rows, title=heading,
                           announcement=("forum-entry-composer", {"heading": heading}),

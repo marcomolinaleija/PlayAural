@@ -277,3 +277,18 @@ admin-moderation-scope-forum = Public forum
 forum-report-evidence = { $kind }. Thread { $topic }, message { $post }, revision { $revision }. Title when reported: { $title }
 forum-report-evidence-unavailable = The content snapshot is unavailable. The report details remain available for review.
 forum-report-view-current = View current publication
+
+## Selection state on attachment actions
+forum-media-action-summary = { $action }: { $summary }
+forum-media-selected-count = { $count ->
+    [1] 1 file selected
+   *[other] { $count } files selected
+    }
+forum-media-count-ready = { $count ->
+    [1] 1 prepared
+   *[other] { $count } prepared
+    }
+forum-media-count-failed = { $count } failed
+forum-media-control-selected = 1 file selected.
+forum-media-control-file_filter = Supported files
+forum-media-control-all_files = All files

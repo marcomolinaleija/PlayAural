@@ -17,6 +17,10 @@ MAX_UPLOAD_BYTES = 128 * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
 MAX_MEDIA_SECONDS = 15 * 60
 PROCESS_TIMEOUT = 180
+# Picker hints only. The processor below validates bytes, never the suffix.
+PICKER_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp3', '.wav', '.flac',
+                     '.ogg', '.oga', '.ogv', '.opus', '.mp4', '.m4a', '.m4b', '.m4v',
+                     '.mov', '.mkv', '.webm', '.pdf', '.zip', '.txt', '.md', '.csv', '.json')
 
 
 @dataclass(frozen=True)

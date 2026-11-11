@@ -168,3 +168,27 @@ set `PLAYAURAL_FORUM_STORAGE=s3`, `PLAYAURAL_FORUM_BUCKET` and optionally
 standard SDK chain and never enter client packets. The bucket must be private
 and distinct from backups. External credentials and a production bucket have
 not been configured or tested in this delivery.
+
+## Attachment selection feedback (2026-11-11)
+
+The composer Add action and Attach a file action include selected counts and
+prepared/failed counts. Uploading and processing files are not yet prepared.
+Reservation and completion refresh the visible draft surface without adding status rows or repeating entry speech.
+Removing an attachment updates the same bounded draft and clears the count when
+empty. Prepared refers to media processing; any required approval remains a
+separate per-file state.
+
+The picker packet optionally carries `accepted_extensions`, derived from the
+server media processor's supported families. Desktop builds a localized file
+filter with an All files alternative; web uses the native input's `accept` hint.
+Selection is one file at a time, and an accessible announcement precedes upload.
+The existing content-signature/decoder validation and quotas stay authoritative:
+8 files per message and 8 pending per account, 128 MiB per file, 256 MiB pending,
+15-minute AV duration, 40-million-pixel images and 1 MiB plain text. No schema
+migration is needed. Native mobile work remains paused.
+
+Validation: server suite 5,271 passed / 15 skipped; desktop suite 333 passed;
+web suite 90 passed. Final selected/prepared summary transition check passed,
+including reservation, preparation, removal and entry-speech suppression.
+The native picker filter and selection announcement were also verified with
+wxPython and a substituted file dialog, without opening a graphical session.

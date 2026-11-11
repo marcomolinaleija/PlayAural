@@ -277,3 +277,12 @@ admin-moderation-scope-forum = Diễn đàn công khai
 forum-report-evidence = { $kind }. Chủ đề { $topic }, bài viết { $post }, phiên bản { $revision }. Tiêu đề khi báo cáo: { $title }
 forum-report-evidence-unavailable = Không có bản sao nội dung. Thông tin báo cáo vẫn được giữ để xem xét.
 forum-report-view-current = Xem bài viết hiện tại
+
+## Trạng thái tệp trên các thao tác đính kèm
+forum-media-action-summary = { $action }: { $summary }
+forum-media-selected-count = Đã chọn { $count } tệp
+forum-media-count-ready = { $count } đã chuẩn bị
+forum-media-count-failed = { $count } bị lỗi
+forum-media-control-selected = Đã chọn 1 tệp.
+forum-media-control-file_filter = Tệp được hỗ trợ
+forum-media-control-all_files = Tất cả tệp

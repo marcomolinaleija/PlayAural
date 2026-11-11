@@ -206,6 +206,44 @@ def test_content_precedes_actions_and_entry_context_is_spoken_once(navigation_se
     assert reader["items"][-1]["id"] == "back"
 
 
+async def test_attachment_actions_refresh_count_preparation_and_removal_without_duplicate_context(navigation_server, tmp_path):
+    from ..forum.media_http import ForumMediaHTTP
+    from ..forum.media_processing import MediaProcessor
+    server, user, _ = navigation_server
+    manager = server.forum_manager
+    transport = ForumMediaHTTP(server, base_url='http://127.0.0.1:8001', directory=tmp_path / 'media')
+    manager.media = transport
+    manager.media_ui.connect(transport)
+    server._nav_push(user, manager.composer.show, Draft('topic', category_id='general', title='Files', body='Body'))
+    user.get_queued_messages()
+    manager.handle_menu(user, 'extras', server._user_states[user.username])
+    user.get_queued_messages()
+    draft = Draft(**server._user_states[user.username]['forum_draft'])
+    row = manager.media_ui.reserve(user, {'draft_token': draft.token, 'name': 'notes.txt', 'size': 10})
+    packets = user.get_queued_messages()
+    menu = next(p for p in packets if p.get('menu_id') == nav.EXTRAS)
+    action = next(item for item in menu['items'] if item['id'] == 'attachment')
+    assert action['text'] == 'Adjuntar archivo: 1 archivo seleccionado; 0 preparados'
+    assert not any(p.get('key', '').startswith('forum-entry-') for p in packets)
+    source = tmp_path / 'notes.txt'
+    source.write_text('Plain text', encoding='utf-8')
+    manager.service.attachments.processing(user.uuid, row['id'])
+    processed = MediaProcessor().process(source, tmp_path / 'prepared')
+    manager.service.attachments.complete(user.uuid, row['id'], processed)
+    manager.media_ui.completed(user.uuid, row['id'], None)
+    menu = next(p for p in user.get_queued_messages() if p.get('menu_id') == nav.EXTRAS)
+    assert menu['items'][0]['text'] == 'Adjuntar archivo: 1 archivo seleccionado; 1 preparado'
+    manager.handle_menu(user, 'back', server._user_states[user.username])
+    menu = next(p for p in user.get_queued_messages() if p.get('menu_id') == nav.COMPOSER)
+    assert next(item for item in menu['items'] if item['id'] == 'extras')['text'] == 'Añadir…: 1 archivo seleccionado; 1 preparado'
+    manager.handle_menu(user, 'attachment:' + row['id'], server._user_states[user.username])
+    user.get_queued_messages()
+    manager.handle_menu(user, 'remove', server._user_states[user.username])
+    menu = next(p for p in user.get_queued_messages() if p.get('menu_id') == nav.COMPOSER)
+    assert next(item for item in menu['items'] if item['id'] == 'extras')['text'] == 'Añadir…'
+    assert not server._user_states[user.username]['forum_draft']['attachment_ids']
+
+
 async def test_composer_updates_editable_message_without_duplicate_preview_or_entry_help(navigation_server):
     server, user, connection = navigation_server
     manager = server.forum_manager

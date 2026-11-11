@@ -83,3 +83,5 @@ Chọn Báo cáo chủ đề ở cuối chủ đề công khai, hoặc Báo cáo
 Báo cáo lưu tiêu đề và bản sao bài viết được chọn; báo cáo chủ đề lưu bài viết đầu tiên. Nếu nội dung thay đổi, hãy mở lại và xem phiên bản hiện tại. Tác giả không nhận thông báo. Báo cáo không tự động ẩn nội dung hay áp dụng hình phạt. Cùng một phiên bản sẽ không bị báo cáo lặp lại. Trò chuyện và diễn đàn dùng chung giới hạn năm báo cáo mỗi giờ.
 
 Quản trị viên và nhà phát triển xem báo cáo trong phần Quản trị, Kiểm duyệt và hình phạt, Kiểm duyệt trò chuyện. Họ có thể đọc bản sao, mở bài viết hiện tại nếu còn truy cập được, và đánh dấu đã xem xét, bỏ qua hoặc đã xử lý. Bằng chứng vẫn được giữ khi sửa bài viết hoặc xóa tài khoản, và chỉ bị xóa theo quy trình dọn báo cáo đã đóng thủ công của máy chủ.
+
+Thêm… và Đính kèm tệp hiển thị số tệp đã chọn và số tệp đã chuẩn bị. Tệp bị lỗi cũng được tính và có thể xóa khỏi bản nháp. Bộ chọn trên máy tính và web lọc hình ảnh, âm thanh, video, PDF, ZIP và văn bản; máy chủ kiểm tra nội dung thực tế bất kể phần mở rộng. Trên máy tính, chọn Tất cả tệp để tìm phần mở rộng khác. Mỗi lần chọn một tệp.

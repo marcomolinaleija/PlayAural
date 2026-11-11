@@ -131,6 +131,26 @@ test('media extensions remain validated with a strict older packet schema', () =
   assert.equal(validator.validateIncoming({ ...packet, unexpected: 'value' }).ok, false);
   assert.equal(validator.validateOutgoing({ type: 'forum_media_session' }).ok, true);
   assert.equal(validator.validateOutgoing({ type: 'forum_media_session', user: 'forged' }).ok, false);
+  const picker = { type: 'forum_file_picker', draft_token: id, base_url: base, token: 'secret', expires_at: 1800000000, labels };
+  assert.equal(validator.validateIncoming(picker).ok, true);
+  assert.equal(validator.validateIncoming({ ...picker, accepted_extensions: ['.png', '.pdf'] }).ok, true);
+  assert.equal(validator.validateIncoming({ ...picker, accepted_extensions: '.png' }).ok, false);
+});
+
+test('picking announces selection and keeps server-provided filters without changing upload cancellation', async () => {
+  const ready = deferred();
+  const document = documentFixture();
+  const media = new ForumMedia({ document, announce() {}, fetch: () => ready.promise });
+  media.choose({ ...packet, type: 'forum_file_picker', draft_token: id, accepted_extensions: ['.png', '*.exe|*.*', '.pdf'],
+    labels: { ...labels, selected: '1 archivo seleccionado.' } });
+  const input = media.dialog.children[1].children[0];
+  assert.equal(input.accept, '.png,.pdf');
+  input.files = [{ name: 'photo.png', size: 10 }];
+  const selecting = input.dispatch('change');
+  assert.equal(media.dialog.children[2].textContent, '1 archivo seleccionado. Subiendo');
+  media.close();
+  ready.resolve({ ok: true });
+  await selecting;
 });
 
 test('opening is silent, playback is explicit, and closing stops media and restores focus', async () => {
