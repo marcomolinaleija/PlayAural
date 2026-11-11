@@ -1,4 +1,4 @@
-const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-21";
+const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-24";
 
 const PRECACHE_URLS = [
   "./",
@@ -28,6 +28,7 @@ const PRECACHE_URLS = [
   "./ui/collapsiblePanels.js",
   "./ui/menus.js",
   "./ui/menuTitle.js",
+  "./ui/forumMedia.js",
   "./vendor/livekit-client.umd.js",
   "./vendor/stb-vorbis.js",
 ];
@@ -55,13 +56,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/forum-media/') || event.request.headers.has('Authorization')) {
+    return; // Private files always use network authorization, never offline cache.
+  }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     return;
   }
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        if (!response || response.status !== 200 || response.type !== "basic") {
+        if (!response || response.status !== 200 || response.type !== "basic"
+            || response.headers.get('Cache-Control')?.includes('no-store')) {
           return response;
         }
         const copy = response.clone();

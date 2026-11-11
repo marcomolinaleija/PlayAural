@@ -137,6 +137,8 @@ from ..menu_pagination import (
 )
 from ..documentation.manager import DocumentationManager
 from ..forum.manager import ForumManager
+from ..forum.media_http import ForumMediaHTTP
+from ..forum.models import ForumError
 from ..forum.navigation import (
     MENU_IDS as FORUM_MENU_IDS,
     CONFIRMATION_IDS as FORUM_CONFIRMATION_IDS,
@@ -516,11 +518,16 @@ class Server:
         locales_dir: str | Path | None = None,
         ssl_cert: str | Path | None = None,
         ssl_key: str | Path | None = None,
+        forum_media_url: str | None = None,
+        forum_media_port: int = 8001,
+        forum_media_dir: str | Path | None = None,
+        forum_media_origins: tuple[str, ...] = (),
     ):
         self.host = host
         self.port = port
         self._ssl_cert = ssl_cert
         self._ssl_key = ssl_key
+        self._forum_media_port = forum_media_port
 
         # Initialize components
         self._db = Database(db_path)
@@ -598,6 +605,15 @@ class Server:
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
         self.forum_manager = ForumManager(self)
+        # Backups still need the object store when HTTP uploads are disabled.
+        self._forum_media_directory = Path(forum_media_dir or Path(db_path).with_suffix('.forum-media')).resolve()
+        if forum_media_url:
+            self.forum_manager.media = ForumMediaHTTP(
+                self, base_url=forum_media_url,
+                directory=self._forum_media_directory,
+                origins=forum_media_origins,
+            )
+            self.forum_manager.media_ui.connect(self.forum_manager.media)
 
         # Initialize rate limiters
         self._rate_limiter = RateLimiter()
@@ -722,6 +738,14 @@ PlayAural Server
             )
             await self._ws_server.start()
 
+            if self.forum_manager.media:
+                import ssl
+                media_ssl = None
+                if self._ssl_cert and self._ssl_key:
+                    media_ssl = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                    media_ssl.load_cert_chain(self._ssl_cert, self._ssl_key)
+                await self.forum_manager.media.start(self.host, self._forum_media_port, ssl_context=media_ssl)
+
             # Start tick scheduler
             self._tick_scheduler = TickScheduler(self._on_tick)
             await self._tick_scheduler.start()
@@ -730,6 +754,8 @@ PlayAural Server
             # after SQLite, deserialization, networking, and ticking are ready.
             self._db.delete_all_tables()
         except BaseException:
+            if self.forum_manager.media:
+                await self.forum_manager.media.stop()
             if self._tick_scheduler is not None:
                 try:
                     await self._tick_scheduler.stop()
@@ -778,6 +804,9 @@ PlayAural Server
         # its SQLite handle to close before shutdown touches the live database.
         await self.maintenance_manager.wait_until_storage_idle()
         self.maintenance_manager.wake_blocked_work_for_shutdown()
+
+        if self.forum_manager.media:
+            await self.forum_manager.media.stop()
 
         # Stop tick scheduler first so no more game ticks fire during shutdown.
         if self._tick_scheduler:
@@ -1697,6 +1726,11 @@ PlayAural Server
 
         if packet_type == "menu":
             await self._handle_menu(client, packet)
+        elif packet_type == 'forum_media_session' and self.forum_manager.media:
+            try:
+                user.queue_protocol_packet({'type': 'forum_media_session', **self.forum_manager.media.credentials(user)})
+            except ForumError as error:
+                user.speak_l(error.key, buffer='system', **error.values)
         elif packet_type == "escape":
             await self._handle_menu(
                 client,
@@ -16862,7 +16896,8 @@ PlayAural Server
         menu = frame.get("menu")
         if menu in FORUM_MENU_IDS:
             return (menu, frame.get("forum_topic"), frame.get("forum_post"),
-                    frame.get("forum_view"), frame.get("forum_category"), frame.get("forum_query"))
+                    frame.get("forum_view"), frame.get("forum_category"), frame.get("forum_query"),
+                    frame.get('forum_invitation'), frame.get('forum_attachment'))
         if menu not in self.IN_GAME_OVERLAY_MENUS:
             return None
         table_id = frame.get("table_id")
@@ -18101,6 +18136,10 @@ async def run_server(
     ssl_cert: str | Path | None = None,
     ssl_key: str | Path | None = None,
     database_backup_dir: str | Path | None = None,
+    forum_media_url: str | None = None,
+    forum_media_port: int = 8001,
+    forum_media_dir: str | Path | None = None,
+    forum_media_origins: tuple[str, ...] = (),
 ) -> None:
     """Run the server.
 
@@ -18148,6 +18187,8 @@ async def run_server(
         ssl_cert=ssl_cert,
         ssl_key=ssl_key,
         database_backup_dir=database_backup_dir,
+        forum_media_url=forum_media_url, forum_media_port=forum_media_port,
+        forum_media_dir=forum_media_dir, forum_media_origins=forum_media_origins,
     )
     await server.start()
 

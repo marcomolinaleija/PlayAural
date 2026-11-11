@@ -216,6 +216,12 @@ class NetworkManager:
             self.main_window.on_server_speak(packet)
         elif packet_type == "audio":
             self.main_window.on_server_audio(packet)
+        elif packet_type == 'forum_file_picker':
+            self.main_window.forum_media.choose(packet)
+        elif packet_type == 'forum_open_media':
+            self.main_window.forum_media.open(packet)
+        elif packet_type == 'forum_media_session':
+            pass
         elif packet_type == "menu":
             self.main_window.on_server_menu(packet)
         elif packet_type == "request_input":

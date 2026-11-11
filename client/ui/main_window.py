@@ -2,6 +2,7 @@
 
 import wx
 from .menu_list import MenuList
+from .forum_media import NativeForumMedia
 from .menu_focus import MenuFocusContextStore, resolve_menu_focus_index
 from .text_direction import apply_text_layout_direction
 from .copy_directive import (
@@ -146,6 +147,7 @@ class MainWindow(wx.Frame):
 
         # Initialize sound manager
         self.sound_manager = SoundManager()
+        self.forum_media = NativeForumMedia(self)
         self._release_update_states = {
             kind: ReleaseUpdateState()
             for kind in ReleaseKind
@@ -768,6 +770,8 @@ class MainWindow(wx.Frame):
         if self._close_cleanup_complete:
             return
         self._close_cleanup_complete = True
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         self._cancel_logout_response_timer()
         for observer in self._typing_input_observers:
             try:
@@ -2344,6 +2348,9 @@ class MainWindow(wx.Frame):
         if self.network.connected:
             return
 
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
+
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.current_table_context_id = ""
         self.connected = False
@@ -2416,6 +2423,8 @@ class MainWindow(wx.Frame):
 
     def on_server_disconnect(self, packet):
         """Handle server disconnect packet."""
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.current_table_context_id = ""
         should_reconnect = packet.get("reconnect", False)
@@ -2471,6 +2480,8 @@ class MainWindow(wx.Frame):
 
     def on_force_exit(self, packet):
         """Handle forced exit command from server."""
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         try:
             self.quitting = True
             self._logout_request_pending = False
@@ -3631,6 +3642,8 @@ class MainWindow(wx.Frame):
 
     def reset_runtime_for_session(self):
         """Retire all device-local state before accepting a new session."""
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.voice_host_muted = False
         self.voice_manager.clear_voice_settings()

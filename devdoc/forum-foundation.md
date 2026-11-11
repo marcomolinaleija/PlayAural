@@ -120,6 +120,10 @@ the sound pack.
 
 ## Verification
 
+The results below describe the committed foundation delivery. For the ongoing
+attachments, polls and private-conversation work, see
+[forum-enhancements.md](forum-enhancements.md); its completion checks are separate.
+
 ```powershell
 uv run --project server --extra dev python -m pytest server/tests/test_forum_service.py server/tests/test_forum_navigation.py server/tests/test_forum_migration.py -q
 uv run --project server --extra dev python -m pytest server/tests -q -n 4

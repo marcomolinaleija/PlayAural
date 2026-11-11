@@ -413,6 +413,13 @@ export function createAudioEngine(options = {}) {
     }
   }
 
+  function setExternalDucking(owner, levels = null) {
+    const key = `client-duck:${owner}`;
+    if (levels) duckRequests.set(key, normalizeDucking(levels));
+    else duckRequests.delete(key);
+    refreshDucking();
+  }
+
   function busNode(kind, bus) {
     if (!context) {
       return null;
@@ -2620,6 +2627,7 @@ export function createAudioEngine(options = {}) {
     stopAmbience,
     stopAll,
     setBus,
+    setExternalDucking,
     setMusicVolumePercent,
     setAmbienceVolumePercent,
     setEffectsVolumePercent,

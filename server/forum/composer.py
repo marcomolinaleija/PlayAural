@@ -8,6 +8,8 @@ from . import navigation as nav
 from .models import Draft, ForumError, MAX_BODY_LENGTH, MAX_TITLE_LENGTH
 from .text import reading_chunks, validate_text
 from .views import item, label
+from .poll_ui import draft_poll
+from .polls import validate_config
 
 
 class ForumComposer:
@@ -22,8 +24,8 @@ class ForumComposer:
 
     def show(self, user, draft: Draft) -> None:
         self.service.account(user.uuid)
-        if draft.kind == "topic":
-            heading = label(user, "forum-new-topic")
+        if draft.kind in {"topic", "private"}:
+            heading = label(user, "forum-private-new" if draft.kind == 'private' else "forum-new-topic")
         else:
             topic = self.service.topic(user.uuid, draft.topic_id)
             heading = label(user, "forum-edit-heading" if draft.kind == "edit" else "forum-reply-heading", title=topic.title)
@@ -31,9 +33,26 @@ class ForumComposer:
         if draft.body:
             rows.extend(MenuItem(text=text, id=f"preview:{index}", read_only=True)
                         for index, text in enumerate(reading_chunks(draft.body)))
-        if draft.kind == "topic":
+        if draft.poll:
+            rows.append(item(user, 'forum-poll-preview', 'poll_preview', read_only=True,
+                             question=draft.poll['question'] or label(user, 'forum-not-written')))
+            rows.extend(MenuItem(text=option, id=f'poll_preview:{index}', read_only=True)
+                        for index, option in enumerate(draft.poll['options']))
+        for attachment_id in draft.attachment_ids:
+            attachment = self.service.attachments._row(attachment_id)
+            rows.append(item(user, 'forum-media-row', f'attachment:{attachment_id}', name=attachment['name'],
+                             status=label(user, 'forum-media-approval-' + attachment['approval']) if attachment['state'] == 'ready'
+                             else label(user, 'forum-media-' + attachment['state'])))
+        if draft.kind == 'private':
+            names = [account.username for user_uuid in draft.recipients
+                     if (account := self.service.repository.database.get_user_by_uuid(user_uuid))]
+            rows.append(item(user, 'forum-private-recipients', 'recipients',
+                             names=', '.join(names) or label(user, 'forum-not-written')))
+        if draft.kind in {"topic", "private"}:
             rows.append(item(user, "forum-draft-title", "edit_title", title=draft.title or label(user, "forum-not-written")))
         rows.append(item(user, "forum-write-body", "edit_body"))
+        if draft.kind != 'edit':
+            rows.append(item(user, 'forum-add-more', 'extras'))
         rows.append(item(user, "forum-save-edit" if draft.kind == "edit" else "forum-publish", "publish"))
         self.views.render(user, nav.COMPOSER, rows, title=heading,
                           announcement=("forum-entry-composer", {"heading": heading}),
@@ -80,13 +99,26 @@ class ForumComposer:
         self.server._user_states[user.username] = {"menu": nav.DISCARD, "forum_draft": asdict(draft)}
 
     def publish(self, user, draft: Draft) -> None:
+        poll = draft_poll(draft)
+        if poll is not None:
+            # Incomplete polls must not send otherwise-private files to review.
+            poll = validate_config(poll, int(self.service.clock()))
+        if draft.attachment_ids and draft.kind != 'edit':
+            validate_text(draft.body)
+            if draft.kind in {'topic', 'private'}:
+                validate_text(draft.title, title=True)
+            if self.service.attachment_reviews.request(user.uuid, draft.attachment_ids):
+                user.speak_l('forum-media-review-requested', buffer='system')
+                self.server._nav_refresh(user, self.show, draft)
+                return
         if draft.kind == "topic":
-            topic_id, post_id = self.service.create_topic(user.uuid, draft.category_id, draft.title, draft.body)
+            topic_id, post_id = self.service.create_topic(user.uuid, draft.category_id, draft.title, draft.body,
+                                                         poll=poll, attachment_ids=draft.attachment_ids)
             self.server._nav_back(user)
             self.server._nav_push(user, self.views.thread, topic_id)
             self.open_post(user, post_id)
         elif draft.kind == "reply":
-            post_id = self.service.reply(user.uuid, draft.topic_id, draft.body)
+            post_id = self.service.reply(user.uuid, draft.topic_id, draft.body, poll=poll, attachment_ids=draft.attachment_ids)
             self.server._nav_back(user)
             if self.server._user_states[user.username]["menu"] == nav.POST:
                 self.server._nav_back(user)
@@ -94,6 +126,12 @@ class ForumComposer:
         elif draft.kind == "edit":
             self.service.edit(user.uuid, draft.post_id, draft.body, draft.revision)
             self.server._nav_back(user)
+        elif draft.kind == 'private':
+            topic_id, post_id = self.service.conversations.create(user.uuid, draft.title, draft.body, draft.recipients,
+                                                                  poll=poll, attachment_ids=draft.attachment_ids)
+            self.server._nav_back(user)
+            self.server._nav_push(user, self.views.thread, topic_id)
+            self.open_post(user, post_id)
         else:
             raise ValueError("Unsupported forum draft")
         user.speak_l("forum-edit-saved" if draft.kind == "edit" else "forum-published", buffer="system")

@@ -243,6 +243,8 @@ class DatabaseBackupResult:
     created_at_utc: str
     incomplete_files_removed: int = 0
     incomplete_file_bytes_removed: int = 0
+    archive_path: Path | None = None
+    archive_size_bytes: int = 0
 
 
 @dataclass(frozen=True)
@@ -391,7 +393,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 4
+    CURRENT_SCHEMA_VERSION = 5
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -1547,11 +1549,11 @@ class Database:
         # protects that identity; version four adds the native forum. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2, 3}:
+        if schema_version not in {0, 1, 2, 3, 4}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
-        if schema_version in {1, 2, 3} and application_id != self.APPLICATION_ID:
+        if schema_version in {1, 2, 3, 4} and application_id != self.APPLICATION_ID:
             raise sqlite3.DatabaseError(
                 f"version-{schema_version} database is missing the PlayAural "
                 "identifier"
@@ -1560,7 +1562,7 @@ class Database:
             f"{row['type']} {row['name']}"
             for row in schema_rows
             if str(row["type"]) in {"trigger", "view"}
-            and not (schema_version == 3 and row["type"] == "trigger"
+            and not (schema_version in {3, 4} and row["type"] == "trigger"
                      and row["name"] == "protect_users_immutable_identity")
         )
         if unexpected_migration_objects:
@@ -1568,7 +1570,11 @@ class Database:
                 "legacy database schema contains unexpected objects: "
                 + ", ".join(unexpected_migration_objects)
             )
-        unknown_tables = table_names - self.LEGACY_V0_TABLE_NAMES
+        allowed_tables = (
+            self._canonical_schema_contract(forum_version=4)[0].keys()
+            if schema_version == 4 else self.LEGACY_V0_TABLE_NAMES
+        )
+        unknown_tables = table_names - allowed_tables
         if has_application_schema and (not table_names or unknown_tables):
             detail = (
                 ": " + ", ".join(sorted(unknown_tables))
@@ -1579,7 +1585,7 @@ class Database:
                 "unversioned SQLite database is not a recognizable PlayAural "
                 f"database; refusing to modify it{detail}"
             )
-        if schema_version in {1, 2, 3}:
+        if schema_version in {1, 2, 3, 4}:
             self._validate_schema(
                 expected_schema_version=schema_version,
                 allowed_column_attributes=(
@@ -1837,6 +1843,7 @@ class Database:
         self,
         *,
         include_forum: bool = True,
+        forum_version: int = 5,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -1858,7 +1865,7 @@ class Database:
         try:
             connection.execute("PRAGMA foreign_keys = ON")
             cursor.execute("BEGIN IMMEDIATE")
-            self._create_tables_in_transaction(cursor, include_forum=include_forum)
+            self._create_tables_in_transaction(cursor, include_forum=include_forum, forum_version=forum_version)
             connection.commit()
             canonical_table_names = frozenset(
                 str(row[0])
@@ -1937,7 +1944,9 @@ class Database:
             canonical_unique_keys,
             canonical_foreign_keys,
             canonical_triggers,
-        ) = self._canonical_schema_contract(include_forum=required_schema_version >= 4)
+        ) = self._canonical_schema_contract(
+            include_forum=required_schema_version >= 4, forum_version=required_schema_version,
+        )
         if legacy_identity_contract:
             # Schema versions one and two used the same named UUID index but
             # did not declare it unique. Derive the legacy exception from the
@@ -2302,7 +2311,8 @@ class Database:
         )
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
-    def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True) -> None:
+    def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
+                                      forum_version: int = 5) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(
@@ -2742,7 +2752,7 @@ class Database:
         """)
 
         if include_forum:
-            create_forum_schema(cursor)
+            create_forum_schema(cursor, version=forum_version)
 
     def _ensure_column(
         self,

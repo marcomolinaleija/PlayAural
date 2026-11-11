@@ -3,9 +3,11 @@
 import sqlite3
 
 from .models import DEFAULT_CATEGORIES
+from . import schema_v5
 
 
 CHECK_CONSTRAINTS = {
+    **schema_v5.CHECK_CONSTRAINTS,
     "forum_topics": (
         "CHECK (length(title) BETWEEN 1 AND 120)",
         "CHECK (pinned IN (0, 1))", "CHECK (closed IN (0, 1))",
@@ -21,7 +23,7 @@ CHECK_CONSTRAINTS = {
 }
 
 
-def create_schema(cursor: sqlite3.Cursor) -> None:
+def create_schema(cursor: sqlite3.Cursor, *, version: int = 5) -> None:
     # Statements run in Database's migration transaction, never executescript
     # (which would implicitly commit its caller's transaction).
     statements = (
@@ -83,10 +85,13 @@ def create_schema(cursor: sqlite3.Cursor) -> None:
             "INSERT OR IGNORE INTO forum_categories(id, position) VALUES (?, ?)",
             (category, position),
         )
+    if version >= 5:
+        schema_v5.create_schema(cursor)
 
 
 def erase_account(cursor: sqlite3.Cursor, user_uuid: str) -> None:
     """Retain public discussions, erase attribution and personal reading data."""
+    schema_v5.erase_private_account(cursor, user_uuid)
     for table in ("forum_topics", "forum_posts"):
         cursor.execute(
             f"UPDATE {table} SET author_uuid = NULL, author_name = '' WHERE author_uuid = ?",

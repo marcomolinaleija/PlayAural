@@ -34,7 +34,7 @@ class ForumViews:
     @staticmethod
     def identity(state: dict) -> tuple:
         return tuple(state.get(key) for key in (
-            "menu", "forum_topic", "forum_post", "forum_view", "forum_category", "forum_query", "forum_page",
+            "menu", "forum_topic", "forum_post", "forum_view", "forum_category", "forum_query", "forum_page", 'forum_invitation', 'forum_attachment',
         ))
 
     def render(self, user, menu: str, rows: list[MenuItem], *, title: str,
@@ -56,7 +56,10 @@ class ForumViews:
                      name=label(user, f"forum-category-{category.id}"), count=category.topic_count)
                 for category in self.service.categories(user.uuid)]
         rows.extend([item(user, "forum-recent", "recent"), item(user, "forum-unread", "unread"),
-                     item(user, "forum-saved", "saved"), item(user, "forum-search", "search")])
+                     item(user, "forum-saved", "saved"), item(user, "forum-search", "search"),
+                     item(user, 'forum-private', 'private')])
+        if self.service.attachments.require_approval and self.service.is_moderator(user.uuid):
+            rows.append(item(user, 'forum-media-review-heading', 'review_media'))
         self.render(user, nav.HOME, rows, title=label(user, "forum-heading"),
                     announcement=("forum-entry-home", {}))
 
@@ -66,6 +69,8 @@ class ForumViews:
         rows = []
         for topic in data.items:
             flags = []
+            if view == "saved" and topic.is_private:
+                flags.append(label(user, "forum-private"))
             if topic.pinned:
                 flags.append(label(user, "forum-pinned"))
             if topic.closed:
@@ -77,6 +82,10 @@ class ForumViews:
                              status=Localization.format_list(user.locale, flags)))
         if view == "category":
             rows.append(item(user, "forum-new-topic", "new_topic"))
+        elif view == 'private':
+            rows.append(item(user, 'forum-private-new', 'new_private'))
+            invitations = self.service.conversations.invitations(user.uuid)
+            rows.append(item(user, 'forum-private-invitations-count', 'invitations', count=len(invitations)))
         rows.extend(self.page_controls(user, data))
         context = {"title": heading, "count": data.total, "page": data.page, "pages": data.total_pages,
                    "empty": label(user, "forum-no-topics") if not data.total else ""}
@@ -110,7 +119,11 @@ class ForumViews:
         if resume:
             rows.append(item(user, "forum-continue", "continue"))
         rows.extend(self.page_controls(user, data))
-        if self.service.is_moderator(user.uuid):
+        if topic.is_private:
+            rows.append(item(user, 'forum-private-members', 'members'))
+            if self.service.attachments.require_approval and self.service.conversations.owner(user.uuid, topic_id):
+                rows.append(item(user, 'forum-media-review-heading', 'review_media'))
+        if self.service.can_moderate(user.uuid, topic_id):
             rows.extend([
                 item(user, "forum-reopen" if topic.closed else "forum-close", "toggle_closed"),
                 item(user, "forum-unpin" if topic.pinned else "forum-pin", "toggle_pinned"),
@@ -118,7 +131,7 @@ class ForumViews:
         self.render(user, nav.THREAD, rows, title=topic.title,
                     announcement=("forum-entry-thread", {
                         "title": topic.title, "author": author(user, topic),
-                        "category": label(user, f"forum-category-{topic.category_id}"), "count": topic.post_count,
+                        "category": label(user, 'forum-private' if topic.is_private else f"forum-category-{topic.category_id}"), "count": topic.post_count,
                         "status": label(user, "forum-closed-help" if topic.closed else "forum-open-help"),
                         "page": data.page, "pages": data.total_pages,
                     }), forum_topic=topic_id, forum_page=data.page, forum_pages=data.total_pages)
@@ -131,14 +144,20 @@ class ForumViews:
         else:
             rows = [MenuItem(text=text, id=f"body:{post.id}:{index}", read_only=True)
                     for index, text in enumerate(reading_chunks(post.body))]
+            rows.extend(item(user, 'forum-media-post-row', f"attachment:{attachment['id']}", name=attachment['name'],
+                             kind=label(user, 'forum-media-kind-' + attachment['kind']))
+                        for attachment in self.service.attachments.for_post(user.uuid, post_id))
+            if self.service.repository.connection.execute('SELECT 1 FROM forum_polls WHERE post_id = ?', (post_id,)).fetchone():
+                poll = self.service.polls.get(user.uuid, post_id)
+                rows.append(item(user, 'forum-poll-preview', 'poll', question=poll['question']))
         next_post = self.service.repository.resume_post(user.uuid, post.topic_id)
         if next_post:
             rows.append(item(user, "forum-next-unread", "next_unread"))
         if not topic.closed:
             rows.append(item(user, "forum-reply", "reply"))
-        if self.service.can_edit(user.uuid, post) and (not topic.closed or self.service.is_moderator(user.uuid)):
+        if self.service.can_edit(user.uuid, post) and (not topic.closed or self.service.can_moderate(user.uuid, topic.id)):
             rows.append(item(user, "forum-edit", "edit"))
-        if self.service.is_moderator(user.uuid):
+        if self.service.can_moderate(user.uuid, topic.id):
             rows.append(item(user, "forum-restore-post" if post.hidden else "forum-hide-post", "toggle_hidden"))
         self.render(user, nav.POST, rows, title=topic.title,
                     announcement=("forum-entry-post", {

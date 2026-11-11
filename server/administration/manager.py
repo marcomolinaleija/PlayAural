@@ -3322,7 +3322,7 @@ class AdministrationManager:
                     user.locale,
                     result.reusable_database_bytes,
                 ),
-                filename=backup.path.name,
+                filename=(backup.archive_path or backup.path).name,
             )
         if not self.server.maintenance_manager.is_active:
             self.server._nav_back(user)
@@ -3365,8 +3365,8 @@ class AdministrationManager:
             user.speak_l(
                 "admin-database-backup-success",
                 buffer="system",
-                filename=result.path.name,
-                size=_localized_database_size(user.locale, result.size_bytes),
+                filename=(result.archive_path or result.path).name,
+                size=_localized_database_size(user.locale, result.archive_size_bytes or result.size_bytes),
             )
         if not self.server.maintenance_manager.is_active:
             self.server._nav_back(user)
@@ -3416,7 +3416,7 @@ class AdministrationManager:
                     user.locale,
                     result.reclaimed_bytes,
                 ),
-                filename=operation_result.safety_backup.path.name,
+                filename=(operation_result.safety_backup.archive_path or operation_result.safety_backup.path).name,
             )
         if not self.server.maintenance_manager.is_active:
             self.server._nav_back(user)

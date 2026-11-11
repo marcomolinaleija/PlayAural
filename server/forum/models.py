@@ -1,6 +1,7 @@
 """Transport-independent forum records and bounded feature policies."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from uuid import uuid4
 
 
 TOPICS_PER_PAGE = 15
@@ -44,6 +45,7 @@ class Topic:
     last_post_id: int
     last_activity: int
     bookmarked: bool
+    is_private: bool = False
 
 
 @dataclass(frozen=True)
@@ -70,3 +72,7 @@ class Draft:
     revision: int = 0
     title: str = ""
     body: str = ""
+    poll: dict | None = None
+    recipients: tuple[str, ...] = ()
+    attachment_ids: tuple[str, ...] = ()
+    token: str = field(default_factory=lambda: str(uuid4()))

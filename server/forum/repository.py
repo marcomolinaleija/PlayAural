@@ -24,6 +24,16 @@ def _visible(author: str) -> str:
     )"""
 
 
+def _admitted(topic: str = 't') -> str:
+    """Private membership is required even for administrators and former owners."""
+    return f"""(
+        (NOT EXISTS (SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = {topic}.id)
+         AND {_visible(f'{topic}.author_uuid')})
+        OR EXISTS (SELECT 1 FROM forum_private_members fm
+                   WHERE fm.topic_id = {topic}.id AND fm.user_uuid = :viewer)
+    )"""
+
+
 class ForumRepository:
     def __init__(self, database: "Database"):
         self.database = database
@@ -44,12 +54,13 @@ class ForumRepository:
                     THEN 1 ELSE 0 END), 0) AS unread_count,
                 COALESCE(MAX(p.id), 0) AS last_post_id,
                 COALESCE(MAX(p.created_at), t.created_at) AS last_activity,
-                CASE WHEN s.user_uuid IS NULL THEN 0 ELSE 1 END AS bookmarked
+                CASE WHEN s.user_uuid IS NULL THEN 0 ELSE 1 END AS bookmarked,
+                EXISTS (SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id) AS is_private
             FROM forum_topics t
             LEFT JOIN forum_posts p ON p.topic_id = t.id AND {_visible('p.author_uuid')}
             LEFT JOIN forum_read_positions r ON r.topic_id = t.id AND r.user_uuid = :viewer
             LEFT JOIN forum_bookmarks s ON s.topic_id = t.id AND s.user_uuid = :viewer
-            WHERE {_visible('t.author_uuid')}
+            WHERE {_admitted()}
             GROUP BY t.id
         """
 
@@ -68,6 +79,7 @@ class ForumRepository:
         rows = self.connection.execute(
             f"""SELECT c.id, COUNT(t.id) AS topic_count FROM forum_categories c
                 LEFT JOIN forum_topics t ON t.category_id = c.id AND {_visible('t.author_uuid')}
+                    AND NOT EXISTS (SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id)
                 GROUP BY c.id ORDER BY c.position, c.id""", {"viewer": viewer},
         ).fetchall()
         return [Category(**dict(row)) for row in rows]
@@ -86,7 +98,14 @@ class ForumRepository:
                               AND fp.hidden = 0 AND {_visible('fp.author_uuid')}
                               AND fp.body_search LIKE :query ESCAPE '\\'
                           ))"""}
-        where = conditions[view]
+        if view == "private":
+            where = "is_private = 1"
+        elif view == "saved":
+            # Saved is the viewer's personal collection. _admitted() still
+            # requires current membership for every private discussion.
+            where = conditions[view]
+        else:
+            where = f"is_private = 0 AND ({conditions[view]})"
         # User text is always data; escape LIKE wildcard semantics as well.
         escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         params = {"viewer": viewer, "category": category_id, "query": f"%{escaped}%"}
@@ -109,14 +128,15 @@ class ForumRepository:
     def post(self, viewer: str, post_id: int) -> Post | None:
         row = self.connection.execute(
             f"""SELECT p.* FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
-                WHERE p.id = :post_id AND {_visible('p.author_uuid')} AND {_visible('t.author_uuid')}""",
+                WHERE p.id = :post_id AND {_visible('p.author_uuid')} AND {_admitted()}""",
             {"viewer": viewer, "post_id": post_id},
         ).fetchone()
         return self._post(row) if row else None
 
     def posts(self, viewer: str, topic_id: int, page: int = 1) -> PaginatedMenuPage[Post]:
         params = {"viewer": viewer, "topic_id": topic_id}
-        base = f"SELECT p.* FROM forum_posts p WHERE p.topic_id = :topic_id AND {_visible('p.author_uuid')}"
+        base = f"""SELECT p.* FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
+                   WHERE p.topic_id = :topic_id AND {_visible('p.author_uuid')} AND {_admitted()}"""
         total = self.connection.execute(f"SELECT COUNT(*) FROM ({base})", params).fetchone()[0]
         safe_page = clamp_page(page, total, POSTS_PER_PAGE)
         rows = self.connection.execute(
@@ -127,17 +147,17 @@ class ForumRepository:
 
     def resume_post(self, viewer: str, topic_id: int) -> int:
         row = self.connection.execute(
-            f"""SELECT MIN(p.id) FROM forum_posts p
+            f"""SELECT MIN(p.id) FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
                 LEFT JOIN forum_read_positions r ON r.topic_id = p.topic_id AND r.user_uuid = :viewer
                 WHERE p.topic_id = :topic AND p.id > COALESCE(r.last_post_id, 0)
-                AND {_visible('p.author_uuid')}""", {"viewer": viewer, "topic": topic_id},
+                AND {_visible('p.author_uuid')} AND {_admitted()}""", {"viewer": viewer, "topic": topic_id},
         ).fetchone()
         return int(row[0] or 0)
 
     def post_page(self, viewer: str, topic_id: int, post_id: int) -> int:
         count = self.connection.execute(
-            f"""SELECT COUNT(*) FROM forum_posts p WHERE p.topic_id = :topic
-                AND p.id < :post AND {_visible('p.author_uuid')}""",
+            f"""SELECT COUNT(*) FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
+                WHERE p.topic_id = :topic AND p.id < :post AND {_visible('p.author_uuid')} AND {_admitted()}""",
             {"viewer": viewer, "topic": topic_id, "post": post_id},
         ).fetchone()[0]
         return count // POSTS_PER_PAGE + 1

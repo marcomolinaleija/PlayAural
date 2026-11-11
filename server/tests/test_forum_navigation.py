@@ -215,7 +215,7 @@ async def test_composer_previews_first_without_repeating_entry_help_after_typing
     packets = user.get_queued_messages()
     assert len([p for p in packets if p.get("key") == "forum-entry-composer"]) == 1
     menu = [p for p in packets if p.get("menu_id") == nav.COMPOSER][-1]
-    assert [row["id"] for row in menu["items"]] == ["edit_body", "publish", "back"]
+    assert [row["id"] for row in menu["items"]] == ["edit_body", "extras", "publish", "back"]
     manager.handle_menu(user, "edit_body", server._user_states[user.username])
     user.get_queued_messages()
     await server._handle_editbox(connection, {"type": "editbox", "input_id": nav.BODY_INPUT, "text": "Un borrador para revisar"})
@@ -242,3 +242,100 @@ def test_block_during_composing_preserves_the_draft_without_allowing_a_reply(nav
     assert server._user_states[user.username]["menu"] == nav.COMPOSER
     assert server._user_states[user.username]["forum_draft"]["body"] == "A draft worth keeping"
     assert server.db._conn.execute("SELECT COUNT(*) FROM forum_posts").fetchone()[0] == 1
+
+
+async def test_optional_poll_editor_returns_to_preview_and_preserves_focus_and_draft(navigation_server):
+    server, user, connection = navigation_server
+    manager = server.forum_manager
+    await server._handle_main_menu_selection(user, 'forum')
+    for selection in ('category:ideas', 'new_topic', 'extras', 'poll', 'question'):
+        manager.handle_menu(user, selection, server._user_states[user.username])
+    await server._handle_editbox(connection, {'type': 'editbox', 'input_id': nav.POLL_QUESTION_INPUT, 'text': '¿Qué jugamos?'})
+    manager.handle_menu(user, 'options', server._user_states[user.username])
+    await server._handle_editbox(connection, {'type': 'editbox', 'input_id': nav.POLL_OPTIONS_INPUT, 'text': 'Ajedrez\nPig\nUno'})
+    manager.handle_menu(user, 'multiple', server._user_states[user.username])
+    manager.handle_menu(user, 'back', server._user_states[user.username])
+    assert server._user_states[user.username]['menu'] == nav.EXTRAS
+    manager.handle_menu(user, 'back', server._user_states[user.username])
+    state = server._user_states[user.username]
+    assert state['menu'] == nav.COMPOSER
+    assert state['forum_draft']['poll']['question'] == '¿Qué jugamos?'
+    assert state['forum_draft']['poll']['multiple']
+    manager.handle_menu(user, 'edit_body', state)
+    await server._handle_editbox(connection, {'type': 'editbox', 'input_id': nav.BODY_INPUT, 'text': 'Elijamos juntos.'})
+    menu = [packet for packet in user.get_queued_messages() if packet.get('menu_id') == nav.COMPOSER and 'items' in packet][-1]
+    assert menu['items'][0]['id'] == 'preview:0'
+    assert menu['selection_id'] == 'preview:0'
+    assert '¿Qué jugamos?' in str(menu)
+    assert not server.db._conn.execute('SELECT 1 FROM forum_polls').fetchone()
+
+
+@pytest.mark.parametrize('client_type', ['python', 'web', 'mobile'])
+async def test_private_invitation_and_poll_over_real_clients(tmp_path, client_type):
+    server = Server(host='127.0.0.1', port=0, db_path=str(tmp_path / 'private-network.db'))
+    await server.start()
+    try:
+        auth = AuthManager(server.db)
+        for name in ('Alice', 'Bob'):
+            assert auth.register(name, 'ForumPassword123', locale='es', email=f'{name}@example.com') == 'ok'
+            server.db.approve_user(name)
+        port = server._ws_server._server.sockets[0].getsockname()[1]
+        async with connect(f'ws://127.0.0.1:{port}') as alice, connect(f'ws://127.0.0.1:{port}') as bob:
+            for ws, name in ((alice, 'Alice'), (bob, 'Bob')):
+                await ws.send(json.dumps({'type': 'authorize', 'client': client_type, 'version': VERSION,
+                                          'username': name, 'password': 'ForumPassword123'}))
+                await receive(ws, lambda packet: packet.get('menu_id') == 'main_menu')
+                await choose(ws, 'main_menu', 'forum', nav.HOME)
+            await choose(alice, nav.HOME, 'private', nav.TOPICS)
+            await choose(alice, nav.TOPICS, 'new_private', nav.COMPOSER)
+            await choose(alice, nav.COMPOSER, 'recipients')
+            await receive(alice, lambda packet: packet.get('input_id') == nav.RECIPIENTS_INPUT)
+            await alice.send(json.dumps({'type': 'editbox', 'input_id': nav.RECIPIENTS_INPUT, 'text': 'Bob'}))
+            await receive(alice, lambda packet: packet.get('menu_id') == nav.COMPOSER)
+            await fill(alice, nav.TITLE_INPUT, 'Nuestra partida')
+            await fill(alice, nav.BODY_INPUT, 'Elijamos un juego en privado.')
+            await choose(alice, nav.COMPOSER, 'extras', nav.EXTRAS)
+            await choose(alice, nav.EXTRAS, 'poll', nav.POLL_EDITOR)
+            for selection, input_id, text in (('question', nav.POLL_QUESTION_INPUT, '¿Qué juego?'),
+                                               ('options', nav.POLL_OPTIONS_INPUT, 'Ajedrez\nPig')):
+                await choose(alice, nav.POLL_EDITOR, selection)
+                await receive(alice, lambda packet: packet.get('input_id') == input_id)
+                await alice.send(json.dumps({'type': 'editbox', 'input_id': input_id, 'text': text}))
+                await receive(alice, lambda packet: packet.get('menu_id') == nav.POLL_EDITOR)
+            await choose(alice, nav.POLL_EDITOR, 'back', nav.EXTRAS)
+            await choose(alice, nav.EXTRAS, 'back', nav.COMPOSER)
+            assert not server.db._conn.execute('SELECT 1 FROM forum_private_invites').fetchone()
+            published = await choose(alice, nav.COMPOSER, 'publish', nav.POST)
+            assert published['items'][0]['text'] == 'Elijamos un juego en privado.'
+            await choose(bob, nav.HOME, 'recent', nav.TOPICS)
+            assert server.forum_manager.service.topics(server.db.get_user('Bob').uuid).total == 0
+            await choose(bob, nav.TOPICS, 'back', nav.HOME)
+            await choose(bob, nav.HOME, 'private', nav.TOPICS)
+            invitations = await choose(bob, nav.TOPICS, 'invitations', nav.INVITATIONS)
+            invitation = invitations['items'][0]['id']
+            assert invitation.startswith('invitation:')
+            await choose(bob, nav.INVITATIONS, invitation, nav.INVITATION)
+            thread = await choose(bob, nav.INVITATION, 'accept', nav.THREAD)
+            assert thread['items'][0]['id'].startswith('post:')
+            post_id = thread['items'][0]['id']
+            await choose(bob, nav.THREAD, 'bookmark', nav.THREAD)
+            await choose(bob, nav.THREAD, 'back', nav.INVITATIONS)
+            await choose(bob, nav.INVITATIONS, 'back', nav.TOPICS)
+            await choose(bob, nav.TOPICS, 'back', nav.HOME)
+            saved = await choose(bob, nav.HOME, 'saved', nav.TOPICS)
+            assert 'Nuestra partida' in saved['items'][0]['text']
+            assert 'Conversaciones privadas' in saved['items'][0]['text']
+            thread = await choose(bob, nav.TOPICS, saved['items'][0]['id'], nav.THREAD)
+            await choose(bob, nav.THREAD, post_id, nav.POST)
+            poll = await choose(bob, nav.POST, 'poll', nav.POLL)
+            choice = poll['items'][0]['id']
+            selected = await choose(bob, nav.POLL, choice, nav.POLL)
+            assert 'seleccionada' in selected['items'][0]['text']
+            bob_uuid = server.db.get_user('Bob').uuid
+            post_number = int(post_id.removeprefix('post:'))
+            assert not server.forum_manager.service.polls.get(bob_uuid, post_number)['selected']
+            await choose(bob, nav.POLL, 'submit', nav.POLL)
+            assert server.forum_manager.service.polls.get(bob_uuid, post_number)['voters'] == 1
+            assert not any('forum-' in str(row.get('text', '')) for row in poll['items'])
+    finally:
+        await server.stop()

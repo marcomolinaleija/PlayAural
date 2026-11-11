@@ -8,12 +8,20 @@ conflict, follow `CLAUDE.md` and update `AGENTS.md`.
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v4), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v5), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
 Drafts are bounded session data, never account preferences. See
 `devdoc/forum-foundation.md` for the feature scope and data lifecycle.
+Private conversations require accepted UUID membership, including for admins;
+never leak them into public lists/search/counts. Poll ballots are atomic and
+question/options freeze after the first vote, including after withdrawal.
+Uploaded files use authenticated HTTP, never WebSocket binaries or public
+object URLs. CPU/media/storage work runs off-loop; SQLite remains on its
+central owner loop behind maintenance barriers. Only explicit playback starts
+an attachment, and closing its player restores focus and temporary mixing.
+See `devdoc/forum-enhancements.md` for rollout status and remaining checks.
 
 PlayAural is an audio-first multiplayer gaming platform for screen reader users.
 It is licensed under GPL-3.0-or-later and has four first-party components:

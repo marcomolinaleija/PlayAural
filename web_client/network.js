@@ -1,3 +1,5 @@
+import { forumPacketDefinition } from './ui/forumMedia.js';
+
 function checkType(value, typeName) {
   if (typeName === "string") return typeof value === "string";
   if (typeName === "integer") return Number.isInteger(value);
@@ -68,12 +70,13 @@ export function createPacketValidator(schema) {
     }
 
     const ref = mappingByDir[direction][packet.type];
-    if (!ref) {
+    const extension = forumPacketDefinition(packet.type, direction);
+    if (!ref && !extension) {
       return { ok: false, error: `Unknown ${direction} packet type: ${packet.type}` };
     }
 
     const defName = refNameFromMapping(ref);
-    const def = defName ? defsByDir[direction][defName] : null;
+    const def = (defName ? defsByDir[direction][defName] : null) || extension;
     if (!def) {
       return { ok: false, error: `Missing schema for packet type: ${packet.type}` };
     }

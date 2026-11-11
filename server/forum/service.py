@@ -7,12 +7,20 @@ from ..users.roles import ADMIN_TRUST_LEVEL
 from .models import EDIT_WINDOW_SECONDS, MAX_WRITES_PER_WINDOW, WRITE_WINDOW_SECONDS, ForumError
 from .repository import ForumRepository
 from .text import search_key, validate_search, validate_text
+from .conversations import ConversationService
+from .polls import PollService
+from .attachments import AttachmentService
+from .attachment_reviews import AttachmentReviews
 
 
 class ForumService:
     def __init__(self, repository: ForumRepository, clock: Callable[[], float] = time.time):
         self.repository = repository
         self.clock = clock
+        self.conversations = ConversationService(self)
+        self.polls = PollService(self)
+        self.attachments = AttachmentService(self)
+        self.attachment_reviews = AttachmentReviews(self)
 
     def account(self, user_uuid: str, *, writing: bool = False):
         db = self.repository.database
@@ -66,7 +74,8 @@ class ForumService:
         if self.repository.last_body(account.uuid, since) == search_key(body):
             raise ForumError("forum-error-duplicate")
 
-    def create_topic(self, viewer: str, category_id: str, title: str, body: str) -> tuple[int, int]:
+    def create_topic(self, viewer: str, category_id: str, title: str, body: str, *, poll=None,
+                     attachment_ids: tuple[str, ...] = ()) -> tuple[int, int]:
         title, body = validate_text(title, title=True), validate_text(body)
         with self.repository.atomic():
             account = self.account(viewer, writing=True)
@@ -74,9 +83,13 @@ class ForumService:
                 raise ForumError("forum-error-missing")
             now = int(self.clock())
             self._check_send(account, body, now)
-            return self.repository.create_topic(account, category_id, title, body, now)
+            topic_id, post_id = self.repository.create_topic(account, category_id, title, body, now)
+            if poll is not None:
+                self.polls.create_in_transaction(viewer, post_id, poll, now)
+            self.attachments.bind_in_transaction(viewer, post_id, attachment_ids)
+            return topic_id, post_id
 
-    def reply(self, viewer: str, topic_id: int, body: str) -> int:
+    def reply(self, viewer: str, topic_id: int, body: str, *, poll=None, attachment_ids: tuple[str, ...] = ()) -> int:
         body = validate_text(body)
         with self.repository.atomic():
             account = self.account(viewer, writing=True)
@@ -85,12 +98,16 @@ class ForumService:
                 raise ForumError("forum-error-closed")
             now = int(self.clock())
             self._check_send(account, body, now)
-            return self.repository.create_post(account, topic_id, body, now)
+            post_id = self.repository.create_post(account, topic_id, body, now)
+            if poll is not None:
+                self.polls.create_in_transaction(viewer, post_id, poll, now)
+            self.attachments.bind_in_transaction(viewer, post_id, attachment_ids)
+            return post_id
 
     def can_edit(self, viewer: str, post) -> bool:
         account = self.account(viewer)
         return not post.hidden and (
-            account.trust_level >= ADMIN_TRUST_LEVEL or
+            account.trust_level >= ADMIN_TRUST_LEVEL and not self.topic(viewer, post.topic_id).is_private or
             post.author_uuid == viewer and int(self.clock()) - post.created_at <= EDIT_WINDOW_SECONDS
         )
 
@@ -101,7 +118,7 @@ class ForumService:
             post = self.post(viewer, post_id)
             if not self.can_edit(viewer, post):
                 raise ForumError("forum-error-edit-permission")
-            if self.topic(viewer, post.topic_id).closed and not self.is_moderator(viewer):
+            if self.topic(viewer, post.topic_id).closed and not self.can_moderate(viewer, post.topic_id):
                 raise ForumError("forum-error-closed")
             if revision != post.revision:
                 raise ForumError("forum-error-conflict")
@@ -115,9 +132,15 @@ class ForumService:
     def moderate(self, viewer: str, topic_id: int, action: str, enabled: bool, post_id: int = 0) -> None:
         with self.repository.atomic():
             self.account(viewer, writing=True)
-            if not self.is_moderator(viewer):
+            if not self.can_moderate(viewer, topic_id):
                 raise ForumError("forum-error-moderator")
             self.topic(viewer, topic_id)
             if action == "hidden" and self.post(viewer, post_id).topic_id != topic_id:
                 raise ForumError("forum-error-missing")
             self.repository.moderate(viewer, topic_id, action, enabled, int(self.clock()), post_id)
+
+    def can_moderate(self, viewer: str, topic_id: int) -> bool:
+        topic = self.topic(viewer, topic_id)
+        if topic.is_private:
+            return self.conversations.owner(viewer, topic_id)
+        return self.is_moderator(viewer)
