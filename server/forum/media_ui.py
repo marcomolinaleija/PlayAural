@@ -56,6 +56,8 @@ class MediaController:
     def completed(self, viewer: str, attachment_id: str, error_key: str | None) -> None:
         # The worker callback itself runs on the server loop, never in FFmpeg's
         # thread. A replacement session may retain the draft's confirmed intent.
+        if not self.server.forum_enabled:
+            return
         with self.transport.worker.database_work():
             account = self.service.repository.database.get_user_by_uuid(viewer)
             user = self.server._users.get(account.username) if account else None

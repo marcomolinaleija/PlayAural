@@ -30,7 +30,10 @@ class ForumManager:
         self.categories = CategoryController(self)
 
     def home(self, user) -> None:
-        self.views.home(user)
+        if self.server.forum_enabled:
+            self.views.home(user)
+        else:
+            user.speak_l('forum-unavailable', buffer='system')
 
     def restore(self, user, frame: dict) -> None:
         menu = frame["menu"]
@@ -71,6 +74,14 @@ class ForumManager:
 
     def _handle_menu(self, user, selection: str, state: dict) -> None:
         menu = state["menu"]
+        # Existing drafts may still be edited or explicitly discarded. Closing
+        # availability must not silently erase them or trap navigation.
+        local_draft_action = menu == nav.COMPOSER and selection in {'edit_title', 'edit_body'}
+        cancel = selection == 'no' and menu in nav.CONFIRMATION_IDS
+        discard = menu == nav.DISCARD and selection in {'yes', 'no'}
+        if not self.server.forum_enabled and not (selection == 'back' or local_draft_action or cancel or discard):
+            user.speak_l('forum-unavailable', buffer='system')
+            return
         self.service.account(user.uuid)
         push, refresh = self.server._nav_push, self.server._nav_refresh
         if selection == "back":
@@ -194,6 +205,10 @@ class ForumManager:
 
     def handle_input(self, user, packet: dict, state: dict) -> None:
         if state["menu"] not in nav.INPUT_IDS or packet.get("input_id") != state["menu"]:
+            return
+        if (not self.server.forum_enabled and not packet.get('cancelled')
+                and state['menu'] not in {nav.TITLE_INPUT, nav.BODY_INPUT}):
+            user.speak_l('forum-unavailable', buffer='system')
             return
         if state['menu'] in nav.CATEGORY_INPUT_IDS:
             self.categories.handle_input(user, packet, state)

@@ -1,5 +1,15 @@
 # Estado guardado del foro — 6 de noviembre de 2026
 
+## Disponibilidad global — 11 de noviembre
+
+Se añadió Foro: Activado/Desactivado en Administración → Moderación y sanciones
+→ Moderación del chat, para administradores y desarrolladores. Es persistente,
+no oculta la entrada del menú principal y, mientras está desactivado, esa entrada
+solo devuelve un aviso. Se conservan los borradores locales, pero no se puede
+publicar ni acceder de nuevo a los adjuntos. Validación y alcance en
+[forum-availability.md](forum-availability.md): 5238 pruebas del servidor
+aprobadas y 15 omitidas. Sin cambios de esquema o clientes.
+
 ## Editor compacto de mensajes
 
 Por preferencia del usuario, el editor sigue el patrón de los subforos:

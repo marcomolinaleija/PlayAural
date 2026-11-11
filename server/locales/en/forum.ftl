@@ -249,3 +249,10 @@ forum-error-category-limit = You can have up to { $limit } subforums. Delete an 
 forum-error-category-conflict = Another administrator changed this subforum. Your draft is preserved; reopen the subforum to review its current state.
 forum-error-category-destination = Choose another subforum to keep the topics. If none exists, create one before deleting this subforum.
 forum-entry-category = { $title }. { $description } { forum-topic-count }. Page { $page } of { $pages }. { $empty }
+
+# Global forum availability
+forum-availability-toggle = Forum: { $status }
+forum-availability-description = Enable or disable access to the forum, including private discussions and attachments. Content is preserved and this setting survives server restarts.
+forum-unavailable = The forum has been temporarily disabled by the administrators.
+forum-availability-enabled = The forum is available again.
+forum-availability-update-failed = Forum availability could not be saved. Its state was not changed.

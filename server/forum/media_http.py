@@ -98,7 +98,7 @@ class ForumMediaHTTP:
             except web.HTTPException as error:
                 response = web.Response(status=error.status, body=error.body, headers=error.headers, reason=error.reason)
             except ForumError as error:
-                status = 401 if error.key == 'forum-error-account' else 503 if error.key == 'forum-error-media-maintenance' else 404
+                status = 401 if error.key == 'forum-error-account' else 503 if error.key in {'forum-error-media-maintenance', 'forum-unavailable'} else 404
                 user = request.get(MEDIA_USER_KEY)
                 message = Localization.get(user.locale, error.key, **error.values) if user else ''
                 response = web.json_response({'error': error.key, 'values': error.values, 'message': message}, status=status)
@@ -211,6 +211,8 @@ class ForumMediaHTTP:
             async with asyncio.timeout(60):
                 with (directory / 'source').open('xb') as target:
                     async for chunk in request.content.iter_chunked(CHUNK_SIZE):
+                        if not self.server.forum_enabled:
+                            raise ForumError('forum-unavailable')
                         total += len(chunk)
                         if total > row['size']:
                             raise web.HTTPRequestEntityTooLarge(max_size=row['size'], actual_size=total)
@@ -272,6 +274,9 @@ class ForumMediaHTTP:
             if request.method != 'HEAD':
                 remaining = end - start + 1
                 while remaining:
+                    if not self.server.forum_enabled:
+                        response.force_close()
+                        break
                     chunk = await asyncio.to_thread(stream.read, min(CHUNK_SIZE, remaining))
                     if not chunk:
                         break

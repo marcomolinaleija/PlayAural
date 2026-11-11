@@ -249,3 +249,10 @@ forum-error-category-limit = Puedes tener hasta { $limit } subforos. Elimina uno
 forum-error-category-conflict = Otro administrador cambió este subforo. Conservamos tu borrador; vuelve a abrir el subforo para revisar su estado actual.
 forum-error-category-destination = Elige otro subforo para conservar los temas. Si no existe ninguno, crea uno antes de eliminar este.
 forum-entry-category = { $title }. { $description } { forum-topic-count }. Página { $page } de { $pages }. { $empty }
+
+# Disponibilidad global del foro
+forum-availability-toggle = Foro: { $status }
+forum-availability-description = Activa o desactiva el acceso al foro, incluidos privados y adjuntos. Conserva su contenido y mantiene esta configuración tras reiniciar.
+forum-unavailable = El foro está desactivado temporalmente por los administradores.
+forum-availability-enabled = El foro está disponible de nuevo.
+forum-availability-update-failed = No se pudo guardar la disponibilidad del foro. No se cambió su estado.

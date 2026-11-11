@@ -290,6 +290,8 @@ GLOBAL_CHAT_ENABLED_SETTING_KEY = "global_chat_enabled"
 DEFAULT_GLOBAL_CHAT_SENDING_ENABLED = True
 GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY = "global_voice_chat_enabled"
 DEFAULT_GLOBAL_VOICE_CHAT_ENABLED = True
+FORUM_ENABLED_SETTING_KEY = "forum_enabled"
+DEFAULT_FORUM_ENABLED = True
 ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY = "account_approval_required"
 DEFAULT_ACCOUNT_APPROVAL_REQUIRED = False
 VOICE_JOIN_AUTHORIZATION_WINDOW_SECONDS = 120
@@ -655,6 +657,7 @@ class Server:
         # synchronous and avoids a settings query for every message.
         self._global_chat_sending_enabled = DEFAULT_GLOBAL_CHAT_SENDING_ENABLED
         self._global_voice_chat_enabled = DEFAULT_GLOBAL_VOICE_CHAT_ENABLED
+        self._forum_enabled = DEFAULT_FORUM_ENABLED
         self.global_voice_quality: str = "high"
         self.global_voice_spatial_audio: bool = True
         self._sound_event_mappings: dict[str, str] = {}
@@ -719,6 +722,17 @@ class Server:
             )
         )
 
+    @property
+    def forum_enabled(self) -> bool:
+        """Return whether new forum interactions are currently available."""
+        return getattr(self, '_forum_enabled', DEFAULT_FORUM_ENABLED)
+
+    def set_forum_enabled(self, enabled: bool) -> None:
+        if type(enabled) is not bool:
+            raise TypeError('Forum availability requires a bool value')
+        self._db.set_boolean_server_setting(FORUM_ENABLED_SETTING_KEY, enabled)
+        self._forum_enabled = enabled
+
     def _load_persistent_server_settings(self) -> None:
         """Load server-wide controls after the database is connected."""
         try:
@@ -744,6 +758,16 @@ class Server:
             )
             voice_enabled = False
         self._global_voice_chat_enabled = voice_enabled
+
+        try:
+            self._forum_enabled = self._db.get_boolean_server_setting(
+                FORUM_ENABLED_SETTING_KEY, default=DEFAULT_FORUM_ENABLED,
+            )
+        except ValueError:
+            logging.getLogger('playaural').exception(
+                'Invalid persisted forum availability setting; forum is disabled'
+            )
+            self._forum_enabled = False
 
         try:
             approval_required = self._db.get_boolean_server_setting(
@@ -7102,7 +7126,10 @@ PlayAural Server
         if selection_id == "play":
             self._nav_push(user, self._show_games_list_menu)
         elif selection_id == "forum":
-            self._nav_push(user, self.forum_manager.home)
+            if self.forum_enabled:
+                self._nav_push(user, self.forum_manager.home)
+            else:
+                user.speak_l('forum-unavailable', buffer='system')
         elif selection_id == "create_free_table":
             if self._tables.find_user_table(user.username):
                 return

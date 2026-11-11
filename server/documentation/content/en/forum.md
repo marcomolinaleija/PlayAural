@@ -69,3 +69,9 @@ Administrators and developers have a Manage subforums action at the bottom of th
 Descriptions are announced on entering a subforum without adding a row before its topics. People already viewing the lists receive updates while keeping focus when their selected item remains available.
 
 Delete subforum asks for confirmation. If it contains topics, first choose another subforum to keep them; messages, files, polls, bookmarks and reading positions are preserved. Create another subforum first if none is available. Private conversations remain separate and do not appear in this management view. If another person changed a subforum while you were editing, your draft is kept and you are asked to reopen it instead of overwriting their changes.
+
+\*\*Forum availability\*\*
+
+Administrators and developers can enable or disable the forum under Administration, Moderation and sanctions, Chat moderation, using Forum: On or Off. The setting survives server restarts.
+
+The Forum entry remains visible in the main menu. While disabled, choosing it only announces that administrators have temporarily disabled it. Discussions, polls and published files are not deleted. Publishing from an already-open view and new attachment access are also blocked. Text in open drafts is kept and can still be edited, but can only be published after the forum becomes available again. Back and cancellation remain available.

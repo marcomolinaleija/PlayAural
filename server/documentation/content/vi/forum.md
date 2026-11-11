@@ -69,3 +69,9 @@ Quản trị viên và nhà phát triển có mục Quản lý diễn đàn con 
 Mô tả được đọc khi vào diễn đàn con, không thêm dòng trước các chủ đề. Danh sách đang mở được cập nhật và giữ tiêu điểm khi mục đang chọn vẫn còn.
 
 Xóa diễn đàn con yêu cầu xác nhận. Nếu có chủ đề, trước tiên chọn một diễn đàn con khác để lưu giữ chúng; tin nhắn, tệp, bình chọn, dấu trang và vị trí đọc được giữ nguyên. Nếu chưa có nơi chuyển, hãy tạo một diễn đàn con khác trước. Hội thoại riêng được lưu tách biệt và không xuất hiện trong màn hình quản lý này. Nếu người khác đã thay đổi diễn đàn con trong lúc bạn sửa, bản nháp được giữ lại và bạn cần mở lại thay vì ghi đè thay đổi của họ.
+
+\*\*Trạng thái hoạt động của diễn đàn\*\*
+
+Quản trị viên và nhà phát triển có thể bật hoặc tắt diễn đàn trong Quản trị, Kiểm duyệt và xử phạt, Kiểm duyệt trò chuyện, qua mục Diễn đàn: Bật hoặc Tắt. Cài đặt được giữ sau khi khởi động lại máy chủ.
+
+Mục Diễn đàn vẫn hiển thị trong trình đơn chính. Khi bị tắt, chọn mục này chỉ thông báo rằng quản trị viên đã tạm tắt diễn đàn. Thảo luận, bình chọn và tệp đã đăng không bị xóa. Không thể đăng từ màn hình đã mở hoặc truy cập lại tệp đính kèm. Văn bản trong bản nháp đang mở vẫn được giữ và có thể sửa, nhưng chỉ đăng được khi diễn đàn hoạt động trở lại. Quay lại và hủy vẫn dùng được.

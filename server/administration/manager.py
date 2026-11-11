@@ -1256,6 +1256,13 @@ class AdministrationManager:
                 read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
             ),
             MenuItem(
+                text=Localization.get(user.locale, 'forum-availability-toggle',
+                                     status=Localization.get(user.locale, 'option-on' if self.server.forum_enabled else 'option-off')),
+                id='toggle_forum',
+                description_key='forum-availability-description',
+                read_only=user.trust_level < ADMIN_TRUST_LEVEL,
+            ),
+            MenuItem(
                 text=Localization.get(
                     user.locale,
                     "admin-moderation-section-reports",
@@ -4137,7 +4144,25 @@ class AdministrationManager:
     async def _handle_moderation_selection(
         self, user: NetworkUser, selection_id: str
     ) -> None:
-        if selection_id == "toggle_global_chat":
+        if selection_id == 'toggle_forum':
+            account = self.server.db.get_user_by_uuid(user.uuid)
+            if (user.trust_level < ADMIN_TRUST_LEVEL or not account or not account.approved
+                    or account.trust_level < ADMIN_TRUST_LEVEL or self.server.db.get_active_ban(account.username)):
+                user.speak_l('not-admin-anymore', buffer='system')
+                return
+            enabled = not self.server.forum_enabled
+            try:
+                self.server.set_forum_enabled(enabled)
+            except Exception:
+                logging.getLogger('playaural').exception('Failed to persist forum availability')
+                user.speak_l('forum-availability-update-failed', buffer='system')
+                return
+            for recipient in tuple(self.server.users.values()):
+                recipient.play_sound_family('notify', buffer='system')
+                recipient.speak_l('forum-availability-enabled' if enabled else 'forum-unavailable', buffer='system')
+                if self.server.user_states.get(recipient.username, {}).get('menu') == ADMIN_MODERATION_MENU:
+                    self.server._nav_refresh(recipient, self._show_moderation_menu)
+        elif selection_id == "toggle_global_chat":
             if user.trust_level < DEVELOPER_TRUST_LEVEL:
                 user.speak_l("dev-only-action", buffer="system")
                 self.server._nav_refresh(user, self._show_moderation_menu)

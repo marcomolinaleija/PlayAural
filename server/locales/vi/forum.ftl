@@ -249,3 +249,10 @@ forum-error-category-limit = Bạn có thể có tối đa { $limit } diễn đ�
 forum-error-category-conflict = Quản trị viên khác đã thay đổi diễn đàn con này. Bản nháp vẫn được giữ; hãy mở lại để xem trạng thái hiện tại.
 forum-error-category-destination = Chọn diễn đàn con khác để lưu giữ chủ đề. Nếu chưa có, hãy tạo một diễn đàn con trước khi xóa diễn đàn con này.
 forum-entry-category = { $title }. { $description } { forum-topic-count }. Trang { $page } trên { $pages }. { $empty }
+
+# Trạng thái toàn bộ diễn đàn
+forum-availability-toggle = Diễn đàn: { $status }
+forum-availability-description = Bật hoặc tắt quyền truy cập diễn đàn, gồm hội thoại riêng và tệp đính kèm. Nội dung được giữ nguyên và cài đặt được lưu sau khi khởi động lại máy chủ.
+forum-unavailable = Quản trị viên đã tạm thời tắt diễn đàn.
+forum-availability-enabled = Diễn đàn đã hoạt động trở lại.
+forum-availability-update-failed = Không thể lưu trạng thái diễn đàn. Trạng thái chưa được thay đổi.

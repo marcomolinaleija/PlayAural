@@ -69,3 +69,9 @@ Los administradores y desarrolladores tienen la opción Gestionar subforos al fi
 La descripción se anuncia al entrar en el subforo, sin añadir una fila antes de los temas. Los usuarios que ya están en las listas reciben su actualización conservando el foco cuando el elemento sigue disponible.
 
 Eliminar subforo pide confirmación. Si contiene temas, primero elige otro subforo donde conservarlos; sus mensajes, archivos, encuestas, guardados y posiciones de lectura se mantienen. Si no existe otro subforo, crea uno antes. Las conversaciones privadas permanecen separadas y no aparecen en esta gestión. Si otra persona cambió el subforo mientras lo editabas, se conserva tu borrador y se pide volver a abrirlo para evitar sobrescribir sus cambios.
+
+\*\*Disponibilidad del foro\*\*
+
+Los administradores y desarrolladores pueden activar o desactivar el foro desde Administración, Moderación y sanciones, Moderación del chat, con la opción Foro: Activado o Desactivado. El estado se conserva al reiniciar el servidor.
+
+La opción Foro del menú principal sigue visible. Cuando está desactivado, elegirla solo anuncia que los administradores lo han desactivado temporalmente. No se borran conversaciones, encuestas ni archivos publicados. Tampoco se permite publicar desde una vista que ya estuviera abierta ni acceder de nuevo a sus adjuntos. El texto de los borradores abiertos se conserva y puede seguir editándose, pero solo podrá publicarse cuando el foro vuelva a estar disponible. Atrás y las opciones de cancelar siguen funcionando.

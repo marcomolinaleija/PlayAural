@@ -124,6 +124,10 @@ with a bounded body excerpt and the complete text retained in the editbox.
 Do not duplicate message text as preview rows plus separate edit actions.
 Drafts are bounded session data, never account preferences. See
 `devdoc/forum-foundation.md` for the feature scope and data lifecycle.
+Forum availability is a persistent server setting controlled by admins/developers.
+The main entry stays visible and only speaks a notice while disabled. Gate all
+new shared-menu actions and media grants/HTTP access; preserve local drafts and
+allow cancellation, cleanup and already-started background preparation.
 Subforum management is restricted to approved administrators/developers in the
 service layer. Deleting a populated subforum requires an explicit destination
 and atomically preserves topics, posts, attachments, polls and personal state.

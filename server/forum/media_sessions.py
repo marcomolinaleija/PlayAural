@@ -26,6 +26,8 @@ class MediaSessions:
                 and self.server._active_user_for_client(user._connection) is user)
 
     def issue(self, user) -> tuple[str, int]:
+        if not getattr(self.server, 'forum_enabled', True):
+            raise ForumError('forum-unavailable')
         self.service.account(user.uuid)
         if not self._owns_session(user):
             raise ForumError('forum-error-account')
@@ -48,6 +50,8 @@ class MediaSessions:
         if grant is None or grant.expires_at <= self.clock() or not self._owns_session(grant.user):
             self._grants.pop(token, None)
             raise ForumError('forum-error-account')
+        if not getattr(self.server, 'forum_enabled', True):
+            raise ForumError('forum-unavailable')
         self.service.account(grant.user.uuid)
         return grant.user
 

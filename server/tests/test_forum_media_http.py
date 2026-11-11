@@ -49,6 +49,28 @@ async def ready_file(server, media, user, tmp_path):
     return row['id']
 
 
+async def test_forum_disabled_blocks_existing_media_grants_without_deleting_files(media_server, tmp_path):
+    server, media, users = media_server
+    attachment = await ready_file(server, media, users['Alice'], tmp_path)
+    credentials = media.credentials(users['Alice'])
+    headers = {'Authorization': 'Bearer ' + credentials['token']}
+    server.set_forum_enabled(False)
+    with pytest.raises(ForumError, match='forum-unavailable'):
+        media.credentials(users['Alice'])
+    async with ClientSession() as client:
+        for method, path in (('GET', '/files/' + attachment), ('HEAD', '/files/' + attachment),
+                             ('POST', '/session'), ('POST', '/uploads'), ('PUT', '/uploads/' + attachment)):
+            payload = {'name': 'forbidden.txt', 'size': 1} if path == '/uploads' else None
+            async with client.request(method, media.base_url + path, headers=headers, json=payload) as response:
+                assert response.status == 503
+                if method != 'HEAD':
+                    assert (await response.json())['error'] == 'forum-unavailable'
+        server.set_forum_enabled(True)
+        async with client.get(media.base_url + '/files/' + attachment, headers=headers) as response:
+            assert response.status == 200
+            assert await response.read() == b'0123456789abcdef'
+
+
 def test_range_parser_bounds_and_suffixes():
     assert byte_range(None, 10) == (0, 9, False)
     assert byte_range('bytes=2-6', 10) == (2, 6, True)
