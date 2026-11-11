@@ -256,3 +256,24 @@ forum-availability-description = Enable or disable access to the forum, includin
 forum-unavailable = The forum has been temporarily disabled by the administrators.
 forum-availability-enabled = The forum is available again.
 forum-availability-update-failed = Forum availability could not be saved. Its state was not changed.
+
+## Public-content reports
+forum-report-thread = Report thread
+forum-report-post = Report message
+forum-report-content = { $title }: { $body }
+forum-report-reason = Reason: { $reason }
+forum-report-choose-reason = Choose a reason
+forum-report-details = Details: { $details }
+forum-report-no-details = No additional details
+forum-report-details-prompt = Optional report details (up to 500 characters)
+forum-report-details-length = Details must contain no more than { $limit } characters.
+forum-report-confirm = Send this report of “{ $title }” for { $reason }? A copy of the public content will be saved for manual review. The author will not be notified.
+forum-report-submitted = Report submitted for review. A copy of the content was saved; no automatic penalties were applied.
+forum-report-duplicate = You have already reported this version of the publication. The team can review your existing report.
+forum-report-limit = You have reached the report limit. Try again in { $minutes } minutes.
+forum-report-self = You cannot report your own publications.
+forum-report-changed = The content changed after you opened the report. Reopen the publication and review its current version before reporting it.
+admin-moderation-scope-forum = Public forum
+forum-report-evidence = { $kind }. Thread { $topic }, message { $post }, revision { $revision }. Title when reported: { $title }
+forum-report-evidence-unavailable = The content snapshot is unavailable. The report details remain available for review.
+forum-report-view-current = View current publication

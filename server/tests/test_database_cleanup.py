@@ -934,11 +934,23 @@ def _create_unversioned_database(db_path: Path) -> str:
 
 def _remove_forum_tables_for_legacy_fixture(connection: sqlite3.Connection) -> None:
     """Historical v0-v3 databases did not contain the v4 forum schema."""
-    for table in ('forum_attachment_reviews', "forum_attachments", "forum_poll_votes", "forum_poll_options", "forum_polls",
+    for table in ('forum_report_targets', 'forum_attachment_reviews', "forum_attachments", "forum_poll_votes", "forum_poll_options", "forum_polls",
                   "forum_private_invites", "forum_private_members", "forum_private_topics",
                   "forum_moderation_events", "forum_bookmarks", "forum_read_positions",
                   "forum_posts", "forum_topics", "forum_categories"):
         connection.execute(f"DROP TABLE IF EXISTS {table}")
+    # These fixtures really predate public-forum reports, including their
+    # central table constraints. Retain historical report rows and indexes.
+    from ..moderation.report_schema import create_reports_table
+    indexes = [row[0] for row in connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'moderation_reports' AND sql IS NOT NULL"
+    )]
+    connection.execute('ALTER TABLE moderation_reports RENAME TO fixture_reports')
+    create_reports_table(connection.cursor(), forum=False)
+    connection.execute('INSERT INTO moderation_reports SELECT * FROM fixture_reports')
+    connection.execute('DROP TABLE fixture_reports')
+    for statement in indexes:
+        connection.execute(statement)
 
 
 def _replace_username_expression_index_with_v2_contract(

@@ -137,6 +137,8 @@ class ForumViews:
                 item(user, "forum-reopen" if topic.closed else "forum-close", "toggle_closed"),
                 item(user, "forum-unpin" if topic.pinned else "forum-pin", "toggle_pinned"),
             ])
+        if not topic.is_private and topic.author_uuid != user.uuid:
+            rows.append(item(user, 'forum-report-thread', 'report_thread'))
         self.render(user, nav.THREAD, rows, title=topic.title,
                     announcement=("forum-entry-thread", {
                         "title": topic.title, "author": author(user, topic),
@@ -170,6 +172,8 @@ class ForumViews:
             rows.append(item(user, "forum-edit", "edit"))
         if self.service.can_moderate(user.uuid, topic.id):
             rows.append(item(user, "forum-restore-post" if post.hidden else "forum-hide-post", "toggle_hidden"))
+        if not topic.is_private and not post.hidden and post.author_uuid != user.uuid:
+            rows.append(item(user, 'forum-report-post', 'report_post'))
         self.render(user, nav.POST, rows, title=topic.title,
                     announcement=("forum-entry-post", {
                         "title": topic.title, "author": author(user, post), "age": age(user, post.created_at),

@@ -19,7 +19,7 @@ def version_three_database(path):
     db._conn = db._open_connection(str(path), timeout=30)
     db._conn.execute("PRAGMA foreign_keys = ON")
     with db._transaction(immediate=True) as cursor:
-        db._create_tables_in_transaction(cursor, include_forum=False)
+        db._create_tables_in_transaction(cursor, include_forum=False, forum_version=3)
         cursor.execute(f"PRAGMA application_id = {Database.APPLICATION_ID}")
         cursor.execute("PRAGMA user_version = 3")
     user = db.create_user("Existing User", "retained-hash", email="existing@example.com")

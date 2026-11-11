@@ -24,12 +24,14 @@ MODERATION_REPORT_NOTIFICATION_SOUND = "moderation_report.ogg"
 
 REPORT_ORIGIN_MANUAL = "manual"
 REPORT_ORIGIN_AUTOMATED_SPAM = "automated_spam"
-ReportContext = Literal["global", "table"]
+ReportContext = Literal["global", "table", "forum"]
+REPORT_CONTEXT_FORUM: ReportContext = "forum"
 REPORT_CONTEXT_GLOBAL: ReportContext = "global"
 REPORT_CONTEXT_TABLE: ReportContext = "table"
 REPORT_CONTEXT_CODES: tuple[ReportContext, ...] = (
     REPORT_CONTEXT_GLOBAL,
     REPORT_CONTEXT_TABLE,
+    REPORT_CONTEXT_FORUM,
 )
 SPAM_DETECTION_KINDS = ("rate_limited", "repeated_message")
 
@@ -62,6 +64,7 @@ def report_reason_localization_key(reason_code: str) -> str:
 
 
 ReportSubmissionOutcome = Literal[
+    "duplicate",
     "created",
     "reporter_limit",
     "target_cooldown",
@@ -92,7 +95,7 @@ class AutomatedSpamEvidence:
 
     def to_json(self) -> str:
         """Serialize validated evidence without locale-dependent prose."""
-        if self.scope not in REPORT_CONTEXT_CODES:
+        if self.scope not in (REPORT_CONTEXT_GLOBAL, REPORT_CONTEXT_TABLE):
             raise ValueError("Unsupported automated-report scope")
         if self.detection_kind not in SPAM_DETECTION_KINDS:
             raise ValueError("Unsupported spam detection kind")

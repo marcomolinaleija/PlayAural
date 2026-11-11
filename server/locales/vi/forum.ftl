@@ -256,3 +256,24 @@ forum-availability-description = Bật hoặc tắt quyền truy cập diễn đ
 forum-unavailable = Quản trị viên đã tạm thời tắt diễn đàn.
 forum-availability-enabled = Diễn đàn đã hoạt động trở lại.
 forum-availability-update-failed = Không thể lưu trạng thái diễn đàn. Trạng thái chưa được thay đổi.
+
+## Báo cáo nội dung công khai
+forum-report-thread = Báo cáo chủ đề
+forum-report-post = Báo cáo bài viết
+forum-report-content = { $title }: { $body }
+forum-report-reason = Lý do: { $reason }
+forum-report-choose-reason = Chọn lý do
+forum-report-details = Chi tiết: { $details }
+forum-report-no-details = Không có chi tiết bổ sung
+forum-report-details-prompt = Chi tiết báo cáo tùy chọn (tối đa 500 ký tự)
+forum-report-details-length = Chi tiết không được vượt quá { $limit } ký tự.
+forum-report-confirm = Gửi báo cáo về “{ $title }” với lý do { $reason }? Bản sao nội dung công khai sẽ được lưu để xem xét thủ công. Tác giả sẽ không nhận thông báo.
+forum-report-submitted = Đã gửi báo cáo để xem xét và lưu bản sao nội dung. Không có hình phạt tự động.
+forum-report-duplicate = Bạn đã báo cáo phiên bản này. Nhóm quản trị có thể xem báo cáo hiện có.
+forum-report-limit = Bạn đã đạt giới hạn báo cáo. Hãy thử lại sau { $minutes } phút.
+forum-report-self = Bạn không thể báo cáo bài viết của chính mình.
+forum-report-changed = Nội dung đã thay đổi. Hãy mở lại bài viết và xem phiên bản hiện tại trước khi báo cáo.
+admin-moderation-scope-forum = Diễn đàn công khai
+forum-report-evidence = { $kind }. Chủ đề { $topic }, bài viết { $post }, phiên bản { $revision }. Tiêu đề khi báo cáo: { $title }
+forum-report-evidence-unavailable = Không có bản sao nội dung. Thông tin báo cáo vẫn được giữ để xem xét.
+forum-report-view-current = Xem bài viết hiện tại

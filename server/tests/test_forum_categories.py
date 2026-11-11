@@ -203,7 +203,7 @@ def test_v6_migration_preserves_existing_data_and_separates_private_storage(tmp_
         assert service.post(owner, post).body == 'Retained body'
         assert service.topic(owner, topic).category_id == PRIVATE_CATEGORY_ID
         assert [category.id for category in service.categories(owner)] == ['general', 'help', 'ideas']
-        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == 7
+        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
         with sqlite3.connect(next(backups.glob('*.sqlite3'))) as snapshot:
             assert snapshot.execute('PRAGMA user_version').fetchone()[0] == 6
             assert snapshot.execute('SELECT category_id FROM forum_topics').fetchone()[0] == 'general'

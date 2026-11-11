@@ -115,7 +115,7 @@ build_prod.bat
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v7), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v8), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
@@ -128,6 +128,10 @@ Forum availability is a persistent server setting controlled by admins/developer
 The main entry stays visible and only speaks a notice while disabled. Gate all
 new shared-menu actions and media grants/HTTP access; preserve local drafts and
 allow cancellation, cleanup and already-started background preparation.
+Reports cover public threads/posts only, never private conversations. Recheck
+access and revision inside the central report transaction. Preserve immutable
+text/title/identity evidence in the existing moderation queue; share report
+quotas and notify staff only on creation. Reports never auto-hide or sanction.
 Subforum management is restricted to approved administrators/developers in the
 service layer. Deleting a populated subforum requires an explicit destination
 and atomically preserves topics, posts, attachments, polls and personal state.

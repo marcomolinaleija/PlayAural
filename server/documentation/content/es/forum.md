@@ -75,3 +75,11 @@ Eliminar subforo pide confirmación. Si contiene temas, primero elige otro subfo
 Los administradores y desarrolladores pueden activar o desactivar el foro desde Administración, Moderación y sanciones, Moderación del chat, con la opción Foro: Activado o Desactivado. El estado se conserva al reiniciar el servidor.
 
 La opción Foro del menú principal sigue visible. Cuando está desactivado, elegirla solo anuncia que los administradores lo han desactivado temporalmente. No se borran conversaciones, encuestas ni archivos publicados. Tampoco se permite publicar desde una vista que ya estuviera abierta ni acceder de nuevo a sus adjuntos. El texto de los borradores abiertos se conserva y puede seguir editándose, pero solo podrá publicarse cuando el foro vuelva a estar disponible. Atrás y las opciones de cancelar siguen funcionando.
+
+\*\*Reportar contenido público\*\*
+
+Al final de un hilo público puedes elegir Reportar hilo; al abrir un mensaje público de otra persona, Reportar mensaje. Elige el motivo y, si hace falta, añade Detalles (hasta 500 caracteres). Revisa la confirmación antes de enviar. Atrás o No cancelan sin enviar nada. Las conversaciones privadas no se pueden reportar desde este sistema.
+
+El reporte guarda el título y una copia del mensaje señalado; en un reporte de hilo, guarda su primer mensaje. Si el contenido cambió mientras preparabas el reporte, tendrás que abrirlo de nuevo y revisar la versión actual. El autor no recibe un aviso y reportar no oculta contenido ni impone sanciones automáticamente. No se duplica el reporte de la misma versión; hay un límite compartido de cinco reportes por hora entre chat y foro.
+
+Los administradores y desarrolladores revisan los reportes en Administración, Moderación y sanciones, Moderación del chat. Pueden consultar la copia conservada, abrir la publicación actual si sigue accesible y marcar el reporte como revisado, descartado o con medidas tomadas. La evidencia se conserva aunque se edite el mensaje o se elimine una cuenta; sigue la limpieza manual de reportes cerrados del servidor.

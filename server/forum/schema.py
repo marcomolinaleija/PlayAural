@@ -7,6 +7,11 @@ from . import schema_v5
 
 
 CHECK_CONSTRAINTS = {
+    "forum_report_targets": (
+        "CHECK (target_kind IN ('thread', 'post'))",
+        "CHECK (target_id > 0)",
+        "CHECK (revision >= 0)",
+    ),
     **schema_v5.CHECK_CONSTRAINTS,
     "forum_categories": (
         "CHECK (length(name) <= 80)",
@@ -28,7 +33,7 @@ CHECK_CONSTRAINTS = {
 }
 
 
-def create_schema(cursor: sqlite3.Cursor, *, version: int = 7) -> None:
+def create_schema(cursor: sqlite3.Cursor, *, version: int = 8) -> None:
     # Statements run in Database's migration transaction, never executescript
     # (which would implicitly commit its caller's transaction).
     categories_existed = cursor.execute(
@@ -96,6 +101,17 @@ def create_schema(cursor: sqlite3.Cursor, *, version: int = 7) -> None:
             )
     if version >= 5:
         schema_v5.create_schema(cursor)
+    if version >= 8:
+        # Snapshots survive account/content deletion. Explicit report cleanup
+        # owns retention, including the deduplication key.
+        cursor.execute('''CREATE TABLE IF NOT EXISTS forum_report_targets (
+            report_id INTEGER PRIMARY KEY REFERENCES moderation_reports(id) ON DELETE CASCADE,
+            reporter_uuid TEXT NOT NULL,
+            target_kind TEXT NOT NULL CHECK (target_kind IN ('thread', 'post')),
+            target_id INTEGER NOT NULL CHECK (target_id > 0),
+            revision INTEGER NOT NULL CHECK (revision >= 0),
+            UNIQUE (reporter_uuid, target_kind, target_id, revision)
+        )''')
     if version >= 7:
         columns = {row[1] for row in cursor.execute('PRAGMA table_info(forum_categories)')}
         for name, definition in (

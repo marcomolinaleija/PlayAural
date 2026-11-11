@@ -152,3 +152,6 @@ the forum. The server wheel was built and inspected for forum modules, all
 three locale catalogs, and their manuals. Browser interaction verified posting
 and the revised content-first navigation; the desktop application rendered the
 forum. A physical Android device and a packaged APK were not exercised.
+
+Public-content reporting uses the shared moderation queue and schema 8. See
+[forum-reports.md](forum-reports.md) for evidence, quotas and retention.

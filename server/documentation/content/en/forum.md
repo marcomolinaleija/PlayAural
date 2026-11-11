@@ -75,3 +75,11 @@ Delete subforum asks for confirmation. If it contains topics, first choose anoth
 Administrators and developers can enable or disable the forum under Administration, Moderation and sanctions, Chat moderation, using Forum: On or Off. The setting survives server restarts.
 
 The Forum entry remains visible in the main menu. While disabled, choosing it only announces that administrators have temporarily disabled it. Discussions, polls and published files are not deleted. Publishing from an already-open view and new attachment access are also blocked. Text in open drafts is kept and can still be edited, but can only be published after the forum becomes available again. Back and cancellation remain available.
+
+\*\*Report public content\*\*
+
+Choose Report thread at the bottom of a public thread, or Report message when reading someone else's public message. Choose a reason, optionally add Details (up to 500 characters), then confirm. Back or No cancels without submitting. Private conversations cannot be reported through this system.
+
+Reports save the title and a copy of the selected message; a thread report saves its opening message. If the content changes while you prepare the report, reopen it and review the current version. The author receives no notice. Reporting never hides content or applies penalties automatically. Reports of the same version are not duplicated. Chat and forum share a limit of five reports per hour.
+
+Administrators and developers review reports under Administration, Moderation and sanctions, Chat moderation. They can read the saved copy, open the current publication if still accessible, and mark the report reviewed, dismissed or actioned. Evidence survives edits and account deletion, and follows the server's manual closed-report cleanup policy.

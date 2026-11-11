@@ -256,3 +256,24 @@ forum-availability-description = Activa o desactiva el acceso al foro, incluidos
 forum-unavailable = El foro está desactivado temporalmente por los administradores.
 forum-availability-enabled = El foro está disponible de nuevo.
 forum-availability-update-failed = No se pudo guardar la disponibilidad del foro. No se cambió su estado.
+
+## Reportes de contenido público
+forum-report-thread = Reportar hilo
+forum-report-post = Reportar mensaje
+forum-report-content = { $title }: { $body }
+forum-report-reason = Motivo: { $reason }
+forum-report-choose-reason = Elige un motivo
+forum-report-details = Detalles: { $details }
+forum-report-no-details = Sin detalles adicionales
+forum-report-details-prompt = Detalles opcionales del reporte (máximo 500 caracteres)
+forum-report-details-length = Los detalles deben tener como máximo { $limit } caracteres.
+forum-report-confirm = ¿Enviar este reporte de «{ $title }» por { $reason }? Se guardará una copia del contenido público para revisión manual. El autor no recibirá ningún aviso.
+forum-report-submitted = Reporte enviado para revisión. Se conservó una copia del contenido; no se aplicaron sanciones automáticas.
+forum-report-duplicate = Ya reportaste esta versión de la publicación. El equipo puede revisar tu reporte existente.
+forum-report-limit = Alcanzaste el límite de reportes. Inténtalo de nuevo en { $minutes } minutos.
+forum-report-self = No puedes reportar tus propias publicaciones.
+forum-report-changed = El contenido cambió desde que abriste el reporte. Vuelve a abrir la publicación y revisa su versión actual antes de reportarla.
+admin-moderation-scope-forum = Foro público
+forum-report-evidence = { $kind }. Hilo { $topic }, mensaje { $post }, revisión { $revision }. Título al reportar: { $title }
+forum-report-evidence-unavailable = La copia del contenido no está disponible. Los datos del reporte se conservan para revisión.
+forum-report-view-current = Ver publicación actual

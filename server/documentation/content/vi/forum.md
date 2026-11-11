@@ -75,3 +75,11 @@ Xóa diễn đàn con yêu cầu xác nhận. Nếu có chủ đề, trước ti
 Quản trị viên và nhà phát triển có thể bật hoặc tắt diễn đàn trong Quản trị, Kiểm duyệt và xử phạt, Kiểm duyệt trò chuyện, qua mục Diễn đàn: Bật hoặc Tắt. Cài đặt được giữ sau khi khởi động lại máy chủ.
 
 Mục Diễn đàn vẫn hiển thị trong trình đơn chính. Khi bị tắt, chọn mục này chỉ thông báo rằng quản trị viên đã tạm tắt diễn đàn. Thảo luận, bình chọn và tệp đã đăng không bị xóa. Không thể đăng từ màn hình đã mở hoặc truy cập lại tệp đính kèm. Văn bản trong bản nháp đang mở vẫn được giữ và có thể sửa, nhưng chỉ đăng được khi diễn đàn hoạt động trở lại. Quay lại và hủy vẫn dùng được.
+
+\*\*Báo cáo nội dung công khai\*\*
+
+Chọn Báo cáo chủ đề ở cuối chủ đề công khai, hoặc Báo cáo bài viết khi đọc bài viết công khai của người khác. Chọn lý do, thêm Chi tiết nếu cần (tối đa 500 ký tự), rồi xác nhận. Quay lại hoặc Không sẽ hủy mà không gửi. Hệ thống này không báo cáo cuộc trò chuyện riêng tư.
+
+Báo cáo lưu tiêu đề và bản sao bài viết được chọn; báo cáo chủ đề lưu bài viết đầu tiên. Nếu nội dung thay đổi, hãy mở lại và xem phiên bản hiện tại. Tác giả không nhận thông báo. Báo cáo không tự động ẩn nội dung hay áp dụng hình phạt. Cùng một phiên bản sẽ không bị báo cáo lặp lại. Trò chuyện và diễn đàn dùng chung giới hạn năm báo cáo mỗi giờ.
+
+Quản trị viên và nhà phát triển xem báo cáo trong phần Quản trị, Kiểm duyệt và hình phạt, Kiểm duyệt trò chuyện. Họ có thể đọc bản sao, mở bài viết hiện tại nếu còn truy cập được, và đánh dấu đã xem xét, bỏ qua hoặc đã xử lý. Bằng chứng vẫn được giữ khi sửa bài viết hoặc xóa tài khoản, và chỉ bị xóa theo quy trình dọn báo cáo đã đóng thủ công của máy chủ.

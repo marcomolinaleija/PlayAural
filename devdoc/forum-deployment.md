@@ -1,7 +1,7 @@
 # Forum media configuration and recovery
 
 Forum messages, memberships, polls, file metadata and review decisions use the
-central schema-v7 SQLite database. File bytes live in a private object store;
+central schema-v8 SQLite database. File bytes live in a private object store;
 they are not stored in SQLite or sent through the gameplay WebSocket. Desktop,
 web and mobile use the same authorized HTTP service.
 
