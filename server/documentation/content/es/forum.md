@@ -4,7 +4,7 @@ Elige Foro en el menú principal para leer y participar en las conversaciones. U
 
 \*\*Encontrar una conversación\*\*
 
-Elige Comunidad, Preguntas y ayuda o Ideas y sugerencias. Los temas aparecen primero, con autor, número de mensajes, actividad y estado de lectura. Las acciones están debajo. Actividad reciente reúne conversaciones de las distintas categorías. Buscar revisa títulos y mensajes visibles. Conversaciones guardadas muestra solo los temas que tú guardaste.
+Abre uno de los subforos disponibles en el idioma elegido. Sus nombres y organización dependen de la configuración de la comunidad y pueden cambiar. Los temas aparecen primero, con autor, número de mensajes, actividad y estado de lectura. Las acciones están debajo. Actividad reciente reúne conversaciones de los subforos del idioma elegido. Buscar revisa títulos y mensajes visibles. Conversaciones guardadas muestra solo los temas que tú guardaste.
 
 Conversaciones guardadas puede incluir temas públicos y privados. Los privados se identifican en la lista y solo aparecen mientras pertenezcas a ellos. No aparecen en las categorías, Actividad reciente, Conversaciones sin leer ni Buscar.
 

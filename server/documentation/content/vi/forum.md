@@ -4,7 +4,7 @@ Chọn Diễn đàn trong menu chính để đọc và tham gia thảo luận. D
 
 \*\*Tìm thảo luận\*\*
 
-Chọn Cộng đồng, Câu hỏi và trợ giúp, hoặc Ý tưởng và góp ý. Các chủ đề xuất hiện trước, kèm tác giả, số tin nhắn, hoạt động và trạng thái chưa đọc. Các thao tác nằm bên dưới. Hoạt động gần đây tập hợp thảo luận từ các chuyên mục. Tìm kiếm kiểm tra tiêu đề và nội dung tin nhắn hiển thị. Thảo luận đã lưu chỉ chứa các chủ đề bạn đã lưu.
+Mở một diễn đàn con có sẵn trong ngôn ngữ đã chọn. Tên và cách tổ chức tùy thuộc vào cấu hình của cộng đồng và có thể thay đổi. Các chủ đề xuất hiện trước, kèm tác giả, số tin nhắn, hoạt động và trạng thái chưa đọc. Các thao tác nằm bên dưới. Hoạt động gần đây tập hợp thảo luận từ các diễn đàn con trong ngôn ngữ đã chọn. Tìm kiếm kiểm tra tiêu đề và nội dung tin nhắn hiển thị. Thảo luận đã lưu chỉ chứa các chủ đề bạn đã lưu.
 
 Thảo luận đã lưu có thể gồm cả cuộc trò chuyện công khai và riêng tư. Cuộc trò chuyện riêng tư được ghi rõ trong danh sách và chỉ xuất hiện khi bạn còn là thành viên. Chúng không xuất hiện trong các chuyên mục, Hoạt động gần đây, Thảo luận chưa đọc hoặc Tìm kiếm.
 

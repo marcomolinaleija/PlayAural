@@ -4,7 +4,7 @@ Choose Forum in the main menu to read and join community discussions. Use your u
 
 \*\*Finding a Discussion\*\*
 
-Choose Community, Questions and help, or Ideas and feedback. Topics appear first, with their author, message count, activity, and unread status. Actions follow the topics. Recent activity shows discussions across categories. Search looks in titles and visible message text. Saved discussions contains only the discussions you saved.
+Open one of the subforums available in your chosen language. Their names and organization depend on the community's configuration and may change. Topics appear first, with their author, message count, activity, and unread status. Actions follow the topics. Recent activity shows discussions across subforums in the chosen language. Search looks in titles and visible message text. Saved discussions contains only the discussions you saved.
 
 Saved discussions can include public and private conversations. A private conversation is identified in the list and stays available only while you belong to it. Private conversations do not appear in category lists, Recent activity, Unread discussions, or Search.
 
