@@ -574,6 +574,7 @@ class MainWindow(wx.Frame):
         self.ID_LIST_ONLINE = wx.NewIdRef()
         self.ID_LIST_ONLINE_WITH_GAMES = wx.NewIdRef()
         self.ID_OPEN_FRIENDS_HUB = wx.NewIdRef()
+        self.ID_OPEN_FORUM = wx.NewIdRef()
         self.ID_OPEN_ADMIN_MENU = wx.NewIdRef()
         self.ID_OPEN_OPTIONS = wx.NewIdRef()
         self.ID_OPEN_PERSONAL_OPTIONS = wx.NewIdRef()
@@ -626,6 +627,7 @@ class MainWindow(wx.Frame):
             ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("P"), self.ID_PING),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB),
+            wx.AcceleratorEntry(wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord("F"), self.ID_OPEN_FORUM),
             wx.AcceleratorEntry(
                 wx.ACCEL_ALT | wx.ACCEL_SHIFT,
                 ord("A"),
@@ -689,6 +691,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_open_personal_options, id=self.ID_OPEN_PERSONAL_OPTIONS)
         self.Bind(wx.EVT_MENU, self.on_ping, id=self.ID_PING)
         self.Bind(wx.EVT_MENU, self.on_open_friends_hub, id=self.ID_OPEN_FRIENDS_HUB)
+        self.Bind(wx.EVT_MENU, self.on_open_forum, id=self.ID_OPEN_FORUM)
         self.Bind(wx.EVT_MENU, self.on_open_admin_menu, id=self.ID_OPEN_ADMIN_MENU)
         self.Bind(wx.EVT_MENU, self.on_open_options, id=self.ID_OPEN_OPTIONS)
         self.Bind(wx.EVT_MENU, self.on_list_online, id=self.ID_LIST_ONLINE)
@@ -1426,6 +1429,13 @@ class MainWindow(wx.Frame):
             self._prepare_for_menu_shortcut_navigation()
             self.network.send_packet({"type": "open_friends_hub"})
 
+    def on_open_forum(self, event):
+        """Open the forum with Ctrl+Shift+F using the existing keybind protocol."""
+        if self.connected:
+            self._prepare_for_menu_shortcut_navigation()
+            self.network.send_packet({'type': 'keybind', 'key': 'f', 'control': True,
+                                      'shift': True, 'alt': False, 'meta': False})
+
     def on_open_admin_menu(self, event):
         """Handle Alt+Shift+A to request the admin menu from anywhere."""
         if self.connected and self.current_menu_id not in self._ADMIN_MENU_IDS:
@@ -1867,8 +1877,9 @@ class MainWindow(wx.Frame):
                 key_name = "enter"
         # Handle letter keys (case insensitive)
         elif 65 <= key_code <= 90:  # A-Z
-            # Ctrl+F and Ctrl+U are handled by the accelerator table.
-            if event.ControlDown() and key_code in [ord("F"), ord("U")] and not event.AltDown() and not event.ShiftDown():
+            # Friends, forum and online-users chords use the accelerator table.
+            if (event.ControlDown() and not event.AltDown()
+                    and (key_code == ord('F') or key_code == ord('U') and not event.ShiftDown())):
                 event.Skip()
                 return
             # Alt shortcuts are handled by the accelerator table.

@@ -331,6 +331,36 @@ test("message-history punctuation shortcuts keep their established dispatch", ()
   assert.deepEqual(calls, ["older", "newer", "oldest", "newest", "oldest", "newest"]);
 });
 
+test('Ctrl+Shift+F opens the forum while Ctrl+F keeps opening Friends', () => {
+  const menu = { contains: () => false };
+  const calls = [];
+  let keydown;
+  globalThis.document = { activeElement: menu, addEventListener(type, listener) {
+    if (type === 'keydown') keydown = listener;
+  } };
+  const store = { state: { connection: { authenticated: true },
+    currentMenu: { menuId: 'turn_menu', items: [], selection: 0 } } };
+  let modal = false;
+  installKeybinds({ store, menuView: { getElement: () => menu },
+    sendKeybind: (packet) => calls.push(packet), onOpenFriends: () => calls.push('friends'),
+    isModalOpen: () => modal });
+  const press = (shiftKey) => keydown({ key: 'F', ctrlKey: true, shiftKey, altKey: false, metaKey: false,
+    preventDefault() { calls.push('prevented'); } });
+  press(true);
+  assert.deepEqual(calls, ['prevented', { key: 'f', control: true, shift: true, alt: false, meta: false, menu_id: 'turn_menu' }]);
+  calls.length = 0;
+  press(false);
+  assert.deepEqual(calls, ['prevented', 'friends']);
+  calls.length = 0;
+  modal = true;
+  press(true);
+  assert.deepEqual(calls, []);
+  modal = false;
+  store.state.connection.authenticated = false;
+  press(true);
+  assert.deepEqual(calls, []);
+});
+
 test("large grids retain accessible cells and pan on both axes", async () => {
   const css = await readFile(new URL("../style.css", import.meta.url), "utf8");
   const gridStart = css.indexOf(".menu-list.grid-mode {");

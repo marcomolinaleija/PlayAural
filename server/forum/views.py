@@ -71,12 +71,12 @@ class ForumViews:
     def home(self, user, language: str | None = None) -> None:
         language = language or self.service.languages.current(user.uuid)
         language_name = label(user, 'forum-language-' + language)
-        rows = [item(user, "forum-category-row", f"category:{category.id}",
+        rows = [item(user, 'forum-private', 'private'), item(user, 'forum-recent', 'recent')]
+        rows.extend(item(user, "forum-category-row", f"category:{category.id}",
                      name=category_name(user, category), count=category.topic_count)
-                for category in self.service.categories(user.uuid, language=language)]
-        rows.extend([item(user, "forum-recent", "recent"), item(user, "forum-unread", "unread"),
-                     item(user, "forum-saved", "saved"), item(user, "forum-search", "search"),
-                     item(user, 'forum-private', 'private')])
+                    for category in self.service.categories(user.uuid, language=language))
+        rows.extend([item(user, "forum-unread", "unread"),
+                     item(user, "forum-saved", "saved"), item(user, "forum-search", "search")])
         if self.service.attachments.require_approval and self.service.is_moderator(user.uuid):
             rows.append(item(user, 'forum-media-review-heading', 'review_media'))
         if self.service.is_moderator(user.uuid):

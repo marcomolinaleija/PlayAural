@@ -16,6 +16,7 @@ Esta guía explica los controles que funcionan en toda la plataforma de PlayAura
 \* \*\*F7 / F8:\*\* Baja o sube el volumen del canal de audio seleccionado actualmente.
 \* \*\*F9:\*\* Abre el menú de Personal y opciones (Perfil, Amigos, Estadísticas, Opciones).
 \* \*\*Ctrl + F:\*\* Abre Amigos.
+\* \*\*Ctrl + Shift + F:\*\* Abre el foro sin salir de tu mesa. Cierra primero cualquier cuadro de texto abierto.
 \* \*\*Alt + P:\*\* Comprueba la latencia de la conexión.
 \* \*\*Alt + M:\*\* Devuelve el foco al menú principal.
 \* \*\*Alt + O:\*\* Abre Opciones.

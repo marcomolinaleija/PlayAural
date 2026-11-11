@@ -22,6 +22,7 @@ When Menu Hints are off, focus any described menu item and press \*\*F1\*\* in t
 \* \*\*F7 / F8:\*\* Decrease or increase volume for the currently selected audio channel.
 \* \*\*F9:\*\* Open Personal and Options menu (Profile, Friends, Stats, Options).
 \* \*\*Ctrl + F:\*\* Open Friends.
+\* \*\*Ctrl + Shift + F:\*\* Open the forum without leaving your table. Close any open text box first.
 \* \*\*Alt + P:\*\* Check connection latency.
 \* \*\*Alt + M:\*\* Return focus to the main menu.
 \* \*\*Alt + O:\*\* Open Options.
