@@ -129,6 +129,9 @@ branches or silently add pending upstream changes to a release.
 - **Feature Branch Isolation**: Never develop or experiment directly on `develop`
   or `main`. Create isolated `feature/<name>` branches for spikes, prototypes, or
   new capabilities. Only integrate into `develop` when verified and explicitly requested.
+- **Primary Checkout**: The user prefers one repository directory and switching
+  branches with `git switch`. Work in the primary `PlayAural` checkout; do not
+  create linked worktrees unless the user explicitly requests them.
 - **Verification Before Integration**: Always run relevant automated test suites
   via `uv run --project server --extra dev python -m pytest ...` before committing
   or concluding changes.

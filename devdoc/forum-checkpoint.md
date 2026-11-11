@@ -1,5 +1,18 @@
 # Estado guardado del foro — 6 de noviembre de 2026
 
+## Carpeta de trabajo actual — preferencia del usuario
+
+El usuario pidió trabajar en una sola carpeta cambiando de ramas, sin worktrees
+adicionales. El foro está ahora en la rama `feature/forum-foundation` del checkout
+principal:
+`C:\Users\leija\Documents\Codex\2026-10-31\re\outputs\PlayAural`.
+La carpeta separada `PlayAural-forum` fue retirada después de comprobar que no
+contenía cambios pendientes. Sus archivos locales ignorados se conservaron en
+`C:\Users\leija\Documents\Codex\2026-10-31\re\work\forum-validation\checkout-transition-20261110`.
+Para continuar, usar `git switch feature/forum-foundation` en la carpeta
+principal. Móvil sigue pausado. Las referencias al worktree separado en los
+informes anteriores describen el lugar histórico donde se realizaron las pruebas.
+
 ## Sincronización autorizada con develop — 10 de noviembre
 
 El estado anterior se guardó en commits locales y en la rama
