@@ -1,4 +1,4 @@
-"""Preview-first composing, with one bounded draft in the user's nav frame."""
+"""Compact editable fields, with one bounded draft in the user's nav frame."""
 
 from dataclasses import asdict, replace
 
@@ -6,7 +6,7 @@ from ..ui.confirmation import show_confirmation_menu
 from ..users.base import MenuItem
 from . import navigation as nav
 from .models import Draft, ForumError, MAX_BODY_LENGTH, MAX_TITLE_LENGTH
-from .text import reading_chunks, validate_text
+from .text import excerpt, validate_text
 from .views import item, label
 from .poll_ui import draft_poll
 from .polls import validate_config
@@ -30,9 +30,10 @@ class ForumComposer:
             topic = self.service.topic(user.uuid, draft.topic_id)
             heading = label(user, "forum-edit-heading" if draft.kind == "edit" else "forum-reply-heading", title=topic.title)
         rows = []
-        if draft.body:
-            rows.extend(MenuItem(text=text, id=f"preview:{index}", read_only=True)
-                        for index, text in enumerate(reading_chunks(draft.body)))
+        if draft.kind in {"topic", "private"}:
+            rows.append(item(user, "forum-draft-title", "edit_title", title=draft.title or label(user, "forum-not-written")))
+        rows.append(item(user, "forum-write-body", "edit_body",
+                         body=excerpt(draft.body) if draft.body else label(user, "forum-not-written")))
         if draft.poll:
             rows.append(item(user, 'forum-poll-preview', 'poll_preview', read_only=True,
                              question=draft.poll['question'] or label(user, 'forum-not-written')))
@@ -48,9 +49,6 @@ class ForumComposer:
                      if (account := self.service.repository.database.get_user_by_uuid(user_uuid))]
             rows.append(item(user, 'forum-private-recipients', 'recipients',
                              names=', '.join(names) or label(user, 'forum-not-written')))
-        if draft.kind in {"topic", "private"}:
-            rows.append(item(user, "forum-draft-title", "edit_title", title=draft.title or label(user, "forum-not-written")))
-        rows.append(item(user, "forum-write-body", "edit_body"))
         if draft.kind != 'edit':
             rows.append(item(user, 'forum-add-more', 'extras'))
         rows.append(item(user, "forum-save-edit" if draft.kind == "edit" else "forum-publish", "publish"))
@@ -89,8 +87,7 @@ class ForumComposer:
             return
         draft = replace(self.draft(state), **{"title" if title else "body": value})
         state["_parent_frame"]["forum_draft"] = asdict(draft)
-        if not title:
-            state["_parent_frame"]["_restore_focus_id"] = "preview:0"
+        state["_parent_frame"]["_restore_focus_id"] = "edit_title" if title else "edit_body"
         user.remove_editbox(input_id)
         self.server._restore_input_parent(user, state)
 

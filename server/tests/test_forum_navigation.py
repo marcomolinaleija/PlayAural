@@ -58,7 +58,8 @@ async def test_create_read_reply_edit_and_save_over_real_websocket(tmp_path, cli
             await choose(alice, nav.TOPICS, "new_topic", nav.COMPOSER)
             await fill(alice, nav.TITLE_INPUT, "Una comunidad accesible")
             preview = await fill(alice, nav.BODY_INPUT, "Hola a todos.\nSegunda línea con <script>texto literal</script>.")
-            assert any("<script>" in row["text"] and row["read_only"] for row in preview["items"])
+            assert any("<script>" in row["text"] and row["id"] == 'edit_body' and not row.get('read_only', False)
+                       for row in preview["items"])
             assert server.db._conn.execute("SELECT COUNT(*) FROM forum_posts").fetchone()[0] == 0
             published = await choose(alice, nav.COMPOSER, "publish", nav.POST)
             assert "Hola a todos." in str(published)
@@ -205,7 +206,7 @@ def test_content_precedes_actions_and_entry_context_is_spoken_once(navigation_se
     assert reader["items"][-1]["id"] == "back"
 
 
-async def test_composer_previews_first_without_repeating_entry_help_after_typing(navigation_server):
+async def test_composer_updates_editable_message_without_duplicate_preview_or_entry_help(navigation_server):
     server, user, connection = navigation_server
     manager = server.forum_manager
     topic, _ = manager.service.create_topic(user.uuid, "general", "Topic", "First")
@@ -222,8 +223,10 @@ async def test_composer_previews_first_without_repeating_entry_help_after_typing
     packets = user.get_queued_messages()
     assert not [p for p in packets if p.get("key", "").startswith("forum-entry-")]
     menu = [p for p in packets if p.get("menu_id") == nav.COMPOSER][-1]
-    assert menu["items"][0]["id"] == "preview:0"
-    assert menu["selection_id"] == "preview:0"
+    assert [row['id'] for row in menu['items']] == ['edit_body', 'extras', 'publish', 'back']
+    assert menu['items'][0]['text'] == 'Mensaje: Un borrador para revisar'
+    assert not menu['items'][0].get('read_only', False)
+    assert menu["selection_id"] == "edit_body"
     assert menu["title"] == "Responder en «Topic»"
 
 
@@ -264,10 +267,37 @@ async def test_optional_poll_editor_returns_to_preview_and_preserves_focus_and_d
     manager.handle_menu(user, 'edit_body', state)
     await server._handle_editbox(connection, {'type': 'editbox', 'input_id': nav.BODY_INPUT, 'text': 'Elijamos juntos.'})
     menu = [packet for packet in user.get_queued_messages() if packet.get('menu_id') == nav.COMPOSER and 'items' in packet][-1]
-    assert menu['items'][0]['id'] == 'preview:0'
-    assert menu['selection_id'] == 'preview:0'
+    assert [row['id'] for row in menu['items']][:2] == ['edit_title', 'edit_body']
+    assert menu['selection_id'] == 'edit_body'
     assert '¿Qué jugamos?' in str(menu)
     assert not server.db._conn.execute('SELECT 1 FROM forum_polls').fetchone()
+
+
+@pytest.mark.parametrize('kind', ['topic', 'reply', 'edit', 'private'])
+async def test_compact_fields_keep_full_multiline_text_and_draft_when_cancelled(navigation_server, kind):
+    server, user, connection = navigation_server
+    manager = server.forum_manager
+    topic, post = manager.service.create_topic(user.uuid, 'general', 'Existing topic', 'Existing message')
+    body = 'Primera línea\n' + 'x' * (8000 - len('Primera línea\n'))
+    draft = Draft(kind, category_id='general', topic_id=topic, post_id=post, title='A title', body=body)
+    server._nav_push(user, manager.composer.show, draft)
+    packets = user.get_queued_messages()
+    menu = next(packet for packet in packets if packet.get('menu_id') == nav.COMPOSER)
+    ids = [row['id'] for row in menu['items']]
+    assert not any(item_id.startswith('preview:') for item_id in ids)
+    assert ids.count('edit_body') == 1
+    assert ('edit_title' in ids) is (kind in {'topic', 'private'})
+    message = next(row for row in menu['items'] if row['id'] == 'edit_body')
+    assert message['text'].startswith('Mensaje: Primera línea ')
+    assert message['text'].endswith('…') and len(message['text']) <= 169
+    assert not message.get('read_only', False)
+    assert ids[-1] == 'back' and ids[-2] == 'publish'
+    manager.handle_menu(user, 'edit_body', server._user_states[user.username])
+    prompt = next(packet for packet in user.get_queued_messages() if packet['type'] == 'request_input')
+    assert prompt['default_value'] == body and prompt['multiline'] and prompt['max_length'] == 8000
+    await server._handle_editbox(connection, {'type': 'editbox', 'input_id': nav.BODY_INPUT, 'cancelled': True})
+    assert server._user_states[user.username]['forum_draft']['body'] == body
+    assert manager.service.post(user.uuid, post).body == 'Existing message'
 
 
 @pytest.mark.parametrize('client_type', ['python', 'web', 'mobile'])

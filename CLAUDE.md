@@ -119,6 +119,9 @@ approval/moderation/block rules, the central SQLite lifecycle (schema v7), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
+Message composers use one editable row per field (label: current value),
+with a bounded body excerpt and the complete text retained in the editbox.
+Do not duplicate message text as preview rows plus separate edit actions.
 Drafts are bounded session data, never account preferences. See
 `devdoc/forum-foundation.md` for the feature scope and data lifecycle.
 Subforum management is restricted to approved administrators/developers in the

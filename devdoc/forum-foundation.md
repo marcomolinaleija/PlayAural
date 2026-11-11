@@ -91,7 +91,8 @@ to the input control.
 
 - 120 title characters, 8000 message characters, 2–100 search characters.
 - 15 topics or 8 message previews per page, with SQL LIMIT/OFFSET.
-- Full text and draft previews split into sections of at most 500 characters;
+- Full message readers split text into sections of at most 500 characters;
+  draft fields show a single 160-character excerpt and retain all text for editing;
   even newline-heavy messages have a bounded number of reading rows.
 - Six new messages per rolling 60-second window per immutable account UUID.
   The latest identical normalized message in that window is rejected. This

@@ -18,15 +18,15 @@ Mở toàn bộ tin nhắn sẽ đánh dấu tin đó và các tin trước đó
 
 \*\*Viết\*\*
 
-Trong chuyên mục, chọn Bắt đầu thảo luận. Viết tiêu đề tối đa 120 ký tự và tin nhắn tối đa 8000 ký tự. Trong thảo luận có sẵn, chọn Viết trả lời. Gửi nội dung để mở bản xem trước; chọn Đăng để chia sẻ. Tin nhắn là văn bản thuần: mã HTML và Markdown không được thực thi.
+Trong chuyên mục, chọn Bắt đầu thảo luận. Viết tiêu đề tối đa 120 ký tự và tin nhắn tối đa 8000 ký tự. Trong thảo luận có sẵn, chọn Viết trả lời. Gửi nội dung để quay lại biểu mẫu; chọn Đăng để chia sẻ. Tin nhắn là văn bản thuần: mã HTML và Markdown không được thực thi.
 
-Bản xem trước xuất hiện trước các thao tác sửa và đăng. Quay lại sẽ hỏi trước khi bỏ bản nháp có nội dung. Bản nháp thuộc phiên hiện tại: nội dung đã gửi để xem trước có thể được khôi phục sau khi kết nối lại nhanh hoặc chuyển thiết bị, nhưng không được lưu vĩnh viễn. Nội dung vẫn đang gõ chưa được gửi đến máy chủ.
+Mỗi trường hiển thị nhãn và nội dung trong một mục có thể sửa: Tiêu đề và Tin nhắn. Khi trả lời chỉ có Tin nhắn. Tin nhắn dài hiển thị đoạn trích; mở chính trường đó để xem và sửa toàn bộ nội dung. Các thao tác nằm phía dưới. Quay lại sẽ hỏi trước khi bỏ bản nháp có nội dung. Bản nháp thuộc phiên hiện tại: nội dung đã gửi vào biểu mẫu có thể được khôi phục sau khi kết nối lại nhanh hoặc chuyển thiết bị, nhưng không được lưu vĩnh viễn. Nội dung vẫn đang gõ chưa được gửi đến máy chủ.
 
 Bạn có thể sửa tin nhắn đang hiển thị của mình trong 30 phút. Nếu người khác đã sửa cùng tin nhắn, bản sửa cũ bị từ chối và bản nháp vẫn được giữ. Thảo luận đã đóng không cho trả lời mới hoặc tác giả thông thường chỉnh sửa. Gửi quá nhiều tin nhắn trong thời gian ngắn cũng giữ bản nháp để xem lại sau.
 
 \*\*Tệp, hình ảnh, âm thanh và video\*\*
 
-Khi soạn chủ đề hoặc trả lời, chọn Thêm rồi Đính kèm tệp. Thao tác này xuất hiện khi máy chủ hỗ trợ tệp đính kèm. Chọn tệp trên thiết bị. Chờ tệp tải lên và xử lý xong, rồi mở từ bản xem trước để kiểm tra. Bạn có thể thêm mô tả hoặc bỏ tệp trước khi đăng. Bỏ tệp khỏi bản nháp không xóa bản gốc trên thiết bị.
+Khi soạn chủ đề hoặc trả lời, chọn Thêm rồi Đính kèm tệp. Thao tác này xuất hiện khi máy chủ hỗ trợ tệp đính kèm. Chọn tệp trên thiết bị. Chờ tệp tải lên và xử lý xong, rồi mở từ biểu mẫu để kiểm tra. Bạn có thể thêm mô tả hoặc bỏ tệp trước khi đăng. Bỏ tệp khỏi bản nháp không xóa bản gốc trên thiết bị.
 
 Hình ảnh mở trong trình xem có thu phóng và mô tả. Âm thanh và video mở trong trình phát của PlayAural; chọn Phát để bắt đầu. Dùng các điều khiển để tạm dừng, tua, đổi tốc độ hoặc âm lượng và đóng trình phát. Video cũng có chế độ toàn màn hình. Mở tệp không tự phát nội dung. Trong khi phát, PlayAural tạm giảm nhạc nền và âm thanh môi trường. Đóng trình phát sẽ đưa bạn về mục diễn đàn vừa mở.
 
@@ -34,13 +34,13 @@ Lưu tệp cho phép giữ bản sao trên thiết bị; trên di động, chọ
 
 Mỗi tệp tối đa 128 MiB. Âm thanh và video dài tối đa 15 phút; ảnh có tối đa 40 triệu điểm ảnh. Bạn có thể giữ tối đa tám tệp chưa đăng với tổng dung lượng 256 MiB. Tệp tải lên chưa đăng hết hạn sau 24 giờ, kể cả tệp đang chờ duyệt; hãy tải lại nếu hết hạn. Trước khi đăng, cần bỏ hoặc thay tệp bị lỗi hay bị từ chối.
 
-Nếu bật duyệt tệp đính kèm, chọn Đăng sẽ gửi tệp đã xử lý để duyệt và giữ tin nhắn ở dạng bản nháp. Người kiểm duyệt xét tệp công khai; chủ cuộc trò chuyện xét tệp trong cuộc trò chuyện riêng tư đã có. Họ không thể xem tệp bạn chưa gửi duyệt. Khi tệp được chấp thuận, quay lại bản xem trước và chọn Đăng lần nữa. Duyệt tệp không tự đăng tin nhắn. Tệp riêng tư của chính chủ cuộc trò chuyện và tệp công khai của chính người kiểm duyệt không cần bước này.
+Nếu bật duyệt tệp đính kèm, chọn Đăng sẽ gửi tệp đã xử lý để duyệt và giữ tin nhắn ở dạng bản nháp. Người kiểm duyệt xét tệp công khai; chủ cuộc trò chuyện xét tệp trong cuộc trò chuyện riêng tư đã có. Họ không thể xem tệp bạn chưa gửi duyệt. Khi tệp được chấp thuận, quay lại biểu mẫu và chọn Đăng lần nữa. Duyệt tệp không tự đăng tin nhắn. Tệp riêng tư của chính chủ cuộc trò chuyện và tệp công khai của chính người kiểm duyệt không cần bước này.
 
 Phụ đề có thể được giữ nếu video gốc chứa một luồng phụ đề văn bản được hỗ trợ. Dùng điều khiển phụ đề của trình phát khi có. PlayAural không tự tạo phụ đề và không ghép tệp phụ đề tải lên riêng với video.
 
 \*\*Bình chọn\*\*
 
-Khi soạn tin nhắn, chọn Thêm rồi Thêm bình chọn. Nhập câu hỏi tối đa 240 ký tự và từ hai đến mười câu trả lời khác nhau, mỗi câu trên một dòng, tối đa 160 ký tự. Mặc định mỗi người chọn một câu, được đổi phiếu, xem kết quả sau khi bỏ phiếu và không có hạn tự đóng. Bạn có thể cho chọn nhiều câu, không cho đổi phiếu, hiển thị kết quả ngay hoặc khi đóng và đặt hạn 1, 3, 7 hoặc 30 ngày. Kiểm tra câu hỏi và câu trả lời trong bản xem trước rồi đăng.
+Khi soạn tin nhắn, chọn Thêm rồi Thêm bình chọn. Nhập câu hỏi tối đa 240 ký tự và từ hai đến mười câu trả lời khác nhau, mỗi câu trên một dòng, tối đa 160 ký tự. Mặc định mỗi người chọn một câu, được đổi phiếu, xem kết quả sau khi bỏ phiếu và không có hạn tự đóng. Bạn có thể cho chọn nhiều câu, không cho đổi phiếu, hiển thị kết quả ngay hoặc khi đóng và đặt hạn 1, 3, 7 hoặc 30 ngày. Kiểm tra câu hỏi và câu trả lời trong biểu mẫu rồi đăng.
 
 Mở bình chọn trong tin nhắn, chọn câu trả lời rồi chọn Gửi phiếu để xác nhận. Chọn câu trả lời chỉ thay đổi lựa chọn đang chờ. Quay lại sẽ thoát mà chưa gửi. Nếu cho đổi phiếu, gửi lựa chọn mới để thay phiếu cũ. Kết quả xuất hiện theo cài đặt, đếm phiếu mà không liệt kê tên người bỏ phiếu. Tác giả hoặc người quản lý cuộc trò chuyện có thể đóng bình chọn sau khi xác nhận. Cuộc trò chuyện đã đóng cũng không cho bỏ phiếu. Câu hỏi và các câu trả lời không thể đổi sau phiếu đầu tiên.
 

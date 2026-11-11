@@ -1,5 +1,17 @@
 # Estado guardado del foro — 6 de noviembre de 2026
 
+## Editor compacto de mensajes
+
+Por preferencia del usuario, el editor sigue el patrón de los subforos:
+un elemento editable por campo, con formato Título: contenido y Mensaje:
+contenido. Responder y editar muestran solo Mensaje. Se eliminó la vista previa
+separada y la explicación repetida al entrar. El foco vuelve al campo editado.
+La fila de mensaje muestra un resumen de hasta 160 caracteres; el editbox
+conserva el texto completo, incluidas sus líneas, hasta 8000 caracteres.
+Validación: 119 pruebas del foro aprobadas, 3 omitidas; registro externo
+`forum-validation/compact-composer-final.log`. Comparación EN/VI/ES sin
+diferencias bloqueantes. Sin cambio de esquema ni archivos de clientes.
+
 ## Gestión de subforos — 10 de noviembre
 
 Se añadieron creación, edición y eliminación para administradores y
