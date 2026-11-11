@@ -15,7 +15,10 @@ menus keep one short body row that reopens the reader, with actions below.
 Closing restores message focus without reopening; never accept reader text as
 an edit, and recheck visibility on open. Read-only multiline starts at the top
 without automatic full-text selection. Private/member/block rules still apply.
-Forum content precedes all actions. Menu titles are metadata; announce brief
+Forum home pins Private conversations and Recent activity before the language
+subforums; other actions follow. Ctrl+Shift+F opens it through the existing
+keybind protocol, respecting availability, account gates and modal navigation.
+Other forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
 Message composers use one editable row per field (label: current value),
 with a bounded body excerpt and the complete text retained in the editbox.

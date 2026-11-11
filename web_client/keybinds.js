@@ -146,6 +146,17 @@ export function installKeybinds({
     }
 
     if (
+      event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey
+      && event.key.toLowerCase() === 'f'
+    ) {
+      if (connected) {
+        event.preventDefault();
+        sendKeybind({ key: 'f', control: true, shift: true, alt: false, meta: false, menu_id: menu.menuId });
+      }
+      return;
+    }
+
+    if (
       connected
       && event.ctrlKey
       && !event.altKey

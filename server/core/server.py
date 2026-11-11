@@ -18023,6 +18023,22 @@ PlayAural Server
             )
             state = self._user_states.get(username, {})
 
+        if (packet.get('key') == 'f' and packet.get('control') and packet.get('shift')
+                and not packet.get('alt') and not packet.get('meta')):
+            if user and user.approved and current_menu not in {'banned_menu', 'motd_menu', 'mandatory_email_menu'}:
+                try:
+                    self.forum_manager.service.account(user.uuid)
+                except ForumError as error:
+                    user.speak_l(error.key, buffer='system', **error.values)
+                    return
+                if not self.forum_enabled:
+                    user.speak_l('forum-unavailable', buffer='system')
+                elif current_menu != 'forum_home':
+                    # Keep the standard modal guard and return stack, including
+                    # game return context and local forum drafts.
+                    self._nav_push(user, self.forum_manager.home)
+            return
+
         if packet.get("key") == "j" and packet.get("control") and not packet.get("alt") and user:
             if await self._handle_ctrl_j_join_table(user, packet, current_menu, state):
                 return

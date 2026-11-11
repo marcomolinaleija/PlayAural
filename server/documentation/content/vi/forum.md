@@ -1,10 +1,10 @@
 \*\*Diễn đàn cộng đồng\*\*
 
-Chọn Diễn đàn trong menu chính để đọc và tham gia thảo luận. Dùng tài khoản PlayAural thông thường trên máy tính, web hoặc thiết bị di động.
+Chọn Diễn đàn trong menu chính để đọc và tham gia thảo luận. Dùng tài khoản PlayAural thông thường trên máy tính, web hoặc thiết bị di động. Bạn cũng có thể mở diễn đàn bằng Ctrl + Shift + F. Đóng ô văn bản đang mở trước để giữ nội dung.
 
 \*\*Tìm thảo luận\*\*
 
-Mở một diễn đàn con có sẵn trong ngôn ngữ đã chọn. Tên và cách tổ chức tùy thuộc vào cấu hình của cộng đồng và có thể thay đổi. Các chủ đề xuất hiện trước, kèm tác giả, số tin nhắn, hoạt động và trạng thái chưa đọc. Các thao tác nằm bên dưới. Hoạt động gần đây tập hợp thảo luận từ các diễn đàn con trong ngôn ngữ đã chọn. Tìm kiếm kiểm tra tiêu đề và nội dung tin nhắn hiển thị. Thảo luận đã lưu chỉ chứa các chủ đề bạn đã lưu.
+Cuộc trò chuyện riêng tư và Hoạt động gần đây luôn ở đầu, sau đó là các diễn đàn con trong ngôn ngữ đã chọn. Mở một diễn đàn con có sẵn trong ngôn ngữ đã chọn. Tên và cách tổ chức tùy thuộc vào cấu hình của cộng đồng và có thể thay đổi. Các chủ đề xuất hiện trước, kèm tác giả, số tin nhắn, hoạt động và trạng thái chưa đọc. Các thao tác nằm bên dưới. Hoạt động gần đây tập hợp thảo luận từ các diễn đàn con trong ngôn ngữ đã chọn. Tìm kiếm kiểm tra tiêu đề và nội dung tin nhắn hiển thị. Thảo luận đã lưu chỉ chứa các chủ đề bạn đã lưu.
 
 Thảo luận đã lưu có thể gồm cả cuộc trò chuyện công khai và riêng tư. Cuộc trò chuyện riêng tư được ghi rõ trong danh sách và chỉ xuất hiện khi bạn còn là thành viên. Chúng không xuất hiện trong các chuyên mục, Hoạt động gần đây, Thảo luận chưa đọc hoặc Tìm kiếm.
 

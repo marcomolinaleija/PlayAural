@@ -70,15 +70,15 @@ def test_table_shortcuts_dispatch_from_the_real_desktop_key_handler():
     # Ctrl+F and Ctrl+U skip so they reach the AcceleratorTable.
     window.current_mode = "list"
     skipped = []
-    for skip_key in ("F", "U"):
+    for skip_key, shift in (("F", False), ("U", False), ("F", True)):
         skip_event = SimpleNamespace(
             GetKeyCode=lambda k=skip_key: ord(k),
-            GetModifiers=lambda: wx.MOD_CONTROL,
-            ControlDown=lambda: True, AltDown=lambda: False, ShiftDown=lambda: False,
+            GetModifiers=lambda: wx.MOD_CONTROL | (wx.MOD_SHIFT if shift else 0),
+            ControlDown=lambda: True, AltDown=lambda: False, ShiftDown=lambda: shift,
             Skip=lambda: skipped.append(True),
         )
         scope["on_char_hook"](window, skip_event)
-    assert len(skipped) == 2
+    assert len(skipped) == 3
     assert len(sent) == 4
 
 
@@ -86,6 +86,7 @@ def test_desktop_hotkeys_layout_in_source() -> None:
     source = _source()
     # Check accelerator entries for updated layout
     assert 'wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord("F"), self.ID_OPEN_FORUM)' in source
     assert 'ord("U"), self.ID_LIST_ONLINE_WITH_GAMES' in source
     assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F5, self.ID_TOGGLE_TABLE_CHAT)' in source
     assert 'wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F5, self.ID_TOGGLE_GLOBAL_CHAT)' in source

@@ -22,6 +22,7 @@ Khi tắt Gợi ý trong trình đơn, hãy chọn một mục có mô tả rồ
 \* \*\*Alt + P:\*\* Kiểm tra độ trễ kết nối.
 \* \*\*Alt + M:\*\* Đưa tiêu điểm về trình đơn chính.
 \* \*\*Alt + F:\*\* Mở mục Bạn bè.
+\* \*\*Ctrl + Shift + F:\*\* Mở diễn đàn mà không rời bàn. Đóng ô văn bản đang mở trước.
 \* \*\*Alt + O:\*\* Mở mục Tùy chỉnh.
 
 \*\*Thông tin bàn và trò chơi\*\*
