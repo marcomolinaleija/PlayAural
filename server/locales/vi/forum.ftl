@@ -274,7 +274,7 @@ forum-report-limit = Bạn đã đạt giới hạn báo cáo. Hãy thử lại 
 forum-report-self = Bạn không thể báo cáo bài viết của chính mình.
 forum-report-changed = Nội dung đã thay đổi. Hãy mở lại bài viết và xem phiên bản hiện tại trước khi báo cáo.
 admin-moderation-scope-forum = Diễn đàn công khai
-forum-report-evidence = { $kind }. Chủ đề { $topic }, bài viết { $post }, phiên bản { $revision }. Tiêu đề khi báo cáo: { $title }
+forum-report-evidence = { $kind } ({ $language }). Chủ đề { $topic }, bài viết { $post }, phiên bản { $revision }. Tiêu đề khi báo cáo: { $title }
 forum-report-evidence-unavailable = Không có bản sao nội dung. Thông tin báo cáo vẫn được giữ để xem xét.
 forum-report-view-current = Xem bài viết hiện tại
 
@@ -286,3 +286,23 @@ forum-media-count-failed = { $count } bị lỗi
 forum-media-control-selected = Đã chọn 1 tệp.
 forum-media-control-file_filter = Tệp được hỗ trợ
 forum-media-control-all_files = Tất cả tệp
+
+## Cộng đồng theo ngôn ngữ
+forum-heading-language = Diễn đàn: { $language }
+forum-entry-home-language = Diễn đàn bằng { $language }. Chọn diễn đàn con hoặc chế độ xem. Các thao tác ở cuối.
+forum-language-current = Ngôn ngữ diễn đàn: { $language }
+forum-language-choose = Chọn ngôn ngữ diễn đàn
+forum-language-choice = { $language } { $selected }
+forum-language-selected = (đã chọn)
+forum-language-ar = Tiếng Ả Rập
+forum-language-en = Tiếng Anh
+forum-language-es = Tiếng Tây Ban Nha
+forum-language-fa = Tiếng Ba Tư
+forum-language-id = Tiếng Indonesia
+forum-language-pt = Tiếng Bồ Đào Nha
+forum-language-vi = Tiếng Việt
+forum-error-language = Chọn một ngôn ngữ diễn đàn có sẵn.
+forum-error-category-language = Diễn đàn con đích phải có cùng ngôn ngữ.
+
+forum-entry-thread-language = Diễn đàn bằng { $language }. { forum-entry-thread }
+forum-entry-post-language = Diễn đàn bằng { $language }. { forum-entry-post }

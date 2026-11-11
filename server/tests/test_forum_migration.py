@@ -22,7 +22,7 @@ def version_three_database(path):
         db._create_tables_in_transaction(cursor, include_forum=False, forum_version=3)
         cursor.execute(f"PRAGMA application_id = {Database.APPLICATION_ID}")
         cursor.execute("PRAGMA user_version = 3")
-    user = db.create_user("Existing User", "retained-hash", email="existing@example.com")
+    user = db.create_user("Existing User", "retained-hash", email="existing@example.com", locale='es')
     db.approve_user(user.username)
     db.close()
     return user
@@ -98,7 +98,7 @@ def version_four_database(path):
         cursor.execute('DROP TABLE user_wallets')
         cursor.execute(f'PRAGMA application_id = {Database.APPLICATION_ID}')
         cursor.execute('PRAGMA user_version = 4')
-    user = db.create_user('Forum Veteran', 'retained-hash')
+    user = db.create_user('Forum Veteran', 'retained-hash', locale='es')
     db.approve_user(user.username)
     # The actual v4 repository had no private membership tables.
     with db._transaction(immediate=True):
@@ -144,7 +144,7 @@ def test_unapproved_banned_and_muted_accounts_cannot_bypass_forum_rules(tmp_path
     db = Database(str(tmp_path / "auth.db"))
     db.connect()
     try:
-        user = db.create_user("Pending", "hash")
+        user = db.create_user("Pending", "hash", locale='es')
         service = ForumService(ForumRepository(db))
         with pytest.raises(ForumError, match="forum-error-account"):
             service.create_topic(user.uuid, "general", "Title", "Body")
@@ -172,8 +172,8 @@ def historical_branch_database(path, *, version, forum):
             cursor.execute('DROP TABLE user_wallets')
         cursor.execute(f'PRAGMA application_id = {Database.APPLICATION_ID}')
         cursor.execute(f'PRAGMA user_version = {version}')
-    owner = db.create_user('Historical Owner', 'retained-hash')
-    recipient = db.create_user('Historical Recipient', 'second-hash')
+    owner = db.create_user('Historical Owner', 'retained-hash', locale='es')
+    recipient = db.create_user('Historical Recipient', 'second-hash', locale='es')
     db.approve_user(owner.username)
     db.approve_user(recipient.username)
     post = None

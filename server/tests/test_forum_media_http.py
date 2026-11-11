@@ -22,7 +22,7 @@ async def media_server(tmp_path):
     server.db.connect()
     users = {}
     for name in ('Alice', 'Bob'):
-        account = server.db.create_user(name, 'hash')
+        account = server.db.create_user(name, 'hash', locale='es')
         server.db.approve_user(name)
         client = SimpleNamespace(username=name, authenticated=True, retired=False)
         users[name] = NetworkUser(name, 'es', client, uuid=account.uuid, approved=True)

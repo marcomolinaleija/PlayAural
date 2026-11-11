@@ -1638,6 +1638,7 @@ class AdministrationManager:
                 else:
                     items.append(MenuItem(text=Localization.get(user.locale, 'forum-report-evidence',
                         kind=Localization.get(user.locale, 'forum-report-' + evidence.kind),
+                        language=Localization.get(user.locale, 'forum-language-' + evidence.language),
                         topic=evidence.topic_id, post=evidence.post_id, revision=evidence.revision, title=evidence.title),
                         id='forum_evidence', read_only=True))
                     items.extend(MenuItem(text=part, id=f'forum_evidence_body:{index}', read_only=True)

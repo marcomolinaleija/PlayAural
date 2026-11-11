@@ -19277,7 +19277,7 @@ PlayAural Server
         if menu in FORUM_MENU_IDS:
             return (menu, frame.get("forum_topic"), frame.get("forum_post"),
                     frame.get("forum_view"), frame.get("forum_category"), frame.get("forum_query"),
-                    frame.get('forum_invitation'), frame.get('forum_attachment'))
+                    frame.get('forum_invitation'), frame.get('forum_attachment'), frame.get('forum_language'))
         if menu not in self.IN_GAME_OVERLAY_MENUS:
             return None
         table_id = frame.get("table_id")

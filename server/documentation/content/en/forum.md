@@ -85,3 +85,13 @@ Reports save the title and a copy of the selected message; a thread report saves
 Administrators and developers review reports under Administration, Moderation and sanctions, Chat moderation. They can read the saved copy, open the current publication if still accessible, and mark the report reviewed, dismissed or actioned. Evidence survives edits and account deletion, and follows the server's manual closed-report cleanup policy.
 
 Add… and Attach a file show how many files are selected and how many are prepared. Failed files are counted too and can be removed from the draft. Desktop and web pickers offer filters for images, audio, video, PDF, ZIP and text; the server verifies actual content regardless of its filename extension. Desktop offers All files for other extensions. Select one file at a time.
+
+\*\*Forums by language\*\*
+
+Each language has its own subforums, topics and replies. Choose Forum language at the bottom of the forum to switch communities. Initially it follows your account language; an explicit selection is remembered independently of the interface language. Entry announces the forum language while content stays first in the list.
+
+Recent, unread, search, counts and saved public topics belong to the selected language. Switching does not delete bookmarks. Private conversations and saved private threads remain available across communities, with their ordinary membership permissions.
+
+Administrators manage subforums in the language they opened. Names may repeat across languages and the 64-subforum limit applies per language. Deleting a populated subforum requires a destination of the same language. Drafts keep their original category even if the selection changes. Reports from all languages share the staff moderation queue and identify the content language.
+
+Public content that existed before this separation remains in Spanish. Switching forum language does not translate messages or copy publications between communities.

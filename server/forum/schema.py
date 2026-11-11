@@ -4,9 +4,11 @@ import sqlite3
 
 from .models import DEFAULT_CATEGORIES, PRIVATE_CATEGORY_ID
 from . import schema_v5
+from .languages import FORUM_LANGUAGES, LANGUAGE_CHECK
 
 
 CHECK_CONSTRAINTS = {
+    'forum_language_preferences': (LANGUAGE_CHECK,),
     "forum_report_targets": (
         "CHECK (target_kind IN ('thread', 'post'))",
         "CHECK (target_id > 0)",
@@ -17,6 +19,7 @@ CHECK_CONSTRAINTS = {
         "CHECK (length(name) <= 80)",
         "CHECK (length(description) <= 500)",
         "CHECK (revision >= 0)",
+        LANGUAGE_CHECK,
     ),
     "forum_topics": (
         "CHECK (length(title) BETWEEN 1 AND 120)",
@@ -33,7 +36,7 @@ CHECK_CONSTRAINTS = {
 }
 
 
-def create_schema(cursor: sqlite3.Cursor, *, version: int = 8) -> None:
+def create_schema(cursor: sqlite3.Cursor, *, version: int = 9) -> None:
     # Statements run in Database's migration transaction, never executescript
     # (which would implicitly commit its caller's transaction).
     categories_existed = cursor.execute(
@@ -126,6 +129,22 @@ def create_schema(cursor: sqlite3.Cursor, *, version: int = 8) -> None:
         cursor.execute('''UPDATE forum_topics SET category_id = ?
                           WHERE id IN (SELECT topic_id FROM forum_private_topics)''',
                        (PRIVATE_CATEGORY_ID,))
+    if version >= 9:
+        columns = {row[1] for row in cursor.execute('PRAGMA table_info(forum_categories)')}
+        if 'language' not in columns:
+            # Retain all old ids/relations and deleted defaults in Spanish.
+            cursor.execute(f"ALTER TABLE forum_categories ADD COLUMN language TEXT NOT NULL DEFAULT 'es' {LANGUAGE_CHECK}")
+            for language in FORUM_LANGUAGES:
+                if language != 'es':
+                    for position, category in enumerate(DEFAULT_CATEGORIES):
+                        cursor.execute('''INSERT INTO forum_categories(id, position, language) VALUES (?, ?, ?)''',
+                                       (f'{language}:{category}', position, language))
+        cursor.execute(f'''CREATE TABLE IF NOT EXISTS forum_language_preferences (
+            user_uuid TEXT PRIMARY KEY NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+            language TEXT NOT NULL {LANGUAGE_CHECK}
+        )''')
+        cursor.execute('''CREATE INDEX IF NOT EXISTS idx_forum_categories_language
+                          ON forum_categories(language, position, id)''')
 
 
 def erase_account(cursor: sqlite3.Cursor, user_uuid: str) -> None:

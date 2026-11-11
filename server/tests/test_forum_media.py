@@ -23,7 +23,7 @@ def forum(tmp_path):
     db.connect()
     users = {}
     for name in ('Alice', 'Bob', 'Moderator'):
-        users[name] = db.create_user(name, 'hash').uuid
+        users[name] = db.create_user(name, 'hash', locale='es').uuid
         db.approve_user(name)
     db.update_user_trust_level('Moderator', 2)
     clock = [1_800_000_000]

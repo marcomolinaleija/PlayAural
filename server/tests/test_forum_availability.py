@@ -20,7 +20,7 @@ def forum_server(tmp_path):
     server.db.connect()
     users = {}
     for name, level in (('Developer', 3), ('Administrator', 2), ('Reader', 1)):
-        account = server.db.create_user(name, 'hash')
+        account = server.db.create_user(name, 'hash', locale='es')
         server.db.approve_user(name)
         server.db.update_user_trust_level(name, level)
         connection = SimpleNamespace(username=name, retired=False, authenticated=True)

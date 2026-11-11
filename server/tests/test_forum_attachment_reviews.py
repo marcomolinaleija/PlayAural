@@ -21,7 +21,7 @@ def forum(tmp_path):
     db.connect()
     users = {}
     for name in ('Owner', 'Participant', 'Moderator'):
-        users[name] = db.create_user(name, 'hash').uuid
+        users[name] = db.create_user(name, 'hash', locale='es').uuid
         db.approve_user(name)
     db.update_user_trust_level('Moderator', 2)
     service = ForumService(ForumRepository(db), clock=lambda: 1800000000)

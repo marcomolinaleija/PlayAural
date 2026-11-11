@@ -19,9 +19,9 @@ def media(tmp_path):
     server = Server(db_path=str(tmp_path / 'forum.db'), database_backup_dir=tmp_path / 'backups',
                     forum_media_dir=tmp_path / 'media')
     server.db.connect()
-    user = server.db.create_user('Owner', 'hash')
+    user = server.db.create_user('Owner', 'hash', locale='es')
     server.db.approve_user(user.username)
-    other = server.db.create_user('Participant', 'hash')
+    other = server.db.create_user('Participant', 'hash', locale='es')
     server.db.approve_user(other.username)
     transport = ForumMediaHTTP(server, base_url='http://127.0.0.1:8001', directory=tmp_path / 'media')
     server.forum_manager.media = transport

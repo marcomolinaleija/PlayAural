@@ -12,6 +12,7 @@ from .polls import PollService
 from .attachments import AttachmentService
 from .attachment_reviews import AttachmentReviews
 from .categories import CategoryService
+from .languages import ForumLanguages, validate_language
 
 
 class ForumService:
@@ -23,6 +24,7 @@ class ForumService:
         self.attachments = AttachmentService(self)
         self.attachment_reviews = AttachmentReviews(self)
         self.category_admin = CategoryService(self)
+        self.languages = ForumLanguages(self)
 
     def account(self, user_uuid: str, *, writing: bool = False):
         db = self.repository.database
@@ -36,12 +38,14 @@ class ForumService:
     def is_moderator(self, user_uuid: str) -> bool:
         return self.account(user_uuid).trust_level >= ADMIN_TRUST_LEVEL
 
-    def categories(self, viewer: str):
+    def categories(self, viewer: str, *, language: str | None = None):
         self.account(viewer)
-        return self.repository.categories(viewer)
+        return self.repository.categories(viewer, language=validate_language(language) if language is not None else self.languages.current(viewer))
 
     def topics(self, viewer: str, **options):
         self.account(viewer)
+        language = options.get('language')
+        options['language'] = validate_language(language) if language is not None else self.languages.current(viewer)
         if options.get("view") == "search":
             options["query"] = search_key(validate_search(options.get("query")))
         if options.get("view") == "category" and not self.repository.has_category(options.get("category_id", "")):

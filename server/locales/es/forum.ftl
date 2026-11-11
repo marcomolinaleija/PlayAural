@@ -274,7 +274,7 @@ forum-report-limit = Alcanzaste el límite de reportes. Inténtalo de nuevo en {
 forum-report-self = No puedes reportar tus propias publicaciones.
 forum-report-changed = El contenido cambió desde que abriste el reporte. Vuelve a abrir la publicación y revisa su versión actual antes de reportarla.
 admin-moderation-scope-forum = Foro público
-forum-report-evidence = { $kind }. Hilo { $topic }, mensaje { $post }, revisión { $revision }. Título al reportar: { $title }
+forum-report-evidence = { $kind } ({ $language }). Hilo { $topic }, mensaje { $post }, revisión { $revision }. Título al reportar: { $title }
 forum-report-evidence-unavailable = La copia del contenido no está disponible. Los datos del reporte se conservan para revisión.
 forum-report-view-current = Ver publicación actual
 
@@ -292,3 +292,23 @@ forum-media-count-failed = { $count } con errores
 forum-media-control-selected = 1 archivo seleccionado.
 forum-media-control-file_filter = Archivos compatibles
 forum-media-control-all_files = Todos los archivos
+
+## Comunidades por idioma
+forum-heading-language = Foro: { $language }
+forum-entry-home-language = Foro en { $language }. Elige un subforo o una vista. Las acciones están al final.
+forum-language-current = Idioma del foro: { $language }
+forum-language-choose = Elegir idioma del foro
+forum-language-choice = { $language } { $selected }
+forum-language-selected = (seleccionado)
+forum-language-ar = Árabe
+forum-language-en = Inglés
+forum-language-es = Español
+forum-language-fa = Persa
+forum-language-id = Indonesio
+forum-language-pt = Portugués
+forum-language-vi = Vietnamita
+forum-error-language = Elige uno de los idiomas disponibles para el foro.
+forum-error-category-language = El subforo de destino debe pertenecer al mismo idioma.
+
+forum-entry-thread-language = Foro en { $language }. { forum-entry-thread }
+forum-entry-post-language = Foro en { $language }. { forum-entry-post }

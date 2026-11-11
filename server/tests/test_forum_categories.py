@@ -25,7 +25,7 @@ def forum(tmp_path):
     db.connect()
     users = {}
     for name in ('Developer', 'Administrator', 'Alice', 'Bob'):
-        users[name] = db.create_user(name, 'hash').uuid
+        users[name] = db.create_user(name, 'hash', locale='es').uuid
         db.approve_user(name)
     db.update_user_trust_level('Developer', 3)
     db.update_user_trust_level('Administrator', 2)
@@ -179,8 +179,8 @@ def legacy_six(path):
         db._create_tables_in_transaction(cursor, forum_version=6)
         cursor.execute(f'PRAGMA application_id = {Database.APPLICATION_ID}')
         cursor.execute('PRAGMA user_version = 6')
-    owner = db.create_user('Legacy Owner', 'retained-hash')
-    recipient = db.create_user('Legacy Recipient', 'hash')
+    owner = db.create_user('Legacy Owner', 'retained-hash', locale='es')
+    recipient = db.create_user('Legacy Recipient', 'hash', locale='es')
     db.approve_user(owner.username)
     db.approve_user(recipient.username)
     service = ForumService(ForumRepository(db))

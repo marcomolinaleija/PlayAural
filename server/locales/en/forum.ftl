@@ -274,7 +274,7 @@ forum-report-limit = You have reached the report limit. Try again in { $minutes 
 forum-report-self = You cannot report your own publications.
 forum-report-changed = The content changed after you opened the report. Reopen the publication and review its current version before reporting it.
 admin-moderation-scope-forum = Public forum
-forum-report-evidence = { $kind }. Thread { $topic }, message { $post }, revision { $revision }. Title when reported: { $title }
+forum-report-evidence = { $kind } ({ $language }). Thread { $topic }, message { $post }, revision { $revision }. Title when reported: { $title }
 forum-report-evidence-unavailable = The content snapshot is unavailable. The report details remain available for review.
 forum-report-view-current = View current publication
 
@@ -292,3 +292,23 @@ forum-media-count-failed = { $count } failed
 forum-media-control-selected = 1 file selected.
 forum-media-control-file_filter = Supported files
 forum-media-control-all_files = All files
+
+## Language communities
+forum-heading-language = Forum: { $language }
+forum-entry-home-language = Forum in { $language }. Choose a subforum or view. Actions follow the content.
+forum-language-current = Forum language: { $language }
+forum-language-choose = Choose forum language
+forum-language-choice = { $language } { $selected }
+forum-language-selected = (selected)
+forum-language-ar = Arabic
+forum-language-en = English
+forum-language-es = Spanish
+forum-language-fa = Persian
+forum-language-id = Indonesian
+forum-language-pt = Portuguese
+forum-language-vi = Vietnamese
+forum-error-language = Choose one of the available forum languages.
+forum-error-category-language = The destination subforum must belong to the same language.
+
+forum-entry-thread-language = Forum in { $language }. { forum-entry-thread }
+forum-entry-post-language = Forum in { $language }. { forum-entry-post }

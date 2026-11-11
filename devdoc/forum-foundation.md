@@ -155,3 +155,5 @@ forum. A physical Android device and a packaged APK were not exercised.
 
 Public-content reporting uses the shared moderation queue and schema 8. See
 [forum-reports.md](forum-reports.md) for evidence, quotas and retention.
+
+Public communities use schema 9 language scopes; see [forum-languages.md](forum-languages.md).

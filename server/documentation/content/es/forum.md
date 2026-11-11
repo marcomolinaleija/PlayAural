@@ -85,3 +85,13 @@ El reporte guarda el título y una copia del mensaje señalado; en un reporte de
 Los administradores y desarrolladores revisan los reportes en Administración, Moderación y sanciones, Moderación del chat. Pueden consultar la copia conservada, abrir la publicación actual si sigue accesible y marcar el reporte como revisado, descartado o con medidas tomadas. La evidencia se conserva aunque se edite el mensaje o se elimine una cuenta; sigue la limpieza manual de reportes cerrados del servidor.
 
 El botón Añadir… y la opción Adjuntar archivo indican cuántos archivos has seleccionado y cuántos ya están preparados. Si uno falla, el resumen lo indica y puedes quitarlo del borrador. El selector de escritorio y web ofrece filtros para imágenes, audio, video, PDF, ZIP y texto; el servidor comprueba el contenido real, aunque el nombre tenga otra extensión. En escritorio puedes elegir Todos los archivos para localizar archivos con extensiones distintas. Se selecciona un archivo cada vez.
+
+\*\*Foros por idioma\*\*
+
+Cada idioma tiene sus propios subforos, temas y respuestas. Al final del foro, elige Idioma del foro para cambiar de comunidad. La primera selección sigue el idioma de tu cuenta; cuando eliges otro, se recuerda sin cambiar el idioma de la interfaz. Al entrar se anuncia el idioma del foro y el contenido sigue siendo el primer elemento de la lista.
+
+Recientes, no leídos, búsqueda, contadores y temas públicos guardados corresponden al idioma elegido. Los guardados no se borran al cambiar de idioma. Las conversaciones privadas y los privados guardados siguen disponibles en cualquier comunidad, con sus permisos habituales.
+
+Los administradores gestionan subforos dentro del idioma que han abierto. Los nombres pueden repetirse entre idiomas y el límite de 64 subforos se aplica a cada idioma. Al eliminar un subforo con temas, el destino debe pertenecer al mismo idioma. Los borradores conservan el subforo original aunque cambies tu selección. Los reportes de todos los idiomas se revisan en la misma cola de moderación e indican el idioma del contenido.
+
+El contenido público que existía antes de esta separación se conserva en español. Cambiar el idioma del foro no traduce mensajes ni copia publicaciones entre comunidades.

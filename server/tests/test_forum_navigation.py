@@ -93,7 +93,7 @@ async def test_create_read_reply_edit_and_save_over_real_websocket(tmp_path, cli
 def navigation_server():
     server = Server(db_path=":memory:")
     server.db.connect()
-    record = server.db.create_user("Writer", "hash")
+    record = server.db.create_user("Writer", "hash", locale='es')
     server.db.approve_user("Writer")
     connection = SimpleNamespace(username="Writer", retired=False)
     user = NetworkUser("Writer", "es", connection, uuid=record.uuid, approved=True)
@@ -181,8 +181,8 @@ def test_content_precedes_actions_and_entry_context_is_spoken_once(navigation_se
     packets = user.get_queued_messages()
     home = [p for p in packets if p.get("menu_id") == nav.HOME][-1]
     assert home["items"][0]["id"] == "category:general"
-    assert home["title"] == "Foro"
-    assert len([p for p in packets if p.get("key") == "forum-entry-home"]) == 1
+    assert home["title"] == "Foro: Español"
+    assert len([p for p in packets if p.get("key") == "forum-entry-home-language"]) == 1
     server._nav_push(user, manager.views.topics, "category", "general")
     packets = user.get_queued_messages()
     topics = [p for p in packets if p.get("menu_id") == nav.TOPICS][-1]
@@ -192,7 +192,7 @@ def test_content_precedes_actions_and_entry_context_is_spoken_once(navigation_se
     packets = user.get_queued_messages()
     thread = [p for p in packets if p.get("menu_id") == nav.THREAD][-1]
     assert thread["items"][0]["id"] == f"post:{first}"
-    context = [p for p in packets if p.get("key") == "forum-entry-thread"]
+    context = [p for p in packets if p.get("key") == "forum-entry-thread-language"]
     assert len(context) == 1 and context[0]["history"] is False and context[0]["buffer"] == "misc"
     assert "Nuestra comunidad" in context[0]["text"] and "Writer" in context[0]["text"]
     assert "forum-" not in context[0]["text"]
@@ -270,7 +270,7 @@ async def test_composer_updates_editable_message_without_duplicate_preview_or_en
 
 def test_block_during_composing_preserves_the_draft_without_allowing_a_reply(navigation_server):
     server, user, _ = navigation_server
-    author = server.db.create_user("Other Author", "hash")
+    author = server.db.create_user("Other Author", "hash", locale='es')
     server.db.approve_user(author.username)
     manager = server.forum_manager
     topic, _ = manager.service.create_topic(author.uuid, "general", "Topic", "First message")

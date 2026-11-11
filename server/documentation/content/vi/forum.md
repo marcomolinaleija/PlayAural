@@ -85,3 +85,13 @@ Báo cáo lưu tiêu đề và bản sao bài viết được chọn; báo cáo 
 Quản trị viên và nhà phát triển xem báo cáo trong phần Quản trị, Kiểm duyệt và hình phạt, Kiểm duyệt trò chuyện. Họ có thể đọc bản sao, mở bài viết hiện tại nếu còn truy cập được, và đánh dấu đã xem xét, bỏ qua hoặc đã xử lý. Bằng chứng vẫn được giữ khi sửa bài viết hoặc xóa tài khoản, và chỉ bị xóa theo quy trình dọn báo cáo đã đóng thủ công của máy chủ.
 
 Thêm… và Đính kèm tệp hiển thị số tệp đã chọn và số tệp đã chuẩn bị. Tệp bị lỗi cũng được tính và có thể xóa khỏi bản nháp. Bộ chọn trên máy tính và web lọc hình ảnh, âm thanh, video, PDF, ZIP và văn bản; máy chủ kiểm tra nội dung thực tế bất kể phần mở rộng. Trên máy tính, chọn Tất cả tệp để tìm phần mở rộng khác. Mỗi lần chọn một tệp.
+
+\*\*Diễn đàn theo ngôn ngữ\*\*
+
+Mỗi ngôn ngữ có diễn đàn con, chủ đề và câu trả lời riêng. Chọn Ngôn ngữ diễn đàn ở cuối diễn đàn để đổi cộng đồng. Ban đầu ngôn ngữ theo tài khoản; lựa chọn rõ ràng được ghi nhớ độc lập với giao diện. Khi vào, hệ thống thông báo ngôn ngữ và vẫn đặt nội dung đầu danh sách.
+
+Chủ đề gần đây, chưa đọc, tìm kiếm, số lượng và chủ đề công khai đã lưu thuộc ngôn ngữ đã chọn. Đổi ngôn ngữ không xóa dấu trang. Cuộc trò chuyện riêng tư và chủ đề riêng tư đã lưu vẫn có sẵn trong mọi cộng đồng với quyền thành viên thông thường.
+
+Quản trị viên quản lý diễn đàn con trong ngôn ngữ đang mở. Tên có thể trùng giữa các ngôn ngữ và giới hạn 64 diễn đàn con áp dụng cho từng ngôn ngữ. Xóa diễn đàn con có chủ đề cần nơi nhận cùng ngôn ngữ. Bản nháp giữ diễn đàn con gốc dù đổi lựa chọn. Báo cáo mọi ngôn ngữ dùng chung hàng đợi kiểm duyệt và ghi rõ ngôn ngữ nội dung.
+
+Nội dung công khai trước khi phân chia vẫn ở cộng đồng tiếng Tây Ban Nha. Đổi ngôn ngữ không dịch hay sao chép bài viết giữa các cộng đồng.

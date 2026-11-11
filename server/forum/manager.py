@@ -15,6 +15,7 @@ from .media_ui import MediaController
 from .review_ui import ReviewController
 from .category_ui import CategoryController
 from .report_ui import ReportController
+from .language_ui import LanguageController
 
 
 class ForumManager:
@@ -30,6 +31,7 @@ class ForumManager:
         self.reviews = ReviewController(self)
         self.categories = CategoryController(self)
         self.reports = ReportController(self)
+        self.languages = LanguageController(self)
 
     def home(self, user) -> None:
         if self.server.forum_enabled:
@@ -41,10 +43,12 @@ class ForumManager:
         menu = frame["menu"]
         try:
             if menu == nav.HOME:
-                self.views.home(user)
+                self.views.home(user, frame.get('forum_language'))
+            elif menu == nav.LANGUAGES:
+                self.languages.show(user)
             elif menu == nav.TOPICS:
                 self.views.topics(user, frame.get("forum_view", "recent"), frame.get("forum_category", ""),
-                                  frame.get("forum_query", ""), frame.get("forum_page", 1))
+                                  frame.get("forum_query", ""), frame.get("forum_page", 1), frame.get('forum_language'))
             elif menu == nav.THREAD:
                 self.views.thread(user, frame["forum_topic"], frame.get("forum_page"))
             elif menu == nav.POST:
@@ -94,17 +98,17 @@ class ForumManager:
                     return
             self.server._nav_back(user)
             return
-        if (self.reports.handle(user, selection, state) or self.categories.handle(user, selection, state) or self.reviews.handle(user, selection, state)
+        if (self.languages.handle(user, selection, state) or self.reports.handle(user, selection, state) or self.categories.handle(user, selection, state) or self.reviews.handle(user, selection, state)
                 or self.media_ui.handle(user, selection, state) or self.polls.handle(user, selection, state)
                 or self.private.handle(user, selection, state)):
             return
         if menu == nav.HOME:
             if selection in {"recent", "unread", "saved"}:
-                push(user, self.views.topics, selection)
+                push(user, self.views.topics, selection, language=state.get('forum_language'))
             elif selection.startswith("category:"):
                 push(user, self.views.topics, "category", selection.removeprefix("category:"))
             elif selection == "search":
-                self.server.enter_input_state(user, nav.SEARCH_INPUT)
+                self.server.enter_input_state(user, nav.SEARCH_INPUT, forum_language=state.get('forum_language'))
                 user.show_editbox(nav.SEARCH_INPUT, label(user, "forum-search-prompt"), max_length=MAX_SEARCH_LENGTH)
             elif selection == 'private':
                 push(user, self.views.topics, 'private')
@@ -120,7 +124,7 @@ class ForumManager:
             else:
                 page = page_for_selection(selection, state["forum_page"], state["forum_pages"])
                 if page is not None:
-                    refresh(user, self.views.topics, state["forum_view"], state["forum_category"], state["forum_query"], page)
+                    refresh(user, self.views.topics, state["forum_view"], state["forum_category"], state["forum_query"], page, state.get('forum_language'))
         elif menu == nav.THREAD:
             topic_id = state["forum_topic"]
             topic = self.service.topic(user.uuid, topic_id)
@@ -243,4 +247,4 @@ class ForumManager:
             user.show_editbox(nav.SEARCH_INPUT, label(user, "forum-search-prompt"), max_length=MAX_SEARCH_LENGTH)
             return
         user.remove_editbox(nav.SEARCH_INPUT)
-        self.server._nav_push_from_input(user, self.views.topics, "search", "", query)
+        self.server._nav_push_from_input(user, self.views.topics, "search", "", query, language=state.get('forum_language'))

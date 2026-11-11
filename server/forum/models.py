@@ -35,6 +35,7 @@ class Category:
     name: str = ""
     description: str = ""
     revision: int = 0
+    language: str = 'es'
 
 
 @dataclass(frozen=True)

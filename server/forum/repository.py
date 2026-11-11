@@ -75,13 +75,13 @@ class ForumRepository:
             data["body"] = ""
         return Post(**data)
 
-    def categories(self, viewer: str) -> list[Category]:
+    def categories(self, viewer: str, *, language: str = 'es') -> list[Category]:
         rows = self.connection.execute(
-            f"""SELECT c.id, c.name, c.description, c.revision, COUNT(t.id) AS topic_count FROM forum_categories c
+            f"""SELECT c.id, c.name, c.description, c.revision, c.language, COUNT(t.id) AS topic_count FROM forum_categories c
                 LEFT JOIN forum_topics t ON t.category_id = c.id AND {_visible('t.author_uuid')}
                     AND NOT EXISTS (SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id)
-                WHERE c.id != :private GROUP BY c.id ORDER BY c.position, c.id""",
-            {"viewer": viewer, "private": PRIVATE_CATEGORY_ID},
+                WHERE c.id != :private AND c.language = :language GROUP BY c.id ORDER BY c.position, c.id""",
+            {"viewer": viewer, "private": PRIVATE_CATEGORY_ID, "language": language},
         ).fetchall()
         return [Category(**dict(row)) for row in rows]
 
@@ -92,7 +92,7 @@ class ForumRepository:
 
     def category(self, category_id: str) -> Category | None:
         row = self.connection.execute(
-            '''SELECT c.id, c.name, c.description, c.revision,
+            '''SELECT c.id, c.name, c.description, c.revision, c.language,
                       (SELECT COUNT(*) FROM forum_topics t WHERE t.category_id = c.id
                        AND NOT EXISTS (SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id)) AS topic_count
                FROM forum_categories c WHERE c.id = ? AND c.id != ?''',
@@ -100,11 +100,11 @@ class ForumRepository:
         ).fetchone()
         return Category(**dict(row)) if row else None
 
-    def create_category(self, category_id: str, name: str, description: str) -> None:
+    def create_category(self, category_id: str, name: str, description: str, language: str = 'es') -> None:
         self.connection.execute(
-            '''INSERT INTO forum_categories(id, position, name, description)
-               VALUES (?, (SELECT COALESCE(MAX(position), -1) + 1 FROM forum_categories), ?, ?)''',
-            (category_id, name, description),
+            '''INSERT INTO forum_categories(id, position, name, description, language)
+               VALUES (?, (SELECT COALESCE(MAX(position), -1) + 1 FROM forum_categories WHERE language = ?), ?, ?, ?)''',
+            (category_id, language, name, description, language),
         )
 
     def edit_category(self, category_id: str, name: str, description: str) -> None:
@@ -120,7 +120,7 @@ class ForumRepository:
         self.connection.execute('DELETE FROM forum_categories WHERE id = ?', (category_id,))
 
     def topics(self, viewer: str, *, view: str = "recent", category_id: str = "",
-               query: str = "", page: int = 1) -> PaginatedMenuPage[Topic]:
+               query: str = "", page: int = 1, language: str = 'es') -> PaginatedMenuPage[Topic]:
         conditions = {"recent": "1", "unread": "unread_count > 0", "saved": "bookmarked = 1",
                       "category": "category_id = :category", "search": f"""(
                           title_search LIKE :query ESCAPE '\\' OR EXISTS (
@@ -133,12 +133,12 @@ class ForumRepository:
         elif view == "saved":
             # Saved is the viewer's personal collection. _admitted() still
             # requires current membership for every private discussion.
-            where = conditions[view]
+            where = f"({conditions[view]}) AND (is_private = 1 OR category_id IN (SELECT id FROM forum_categories WHERE language = :language))"
         else:
-            where = f"is_private = 0 AND ({conditions[view]})"
+            where = f"is_private = 0 AND ({conditions[view]}) AND category_id IN (SELECT id FROM forum_categories WHERE language = :language)"
         # User text is always data; escape LIKE wildcard semantics as well.
         escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        params = {"viewer": viewer, "category": category_id, "query": f"%{escaped}%"}
+        params = {"viewer": viewer, "category": category_id, "query": f"%{escaped}%", "language": language}
         base = f"WITH topics AS ({self._topics_sql()}) SELECT * FROM topics WHERE {where}"
         total = self.connection.execute(f"SELECT COUNT(*) FROM ({base})", params).fetchone()[0]
         safe_page = clamp_page(page, total, TOPICS_PER_PAGE)

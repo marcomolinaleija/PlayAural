@@ -479,7 +479,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 8
+    CURRENT_SCHEMA_VERSION = 9
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -1605,7 +1605,7 @@ class Database:
         # protects that identity. Version six combines wallets and forums. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7}:
+        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
@@ -1910,7 +1910,7 @@ class Database:
         self,
         *,
         include_forum: bool = True,
-        forum_version: int = 8,
+        forum_version: int = 9,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -2163,6 +2163,8 @@ class Database:
             )
             if table_name == "moderation_reports" and required_schema_version < 8:
                 required_fragments = LEGACY_CHECKS
+            if table_name == 'forum_categories' and required_schema_version in (7, 8):
+                required_fragments = required_fragments[:-1]
             if table_name == "forum_categories" and required_schema_version < 7:
                 required_fragments = ()
             normalized_sql = self._normalize_schema_sql(
@@ -2398,7 +2400,7 @@ class Database:
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
     def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
-                                      forum_version: int = 8) -> None:
+                                      forum_version: int = 9) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(

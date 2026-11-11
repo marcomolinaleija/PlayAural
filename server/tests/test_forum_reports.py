@@ -26,7 +26,7 @@ def forum(tmp_path):
     server.db.connect()
     users = {}
     for name, level in (('Staff', 3), ('Alice', 1), ('Bob', 1)):
-        account = server.db.create_user(name, 'hash', trust_level=level)
+        account = server.db.create_user(name, 'hash', trust_level=level, locale='es')
         server.db.approve_user(name)
         user = NetworkUser(name, 'es', SimpleNamespace(username=name, retired=False, authenticated=True),
                            uuid=account.uuid, approved=True, trust_level=level)
@@ -253,7 +253,7 @@ def legacy_seven(path):
         db._create_tables_in_transaction(cursor, forum_version=7)
         cursor.execute(f'PRAGMA application_id = {Database.APPLICATION_ID}')
         cursor.execute('PRAGMA user_version = 7')
-    users = [db.create_user(name, 'hash') for name in ('Alice', 'Bob')]
+    users = [db.create_user(name, 'hash', locale='es') for name in ('Alice', 'Bob')]
     for user in users:
         db.approve_user(user.username)
     manual = db.submit_moderation_report(reporter_uuid=users[1].uuid, reporter_username='Bob',

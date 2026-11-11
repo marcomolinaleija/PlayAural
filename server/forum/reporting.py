@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict, dataclass
 
 from .models import ForumError, MAX_BODY_LENGTH, MAX_TITLE_LENGTH
+from .languages import FORUM_LANGUAGES
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,7 @@ class ForumReportEvidence:
     body: str
     author_uuid: str | None
     author_name: str
+    language: str = 'es'
 
     @property
     def target(self) -> ReportTarget:
@@ -39,6 +41,8 @@ class ForumReportEvidence:
                 return None
             result = cls(**data)
             if result.kind not in {'thread', 'post'}:
+                return None
+            if result.language not in FORUM_LANGUAGES:
                 return None
             if any(type(n) is not int for n in (result.topic_id, result.post_id, result.revision)):
                 return None
@@ -75,5 +79,6 @@ def capture_public_report(service, viewer: str, kind: str, target_id: int) -> Fo
         raise ForumError('forum-error-missing')
     if post.author_uuid == viewer:
         raise ForumError('forum-report-self')
+    category = service.repository.category(topic.category_id)
     return ForumReportEvidence(kind, topic.id, post.id, post.revision, topic.title,
-                               post.body, post.author_uuid, post.author_name)
+                               post.body, post.author_uuid, post.author_name, category.language)

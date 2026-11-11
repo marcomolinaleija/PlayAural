@@ -13,20 +13,23 @@ class CategoryController:
         self.server, self.service, self.views = manager.server, manager.service, manager.views
         self.admin = self.service.category_admin
 
-    def index(self, user) -> None:
+    def index(self, user, language: str | None = None) -> None:
         self.admin.authorize(user.uuid)
+        language = language or self.service.languages.current(user.uuid)
         rows = [item(user, 'forum-category-row', f'edit_category:{category.id}',
                      name=category_name(user, category), count=category.topic_count)
-                for category in self.service.categories(user.uuid)]
+                for category in self.service.categories(user.uuid, language=language)]
         rows.append(item(user, 'forum-category-create', 'create_category'))
         self.views.render(user, nav.CATEGORIES, rows, title=label(user, 'forum-categories-manage'),
-                          announcement=('forum-entry-simple', {'title': label(user, 'forum-categories-manage')}))
+                          announcement=('forum-entry-simple', {'title': label(user, 'forum-categories-manage')}), forum_language=language)
 
     def editor(self, user, draft: dict) -> None:
         self.admin.authorize(user.uuid)
+        draft = dict(draft)
+        draft.setdefault('language', self.service.languages.current(user.uuid))
         category_id = draft.get('id', '')
         if category_id:
-            self.admin.get(user.uuid, category_id)
+            draft['language'] = self.admin.get(user.uuid, category_id).language
         title = label(user, 'forum-category-edit' if category_id else 'forum-category-create')
         rows = [item(user, 'forum-category-name', 'edit_category_name', name=draft['name'] or label(user, 'forum-not-written')),
                 item(user, 'forum-category-description', 'edit_category_description',
@@ -42,7 +45,7 @@ class CategoryController:
         source = self.admin.get(user.uuid, category_id)
         self.admin._revision(source, revision)
         rows = [item(user, 'forum-category-move-target', f'move_category:{category.id}', name=category_name(user, category))
-                for category in self.service.categories(user.uuid) if category.id != category_id]
+                for category in self.service.categories(user.uuid, language=source.language) if category.id != category_id]
         if not rows:
             raise ForumError('forum-error-category-destination')
         title = label(user, 'forum-category-destination-heading')
@@ -67,7 +70,7 @@ class CategoryController:
 
     def restore(self, user, state: dict) -> bool:
         if state['menu'] == nav.CATEGORIES:
-            self.index(user)
+            self.index(user, state.get('forum_language'))
         elif state['menu'] == nav.CATEGORY_EDITOR:
             self.editor(user, state['forum_category_draft'])
         elif state['menu'] == nav.CATEGORY_DESTINATION:
@@ -80,7 +83,7 @@ class CategoryController:
         menu = state['menu']
         if menu == nav.HOME and selection == 'manage_categories':
             self.admin.authorize(user.uuid)
-            self.server._nav_push(user, self.index)
+            self.server._nav_push(user, self.index, state.get('forum_language'))
             return True
         if menu not in nav.CATEGORY_MENU_IDS:
             return False
@@ -88,7 +91,7 @@ class CategoryController:
         push = self.server._nav_push
         if menu == nav.CATEGORIES:
             if selection == 'create_category':
-                push(user, self.editor, {'id': '', 'name': '', 'description': '', 'revision': 0})
+                push(user, self.editor, {'id': '', 'name': '', 'description': '', 'revision': 0, 'language': state.get('forum_language') or self.service.languages.current(user.uuid)})
             elif selection.startswith('edit_category:'):
                 category = self.admin.get(user.uuid, selection.removeprefix('edit_category:'))
                 push(user, self.editor, {'id': category.id, 'name': category_name(user, category),
@@ -105,7 +108,7 @@ class CategoryController:
                     self.admin.edit(user.uuid, draft['id'], draft['name'], draft['description'], draft['revision'])
                     category_id = draft['id']
                 else:
-                    category_id = self.admin.create(user.uuid, draft['name'], draft['description'])
+                    category_id = self.admin.create(user.uuid, draft['name'], draft['description'], language=draft['language'])
                 stack = state.get('_stack', [])
                 if stack and stack[-1].get('menu') == nav.CATEGORIES:
                     stack[-1]['_restore_focus_id'] = f'edit_category:{category_id}'
@@ -173,9 +176,9 @@ class CategoryController:
             menu = state.get('menu')
             try:
                 if menu == nav.HOME:
-                    self.server._nav_refresh(user, self.manager.home)
+                    self.server._nav_refresh(user, self.views.home, state.get('forum_language'))
                 elif menu == nav.CATEGORIES:
-                    self.server._nav_refresh(user, self.index)
+                    self.server._nav_refresh(user, self.index, state.get('forum_language'))
                 elif menu == nav.TOPICS and state.get('forum_view') == 'category':
                     category_id = state['forum_category']
                     if self.service.repository.has_category(category_id):

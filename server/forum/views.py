@@ -19,7 +19,7 @@ def item(user, key: str, item_id: str, *, read_only: bool = False, **values) -> 
 
 
 def category_name(user, category) -> str:
-    return category.name or label(user, f'forum-category-{category.id}')
+    return category.name or Localization.get(category.language, f"forum-category-{category.id.rsplit(':', 1)[-1]}")
 
 
 def author(user, record) -> str:
@@ -51,7 +51,7 @@ class ForumViews:
     @staticmethod
     def identity(state: dict) -> tuple:
         return tuple(state.get(key) for key in (
-            "menu", "forum_topic", "forum_post", "forum_view", "forum_category", "forum_query", "forum_page", 'forum_invitation', 'forum_attachment',
+            "menu", "forum_topic", "forum_post", "forum_view", "forum_category", "forum_query", "forum_page", 'forum_invitation', 'forum_attachment', 'forum_language',
         ))
 
     def render(self, user, menu: str, rows: list[MenuItem], *, title: str,
@@ -68,10 +68,12 @@ class ForumViews:
             key, values = announcement
             user.speak_l(key, buffer="misc", history=False, **values)
 
-    def home(self, user) -> None:
+    def home(self, user, language: str | None = None) -> None:
+        language = language or self.service.languages.current(user.uuid)
+        language_name = label(user, 'forum-language-' + language)
         rows = [item(user, "forum-category-row", f"category:{category.id}",
                      name=category_name(user, category), count=category.topic_count)
-                for category in self.service.categories(user.uuid)]
+                for category in self.service.categories(user.uuid, language=language)]
         rows.extend([item(user, "forum-recent", "recent"), item(user, "forum-unread", "unread"),
                      item(user, "forum-saved", "saved"), item(user, "forum-search", "search"),
                      item(user, 'forum-private', 'private')])
@@ -79,12 +81,15 @@ class ForumViews:
             rows.append(item(user, 'forum-media-review-heading', 'review_media'))
         if self.service.is_moderator(user.uuid):
             rows.append(item(user, 'forum-categories-manage', 'manage_categories'))
-        self.render(user, nav.HOME, rows, title=label(user, "forum-heading"),
-                    announcement=("forum-entry-home", {}))
+        rows.append(item(user, 'forum-language-current', 'language', language=language_name))
+        self.render(user, nav.HOME, rows, title=label(user, "forum-heading-language", language=language_name),
+                    announcement=("forum-entry-home-language", {'language': language_name}), forum_language=language)
 
-    def topics(self, user, view: str = "recent", category_id: str = "", query: str = "", page: int = 1) -> None:
-        data = self.service.topics(user.uuid, view=view, category_id=category_id, query=query, page=page)
+    def topics(self, user, view: str = "recent", category_id: str = "", query: str = "", page: int = 1,
+               language: str | None = None) -> None:
         category = self.service.repository.category(category_id) if view == 'category' else None
+        language = category.language if category else language or self.service.languages.current(user.uuid)
+        data = self.service.topics(user.uuid, view=view, category_id=category_id, query=query, page=page, language=language)
         heading = category_name(user, category) if category else label(user, f"forum-{view}")
         rows = []
         for topic in data.items:
@@ -116,7 +121,7 @@ class ForumViews:
         self.render(user, nav.TOPICS, rows, title=heading,
                     announcement=("forum-entry-search" if query else "forum-entry-category" if category else "forum-entry-topics", context),
                     forum_view=view, forum_category=category_id, forum_query=query,
-                    forum_page=data.page, forum_pages=data.total_pages)
+                    forum_page=data.page, forum_pages=data.total_pages, forum_language=language)
 
     @staticmethod
     def page_controls(user, data) -> list[MenuItem]:
@@ -126,6 +131,8 @@ class ForumViews:
 
     def thread(self, user, topic_id: int, page: int | None = None) -> None:
         topic = self.service.topic(user.uuid, topic_id)
+        category = None if topic.is_private else self.service.repository.category(topic.category_id)
+        language = category.language if category else None
         resume = self.service.repository.resume_post(user.uuid, topic_id)
         if page is None:
             target = resume or topic.last_post_id
@@ -153,18 +160,21 @@ class ForumViews:
         if not topic.is_private and topic.author_uuid != user.uuid:
             rows.append(item(user, 'forum-report-thread', 'report_thread'))
         self.render(user, nav.THREAD, rows, title=topic.title,
-                    announcement=("forum-entry-thread", {
+                    announcement=("forum-entry-thread" if topic.is_private else "forum-entry-thread-language", {
+                        "language": label(user, "forum-language-" + language) if language else "",
                         "title": topic.title, "author": author(user, topic),
                         "category": (label(user, 'forum-private') if topic.is_private
-                                     else category_name(user, self.service.repository.category(topic.category_id))),
+                                     else category_name(user, category)),
                         "count": topic.post_count,
                         "status": label(user, "forum-closed-help" if topic.closed else "forum-open-help"),
                         "page": data.page, "pages": data.total_pages,
-                    }), forum_topic=topic_id, forum_page=data.page, forum_pages=data.total_pages)
+                    }), forum_topic=topic_id, forum_page=data.page, forum_pages=data.total_pages, forum_language=language)
 
     def post(self, user, post_id: int) -> None:
         post = self.service.post(user.uuid, post_id, mark_read=True)
         topic = self.service.topic(user.uuid, post.topic_id)
+        category = None if topic.is_private else self.service.repository.category(topic.category_id)
+        language = category.language if category else None
         if post.hidden:
             rows = [item(user, "forum-hidden-post", "hidden", read_only=True)]
         else:
@@ -188,7 +198,8 @@ class ForumViews:
         if not topic.is_private and not post.hidden and post.author_uuid != user.uuid:
             rows.append(item(user, 'forum-report-post', 'report_post'))
         self.render(user, nav.POST, rows, title=topic.title,
-                    announcement=("forum-entry-post", {
+                    announcement=("forum-entry-post" if topic.is_private else "forum-entry-post-language", {
+                        "language": label(user, "forum-language-" + language) if language else "",
                         "title": topic.title, "author": author(user, post), "age": age(user, post.created_at),
                         "edited": label(user, "forum-edited", age=age(user, post.edited_at)) if post.edited_at else "",
-                    }), forum_topic=post.topic_id, forum_post=post.id)
+                    }), forum_topic=post.topic_id, forum_post=post.id, forum_language=language)
