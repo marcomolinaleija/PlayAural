@@ -24,6 +24,18 @@ Cada campo muestra su nombre y contenido en un único elemento editable: Título
 
 Puedes editar tus mensajes visibles durante 30 minutos. Si otra persona cambió el mismo mensaje, se rechaza la edición antigua y se conserva tu borrador. Una conversación cerrada no admite respuestas ni ediciones de sus autores habituales. Enviar demasiados mensajes en poco tiempo también conserva el borrador para revisarlo después.
 
+\*\*Menciones y notificaciones\*\*
+
+Para mencionar a alguien, escribe @Carlos en el mensaje. Si su nombre tiene espacios, usa @{Ana López}. Puedes mencionar hasta 10 personas por mensaje. Los nombres se comprueban al publicar; si uno no existe, corrígelo o antepón una barra invertida, como \@Carlos, para escribirlo sin avisar. Repetir una mención en el mismo mensaje no repite el aviso. Al editar, solo se avisa a personas mencionadas por primera vez en ese mensaje.
+
+Las menciones avisan a su destinatario y las respuestas privadas a los demás miembros que ya aceptaron participar. Una mención no invita a nadie ni permite entrar en un privado. Los bloqueos se respetan en ambos sentidos. En una conversación privada, una mención tiene prioridad sobre el aviso normal: no recibes dos avisos por el mismo mensaje.
+
+Abre Notificaciones en el foro para consultar los avisos pendientes. Si no tienes ninguno, se anuncia por voz y permaneces en el menú actual. Cada aviso abre el mensaje completo. Los mensajes privados pendientes se agrupan por conversación; abrir el grupo lleva al primero pendiente. Escuchar el aviso no marca el mensaje como leído. Al abrir el mensaje, su notificación desaparece. Si al volver ya no queda ninguna, se anuncia y regresas al foro.
+
+Mientras estás conectado, los avisos se anuncian sin cambiar tu vista. No se interrumpe con avisos de la conversación que ya estás leyendo; la actividad privada pendiente genera un solo aviso hasta que la consultes. Al iniciar sesión se anuncia un resumen de avisos nuevos. La bandeja conserva hasta 500 avisos pendientes durante 90 días. Los avisos de contenido oculto o al que ya no tienes acceso no se muestran.
+
+En Avisos del foro puedes activar o silenciar por separado mensajes privados y menciones. En cada hilo, Silenciar avisos de esta conversación silencia ambos tipos solo para ese hilo. Esto afecta a los avisos de voz: la bandeja y los mensajes sin leer se conservan. Los ajustes se guardan con tu cuenta.
+
 \*\*Archivos, imágenes, audios y videos\*\*
 
 Al preparar un tema o una respuesta, elige Añadir y después Adjuntar un archivo. Esta acción aparece cuando el servidor admite adjuntos. Elige un archivo de tu dispositivo. Espera a que termine de subir y prepararse; después puedes abrirlo desde el formulario para revisarlo. Puedes añadir una descripción o quitarlo antes de publicar. Quitarlo del borrador no elimina el original de tu dispositivo.

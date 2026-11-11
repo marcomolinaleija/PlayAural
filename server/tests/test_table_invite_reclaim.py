@@ -26,7 +26,6 @@ from server.games.pig.game import PigGame, PigOptions
 from server.games.uno.game import UnoGame
 from server.games.yahtzee.game import YahtzeeGame
 from server.messages.localization import Localization
-from server.persistence.database import Database
 from server.tables.table import (
     ABANDONED_ACTIVE_TABLE_TIMEOUT_SECONDS,
     TABLE_STATE_SCHEMA_VERSION,
@@ -48,10 +47,9 @@ class TestTableInviteReclaim:
     def setup_method(self):
         self.temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_file.close()
-        self.db = Database(self.temp_file.name)
-        self.db.connect()
         self.server = Server(db_path=self.temp_file.name)
-        self.server._db = self.db
+        self.db = self.server.db
+        self.db.connect()
         self.server._auth = AuthManager(self.db)
 
     def teardown_method(self):

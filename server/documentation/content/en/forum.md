@@ -24,6 +24,18 @@ Each field shows its label and current content in one editable item: Title and M
 
 You may edit your visible messages for 30 minutes. If someone else changed the same message, publishing your older edit is rejected and your draft remains available. Closed discussions do not accept replies or ordinary author edits. Sending too many messages in a short time also keeps your draft for later review.
 
+\*\*Mentions and Notifications\*\*
+
+Mention someone by writing @Carlos in your message. For names with spaces, use @{Ana López}. You can mention up to 10 people per message. Names are checked when you publish. Correct an unknown name or put a backslash before it, such as \@Carlos, to write it without sending an alert. Repeating a mention in one message does not repeat the alert. Editing only alerts people mentioned for the first time in that message.
+
+Mentions notify their recipients; private replies notify the other members who have accepted their invitations. A mention does not invite anyone or grant access to a private conversation. Blocks apply in both directions. In a private conversation, a mention takes priority over the ordinary notice, so one message does not send two alerts.
+
+Open Notifications in the forum to review pending notices. If there are none, a spoken message tells you and you stay in the current menu. Each notice opens its full message. Pending private messages are grouped by conversation; opening a group takes you to its first pending message. Hearing an alert does not mark the message as read. Opening the message removes its notice. If none remain when you return, you hear a message and return to the forum.
+
+While connected, alerts are spoken without changing your view. Alerts for the conversation you are already reading are suppressed. Pending private activity sends one alert until you consult it. Signing in announces a summary of new notices. The inbox keeps up to 500 pending notices for 90 days. Notices for hidden or inaccessible content are not shown.
+
+Forum alerts lets you enable or mute private-message and mention alerts separately. In any thread, Mute alerts for this conversation silences both types for that thread. This affects spoken alerts; the inbox and unread messages remain available. Settings are saved with your account.
+
 \*\*Files, Images, Audio, and Video\*\*
 
 While composing a discussion or reply, choose Add, then Attach a file. This action appears when the server supports attachments. Choose a file from your device. Wait for its status to change from uploading or preparing to ready, then open it from the form to check it. You can add a description or remove it before publishing. Removing it from the draft does not delete the original file on your device.

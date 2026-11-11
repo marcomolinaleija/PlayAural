@@ -3,6 +3,7 @@
 import asyncio
 import json
 import sqlite3
+from unittest.mock import Mock
 
 import pytest
 from websockets.asyncio.client import connect
@@ -22,8 +23,10 @@ from ..persistence.database import Database
 def snapshot(db):
     tables = [row[0] for row in db._conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'forum_%' ORDER BY name")]
+    # Compare the v9 content; v11 adds four empty, separately tested tables.
     return {table: [tuple(row) for row in db._conn.execute(f'SELECT * FROM {table} ORDER BY rowid')]
-            for table in tables + ['moderation_reports']}
+            for table in tables + ['moderation_reports'] if table not in {
+                'forum_mentions', 'forum_notifications', 'forum_notification_settings', 'forum_muted_topics'}}
 
 
 def legacy_nine(path, tmp_path):
@@ -39,6 +42,7 @@ def legacy_nine(path, tmp_path):
     for name in ('Alice', 'Bob'):
         db.approve_user(name)
     service = ForumService(ForumRepository(db), clock=lambda: 1_800_000_000)
+    service.notifications = Mock()  # Seed the historical layout without v11 features.
     source = tmp_path / 'notes.txt'
     source.write_text('Retained attachment', encoding='utf-8')
     attachment = service.attachments.reserve(alice, 'notes.txt', source.stat().st_size)

@@ -17,7 +17,6 @@ from server.core.server import (
 )
 from server.gender import Gender
 from server.games.pig.game import PigGame
-from server.persistence.database import Database
 from server.users.bot import Bot
 from server.users.network_user import NetworkUser
 from server.voice import VoiceService
@@ -65,10 +64,9 @@ class TestAuthSecurity:
     def setup_method(self):
         self.temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_file.close()
-        self.db = Database(self.temp_file.name)
-        self.db.connect()
         self.server = Server(db_path=self.temp_file.name)
-        self.server._db = self.db
+        self.db = self.server.db
+        self.db.connect()
         self.server._auth = AuthManager(self.db)
         self.server._ws_server = DummyWebSocketServer()
 

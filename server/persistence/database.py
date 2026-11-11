@@ -479,7 +479,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 10
+    CURRENT_SCHEMA_VERSION = 11
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -1605,7 +1605,7 @@ class Database:
         # protects that identity. Version six combines wallets and forums. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}:
+        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
@@ -1910,7 +1910,7 @@ class Database:
         self,
         *,
         include_forum: bool = True,
-        forum_version: int = 10,
+        forum_version: int = 11,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -2418,7 +2418,7 @@ class Database:
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
     def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
-                                      forum_version: int = 10) -> None:
+                                      forum_version: int = 11) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(
@@ -7164,6 +7164,15 @@ class Database:
                 """,
                 (blocker_id, blocked_id, now),
             )
+            for recipient, source in ((blocker_id, blocked_id), (blocked_id, blocker_id)):
+                # Restrict work to this recipient's bounded pending queue,
+                # looking up each referenced post by its primary key.
+                cursor.execute('''DELETE FROM forum_notifications WHERE user_uuid = ? AND EXISTS (
+                    SELECT 1 FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
+                    WHERE p.id = forum_notifications.post_id AND (
+                        p.author_uuid = ? OR (t.author_uuid = ? AND NOT EXISTS (
+                            SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id))))''',
+                    (recipient, source, source))
         return "blocked"
 
     def unblock_user(self, blocker_id: str, blocked_id: str) -> bool:

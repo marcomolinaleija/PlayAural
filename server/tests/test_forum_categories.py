@@ -3,7 +3,7 @@
 import asyncio
 import json
 import sqlite3
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from websockets.asyncio.client import connect
@@ -184,6 +184,7 @@ def legacy_six(path):
     db.approve_user(owner.username)
     db.approve_user(recipient.username)
     service = ForumService(ForumRepository(db))
+    service.notifications = Mock()  # Seed the historical layout without v11 features.
     with patch('server.forum.conversations.PRIVATE_CATEGORY_ID', 'general'):
         topic, post = service.conversations.create(owner.uuid, 'Private retained', 'Retained body', (recipient.uuid,))
     db.adjust_wallet_balance(owner.uuid, 123)

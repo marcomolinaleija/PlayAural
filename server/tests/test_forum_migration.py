@@ -1,7 +1,7 @@
 """Forum schema upgrades preserve existing accounts and recover on failure."""
 
 import sqlite3
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -182,6 +182,7 @@ def historical_branch_database(path, *, version, forum):
         db.adjust_wallet_balance(owner.uuid, -19, is_bet=True)
     elif version == 5:
         service = ForumService(ForumRepository(db))
+        service.notifications = Mock()  # Seed the historical layout without v11 features.
         # Historical private discussions used the public general category.
         with patch('server.forum.conversations.PRIVATE_CATEGORY_ID', 'general'):
             topic, post = service.conversations.create(

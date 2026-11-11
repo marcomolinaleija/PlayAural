@@ -69,6 +69,7 @@ class ConversationService:
             if poll is not None:
                 self.forum.polls.create_in_transaction(viewer, post_id, poll, now)
             self.forum.attachments.bind_in_transaction(viewer, post_id, attachment_ids)
+            self.forum.notifications.record(viewer, post_id, body)
             return topic_id, post_id
 
     def _invite(self, viewer: str, topic_id: int, recipient: str, now: int) -> str:
@@ -164,7 +165,9 @@ class ConversationService:
                 "UPDATE forum_private_invites SET status = 'revoked' WHERE topic_id = ? AND inviter_uuid = ? AND status = 'pending'",
                 (topic_id, viewer),
             )
-            for table in ('forum_bookmarks', 'forum_read_positions'):
+            self.connection.execute('''DELETE FROM forum_notifications WHERE user_uuid = ?
+                AND post_id IN (SELECT id FROM forum_posts WHERE topic_id = ?)''', (viewer, topic_id))
+            for table in ('forum_bookmarks', 'forum_read_positions', 'forum_muted_topics'):
                 self.connection.execute(f'DELETE FROM {table} WHERE topic_id = ? AND user_uuid = ?', (topic_id, viewer))
 
     def remove(self, viewer: str, topic_id: int, participant: str) -> None:
@@ -175,6 +178,9 @@ class ConversationService:
             if not any(member['user_uuid'] == participant for member in self.members(viewer, topic_id)):
                 raise ForumError('forum-error-missing')
             self.connection.execute('DELETE FROM forum_private_members WHERE topic_id = ? AND user_uuid = ?', (topic_id, participant))
+            self.connection.execute('''DELETE FROM forum_notifications WHERE user_uuid = ?
+                AND post_id IN (SELECT id FROM forum_posts WHERE topic_id = ?)''', (participant, topic_id))
+            self.connection.execute('DELETE FROM forum_muted_topics WHERE user_uuid = ? AND topic_id = ?', (participant, topic_id))
             self.connection.execute(
                 "UPDATE forum_attachments SET state = 'retired' WHERE context_topic_id = ? AND owner_uuid = ? AND published = 0", (topic_id, participant),
             )

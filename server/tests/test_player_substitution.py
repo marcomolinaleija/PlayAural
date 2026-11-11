@@ -18,7 +18,6 @@ from server.games.pig.game import PigGame, PigOptions
 from server.games.registry import GameRegistry
 from server.gender import Gender
 from server.messages.localization import Localization
-from server.persistence.database import Database
 from server.users.bot import Bot
 from server.users.test_user import MockUser
 
@@ -27,10 +26,9 @@ class TestPlayerSubstitution:
     def setup_method(self) -> None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".db") as temp_file:
             self.db_path = temp_file.name
-        self.db = Database(self.db_path)
-        self.db.connect()
         self.server = Server(db_path=self.db_path)
-        self.server._db = self.db
+        self.db = self.server.db
+        self.db.connect()
         self.server._auth = AuthManager(self.db)
 
     def teardown_method(self) -> None:

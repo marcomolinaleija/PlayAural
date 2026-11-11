@@ -17,6 +17,7 @@ from .category_ui import CategoryController
 from .report_ui import ReportController
 from .language_ui import LanguageController
 from .reader import MessageReader
+from .notification_ui import NotificationController
 
 
 class ForumManager:
@@ -34,6 +35,7 @@ class ForumManager:
         self.reports = ReportController(self)
         self.languages = LanguageController(self)
         self.reader = MessageReader(self)
+        self.notifications = NotificationController(self)
 
     def home(self, user) -> None:
         if self.server.forum_enabled:
@@ -62,7 +64,7 @@ class ForumManager:
             elif menu in nav.CONFIRMATION_IDS:
                 # A confirmation's authority never crosses a reconnect.
                 self.views.home(user)
-            elif not (self.reports.restore(user, frame) or self.categories.restore(user, frame) or self.polls.restore(user, frame)
+            elif not (self.notifications.restore(user, frame) or self.reports.restore(user, frame) or self.categories.restore(user, frame) or self.polls.restore(user, frame)
                       or self.private.restore(user, frame) or self.reviews.restore(user, frame)):
                 self.views.home(user)
         except ForumError as error:
@@ -100,7 +102,7 @@ class ForumManager:
                     return
             self.server._nav_back(user)
             return
-        if (self.languages.handle(user, selection, state) or self.reports.handle(user, selection, state) or self.categories.handle(user, selection, state) or self.reviews.handle(user, selection, state)
+        if (self.notifications.handle(user, selection, state) or self.languages.handle(user, selection, state) or self.reports.handle(user, selection, state) or self.categories.handle(user, selection, state) or self.reviews.handle(user, selection, state)
                 or self.media_ui.handle(user, selection, state) or self.polls.handle(user, selection, state)
                 or self.private.handle(user, selection, state)):
             return

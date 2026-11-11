@@ -124,6 +124,7 @@ class ForumComposer:
             self.open_post(user, post_id)
         elif draft.kind == "edit":
             self.service.edit(user.uuid, draft.post_id, draft.body, draft.revision)
+            post_id = draft.post_id
             self.server._nav_back(user)
         elif draft.kind == 'private':
             topic_id, post_id = self.service.conversations.create(user.uuid, draft.title, draft.body, draft.recipients,
@@ -134,6 +135,7 @@ class ForumComposer:
         else:
             raise ValueError("Unsupported forum draft")
         user.speak_l("forum-edit-saved" if draft.kind == "edit" else "forum-published", buffer="system")
+        self.server.forum_manager.notifications.deliver_post(post_id)
 
     def open_post(self, user, post_id: int) -> None:
         # Return to the message just published rather than stacking message

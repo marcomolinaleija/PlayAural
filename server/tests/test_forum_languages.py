@@ -4,6 +4,7 @@ import asyncio
 import json
 import sqlite3
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from websockets.asyncio.client import connect
@@ -187,6 +188,7 @@ def legacy_eight(path):
     actor = db.create_user('Existing', 'hash', locale='es')
     db.approve_user(actor.username)
     service = ForumService(ForumRepository(db))
+    service.notifications = Mock()  # Seed the historical layout without v11 features.
     topic, post = service.create_topic(actor.uuid, 'general', 'Retained topic', 'Retained body',
                                      poll=PollConfig('Question', ('Yes', 'No')))
     service.bookmark(actor.uuid, topic, True)
