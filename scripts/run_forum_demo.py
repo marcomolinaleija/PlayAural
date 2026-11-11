@@ -24,7 +24,11 @@ DEMO_PASSWORD = "ForumDemo123!"
 
 class DemoHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=str(ROOT), **kwargs)
+        super().__init__(*args, directory=str(ROOT / 'web_client'), **kwargs)
+
+    def translate_path(self, path):
+        # Keep the public URL while limiting static files to the web client.
+        return super().translate_path(path.removeprefix('/web_client'))
 
     def end_headers(self):
         # Local UI review must use the current source, including after reload.
@@ -32,6 +36,9 @@ class DemoHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        if not self.path.startswith('/web_client/'):
+            self.send_error(404)
+            return
         if self.path.split("?", 1)[0] == "/web_client/config.js":
             payload = "window.PLAYAURAL_WEB_CONFIG = " + json.dumps({"serverUrl": f"ws://127.0.0.1:{GAME_PORT}"}) + ";"
             body = payload.encode("utf-8")
