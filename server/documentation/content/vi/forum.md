@@ -24,6 +24,18 @@ Mỗi trường hiển thị nhãn và nội dung trong một mục có thể s�
 
 Bạn có thể sửa tin nhắn đang hiển thị của mình trong 30 phút. Nếu người khác đã sửa cùng tin nhắn, bản sửa cũ bị từ chối và bản nháp vẫn được giữ. Thảo luận đã đóng không cho trả lời mới hoặc tác giả thông thường chỉnh sửa. Gửi quá nhiều tin nhắn trong thời gian ngắn cũng giữ bản nháp để xem lại sau.
 
+\*\*Nhắc đến và thông báo\*\*
+
+Để nhắc đến ai đó, viết @Carlos trong tin nhắn. Với tên có dấu cách, dùng @{Ana López}. Bạn có thể nhắc đến tối đa 10 người trong mỗi tin nhắn. Tên được kiểm tra khi đăng. Nếu tên không tồn tại, hãy sửa lại hoặc thêm dấu gạch chéo ngược phía trước, như \@Carlos, để viết tên mà không gửi lời báo. Nhắc lại cùng một người trong một tin nhắn không gửi thêm lời báo. Khi chỉnh sửa, chỉ những người được nhắc đến lần đầu trong tin nhắn đó mới nhận lời báo.
+
+Lượt nhắc đến gửi thông báo cho người được nhắc; câu trả lời riêng gửi thông báo cho các thành viên khác đã chấp nhận lời mời. Nhắc đến không mời người mới hay cấp quyền vào cuộc trò chuyện riêng. Việc chặn được áp dụng theo cả hai chiều. Trong cuộc trò chuyện riêng, lời báo nhắc đến được ưu tiên, nên một tin nhắn không gửi hai lời báo.
+
+Mở Thông báo trong diễn đàn để xem các thông báo đang chờ. Nếu không có thông báo, bạn sẽ nghe lời báo và vẫn ở menu hiện tại. Mỗi thông báo mở toàn bộ tin nhắn tương ứng. Tin nhắn riêng đang chờ được gộp theo cuộc trò chuyện; mở nhóm sẽ đến tin nhắn đang chờ đầu tiên. Nghe lời báo không đánh dấu tin nhắn là đã đọc. Khi mở tin nhắn, thông báo của nó được xóa. Nếu không còn thông báo khi quay lại, bạn nghe lời báo và trở về diễn đàn.
+
+Khi đang kết nối, lời báo được đọc mà không đổi màn hình. Không có lời báo cho cuộc trò chuyện bạn đang đọc. Hoạt động riêng đang chờ chỉ phát một lời báo cho đến khi bạn xem. Khi đăng nhập, bạn nghe bản tóm tắt thông báo mới. Hộp thông báo giữ tối đa 500 thông báo đang chờ trong 90 ngày. Thông báo về nội dung bị ẩn hoặc không còn truy cập được sẽ không xuất hiện.
+
+Trong Lời báo của diễn đàn, bạn có thể bật hoặc tắt riêng lời báo tin nhắn riêng và lượt nhắc đến. Trong mỗi chủ đề, Tắt lời báo cho cuộc trò chuyện này sẽ tắt cả hai loại cho chủ đề đó. Chỉ lời báo bị tắt; thông báo và tin nhắn chưa đọc vẫn được giữ. Thiết lập được lưu theo tài khoản.
+
 \*\*Tệp, hình ảnh, âm thanh và video\*\*
 
 Khi soạn chủ đề hoặc trả lời, chọn Thêm rồi Đính kèm tệp. Thao tác này xuất hiện khi máy chủ hỗ trợ tệp đính kèm. Chọn tệp trên thiết bị. Chờ tệp tải lên và xử lý xong, rồi mở từ biểu mẫu để kiểm tra. Bạn có thể thêm mô tả hoặc bỏ tệp trước khi đăng. Bỏ tệp khỏi bản nháp không xóa bản gốc trên thiết bị.

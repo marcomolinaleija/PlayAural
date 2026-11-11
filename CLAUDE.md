@@ -115,7 +115,7 @@ build_prod.bat
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v10), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v11), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Opening a message shows its full body in a read-only multiline input. Message
 menus keep one short body row that reopens the reader, with actions below.
@@ -135,6 +135,16 @@ retain the full body. Schema-10 post rebuilding runs only in the central startup
 migration, with FK checks before commit and enforcement restored on every exit.
 Drafts are bounded session data, never account preferences. See
 `devdoc/forum-foundation.md` for the feature scope and data lifecycle.
+Forum mentions resolve explicit @name / @{spaced name} tokens to account UUIDs.
+Queue notices in the post transaction; speak only after commit. Private activity
+requires accepted membership, and mentions never grant access. Recheck access,
+hidden posts and bilateral blocks on inbox display, alert delivery and opening.
+Keep mention history per post/recipient to prevent edit/re-add spam; moderator
+edits must not send mentions under the author's identity. Read notices only when
+their message is opened; speaking is not reading. Alert settings and per-topic
+mutes affect speech, not the inbox or unread counters. Empty Notifications only
+speaks feedback and preserves the current menu/stack; empty restored inboxes
+return to their parent. See `devdoc/forum-notifications.md` for retention/limits.
 Forum availability is a persistent server setting controlled by admins/developers.
 The main entry stays visible and only speaks a notice while disabled. Gate all
 new shared-menu actions and media grants/HTTP access; preserve local drafts and

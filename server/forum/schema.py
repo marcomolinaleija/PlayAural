@@ -3,12 +3,13 @@
 import sqlite3
 
 from .models import DEFAULT_CATEGORIES, PRIVATE_CATEGORY_ID, MAX_BODY_LENGTH
-from . import schema_v5
+from . import schema_v5, schema_v11
 from .schema_v10 import posts_ddl, expand_posts
 from .languages import FORUM_LANGUAGES, LANGUAGE_CHECK
 
 
 CHECK_CONSTRAINTS = {
+    **schema_v11.CHECK_CONSTRAINTS,
     'forum_language_preferences': (LANGUAGE_CHECK,),
     "forum_report_targets": (
         "CHECK (target_kind IN ('thread', 'post'))",
@@ -37,7 +38,7 @@ CHECK_CONSTRAINTS = {
 }
 
 
-def create_schema(cursor: sqlite3.Cursor, *, version: int = 10) -> None:
+def create_schema(cursor: sqlite3.Cursor, *, version: int = 11) -> None:
     # Statements run in Database's migration transaction, never executescript
     # (which would implicitly commit its caller's transaction).
     categories_existed = cursor.execute(
@@ -98,6 +99,8 @@ def create_schema(cursor: sqlite3.Cursor, *, version: int = 10) -> None:
                 "INSERT INTO forum_categories(id, position) VALUES (?, ?)",
                 (category, position),
             )
+    if version >= 11:
+        schema_v11.create_schema(cursor)
     if version >= 5:
         schema_v5.create_schema(cursor)
     if version >= 8:
@@ -145,6 +148,10 @@ def create_schema(cursor: sqlite3.Cursor, *, version: int = 10) -> None:
 
 def erase_account(cursor: sqlite3.Cursor, user_uuid: str) -> None:
     """Retain public discussions, erase attribution and personal reading data."""
+    cursor.execute('''DELETE FROM forum_notifications WHERE user_uuid = ? OR post_id IN (
+        SELECT p.id FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
+        WHERE p.author_uuid = ? OR (t.author_uuid = ? AND NOT EXISTS (
+            SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id)))''', (user_uuid, user_uuid, user_uuid))
     schema_v5.erase_private_account(cursor, user_uuid)
     for table in ("forum_topics", "forum_posts"):
         cursor.execute(

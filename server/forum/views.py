@@ -77,6 +77,8 @@ class ForumViews:
                     for category in self.service.categories(user.uuid, language=language))
         rows.extend([item(user, "forum-unread", "unread"),
                      item(user, "forum-saved", "saved"), item(user, "forum-search", "search")])
+        rows.extend([item(user, 'forum-notifications', 'notifications'),
+                     item(user, 'forum-notification-settings', 'notification_settings')])
         if self.service.attachments.require_approval and self.service.is_moderator(user.uuid):
             rows.append(item(user, 'forum-media-review-heading', 'review_media'))
         if self.service.is_moderator(user.uuid):
@@ -144,6 +146,8 @@ class ForumViews:
                 for post in data.items]
         if not topic.closed:
             rows.append(item(user, "forum-reply", "reply"))
+        rows.append(item(user, 'forum-notification-unmute-topic' if self.service.notifications.muted(user.uuid, topic_id)
+                         else 'forum-notification-mute-topic', 'mute_notifications'))
         rows.append(item(user, "forum-unsave" if topic.bookmarked else "forum-save", "bookmark"))
         if resume:
             rows.append(item(user, "forum-continue", "continue"))

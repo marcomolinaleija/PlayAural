@@ -2643,6 +2643,7 @@ PlayAural Server
 
         # Process Offline Notifications exactly once when they enter active state
         self._process_offline_notifications(user)
+        self.forum_manager.notifications.deliver(user)
 
         if not restored_game:
             # Not in an active game (or was a spectator); restore the user's

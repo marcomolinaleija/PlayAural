@@ -13,6 +13,7 @@ from .attachments import AttachmentService
 from .attachment_reviews import AttachmentReviews
 from .categories import CategoryService
 from .languages import ForumLanguages, validate_language
+from .notifications import ForumNotifications
 
 
 class ForumService:
@@ -25,6 +26,7 @@ class ForumService:
         self.attachment_reviews = AttachmentReviews(self)
         self.category_admin = CategoryService(self)
         self.languages = ForumLanguages(self)
+        self.notifications = ForumNotifications(self)
 
     def account(self, user_uuid: str, *, writing: bool = False):
         db = self.repository.database
@@ -71,6 +73,8 @@ class ForumService:
         if mark_read:
             with self.repository.atomic():
                 self.repository.mark_read(viewer, post)
+                if not post.hidden:
+                    self.notifications.acknowledge(viewer, post.id)
         return post
 
     def _check_send(self, account, body: str, now: int) -> None:
@@ -93,6 +97,7 @@ class ForumService:
             if poll is not None:
                 self.polls.create_in_transaction(viewer, post_id, poll, now)
             self.attachments.bind_in_transaction(viewer, post_id, attachment_ids)
+            self.notifications.record(viewer, post_id, body)
             return topic_id, post_id
 
     def reply(self, viewer: str, topic_id: int, body: str, *, poll=None, attachment_ids: tuple[str, ...] = ()) -> int:
@@ -108,6 +113,7 @@ class ForumService:
             if poll is not None:
                 self.polls.create_in_transaction(viewer, post_id, poll, now)
             self.attachments.bind_in_transaction(viewer, post_id, attachment_ids)
+            self.notifications.record(viewer, post_id, body)
             return post_id
 
     def can_edit(self, viewer: str, post) -> bool:
@@ -129,6 +135,7 @@ class ForumService:
             if revision != post.revision:
                 raise ForumError("forum-error-conflict")
             self.repository.edit_post(post_id, body, int(self.clock()))
+            self.notifications.record(viewer, post_id, body, editing=True)
 
     def bookmark(self, viewer: str, topic_id: int, saved: bool) -> None:
         with self.repository.atomic():
