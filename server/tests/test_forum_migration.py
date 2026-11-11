@@ -1,6 +1,7 @@
 """Forum schema upgrades preserve existing accounts and recover on failure."""
 
 import sqlite3
+from unittest.mock import patch
 
 import pytest
 
@@ -181,10 +182,12 @@ def historical_branch_database(path, *, version, forum):
         db.adjust_wallet_balance(owner.uuid, -19, is_bet=True)
     elif version == 5:
         service = ForumService(ForumRepository(db))
-        topic, post = service.conversations.create(
-            owner.uuid, 'Retained private topic', 'Retained private message', (recipient.uuid,),
-            poll=PollConfig('Retained question', ('One', 'Two')),
-        )
+        # Historical private discussions used the public general category.
+        with patch('server.forum.conversations.PRIVATE_CATEGORY_ID', 'general'):
+            topic, post = service.conversations.create(
+                owner.uuid, 'Retained private topic', 'Retained private message', (recipient.uuid,),
+                poll=PollConfig('Retained question', ('One', 'Two')),
+            )
         invitation = service.conversations.invitations(recipient.uuid)[0]['id']
         service.conversations.respond(recipient.uuid, invitation, accept=True)
         option = service.polls.get(recipient.uuid, post)['options'][0]['id']
@@ -203,7 +206,7 @@ def test_branch_schema_upgrade_preserves_wallets_or_private_forum(tmp_path, vers
     db.connect(migration_backup_dir=backups)
     try:
         assert db.get_user_by_uuid(owner.uuid).password_hash == 'retained-hash'
-        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == 6
+        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
         wallet = db.get_wallet(owner.uuid)
         assert wallet.balance == (250 if forum else 944)
         assert wallet.total_won == (0 if forum else 713)

@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from ..menu_pagination import PaginatedMenuPage, clamp_page
-from .models import Category, Post, Topic, POSTS_PER_PAGE, TOPICS_PER_PAGE
+from .models import Category, Post, Topic, POSTS_PER_PAGE, TOPICS_PER_PAGE, PRIVATE_CATEGORY_ID
 from .text import search_key
 
 if TYPE_CHECKING:
@@ -77,17 +77,47 @@ class ForumRepository:
 
     def categories(self, viewer: str) -> list[Category]:
         rows = self.connection.execute(
-            f"""SELECT c.id, COUNT(t.id) AS topic_count FROM forum_categories c
+            f"""SELECT c.id, c.name, c.description, c.revision, COUNT(t.id) AS topic_count FROM forum_categories c
                 LEFT JOIN forum_topics t ON t.category_id = c.id AND {_visible('t.author_uuid')}
                     AND NOT EXISTS (SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id)
-                GROUP BY c.id ORDER BY c.position, c.id""", {"viewer": viewer},
+                WHERE c.id != :private GROUP BY c.id ORDER BY c.position, c.id""",
+            {"viewer": viewer, "private": PRIVATE_CATEGORY_ID},
         ).fetchall()
         return [Category(**dict(row)) for row in rows]
 
     def has_category(self, category_id: str) -> bool:
         return self.connection.execute(
-            "SELECT 1 FROM forum_categories WHERE id = ?", (category_id,),
+            "SELECT 1 FROM forum_categories WHERE id = ? AND id != ?", (category_id, PRIVATE_CATEGORY_ID),
         ).fetchone() is not None
+
+    def category(self, category_id: str) -> Category | None:
+        row = self.connection.execute(
+            '''SELECT c.id, c.name, c.description, c.revision,
+                      (SELECT COUNT(*) FROM forum_topics t WHERE t.category_id = c.id
+                       AND NOT EXISTS (SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id)) AS topic_count
+               FROM forum_categories c WHERE c.id = ? AND c.id != ?''',
+            (category_id, PRIVATE_CATEGORY_ID),
+        ).fetchone()
+        return Category(**dict(row)) if row else None
+
+    def create_category(self, category_id: str, name: str, description: str) -> None:
+        self.connection.execute(
+            '''INSERT INTO forum_categories(id, position, name, description)
+               VALUES (?, (SELECT COALESCE(MAX(position), -1) + 1 FROM forum_categories), ?, ?)''',
+            (category_id, name, description),
+        )
+
+    def edit_category(self, category_id: str, name: str, description: str) -> None:
+        self.connection.execute(
+            'UPDATE forum_categories SET name = ?, description = ?, revision = revision + 1 WHERE id = ?',
+            (name, description, category_id),
+        )
+
+    def delete_category(self, category_id: str, destination: str | None) -> None:
+        if destination:
+            self.connection.execute('UPDATE forum_topics SET category_id = ? WHERE category_id = ?',
+                                    (destination, category_id))
+        self.connection.execute('DELETE FROM forum_categories WHERE id = ?', (category_id,))
 
     def topics(self, viewer: str, *, view: str = "recent", category_id: str = "",
                query: str = "", page: int = 1) -> PaginatedMenuPage[Topic]:

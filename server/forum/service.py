@@ -11,6 +11,7 @@ from .conversations import ConversationService
 from .polls import PollService
 from .attachments import AttachmentService
 from .attachment_reviews import AttachmentReviews
+from .categories import CategoryService
 
 
 class ForumService:
@@ -21,6 +22,7 @@ class ForumService:
         self.polls = PollService(self)
         self.attachments = AttachmentService(self)
         self.attachment_reviews = AttachmentReviews(self)
+        self.category_admin = CategoryService(self)
 
     def account(self, user_uuid: str, *, writing: bool = False):
         db = self.repository.database

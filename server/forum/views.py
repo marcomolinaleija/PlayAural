@@ -18,6 +18,10 @@ def item(user, key: str, item_id: str, *, read_only: bool = False, **values) -> 
     return MenuItem(text=label(user, key, **values), id=item_id, read_only=read_only)
 
 
+def category_name(user, category) -> str:
+    return category.name or label(user, f'forum-category-{category.id}')
+
+
 def author(user, record) -> str:
     return record.author_name if record.author_uuid else label(user, "forum-deleted-account")
 
@@ -53,19 +57,22 @@ class ForumViews:
 
     def home(self, user) -> None:
         rows = [item(user, "forum-category-row", f"category:{category.id}",
-                     name=label(user, f"forum-category-{category.id}"), count=category.topic_count)
+                     name=category_name(user, category), count=category.topic_count)
                 for category in self.service.categories(user.uuid)]
         rows.extend([item(user, "forum-recent", "recent"), item(user, "forum-unread", "unread"),
                      item(user, "forum-saved", "saved"), item(user, "forum-search", "search"),
                      item(user, 'forum-private', 'private')])
         if self.service.attachments.require_approval and self.service.is_moderator(user.uuid):
             rows.append(item(user, 'forum-media-review-heading', 'review_media'))
+        if self.service.is_moderator(user.uuid):
+            rows.append(item(user, 'forum-categories-manage', 'manage_categories'))
         self.render(user, nav.HOME, rows, title=label(user, "forum-heading"),
                     announcement=("forum-entry-home", {}))
 
     def topics(self, user, view: str = "recent", category_id: str = "", query: str = "", page: int = 1) -> None:
         data = self.service.topics(user.uuid, view=view, category_id=category_id, query=query, page=page)
-        heading = label(user, f"forum-category-{category_id}") if view == "category" else label(user, f"forum-{view}")
+        category = self.service.repository.category(category_id) if view == 'category' else None
+        heading = category_name(user, category) if category else label(user, f"forum-{view}")
         rows = []
         for topic in data.items:
             flags = []
@@ -91,8 +98,10 @@ class ForumViews:
                    "empty": label(user, "forum-no-topics") if not data.total else ""}
         if query:
             context["query"] = query
+        if category:
+            context['description'] = category.description
         self.render(user, nav.TOPICS, rows, title=heading,
-                    announcement=("forum-entry-search" if query else "forum-entry-topics", context),
+                    announcement=("forum-entry-search" if query else "forum-entry-category" if category else "forum-entry-topics", context),
                     forum_view=view, forum_category=category_id, forum_query=query,
                     forum_page=data.page, forum_pages=data.total_pages)
 
@@ -131,7 +140,9 @@ class ForumViews:
         self.render(user, nav.THREAD, rows, title=topic.title,
                     announcement=("forum-entry-thread", {
                         "title": topic.title, "author": author(user, topic),
-                        "category": label(user, 'forum-private' if topic.is_private else f"forum-category-{topic.category_id}"), "count": topic.post_count,
+                        "category": (label(user, 'forum-private') if topic.is_private
+                                     else category_name(user, self.service.repository.category(topic.category_id))),
+                        "count": topic.post_count,
                         "status": label(user, "forum-closed-help" if topic.closed else "forum-open-help"),
                         "page": data.page, "pages": data.total_pages,
                     }), forum_topic=topic_id, forum_page=data.page, forum_pages=data.total_pages)

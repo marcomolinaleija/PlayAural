@@ -61,3 +61,11 @@ Nội dung công khai được giữ khi xóa tài khoản, nhưng thông tin t�
 \*\*Điều hướng\*\*
 
 Dùng điều khiển bàn phím, cảm ứng, trình đọc màn hình hoặc chế độ tự đọc quen thuộc. Các thao tác nằm cuối danh sách. Quay lại khôi phục tiêu điểm về mục đã mở giao diện nếu mục đó vẫn còn. Escape hủy lời nhắc xác nhận. Trên di động, Quay lại đóng trình phát đang mở trước khi rời giao diện diễn đàn bên dưới.
+
+\*\*Quản lý diễn đàn con\*\*
+
+Quản trị viên và nhà phát triển có mục Quản lý diễn đàn con ở cuối diễn đàn. Chọn Tạo diễn đàn con hoặc mở một diễn đàn con có sẵn để đổi tên và mô tả. Tên tối đa 80 ký tự, mô tả tối đa 500 ký tự; để trống để xóa mô tả. Thay đổi có hiệu lực khi chọn Lưu diễn đàn con. Hỗ trợ tối đa 64 diễn đàn con.
+
+Mô tả được đọc khi vào diễn đàn con, không thêm dòng trước các chủ đề. Danh sách đang mở được cập nhật và giữ tiêu điểm khi mục đang chọn vẫn còn.
+
+Xóa diễn đàn con yêu cầu xác nhận. Nếu có chủ đề, trước tiên chọn một diễn đàn con khác để lưu giữ chúng; tin nhắn, tệp, bình chọn, dấu trang và vị trí đọc được giữ nguyên. Nếu chưa có nơi chuyển, hãy tạo một diễn đàn con khác trước. Hội thoại riêng được lưu tách biệt và không xuất hiện trong màn hình quản lý này. Nếu người khác đã thay đổi diễn đàn con trong lúc bạn sửa, bản nháp được giữ lại và bạn cần mở lại thay vì ghi đè thay đổi của họ.

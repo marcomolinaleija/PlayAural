@@ -13,6 +13,7 @@ from .poll_ui import PollController
 from .private_ui import PrivateController
 from .media_ui import MediaController
 from .review_ui import ReviewController
+from .category_ui import CategoryController
 
 
 class ForumManager:
@@ -26,6 +27,7 @@ class ForumManager:
         self.media = None
         self.media_ui = MediaController(self)
         self.reviews = ReviewController(self)
+        self.categories = CategoryController(self)
 
     def home(self, user) -> None:
         self.views.home(user)
@@ -49,7 +51,8 @@ class ForumManager:
             elif menu in nav.CONFIRMATION_IDS:
                 # A confirmation's authority never crosses a reconnect.
                 self.views.home(user)
-            elif not (self.polls.restore(user, frame) or self.private.restore(user, frame) or self.reviews.restore(user, frame)):
+            elif not (self.categories.restore(user, frame) or self.polls.restore(user, frame)
+                      or self.private.restore(user, frame) or self.reviews.restore(user, frame)):
                 self.views.home(user)
         except ForumError as error:
             user.speak_l(error.key, buffer="system", **error.values)
@@ -78,7 +81,8 @@ class ForumManager:
                     return
             self.server._nav_back(user)
             return
-        if (self.reviews.handle(user, selection, state) or self.media_ui.handle(user, selection, state) or self.polls.handle(user, selection, state)
+        if (self.categories.handle(user, selection, state) or self.reviews.handle(user, selection, state)
+                or self.media_ui.handle(user, selection, state) or self.polls.handle(user, selection, state)
                 or self.private.handle(user, selection, state)):
             return
         if menu == nav.HOME:
@@ -190,6 +194,9 @@ class ForumManager:
 
     def handle_input(self, user, packet: dict, state: dict) -> None:
         if state["menu"] not in nav.INPUT_IDS or packet.get("input_id") != state["menu"]:
+            return
+        if state['menu'] in nav.CATEGORY_INPUT_IDS:
+            self.categories.handle_input(user, packet, state)
             return
         if state["menu"] in {nav.TITLE_INPUT, nav.BODY_INPUT}:
             self.composer.handle_input(user, packet, state)

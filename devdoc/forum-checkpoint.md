@@ -1,5 +1,16 @@
 # Estado guardado del foro — 6 de noviembre de 2026
 
+## Gestión de subforos — 10 de noviembre
+
+Se añadieron creación, edición y eliminación para administradores y
+desarrolladores desde Foro → Gestionar subforos. Eliminar un subforo con temas
+requiere elegir dónde conservarlos y confirmar. El esquema 7 separa los privados
+de las categorías públicas; sus mensajes y participantes no se exponen a esta
+gestión. Validación y decisiones en [forum-categories.md](forum-categories.md).
+El servidor normal se ejecuta con la base `PlayAural.db` en el puerto 8000;
+los archivos del foro usan el puerto 8001. No usar la demo para la revisión del
+usuario. Móvil continúa pausado.
+
 ## Carpeta de trabajo actual — preferencia del usuario
 
 El usuario pidió trabajar en una sola carpeta cambiando de ramas, sin worktrees

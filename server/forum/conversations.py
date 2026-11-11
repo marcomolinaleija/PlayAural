@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from .models import ForumError
+from .models import ForumError, PRIVATE_CATEGORY_ID
 from .text import validate_text
 
 MAX_MEMBERS = 12
@@ -61,7 +61,7 @@ class ConversationService:
             self.forum._check_send(author, body, now)
             for recipient in recipients:
                 self._admit(recipient, [viewer, *recipients])
-            topic_id, post_id = self.repository.create_topic(author, 'general', title, body, now)
+            topic_id, post_id = self.repository.create_topic(author, PRIVATE_CATEGORY_ID, title, body, now)
             self.connection.execute('INSERT INTO forum_private_topics VALUES (?, ?)', (topic_id, viewer))
             self.connection.execute('INSERT INTO forum_private_members VALUES (?, ?, ?)', (topic_id, viewer, now))
             for recipient in recipients:

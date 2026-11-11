@@ -2,12 +2,17 @@
 
 import sqlite3
 
-from .models import DEFAULT_CATEGORIES
+from .models import DEFAULT_CATEGORIES, PRIVATE_CATEGORY_ID
 from . import schema_v5
 
 
 CHECK_CONSTRAINTS = {
     **schema_v5.CHECK_CONSTRAINTS,
+    "forum_categories": (
+        "CHECK (length(name) <= 80)",
+        "CHECK (length(description) <= 500)",
+        "CHECK (revision >= 0)",
+    ),
     "forum_topics": (
         "CHECK (length(title) BETWEEN 1 AND 120)",
         "CHECK (pinned IN (0, 1))", "CHECK (closed IN (0, 1))",
@@ -23,9 +28,12 @@ CHECK_CONSTRAINTS = {
 }
 
 
-def create_schema(cursor: sqlite3.Cursor, *, version: int = 5) -> None:
+def create_schema(cursor: sqlite3.Cursor, *, version: int = 7) -> None:
     # Statements run in Database's migration transaction, never executescript
     # (which would implicitly commit its caller's transaction).
+    categories_existed = cursor.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forum_categories'"
+    ).fetchone() is not None
     statements = (
         """CREATE TABLE IF NOT EXISTS forum_categories (
             id TEXT PRIMARY KEY NOT NULL,
@@ -80,13 +88,28 @@ def create_schema(cursor: sqlite3.Cursor, *, version: int = 5) -> None:
     )
     for statement in statements:
         cursor.execute(statement)
-    for position, category in enumerate(DEFAULT_CATEGORIES):
-        cursor.execute(
-            "INSERT OR IGNORE INTO forum_categories(id, position) VALUES (?, ?)",
-            (category, position),
-        )
+    if not categories_existed:
+        for position, category in enumerate(DEFAULT_CATEGORIES):
+            cursor.execute(
+                "INSERT INTO forum_categories(id, position) VALUES (?, ?)",
+                (category, position),
+            )
     if version >= 5:
         schema_v5.create_schema(cursor)
+    if version >= 7:
+        columns = {row[1] for row in cursor.execute('PRAGMA table_info(forum_categories)')}
+        for name, definition in (
+            ('name', "TEXT NOT NULL DEFAULT '' CHECK (length(name) <= 80)"),
+            ('description', "TEXT NOT NULL DEFAULT '' CHECK (length(description) <= 500)"),
+            ('revision', 'INTEGER NOT NULL DEFAULT 0 CHECK (revision >= 0)'),
+        ):
+            if name not in columns:
+                cursor.execute(f'ALTER TABLE forum_categories ADD COLUMN {name} {definition}')
+        cursor.execute('INSERT OR IGNORE INTO forum_categories(id, position) VALUES (?, -1)',
+                       (PRIVATE_CATEGORY_ID,))
+        cursor.execute('''UPDATE forum_topics SET category_id = ?
+                          WHERE id IN (SELECT topic_id FROM forum_private_topics)''',
+                       (PRIVATE_CATEGORY_ID,))
 
 
 def erase_account(cursor: sqlite3.Cursor, user_uuid: str) -> None:

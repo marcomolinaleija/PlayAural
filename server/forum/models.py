@@ -13,6 +13,10 @@ EDIT_WINDOW_SECONDS = 30 * 60
 WRITE_WINDOW_SECONDS = 60
 MAX_WRITES_PER_WINDOW = 6
 DEFAULT_CATEGORIES = ("general", "help", "ideas")
+PRIVATE_CATEGORY_ID = "__private__"
+MAX_CATEGORIES = 64
+MAX_CATEGORY_NAME_LENGTH = 80
+MAX_CATEGORY_DESCRIPTION_LENGTH = 500
 
 
 class ForumError(ValueError):
@@ -28,6 +32,9 @@ class ForumError(ValueError):
 class Category:
     id: str
     topic_count: int
+    name: str = ""
+    description: str = ""
+    revision: int = 0
 
 
 @dataclass(frozen=True)

@@ -61,3 +61,11 @@ El contenido público se conserva al eliminar una cuenta, retirando la atribuci�
 \*\*Navegación\*\*
 
 Usa los controles habituales de teclado, pantalla táctil, lector de pantalla o autovoz. Las acciones están al final y Atrás devuelve el foco al elemento que abrió la vista si sigue disponible. Escape cancela las confirmaciones. En móvil, Atrás cierra primero el reproductor abierto antes de salir de la vista del foro que está debajo.
+
+\*\*Gestionar subforos\*\*
+
+Los administradores y desarrolladores tienen la opción Gestionar subforos al final del foro. Elige Crear subforo o abre uno existente para cambiar su nombre y descripción. El nombre admite hasta 80 caracteres y la descripción hasta 500; puedes dejar la descripción vacía para quitarla. Los cambios se aplican al elegir Guardar subforo. Se admiten hasta 64 subforos.
+
+La descripción se anuncia al entrar en el subforo, sin añadir una fila antes de los temas. Los usuarios que ya están en las listas reciben su actualización conservando el foco cuando el elemento sigue disponible.
+
+Eliminar subforo pide confirmación. Si contiene temas, primero elige otro subforo donde conservarlos; sus mensajes, archivos, encuestas, guardados y posiciones de lectura se mantienen. Si no existe otro subforo, crea uno antes. Las conversaciones privadas permanecen separadas y no aparecen en esta gestión. Si otra persona cambió el subforo mientras lo editabas, se conserva tu borrador y se pide volver a abrirlo para evitar sobrescribir sus cambios.

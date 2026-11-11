@@ -475,7 +475,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 6
+    CURRENT_SCHEMA_VERSION = 7
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -1632,7 +1632,7 @@ class Database:
         # protects that identity. Version six combines wallets and forums. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2, 3, 4, 5}:
+        if schema_version not in {0, 1, 2, 3, 4, 5, 6}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
@@ -1674,7 +1674,7 @@ class Database:
         # for public/private forums before those histories were combined.
         # Choose the historical contract, then validate it in full before backup
         # or mutation. Missing pieces of either contract are never repaired here.
-        legacy_forum = schema_version == 5 or (
+        legacy_forum = schema_version >= 5 or (
             schema_version == 4 and any(name.startswith("forum_") for name in table_names)
         )
         if schema_version:
@@ -1690,7 +1690,7 @@ class Database:
                     else None
                 ),
                 legacy_identity_contract=schema_version in {1, 2},
-                legacy_wallets_contract=schema_version < 4 or legacy_forum,
+                legacy_wallets_contract=schema_version < 4 or (legacy_forum and schema_version < 6),
                 include_forum=legacy_forum,
             )
 
@@ -1937,7 +1937,7 @@ class Database:
         self,
         *,
         include_forum: bool = True,
-        forum_version: int = 5,
+        forum_version: int = 7,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -2110,6 +2110,10 @@ class Database:
                 + ")"
             )
 
+        if required_schema_version >= 7 and 'forum_categories' in actual_tables:
+            if executor.execute("SELECT 1 FROM forum_categories WHERE id = '__private__'").fetchone() is None:
+                raise sqlite3.DatabaseError('database is missing the internal private forum category')
+
         unexpected_views = executor.execute(
             """
             SELECT name
@@ -2184,6 +2188,8 @@ class Database:
                 table_name,
                 (),
             )
+            if table_name == "forum_categories" and required_schema_version < 7:
+                required_fragments = ()
             normalized_sql = self._normalize_schema_sql(
                 actual_table_sql[table_name]
             )
@@ -2417,7 +2423,7 @@ class Database:
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
     def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
-                                      forum_version: int = 5) -> None:
+                                      forum_version: int = 7) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(

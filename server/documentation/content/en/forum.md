@@ -61,3 +61,11 @@ Public discussion text remains after account deletion, with the deleted author's
 \*\*Navigation\*\*
 
 Use the usual keyboard, touch, screen reader, or self-voicing controls. Actions are at the bottom, and Back returns to the item that opened the view when it is still available. Escape cancels confirmation prompts. On mobile, Back closes an open media player before leaving the underlying forum view.
+
+\*\*Manage subforums\*\*
+
+Administrators and developers have a Manage subforums action at the bottom of the forum. Choose Create subforum or open an existing one to change its name and description. Names allow up to 80 characters and descriptions up to 500; leave a description empty to remove it. Changes take effect when you choose Save subforum. Up to 64 subforums are supported.
+
+Descriptions are announced on entering a subforum without adding a row before its topics. People already viewing the lists receive updates while keeping focus when their selected item remains available.
+
+Delete subforum asks for confirmation. If it contains topics, first choose another subforum to keep them; messages, files, polls, bookmarks and reading positions are preserved. Create another subforum first if none is available. Private conversations remain separate and do not appear in this management view. If another person changed a subforum while you were editing, your draft is kept and you are asked to reopen it instead of overwriting their changes.
