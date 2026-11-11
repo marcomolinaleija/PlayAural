@@ -39,6 +39,32 @@ class FakeElement {
   }
 }
 
+test('a full read-only multiline message starts at the top without selecting all text', async () => {
+  const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  const start = source.indexOf('  showInlineInput(packet) {');
+  const end = source.indexOf('\n  hideInlineInput()', start);
+  const show = new Function('requestAnimationFrame', `return ({${source.slice(start, end)}}).showInlineInput;`)((callback) => callback());
+  const input = () => ({ hidden: false, scrollTop: 1000, selections: [], selectedAll: false,
+    setAttribute() {}, removeAttribute() {}, focus() {},
+    select() { this.selectedAll = true; },
+    setSelectionRange(...range) { this.selections.push(range); } });
+  const textarea = input();
+  const spoken = [];
+  const app = { elements: { inlineInputValue: textarea, inlineInputText: input(),
+    inlineInput: {}, inlineInputPrompt: { setAttribute() {} } },
+    speak(text) { spoken.push(text); } };
+  const body = 'First line\n' + 'x'.repeat(63989);
+  show.call(app, { prompt: 'Message', default_value: body, multiline: true, read_only: true, max_length: 64000 });
+  assert.equal(textarea.value, body);
+  assert.equal(textarea.readOnly, true);
+  assert.deepEqual(textarea.selections, [[0, 0]]);
+  assert.equal(textarea.scrollTop, 0);
+  assert.equal(textarea.selectedAll, false);
+  assert.deepEqual(spoken, ['Message']);
+  show.call(app, { prompt: 'Edit', default_value: body, multiline: true, read_only: false, max_length: 64000 });
+  assert.equal(textarea.selectedAll, true);
+});
+
 test("read-only and legacy text menu rows are never actionable", () => {
   assert.equal(isMenuItemActionable({ id: "confirm", text: "Confirm" }), true);
   assert.equal(isMenuItemActionable({ id: "summary", read_only: true, text: "Summary" }), false);

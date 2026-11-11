@@ -312,3 +312,5 @@ forum-error-category-language = El subforo de destino debe pertenecer al mismo i
 
 forum-entry-thread-language = Foro en { $language }. { forum-entry-thread }
 forum-entry-post-language = Foro en { $language }. { forum-entry-post }
+
+forum-body-reader = Mensaje de { $author } (solo lectura). Pulsa Enter o Escape para cerrar.

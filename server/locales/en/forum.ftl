@@ -312,3 +312,5 @@ forum-error-category-language = The destination subforum must belong to the same
 
 forum-entry-thread-language = Forum in { $language }. { forum-entry-thread }
 forum-entry-post-language = Forum in { $language }. { forum-entry-post }
+
+forum-body-reader = Message by { $author } (read only). Press Enter or Escape to close.

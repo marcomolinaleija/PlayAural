@@ -10,6 +10,11 @@ The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
 approval/moderation/block rules, the central SQLite lifecycle (schema v10), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
+Opening a message shows its full body in a read-only multiline input. Message
+menus keep one short body row that reopens the reader, with actions below.
+Closing restores message focus without reopening; never accept reader text as
+an edit, and recheck visibility on open. Read-only multiline starts at the top
+without automatic full-text selection. Private/member/block rules still apply.
 Forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
 Message composers use one editable row per field (label: current value),

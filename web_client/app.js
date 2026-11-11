@@ -3429,6 +3429,11 @@ class PlayAuralWebApp {
     this.speak(prompt, { buffer: "system", noHistory: true });
     requestAnimationFrame(() => {
       activeInput?.focus?.({ preventScroll: false });
+      if (activeInput?.readOnly) {
+        activeInput.setSelectionRange?.(0, 0);
+        activeInput.scrollTop = 0;
+        return;
+      }
       try {
         activeInput?.select?.();
       } catch {

@@ -171,7 +171,12 @@ async def test_maximum_body_over_real_websocket_editor_reader_and_report_snapsho
             draft = await receive(ws, lambda p: p.get('menu_id') == nav.COMPOSER)
             assert len(next(row['text'] for row in draft['items'] if row['id'] == 'edit_body')) < 200
             reader = await choose(ws, nav.COMPOSER, 'publish', nav.POST)
-            assert ''.join(row['text'] for row in reader['items'] if row['id'].startswith('body:')) == body
+            assert len(reader['items'][0]['text']) <= 160
+            await ws.send(json.dumps({'type':'menu','menu_id':nav.POST,'selection_id':'read_body'}))
+            full = await receive(ws, lambda p:p.get('type') == 'request_input' and p.get('input_id') == nav.BODY_READER)
+            assert full['read_only'] and full['multiline'] and full['default_value'] == body
+            await ws.send(json.dumps({'type':'editbox','input_id':nav.BODY_READER,'cancelled':True}))
+            await receive(ws, lambda p:p.get('menu_id') == nav.POST)
             post = server.forum_manager.service.topic(server.db.get_user('Reader').uuid, topic).last_post_id
             await choose(ws, nav.POST, 'edit', nav.COMPOSER)
             await ws.send(json.dumps({'type': 'menu', 'menu_id': nav.COMPOSER, 'selection_id': 'edit_body'}))

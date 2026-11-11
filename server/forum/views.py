@@ -7,7 +7,7 @@ from ..messages.localization import Localization
 from ..messages.relative_time import format_relative_time
 from ..users.base import EscapeBehavior, MenuItem
 from . import navigation as nav
-from .text import excerpt, reading_chunks
+from .text import excerpt
 
 
 def label(user, key: str, **values) -> str:
@@ -178,8 +178,7 @@ class ForumViews:
         if post.hidden:
             rows = [item(user, "forum-hidden-post", "hidden", read_only=True)]
         else:
-            rows = [MenuItem(text=text, id=f"body:{post.id}:{index}", read_only=True)
-                    for index, text in enumerate(reading_chunks(post.body))]
+            rows = [MenuItem(text=excerpt(post.body), id='read_body')]
             rows.extend(item(user, 'forum-media-post-row', f"attachment:{attachment['id']}", name=attachment['name'],
                              kind=label(user, 'forum-media-kind-' + attachment['kind']))
                         for attachment in self.service.attachments.for_post(user.uuid, post_id))

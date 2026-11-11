@@ -4375,7 +4375,7 @@ class AdministrationManager:
                     current = self.server.forum_manager.service.topic(user.uuid, evidence.topic_id)
                     if current.is_private:
                         raise ForumError('forum-error-missing')
-                    self.server._nav_push(user, self.server.forum_manager.views.post, evidence.post_id)
+                    self.server._nav_push(user, self.server.forum_manager.reader.open, evidence.post_id)
                 except ForumError as error:
                     user.speak_l(error.key, buffer='system', **error.values)
             return

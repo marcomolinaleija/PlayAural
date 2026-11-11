@@ -2253,7 +2253,11 @@ class MainWindow(wx.Frame):
             self.edit_input_multiline.SetValue(default_value)
             self.edit_input_multiline.SetEditable(not read_only)
             self.edit_input_multiline.SetFocus()
-            self.edit_input_multiline.SelectAll()
+            if read_only:
+                self.edit_input_multiline.SetInsertionPoint(0)
+                self.edit_input_multiline.ShowPosition(0)
+            else:
+                self.edit_input_multiline.SelectAll()
             self.current_edit_multiline = True
         else:
             self.edit_input_multiline.Hide()

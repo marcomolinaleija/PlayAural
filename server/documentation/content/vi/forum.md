@@ -12,7 +12,7 @@ Khi mở một mục, bạn nghe thông báo ngắn về ngữ cảnh. Tiêu đ�
 
 \*\*Đọc và tiếp tục\*\*
 
-Mở thảo luận để thấy tin nhắn trước và thao tác bên dưới. Mở một tin nhắn để đọc toàn bộ nội dung. Tác giả và thời gian được thông báo tự động; nội dung được chia thành các phần dễ đọc.
+Mở thảo luận để thấy tin nhắn trước và các thao tác bên dưới. Mỗi hàng hiển thị bản xem trước tối đa 160 ký tự. Khi mở tin nhắn, toàn bộ nội dung xuất hiện trong ô văn bản nhiều dòng chỉ đọc; bạn có thể di chuyển theo dòng, chọn và sao chép văn bản. Tác giả và thời gian được thông báo tự động. Enter hoặc Escape đóng ô và đưa tiêu điểm về hàng tin nhắn, với tệp đính kèm, khảo sát và các thao tác bên dưới. Mở lại hàng đó để đọc toàn bộ văn bản.
 
 Mở toàn bộ tin nhắn sẽ đánh dấu tin đó và các tin trước đó trong thảo luận là đã đọc. Chỉ xem bản tóm tắt không làm thay đổi vị trí đọc. Tiếp tục từ tin nhắn chưa đọc đầu tiên và Đọc tin nhắn chưa đọc tiếp theo giúp bạn theo dõi. Vị trí đọc và thảo luận đã lưu được giữ khi kết nối lại hoặc đổi thiết bị.
 

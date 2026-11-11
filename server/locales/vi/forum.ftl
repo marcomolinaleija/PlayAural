@@ -306,3 +306,5 @@ forum-error-category-language = Diễn đàn con đích phải có cùng ngôn n
 
 forum-entry-thread-language = Diễn đàn bằng { $language }. { forum-entry-thread }
 forum-entry-post-language = Diễn đàn bằng { $language }. { forum-entry-post }
+
+forum-body-reader = Tin nhắn của { $author } (chỉ đọc). Nhấn Enter hoặc Escape để đóng.

@@ -16,6 +16,7 @@ from .review_ui import ReviewController
 from .category_ui import CategoryController
 from .report_ui import ReportController
 from .language_ui import LanguageController
+from .reader import MessageReader
 
 
 class ForumManager:
@@ -32,6 +33,7 @@ class ForumManager:
         self.categories = CategoryController(self)
         self.reports = ReportController(self)
         self.languages = LanguageController(self)
+        self.reader = MessageReader(self)
 
     def home(self, user) -> None:
         if self.server.forum_enabled:
@@ -139,11 +141,11 @@ class ForumManager:
             elif selection == "continue":
                 post_id = self.service.repository.resume_post(user.uuid, topic_id)
                 if post_id:
-                    push(user, self.views.post, post_id)
+                    push(user, self.reader.open, post_id)
                 else:
                     refresh(user, self.views.thread, topic_id, state["forum_page"])
             elif selection.startswith("post:"):
-                push(user, self.views.post, int(selection.removeprefix("post:")))
+                push(user, self.reader.open, int(selection.removeprefix("post:")))
             elif selection in {"toggle_closed", "toggle_pinned"}:
                 action = selection.removeprefix("toggle_")
                 push(user, self.confirm_moderation, topic_id, action, not getattr(topic, action))
@@ -153,7 +155,9 @@ class ForumManager:
                     refresh(user, self.views.thread, topic_id, page)
         elif menu == nav.POST:
             post = self.service.post(user.uuid, state["forum_post"])
-            if selection == "reply":
+            if selection == 'read_body':
+                self.reader.show(user, post.id)
+            elif selection == "reply":
                 push(user, self.composer.show, Draft("reply", topic_id=post.topic_id))
             elif selection == 'poll':
                 push(user, self.polls.ballot, post.id)
@@ -165,7 +169,7 @@ class ForumManager:
             elif selection == "next_unread":
                 next_post = self.service.repository.resume_post(user.uuid, post.topic_id)
                 if next_post:
-                    refresh(user, self.views.post, next_post)
+                    refresh(user, self.reader.open, next_post)
             elif selection == "toggle_hidden":
                 push(user, self.confirm_moderation, post.topic_id, "hidden", not post.hidden, post.id)
         elif menu == nav.COMPOSER:
@@ -211,6 +215,9 @@ class ForumManager:
 
     def handle_input(self, user, packet: dict, state: dict) -> None:
         if state["menu"] not in nav.INPUT_IDS or packet.get("input_id") != state["menu"]:
+            return
+        if state['menu'] == nav.BODY_READER:
+            self.reader.close(user, state)
             return
         if (not self.server.forum_enabled and not packet.get('cancelled')
                 and state['menu'] not in {nav.TITLE_INPUT, nav.BODY_INPUT}):

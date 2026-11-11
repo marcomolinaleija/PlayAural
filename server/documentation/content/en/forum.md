@@ -12,7 +12,7 @@ On entering a view, a short announcement gives its context. Headings and page su
 
 \*\*Reading and Continuing\*\*
 
-Open a discussion to find its messages first and its actions below. Open a message to read its full text. Its author and time are announced automatically; the text is split into manageable reading sections.
+Open a discussion to find its messages first and its actions below. Each row shows an excerpt of up to 160 characters. Opening a message displays its complete text in a read-only multiline box, where you can move through lines, select and copy text. Its author and time are announced automatically. Enter or Escape closes the box and restores focus to the message row, with attachments, its poll and actions below. Open that same row to read the full text again.
 
 Opening a full message marks that message and earlier messages in the discussion as read. Reading previews alone does not. Continue from the first unread message and Read the next unread message help you catch up. Your reading position and saved discussions remain available after reconnecting or switching devices.
 

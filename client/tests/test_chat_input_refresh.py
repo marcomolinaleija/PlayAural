@@ -1,6 +1,7 @@
 import ast
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 
 def _main_window_source_path() -> Path:
@@ -239,6 +240,28 @@ def test_visibility_changes_refresh_the_visible_layout():
     for function_name in ("update_voice_ui", "switch_to_edit_mode", "switch_to_list_mode"):
         function = _get_main_window_function(function_name)
         assert _has_method_call(function, "_layout_main_panel")
+
+
+def test_readonly_multiline_starts_at_top_without_selecting_or_truncating_the_message():
+    method = _get_main_window_function('switch_to_edit_mode')
+    namespace = {}
+    exec(compile(ast.Module(body=[method], type_ignores=[]), '<reader>', 'exec'), namespace)
+    body = 'First line\n' + 'x' * 63989
+    for read_only in (True, False):
+        control = Mock()
+        window = SimpleNamespace(current_mode='list', menu_list=Mock(), menu_label=Mock(),
+            edit_label=Mock(), edit_input=Mock(), edit_input_multiline=control, _layout_main_panel=Mock())
+        namespace['switch_to_edit_mode'](window, prompt='Message', default_value=body,
+            multiline=True, read_only=read_only, max_length=64000, input_id='forum_body_reader')
+        control.SetValue.assert_called_once_with(body)
+        control.SetEditable.assert_called_once_with(not read_only)
+        if read_only:
+            control.SetInsertionPoint.assert_called_once_with(0)
+            control.ShowPosition.assert_called_once_with(0)
+            control.SelectAll.assert_not_called()
+        else:
+            control.SelectAll.assert_called_once()
+        assert window.current_mode == 'edit' and window.current_edit_read_only is read_only
 
 
 def test_chat_and_history_controls_set_explicit_accessibility_names():

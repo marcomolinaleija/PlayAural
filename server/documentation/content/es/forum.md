@@ -12,7 +12,7 @@ Al entrar se anuncia brevemente el contexto. Los títulos y los resúmenes de p�
 
 \*\*Leer y continuar\*\*
 
-Abre una conversación para encontrar primero sus mensajes y debajo sus acciones. Abre un mensaje para leer su contenido completo. Su autor y antigüedad se anuncian automáticamente; el texto se divide en fragmentos manejables.
+Abre una conversación para encontrar primero sus mensajes y debajo sus acciones. Cada fila muestra un resumen de hasta 160 caracteres. Al abrir un mensaje, su texto completo aparece en un cuadro multilínea de solo lectura, donde puedes recorrer las líneas, seleccionar y copiar texto. Su autor y antigüedad se anuncian automáticamente. Enter o Escape cierran el cuadro y devuelven el foco a la fila del mensaje; debajo quedan sus archivos, encuesta y acciones. Puedes abrir el texto de nuevo desde esa misma fila.
 
 Abrir un mensaje completo marca como leídos ese mensaje y los anteriores de la conversación. Las vistas previas no lo hacen. Continuar desde el primer mensaje sin leer y Leer el siguiente mensaje sin leer te ayudan a ponerte al día. Tu posición de lectura y tus conversaciones guardadas se conservan al reconectar o cambiar de dispositivo.
 

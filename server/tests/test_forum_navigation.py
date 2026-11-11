@@ -26,7 +26,12 @@ async def receive(ws, predicate):
 async def choose(ws, menu, action, result=None):
     await ws.send(json.dumps({"type": "menu", "menu_id": menu, "selection_id": action}))
     if result:
-        return await receive(ws, lambda p: p.get("menu_id") == result)
+        menu_packet = await receive(ws, lambda p: p.get("menu_id") == result)
+        if result == nav.POST and (menu == nav.THREAD or action == 'next_unread'):
+            await receive(ws, lambda p: p.get('input_id') == nav.BODY_READER and p.get('type') == 'request_input')
+            await ws.send(json.dumps({'type':'editbox','input_id':nav.BODY_READER,'cancelled':True}))
+            return await receive(ws, lambda p:p.get('menu_id') == nav.POST)
+        return menu_packet
 
 
 async def fill(ws, field, text):
@@ -202,7 +207,8 @@ def test_content_precedes_actions_and_entry_context_is_spoken_once(navigation_se
     packets = user.get_queued_messages()
     reader = [p for p in packets if p.get("menu_id") == nav.POST][-1]
     assert reader["items"][0]["text"] == "Primer mensaje"
-    assert reader["items"][0]["read_only"]
+    assert reader["items"][0]["id"] == "read_body"
+    assert not reader["items"][0].get("read_only", False)
     assert reader["items"][-1]["id"] == "back"
 
 

@@ -91,9 +91,9 @@ to the input control.
 
 - 120 title characters, 64,000 message characters, 2–100 search characters.
 - 15 topics or 8 message previews per page, with SQL LIMIT/OFFSET.
-- Full message readers split text into sections of at most 500 characters;
-  draft fields show a single 160-character excerpt and retain all text for editing;
-  even newline-heavy messages have a bounded number of reading rows.
+- Full messages open in a read-only multiline box. Message menus and draft
+  fields use a single 160-character excerpt; the full text stays available for
+  reading/editing without generating hundreds of message-menu rows.
 - Six new messages per rolling 60-second window per immutable account UUID.
   The latest identical normalized message in that window is rejected. This
   check is transactional and persists through reconnects and server restarts.
@@ -159,3 +159,5 @@ Public-content reporting uses the shared moderation queue and schema 8. See
 Public communities use schema 9 language scopes; see [forum-languages.md](forum-languages.md).
 
 Schema 10 raises message bodies to 64,000 characters; see [forum-long-posts.md](forum-long-posts.md).
+
+Full-message reading and return-focus behavior are described in [forum-reader.md](forum-reader.md).
