@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
+from unfocused_audio import default_unfocused_silence, migrate_client_audio_options
+
 # Keyring service name used for all stored credentials.
 _KEYRING_SERVICE = "PlayAural"
 
@@ -155,10 +157,20 @@ class ConfigManager:
                     needs_save = True
                 else:
                     # Fill in any keys added since the file was last written.
+                    saved_audio = identities["client_options"].get("audio", {})
+                    had_explicit_categories = isinstance(saved_audio, dict) and isinstance(
+                        saved_audio.get("unfocused_silence"), dict
+                    )
                     merged = self._deep_merge(
                         self._get_default_client_options(),
                         identities["client_options"],
                     )
+                    merged_audio = merged.get("audio")
+                    if isinstance(merged_audio, dict):
+                        migrate_client_audio_options(
+                            merged_audio,
+                            had_explicit_categories=had_explicit_categories,
+                        )
                     if merged != identities["client_options"]:
                         identities["client_options"] = merged
                         needs_save = True
@@ -197,6 +209,7 @@ class ConfigManager:
                 "input_device_id": "",
                 "input_device_name": "",
                 "limit_unfocused_audio_and_tts": False,
+                "unfocused_silence": default_unfocused_silence(),
             },
             "social": {
                 "mute_global_chat": False,

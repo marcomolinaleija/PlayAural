@@ -17,7 +17,9 @@ EXPECTED_TO_DICT_KEYS = {
     "show_menu_hints", "invert_multiline_enter_behavior", "play_typing_sounds",
     "active_tables_filter", "game_category_filter",
     "allow_custom_bot_names", "confirm_destructive_actions",
-    "voice_noise_suppression", "voice_spatial_audio", "voice_auto_gain", "limit_unfocused_audio",
+    "voice_noise_suppression", "voice_spatial_audio", "voice_auto_gain",
+    "unfocused_silence_game", "unfocused_silence_table", "unfocused_silence_invitations",
+    "unfocused_silence_system", "unfocused_silence_private",
     "profile_privacy",
     "clear_kept_on_roll", "dice_keeping_style", "game_overrides",
 }
@@ -25,6 +27,26 @@ EXPECTED_TO_DICT_KEYS = {
 
 def test_to_dict_key_set_is_stable() -> None:
     assert set(UserPreferences().to_dict().keys()) == EXPECTED_TO_DICT_KEYS
+
+
+def test_legacy_unfocused_audio_enables_every_category() -> None:
+    migrated = UserPreferences.from_dict({"limit_unfocused_audio": True})
+    assert migrated.unfocused_silence_game is True
+    assert migrated.unfocused_silence_table is True
+    assert migrated.unfocused_silence_invitations is True
+    assert migrated.unfocused_silence_system is True
+    assert migrated.unfocused_silence_private is True
+
+    selective = UserPreferences.from_dict(
+        {
+            "limit_unfocused_audio": True,
+            "unfocused_silence_game": False,
+            "unfocused_silence_private": True,
+        }
+    )
+    assert selective.unfocused_silence_game is False
+    assert selective.unfocused_silence_private is True
+    assert selective.unfocused_silence_table is True
 
 
 def test_menu_hints_default_on_and_round_trip() -> None:

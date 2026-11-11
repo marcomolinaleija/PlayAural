@@ -119,7 +119,12 @@ from ..users.base import (
 )
 from ..ui.confirmation import ConfirmationChoice, show_confirmation_menu
 from ..users.identity import find_username_prefix, normalize_username, username_key
-from ..users.preferences import UserPreferences, DiceKeepingStyle, PREF_CATEGORIES
+from ..users.preferences import (
+    PREF_CATEGORIES,
+    UNFOCUSED_SILENCE_CATEGORIES,
+    DiceKeepingStyle,
+    UserPreferences,
+)
 from ..users.roles import (
     ADMIN_TRUST_LEVEL,
     DEVELOPER_TRUST_LEVEL,
@@ -4196,20 +4201,22 @@ PlayAural Server
                 description_key="general-desc-voice-auto-gain",
             )
         )
-        items.append(
-            MenuItem(
-                text=Localization.get(
-                    user.locale,
-                    "options-limit-unfocused-audio-toggle",
-                    status=Localization.get(
+        for category in UNFOCUSED_SILENCE_CATEGORIES:
+            enabled = bool(getattr(prefs, f"unfocused_silence_{category}"))
+            items.append(
+                MenuItem(
+                    text=Localization.get(
                         user.locale,
-                        "option-on" if prefs.limit_unfocused_audio else "option-off",
+                        f"options-unfocused-silence-{category}-toggle",
+                        status=Localization.get(
+                            user.locale,
+                            "option-on" if enabled else "option-off",
+                        ),
                     ),
-                ),
-                id="toggle_limit_unfocused_audio",
-                description_key="general-desc-limit-unfocused-audio",
+                    id=f"toggle_unfocused_silence_{category}",
+                    description_key=f"general-desc-unfocused-silence-{category}",
+                )
             )
-        )
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "options_audio_submenu",
@@ -5301,6 +5308,12 @@ PlayAural Server
             prefs.desktop_audio_input_device_id = str(value or "").strip()
         elif key == "audio/input_device_name":
             prefs.desktop_audio_input_device_name = str(value or "").strip()
+        elif key.startswith("audio/unfocused_silence/"):
+            category = key.removeprefix("audio/unfocused_silence/")
+            if category not in UNFOCUSED_SILENCE_CATEGORIES:
+                return
+            value = bool(value)
+            setattr(prefs, f"unfocused_silence_{category}", value)
         elif key == "interface/invert_multiline_enter_behavior":
             prefs.invert_multiline_enter_behavior = bool(value)
         elif key == "interface/play_typing_sounds":
@@ -8015,30 +8028,6 @@ PlayAural Server
                     id="remove_friend",
                 )
             )
-        # Check if they are online and in a table
-        if target_username in self._users:
-            table = self._tables.find_user_table(target_username)
-            if table:
-                if (
-                    (
-                        not table.is_private
-                        or self._has_private_table_access(user, table)
-                    )
-                    and not self._is_new_table_admission_blocked(user, table)
-                ):
-                    items.append(MenuItem(text=Localization.get(user.locale, "join-table"), id="join_table"))
-
-            # Check if current user is table host and can invite target
-            user_table = self._tables.find_user_table(user.username)
-            target_user = self._users.get(target_username)
-            if (
-                user_table
-                and self._can_manage_table(user, user_table)
-                and target_user
-                and not self._table_invite_eligibility_error(user, user_table, target_user)
-            ):
-                items.append(MenuItem(text=Localization.get(user.locale, "invite-to-table"), id="invite_to_table"))
-
         report_item = self._get_report_action_item(user, target_username)
         if report_item:
             items.append(report_item)
@@ -10970,12 +10959,24 @@ PlayAural Server
             status_str = Localization.get(user.locale, "option-on" if prefs.voice_auto_gain else "option-off")
             user.speak_l("voice-auto-gain-changed", buffer="system", status=status_str)
             self._nav_refresh(user, self._show_audio_submenu)
-        elif selection_id == "toggle_limit_unfocused_audio":
-            prefs.limit_unfocused_audio = not prefs.limit_unfocused_audio
+        elif selection_id.startswith("toggle_unfocused_silence_"):
+            category = selection_id.removeprefix("toggle_unfocused_silence_")
+            if category not in UNFOCUSED_SILENCE_CATEGORIES:
+                return
+            enabled = not bool(getattr(prefs, f"unfocused_silence_{category}"))
+            setattr(prefs, f"unfocused_silence_{category}", enabled)
             self._save_user_preferences(user)
-            self._sync_pref_to_client(user, "audio/limit_unfocused_audio_and_tts", prefs.limit_unfocused_audio)
-            status_str = Localization.get(user.locale, "option-on" if prefs.limit_unfocused_audio else "option-off")
-            user.speak_l("options-limit-unfocused-audio-changed", buffer="system", status=status_str)
+            self._sync_pref_to_client(
+                user, f"audio/unfocused_silence/{category}", enabled
+            )
+            status_str = Localization.get(
+                user.locale, "option-on" if enabled else "option-off"
+            )
+            user.speak_l(
+                f"options-unfocused-silence-{category}-changed",
+                buffer="system",
+                status=status_str,
+            )
             self._nav_refresh(user, self._show_audio_submenu)
 
     async def _handle_volume_selection(

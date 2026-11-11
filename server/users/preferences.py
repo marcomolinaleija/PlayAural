@@ -48,6 +48,24 @@ def pref_field(meta: PrefMeta) -> Any:
     return field(default=meta.default, metadata={"pref_meta": meta})
 
 
+# Independent "silence while the window is unfocused" categories.
+UNFOCUSED_SILENCE_CATEGORIES: tuple[str, ...] = (
+    "game",
+    "table",
+    "invitations",
+    "system",
+    "private",
+)
+
+
+def unfocused_silence_from_data(data: dict, category: str) -> bool:
+    """Read one category, folding the retired all-or-nothing switch once."""
+    key = f"unfocused_silence_{category}"
+    if key in data:
+        return bool(data[key])
+    return bool(data.get("limit_unfocused_audio", False))
+
+
 # Declarative game-preference categories, in Game Options menu order.
 PREF_CATEGORIES: list[tuple[str, str]] = [
     ("display", "pref-category-display"),
@@ -94,7 +112,11 @@ class UserPreferences:
     voice_noise_suppression: bool = True
     voice_spatial_audio: bool = True
     voice_auto_gain: bool = True
-    limit_unfocused_audio: bool = False
+    unfocused_silence_game: bool = False
+    unfocused_silence_table: bool = False
+    unfocused_silence_invitations: bool = False
+    unfocused_silence_system: bool = False
+    unfocused_silence_private: bool = False
     desktop_audio_input_device_id: str = ""
     desktop_audio_input_device_name: str = ""
 
@@ -194,7 +216,11 @@ class UserPreferences:
             "voice_noise_suppression": self.voice_noise_suppression,
             "voice_spatial_audio": self.voice_spatial_audio,
             "voice_auto_gain": self.voice_auto_gain,
-            "limit_unfocused_audio": self.limit_unfocused_audio,
+            "unfocused_silence_game": self.unfocused_silence_game,
+            "unfocused_silence_table": self.unfocused_silence_table,
+            "unfocused_silence_invitations": self.unfocused_silence_invitations,
+            "unfocused_silence_system": self.unfocused_silence_system,
+            "unfocused_silence_private": self.unfocused_silence_private,
             "desktop_audio_input_device_id": self.desktop_audio_input_device_id,
             "desktop_audio_input_device_name": self.desktop_audio_input_device_name,
             "speech_mode": self.speech_mode,
@@ -235,7 +261,13 @@ class UserPreferences:
             voice_noise_suppression=data.get("voice_noise_suppression", True),
             voice_spatial_audio=data.get("voice_spatial_audio", True),
             voice_auto_gain=data.get("voice_auto_gain", True),
-            limit_unfocused_audio=data.get("limit_unfocused_audio", False),
+            unfocused_silence_game=unfocused_silence_from_data(data, "game"),
+            unfocused_silence_table=unfocused_silence_from_data(data, "table"),
+            unfocused_silence_invitations=unfocused_silence_from_data(
+                data, "invitations"
+            ),
+            unfocused_silence_system=unfocused_silence_from_data(data, "system"),
+            unfocused_silence_private=unfocused_silence_from_data(data, "private"),
             desktop_audio_input_device_id=data.get("desktop_audio_input_device_id", ""),
             desktop_audio_input_device_name=data.get(
                 "desktop_audio_input_device_name", ""

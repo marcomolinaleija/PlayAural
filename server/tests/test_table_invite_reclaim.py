@@ -1904,6 +1904,25 @@ class TestTableInviteReclaim:
         item_ids = self._get_menu_action_ids(host, "host_pass_menu")
         assert f"pass_{newcomer.username}" in item_ids
 
+    def test_friend_actions_list_invite_once_for_the_table_host(self):
+        host = self._create_online_user("Host")
+        friend = self._create_online_user("Friend")
+        self._make_friends(host, friend)
+        table = self.server._tables.create_table("pig", host.username, host)
+        game = PigGame(options=PigOptions(target_score=25))
+        table.game = game
+        game._table = table
+        game.initialize_lobby(host.username, host)
+
+        self.server._show_friend_actions_menu(
+            host, friend.username, expected_uuid=friend.uuid
+        )
+
+        item_ids = self._get_menu_action_ids(host, "friend_actions_menu")
+        assert item_ids.count("invite_to_table") == 1
+        assert item_ids.count("join_table") == 0
+        assert item_ids.count("send_pm") == 1
+
     @pytest.mark.asyncio
     async def test_online_friend_selection_opens_friend_actions_and_back_returns_online_list(self):
         viewer = self._create_online_user("Viewer")

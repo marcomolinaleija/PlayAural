@@ -38,6 +38,13 @@ from windows_typing import (
 )
 from network_manager import NetworkManager
 from buffer_system import BufferSystem
+from unfocused_audio import (
+    UNFOCUSED_SILENCE_CATEGORIES,
+    audio_category,
+    chat_category,
+    should_silence_unfocused,
+    speak_category,
+)
 from config_manager import set_item_in_dict
 from localization import Localization
 from release_build import application_update_required
@@ -2916,12 +2923,27 @@ class MainWindow(wx.Frame):
                     preferences["desktop_audio_input_device_name"],
                     create_mode=True,
                 )
-            if "limit_unfocused_audio" in preferences:
-                self.config_manager.set_client_option(
-                    "audio/limit_unfocused_audio_and_tts",
-                    bool(preferences["limit_unfocused_audio"]),
-                    create_mode=True,
-                )
+            sent_unfocused_categories = False
+            for category in UNFOCUSED_SILENCE_CATEGORIES:
+                preference_key = f"unfocused_silence_{category}"
+                if preference_key in preferences:
+                    sent_unfocused_categories = True
+                    self.config_manager.set_client_option(
+                        f"audio/unfocused_silence/{category}",
+                        bool(preferences[preference_key]),
+                        create_mode=True,
+                    )
+            if (
+                not sent_unfocused_categories
+                and "limit_unfocused_audio" in preferences
+            ):
+                enabled = bool(preferences["limit_unfocused_audio"])
+                for category in UNFOCUSED_SILENCE_CATEGORIES:
+                    self.config_manager.set_client_option(
+                        f"audio/unfocused_silence/{category}",
+                        enabled,
+                        create_mode=True,
+                    )
             
             # Social
             if "mute_global_chat" in preferences:
@@ -3338,6 +3360,7 @@ class MainWindow(wx.Frame):
         # Send updated client options to server only when the user confirmed.
         if result == wx.ID_OK:
             self.send_client_options_to_server()
+            self._sync_unfocused_silence_preferences()
 
     def on_server_speak(self, packet):
         """Handle speak packet from server."""
@@ -3350,18 +3373,8 @@ class MainWindow(wx.Frame):
         )  # Check if message should be muted (no TTS)
         store_in_history = packet.get("history", True) is not False
 
-        limit_unfocused = self.config_manager.get_client_option(
-            "audio/limit_unfocused_audio_and_tts", False
-        )
-        if limit_unfocused and not self.IsActive():
-            key = str(packet.get("key") or "")
-            is_turn = key == "game-turn-start-you"
-            if not is_turn:
-                is_muted = True
-            else:
-                is_muted = False
-                if hasattr(self, "sound_manager") and self.sound_manager:
-                    self.sound_manager.play_sound("turn.ogg")
+        if self._should_silence_unfocused(speak_category(buffer_name, str(packet.get("key") or ""))):
+            is_muted = True
 
         if text:
             self.add_history(
@@ -3393,6 +3406,7 @@ class MainWindow(wx.Frame):
         should_alert = (
             not packet.get("silent")
             and not self.buffer_system.is_effectively_muted(buffer_name)
+            and not self._should_silence_unfocused(chat_category(str(convo or "")))
         )
         if should_alert:
             if convo == "announcement":
@@ -3410,21 +3424,51 @@ class MainWindow(wx.Frame):
         if buffer_name and self.buffer_system.is_effectively_muted(buffer_name):
             return
 
-        limit_unfocused = self.config_manager.get_client_option(
-            "audio/limit_unfocused_audio_and_tts", False
-        )
-        if limit_unfocused and not self.IsActive():
-            asset = str(packet.get("asset") or "").lower()
-            if "turn" not in asset:
-                return
+        if self._should_silence_unfocused(audio_category(packet)):
+            return
 
         self.sound_manager.handle_audio_command(packet)
 
     def on_table_create(self, packet):
         host = packet.get("host")
         game = packet.get("game")
-        self.sound_manager.play_family("notify")
-        self.add_history(f"{host} is hosting {game}.", "system")
+        silenced = self._should_silence_unfocused("system")
+        if not silenced:
+            self.sound_manager.play_family("notify")
+        self.add_history(
+            f"{host} is hosting {game}.",
+            "system",
+            speak_aloud=not silenced,
+        )
+
+    def _should_silence_unfocused(self, category: str) -> bool:
+        """Silence one audio option category while this window is unfocused."""
+        if not category or not self.config_manager:
+            return False
+        audio = self.config_manager.get_client_option("audio", {})
+        if not isinstance(audio, dict):
+            audio = {}
+        return should_silence_unfocused(
+            audio, category, window_active=self.IsActive()
+        )
+
+    def _sync_unfocused_silence_preferences(self) -> None:
+        """Store the desktop dialog choices on the account."""
+        if not self.connected:
+            return
+        audio = self.config_manager.get_client_option("audio/unfocused_silence", {})
+        if not isinstance(audio, dict):
+            return
+        for category in UNFOCUSED_SILENCE_CATEGORIES:
+            if category not in audio:
+                continue
+            self.network.send_packet(
+                {
+                    "type": "set_preference",
+                    "key": f"audio/unfocused_silence/{category}",
+                    "value": bool(audio[category]),
+                }
+            )
 
     def compute_menu_diff_by_id(self, old_items, new_items, old_ids, new_ids):
         """

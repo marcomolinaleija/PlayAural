@@ -5,6 +5,7 @@ from . import uisound
 from .text_direction import apply_text_layout_direction
 from localization import Localization
 from sound_manager import SPATIAL_MODES, normalize_spatial_mode
+from unfocused_audio import UNFOCUSED_SILENCE_CATEGORIES, silence_flags
 
 
 class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
@@ -30,7 +31,7 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
         super().__init__(
             parent,
             title=Localization.get("options-dialog-title"),
-            size=(600, 520),
+            size=(640, 720),
         )
 
         self.config_manager = config_manager
@@ -171,13 +172,22 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
         sizer.Add(wx.StaticText(panel, label=Localization.get("options-audio-hotkeys-note")),
                   0, wx.ALL, 10)
 
-        self.limit_unfocused_check = wx.CheckBox(
-            panel, label=Localization.get("options-limit-unfocused-audio")
+        sizer.Add(
+            wx.StaticText(panel, label=Localization.get("options-unfocused-silence-heading")),
+            0,
+            wx.LEFT | wx.RIGHT | wx.TOP,
+            10,
         )
-        self.limit_unfocused_check.SetValue(
-            bool(self.options.get("audio", {}).get("limit_unfocused_audio_and_tts", False))
-        )
-        sizer.Add(self.limit_unfocused_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+        silence = silence_flags(self.options.get("audio", {}))
+        self.unfocused_checks = {}
+        for category in UNFOCUSED_SILENCE_CATEGORIES:
+            check = wx.CheckBox(
+                panel,
+                label=Localization.get(f"options-unfocused-silence-{category}"),
+            )
+            check.SetValue(silence[category])
+            self.unfocused_checks[category] = check
+            sizer.Add(check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         panel.SetSizer(sizer)
         return panel
@@ -265,6 +275,9 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
             self.voice_spin.SetValue(int(audio.get("voice_volume", 80)))
             spatial_mode = normalize_spatial_mode(audio.get("spatial_audio"))
             self.spatial_choice.SetSelection(SPATIAL_MODES.index(spatial_mode))
+            silence = silence_flags(audio)
+            for category, check in self.unfocused_checks.items():
+                check.SetValue(silence[category])
 
             if self.sound_manager:
                 self.sound_manager.set_music_volume(audio.get("music_volume", 20) / 100.0)
@@ -311,9 +324,15 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
         self.config_manager.set_client_option(
             "audio/spatial_audio", self._selected_spatial_mode(), create_mode=True
         )
+        for category, check in self.unfocused_checks.items():
+            self.config_manager.set_client_option(
+                f"audio/unfocused_silence/{category}",
+                check.GetValue(),
+                create_mode=True,
+            )
         self.config_manager.set_client_option(
             "audio/limit_unfocused_audio_and_tts",
-            self.limit_unfocused_check.GetValue(),
+            False,
             create_mode=True,
         )
 
