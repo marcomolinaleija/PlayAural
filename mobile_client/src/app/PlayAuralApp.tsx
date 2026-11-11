@@ -258,7 +258,7 @@ type VoiceCapability = {
 
 type VoiceContextState = {
   contextId: string;
-  scope: "table";
+  scope: "table" | "global";
 };
 
 type DialogAction = {
@@ -2712,9 +2712,22 @@ export function PlayAuralApp() {
           return;
         }
 
+        if (packet.type === "username_updated") {
+          const nextName = String((packet as { username?: string }).username || "");
+          if (nextName) {
+            credentialsRef.current.username = nextName;
+            setUsername(nextName);
+          }
+          return;
+        }
+
         if (packet.type === "disconnect") {
           resetForumMedia();
           const disconnectPacket = packet as DisconnectPacket;
+          if (disconnectPacket.username) {
+            credentialsRef.current.username = disconnectPacket.username;
+            setUsername(disconnectPacket.username);
+          }
           const shouldExitApplication = isTerminalExitReason(disconnectPacket.reason);
           const reason = localizeSystemMessage(disconnectPacket.reason, "status-disconnected");
           leaveVoiceChat({
@@ -2730,9 +2743,15 @@ export function PlayAuralApp() {
             allowReconnectRef.current = true;
             expectingReconnectRef.current = true;
             sessionEstablishedRef.current = true;
-            const reconnectMessage = localization.t("reconnect-server-restarting");
+            const immediate = disconnectPacket.reconnect_immediate === true;
+            const delayMs = immediate
+              ? 200
+              : (Number(disconnectPacket.reconnect_after_ms) || 3000);
+            const reconnectMessage = immediate
+              ? localization.t("status-connecting")
+              : localization.t("reconnect-server-restarting");
             setAuthStatusText(reconnectMessage);
-            queueReconnectAttempt(3000, reconnectMessage, true);
+            queueReconnectAttempt(delayMs, reconnectMessage, !immediate);
             return;
           }
 
@@ -2746,7 +2765,7 @@ export function PlayAuralApp() {
           return;
         }
 
-        if (packet.type === "force_exit") {
+        if (packet.type === "force_exit" || packet.type === "switch_server") {
           resetForumMedia();
           const forceExitPacket = packet as ForceExitPacket;
           const reason = localizeSystemMessage(forceExitPacket.reason, "logout-complete");
@@ -2886,7 +2905,12 @@ export function PlayAuralApp() {
           const expectedContextId = serverRequested
             ? voiceContextRef.current.contextId
             : voiceRequestedContextIdRef.current;
-          if (packetScope !== "table") {
+          const isInvalidScope = packetScope === "table"
+            ? (!packetContextId || packetContextId !== expectedContextId)
+            : packetScope === "global"
+              ? !packetContextId
+              : true;
+          if (isInvalidScope) {
             connectionRef.current?.send({
               context_id: packetContextId,
               scope: packetScope,
@@ -2894,21 +2918,10 @@ export function PlayAuralApp() {
             });
             return;
           }
-          if (
-            !packetContextId
-            || packetContextId !== expectedContextId
-          ) {
-            connectionRef.current?.send({
-              context_id: packetContextId,
-              scope: "table",
-              type: "voice_leave",
-            });
-            return;
-          }
           if (serverRequested && !voice.supported) {
             connectionRef.current?.send({
               context_id: packetContextId,
-              scope: "table",
+              scope: packetScope,
               type: "voice_leave",
             });
             voiceJoinPendingRef.current = false;
@@ -2926,7 +2939,7 @@ export function PlayAuralApp() {
           voiceJoinPendingRef.current = false;
           updateVoiceContext({
             contextId: packetContextId,
-            scope: "table",
+            scope: packetScope === "global" ? "global" : "table",
           });
           setVoiceRequestedContextId("");
           if (voicePacket.settings) {
@@ -2938,6 +2951,10 @@ export function PlayAuralApp() {
 
         if (packet.type === "voice_settings") {
           applyServerVoiceSettings(packet as VoiceSettingsPacket);
+          return;
+        }
+
+        if (packet.type === "voice_pans") {
           return;
         }
 
@@ -4145,7 +4162,18 @@ export function PlayAuralApp() {
   // Match desktop: an item-specific highlight sound replaces the generic click.
   const playMenuMoveSound = (item?: FocusableMenuItem | null) => {
     if (item?.sound) {
-      void audio.playSound(item.sound);
+      void audio.handleAudioCommand({
+        type: "audio",
+        version: 3,
+        command: "play",
+        kind: "sfx",
+        asset: item.sound,
+        handle: "menu_item_preview",
+        priority: 100,
+        volume: 100,
+        pitch: 100,
+        pan: 0,
+      });
       return;
     }
     void audio.playSound("menuclick.ogg", { volume: 0.5 });
@@ -4999,12 +5027,14 @@ export function PlayAuralApp() {
       return;
     }
     voiceJoinPendingRef.current = true;
-    setVoiceRequestedContextId(contextId);
+    const scope = contextId ? "table" : "global";
+    const resolvedContextId = contextId || "lobby";
+    setVoiceRequestedContextId(resolvedContextId);
     setVoiceState("connecting");
     setVoiceStatusMessage("voice-chat-joining", true);
     connection?.send({
-      context_id: contextId,
-      scope: "table",
+      context_id: resolvedContextId,
+      scope: scope,
       type: "voice_join",
     });
   }, [connected, connection, setVoiceStatusMessage, voice, voiceCapability.enabled, voiceState]);

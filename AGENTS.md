@@ -8,7 +8,7 @@ conflict, follow `CLAUDE.md` and update `AGENTS.md`.
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v5), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v6), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
@@ -121,6 +121,21 @@ before integration. Automated upstream integration advances `develop` only;
 publication uses exact human-approved `main` commits. Never publish development
 branches or silently add pending upstream changes to a release.
 
+### Agent Workflow & Conventions
+
+- **Commit Messages**: All git commit messages must be written in Spanish
+  following Conventional Commits formatting: `<tipo>(<ámbito>): <descripción>`
+  (e.g., `feat(voice): agregar soporte de audio espacial`, `fix(ui): corregir foco en menú`).
+- **Feature Branch Isolation**: Never develop or experiment directly on `develop`
+  or `main`. Create isolated `feature/<name>` branches for spikes, prototypes, or
+  new capabilities. Only integrate into `develop` when verified and explicitly requested.
+- **Verification Before Integration**: Always run relevant automated test suites
+  via `uv run --project server --extra dev python -m pytest ...` before committing
+  or concluding changes.
+- **Clean Environment Teardown**: Terminate all background daemons (LiveKit, test
+  servers, sidecars) and remove temporary spike scripts, wave recordings, and
+  scratch artifacts before switching branches or completing a task.
+
 ## Commands
 
 Run server tests from the repo root through uv:
@@ -148,7 +163,7 @@ cd mobile_client && cmd /c npm run typecheck && npx expo start
 
 ## Core Architecture
 
-- `server/games/` currently registers 51 games. Categories are `cards`, `dice`,
+- `server/games/` currently registers 52 games. Categories are `cards`, `dice`,
   `board`, `poker`, `arcade`, and `misc`; user-facing category labels must be
   localized. The Play menu uses dynamic counts, not hardcoded category counts.
 - Games are `@dataclass` classes registered with `@register_game`, inherit from
@@ -325,7 +340,7 @@ base `b` Add bot binding is `IDLE`, so a game may safely bind `b` to an
 while idle and select a grid cell while active.
 
 Base/client bindings to respect: `enter`, `escape`, `b`, `shift+b`, `f3`, `t`,
-`s`, `shift+s`, `ctrl+m`, `ctrl+q`, `ctrl+u`, `ctrl+w`, `w`, `ctrl+s`, `ctrl+i`,
+`s`, `shift+s`, `ctrl+m`, `q`, `ctrl+q`, `ctrl+p`, `ctrl+u`, `ctrl+w`, `w`, `ctrl+s`, `ctrl+i`,
 `f1`, `ctrl+f1`. Plain `F1` is the client-owned focused-menu-description
 command and must send the semantic `menu_description` request, never a game
 keybind; `Ctrl+F1` remains How to Play. Do not reuse `ALWAYS` bindings or
@@ -338,7 +353,7 @@ keep the scope explicit and add coverage for the intended separation.
 Use declarative `GameOptions` with `option_field()`.
 
 - Every option must have working logic; no dead options.
-- Every option needs a localized `change_msg` in EN and VI.
+- Every option needs a localized `change_msg` in ES (Spanish is the sole mandatory language; EN, VI, and other locales are optional).
 - `MenuOption` needs `choice_labels` for every raw value.
 - `TeamModeOption` uses shared team-mode helpers.
 - The framework keeps `start_game` visible throughout the waiting lobby.
@@ -369,7 +384,32 @@ Use declarative `GameOptions` with `option_field()`.
 
 ## Audio and Accessibility
 
-Audio-first is mandatory. Every important state change needs TTS and/or sound.
+### Screen Reader & Accessibility Doctrine
+
+PlayAural is designed from the ground up as an audio-first platform for blind
+and low-vision users utilizing screen readers (NVDA, JAWS, VoiceOver, TalkBack).
+Visual presentation is strictly secondary chrome; no feature or interaction may
+require sight, mouse hovering, or visual-only cues.
+
+Core Accessibility Mandates:
+- **Complete Keyboard & Gesture Parity**: Every action, menu, and state query
+  must be operable entirely via keyboard (desktop/web) or screen-reader-compatible
+  touch gestures (mobile/web touch). Mouse coordinates or drag-and-drop are forbidden.
+- **Dual Auditory Modality**: Every important state change (turn changes, rolls,
+  deals, plays, reveals, captures, errors, leaves, joins) must be conveyed through
+  clear localized TTS speech and/or unambiguous earcons/SFX. Never leave a player
+  in silence wondering what happened or whose turn it is.
+- **Predictable Focus Anchoring**: Screen readers rely on stable focus. Never steal
+  or reset focus without deliberate action intent. Preserve item focus across
+  dynamic menu updates using stable semantic IDs, and ensure Escape / Back reliably
+  returns to the parent context without trapping focus.
+- **Informative, Actionable Feedback**: Reject generic error messages (e.g., "Cannot do that").
+  Always explain what was attempted, why it failed, and what valid actions remain.
+- **TTS Buffer Categorization & Non-Interference**: Spoken messages must use explicit
+  buffers (`chat`, `private`, `game`, `system`, `misc`) so players can tune volumes,
+  mute non-essential channels, or review history without speech collisons.
+
+### Audio Protocol & Implementation Details
 
 - Every `speak_l()` and `broadcast_l()` call must pass explicit `buffer=`.
 - Buffers: `chat` for shared chat, `private` for private messages, `game` for
@@ -530,18 +570,24 @@ participants; do not reuse game-player error strings for account lookups.
   vocabulary, an allowlisted context backed by
   `<context>-gender-term-<form>`. Unspecified and non-binary values use the
   locale's neutral fallback.
-- Maintain EN/VI parity: same keys, data-bearing variables, and plural/select
-  arms. A locale may omit a variable used only as a `GENDER_TERM(...)`
-  selector when its natural sentence does not need gender; if used, the
-  selector name must still match the source key.
-- Agents author both EN and VI strings in this repo, but Vietnamese is
-  provisional and should be flagged for native review when quality matters.
-- Prefer writing locale keys before feature code so every announcement path is
+- **Gender variants rule (mandatory)**: When authoring or updating strings that vary
+  by gender in Spanish (`es`) or other gendered languages, always include explicit
+  arms for at least `[male]` and `[female]`, with `*[other]` as neutral/unspecified
+  fallback. Never omit `[male]` or collapse it implicitly into `*[other]`.
+- Spanish (ES) is the sole mandatory language for all new strings, options,
+  features, and documentation. English (EN), Vietnamese (VI), and other community
+  locales are optional.
+- Agents author strings in Spanish (ES). Adding translations in EN, VI, or other
+  languages is optional. When translating, maintain parity: same keys, data-bearing
+  variables, and plural/select arms. A locale may omit a variable used only as a
+  `GENDER_TERM(...)` selector when its natural sentence does not need gender; if
+  used, the selector name must still match the source key.
+- Prefer writing ES locale keys before feature code so every announcement path is
   planned.
 - Locale discovery and fallback must stay dynamic. Do not hardcode language
   branches in feature code; new languages should be added through locale files
   and metadata/registry layers. Missing translated strings or documentation
-  must fall back to English rather than exposing raw keys to players.
+  must fall back gracefully rather than exposing raw keys to players.
 - A live language change updates client-owned chrome before later localized
   packets, rebuilds that player's locale-bound action sets, and restores the
   semantic parent menu/focus. Browser clients must serialize their asynchronous
@@ -570,7 +616,7 @@ string changes, perform a complete string and broadcast-context audit.
   resulting condition, and the state values needed to understand what happened
   and what the player can do next. Avoid generic messages such as "You cannot
   do that" when a contextual explanation is available.
-- Keep EN/VI keys and variables structurally synchronized, localize
+- Keep ES keys and variables properly localized, localize
   listener-dependent values per recipient, and add tests for both actor and
   observer wording plus important contextual and error branches.
 
@@ -588,9 +634,11 @@ player-facing tone.
   that do not help a player understand the game.
 - Keep vocabulary plain and concrete. Explain game terms before relying on
   them, especially for custom games or mechanics that may be unfamiliar.
-- Keep EN/VI documentation synchronized in structure, meaning, terminology, and
-  attribution. Vietnamese docs should be natural and friendly, with terminology
-  aligned to the matching `.ftl` strings.
+- Spanish (ES) documentation is mandatory for all new features and games.
+  English and Vietnamese documentation are optional. Keep documentation synchronized
+  in structure, meaning, terminology, and attribution when providing translations.
+  Vietnamese docs should be natural and friendly, with terminology aligned to the
+  matching `.ftl` strings.
 - Community translation work must follow `TRANSLATING.md`, including variable
   preservation, perspective-key parity, documentation fallback, and contributor
   credit metadata.
@@ -711,6 +759,15 @@ manager, never ad-hoc database calls from an admin handler.
   pre-migration backup before any existing schema is changed. Reject databases
   created by newer server versions. Opening SQLite must never run retention or
   compatibility cleanup; destructive cleanup is an explicit operation.
+- **Mandatory Schema Version Bump & Migration Rule**: Never add tables, columns,
+  or indexes only to `_create_tables_in_transaction()` and `_validate_schema()`
+  without incrementing `CURRENT_SCHEMA_VERSION`. `_create_tables_in_transaction()`
+  runs ONLY on brand-new empty databases. Existing production databases skip
+  creation and go straight to `_validate_schema()`. If `CURRENT_SCHEMA_VERSION`
+  is not bumped with an explicit migration step, existing databases fail startup
+  validation. Always increment `CURRENT_SCHEMA_VERSION`, add the previous version
+  to the supported migration set, and apply the migration DDL in the backed-up
+  migration transaction.
 - Schema version 2 rebuilds legacy `users.username_key` storage so the canonical
   non-null identity contract is enforced; version-zero and version-one upgrades
   must remain atomic, backed up, and row-preserving.
@@ -925,4 +982,4 @@ keybind collisions, sound/TTS paths, transitions, and game completion.
 - Update `CLAUDE.md` and `README.md` when catalog counts or user-facing catalog
   data changes.
 
-Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W and Ctrl+U open the interactive roster, and displaced game-specific W bindings use Alt+W.
+Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W opens the table roster and Ctrl+U opens the global online list, and displaced game-specific W bindings use Alt+W.

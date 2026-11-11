@@ -55,8 +55,16 @@ back = Atrás
 go-back = Volver
 context-menu = Menú contextual.
 no-actions-available = No hay acciones disponibles.
-table-new-host-promoted = { $player } ahora es el anfitrión de la mesa.
-table-new-host-promoted-you = Ahora eres el anfitrión de la mesa.
+table-new-host-promoted = { $player_gender ->
+    [female] { $player } ahora es la anfitriona de la mesa.
+    [male] { $player } ahora es el anfitrión de la mesa.
+   *[other] { $player } ahora es el anfitrión de la mesa.
+}
+table-new-host-promoted-you = { $user_gender ->
+    [female] Ahora eres la anfitriona de la mesa.
+    [male] Ahora eres el anfitrión de la mesa.
+   *[other] Ahora eres el anfitrión de la mesa.
+}
 return-to-table = Volver a la mesa
 create-table = Crear una mesa nueva
 leave-table = Salir de la mesa
@@ -81,8 +89,16 @@ table-left = { $player } salió de la mesa.
 table-left-you = Saliste de la mesa.
 table-reconnected = { $player } se reconectó a la mesa.
 table-reconnected-you = Te reconectaste a la mesa.
-new-host = { $player } ahora es el anfitrión.
-new-host-you = Ahora eres el anfitrión.
+new-host = { $player_gender ->
+    [female] { $player } ahora es la anfitriona.
+    [male] { $player } ahora es el anfitrión.
+   *[other] { $player } ahora es el anfitrión.
+}
+new-host-you = { $user_gender ->
+    [female] Ahora eres la anfitriona.
+    [male] Ahora eres el anfitrión.
+   *[other] Ahora eres el anfitrión.
+}
 waiting-for-players = Esperando jugadores. Mínimo {$min}, máximo { $max }.
 game-starting = ¡La partida está por comenzar!
 table-listing-game-composition-status = { $game } [{ $status }]: mesa de { $host }. { $composition }.
@@ -99,7 +115,11 @@ table-composition-spectators = { $count ->
    *[other] Espectadores
 }: { $names }
 table-composition-spectators-more = Espectadores: { $names }; y { $remaining } más
-table-composition-spectator-host = { $host } (anfitrión)
+table-composition-spectator-host = { $host_gender ->
+    [female] { $host } (anfitriona)
+    [male] { $host } (anfitrión)
+   *[other] { $host } (anfitrión)
+}
 table-composition-two = { $first }; { $second }
 table-composition-three = { $first }; { $second }; { $third }
 table-composition-empty = sin participantes
@@ -111,16 +131,27 @@ table-full = La mesa está llena.
 table-join-social-blocked = No puedes entrar a esta mesa porque el contacto social directo no está disponible entre tú y su anfitrión. Aun así puedes recuperar un asiento ya reservado para ti.
 table-closed-disconnect-timeout = Partida cancelada y mesa cerrada: ningún jugador ni el anfitrión regresó dentro de { $minutes } minutos.
 table-paused-awaiting-return = No hay jugadores activos conectados. La mesa permanece en pausa hasta { $minutes } minutos mientras un jugador o el anfitrión se reconecta. Los bots no pueden continuar solos.
-table-host-disconnected = El anfitrión { $player } perdió la conexión. La titularidad de la mesa queda reservada para que pueda reconectarse.
+table-host-disconnected = { $player_gender ->
+    [female] La anfitriona { $player } perdió la conexión. La titularidad de la mesa queda reservada para que pueda reconectarse.
+    [male] El anfitrión { $player } perdió la conexión. La titularidad de la mesa queda reservada para que pueda reconectarse.
+   *[other] El anfitrión { $player } perdió la conexión. La titularidad de la mesa queda reservada para que pueda reconectarse.
+}
 player-disconnected-grace = { $player } perdió la conexión. Se esperará hasta { $seconds } segundos antes de que un bot tome el control.
 player-disconnected-grace-you = Perdiste la conexión. Se esperará hasta { $seconds } segundos antes de que un bot tome el control de tu asiento.
 player-replaced-by-bot = { $bot } ha tomado el control del asiento de { $player }.
 game-cancelled-last-player-left = { $player } salió. No quedan jugadores para continuar: la partida se cancela y la mesa se cierra.
-game-cancelled-last-player-left-you = Saliste como último jugador. La partida se cancela y la mesa se cierra.
+game-cancelled-last-player-left-you = { $user_gender ->
+    [female] Saliste como última jugadora. La partida se cancela y la mesa se cierra.
+    [male] Saliste como último jugador. La partida se cancela y la mesa se cierra.
+   *[other] Saliste como último jugador. La partida se cancela y la mesa se cierra.
+}
 game-cancelled-no-controller = Partida cancelada y mesa cerrada: no queda ningún jugador ni anfitrión para continuarla.
 player-reclaimed-from-bot = { $player } regresó y recuperó { GENDER_TERM($player_gender, "possessive-determiner") } asiento de manos de { $bot }.
 player-reclaimed-from-bot-you = Regresaste y recuperaste tu asiento de manos de { $bot }.
 spectator-joined = Te uniste a la mesa de { $host } como espectador.
+table-game-in-progress = Partida en curso.
+spectator-watching-game = Viendo la partida.
+spectator-stopped-watching = Has dejado de ver la partida.
 
 spectate = Observar
 now-playing = { $player } ahora está jugando.
@@ -129,19 +160,35 @@ now-spectating = { $player } ahora está observando.
 now-spectating-you = Ahora estás observando.
 spectator-left = { $player } dejó de observar.
 
-welcome = ¡Bienvenido a PlayAural!
+welcome = { $user_gender ->
+    [female] ¡Bienvenida a PlayAural!
+    [male] ¡Bienvenido a PlayAural!
+   *[other] ¡Bienvenido a PlayAural!
+}
 goodbye = ¡Hasta luego!
 
 user-online = { $player } se conectó.
 user-offline = { $player } se desconectó.
-friend-online = Tu amigo { $player } ya está en línea.
-friend-offline = Tu amigo { $player } se desconectó.
+friend-online = { $player_gender ->
+    [female] Tu amiga { $player } ya está en línea.
+    [male] Tu amigo { $player } ya está en línea.
+   *[other] Tu amigo { $player } ya está en línea.
+}
+friend-offline = { $player_gender ->
+    [female] Tu amiga { $player } se desconectó.
+    [male] Tu amigo { $player } se desconectó.
+   *[other] Tu amigo { $player } se desconectó.
+}
 permission-denied = No tienes permiso para realizar esta acción sobre un desarrollador.
 kick-user = Expulsar usuario
 kick-broadcast = { $actor } expulsó a { $target }.
 kick-broadcast-actor = Expulsaste a { $target }.
 user-not-online = El usuario { $target } no está en línea.
-kick-confirm = ¿Seguro que quieres expulsar a { $player }?
+kick-confirm = { $user_gender ->
+    [female] ¿Segura que quieres expulsar a { $player }?
+    [male] ¿Seguro que quieres expulsar a { $player }?
+   *[other] ¿Seguro que quieres expulsar a { $player }?
+}
 no-users-to-kick = No hay usuarios disponibles para expulsar.
 usage-kick = Uso: /kick <nombre de usuario>
 online-users-none = No hay usuarios en línea.
@@ -375,7 +422,11 @@ table-no-players = No hay jugadores.
 table-players-one = { $count } jugador: { $players }.
 table-players-many = { $count } jugadores: { $players }.
 table-spectators = Espectadores: { $spectators }.
-table-host-suffix = (Anfitrión)
+table-host-suffix = { $player_gender ->
+    [female] (Anfitriona)
+    [male] (Anfitrión)
+   *[other] (Anfitrión)
+}
 table-voice-chat-suffix = (en chat de voz)
 table-members-summary-compact = Resumen de la mesa: { $composition }.
 table-summary-human-players = { $count } { $count ->
@@ -392,9 +443,21 @@ table-summary-spectators = { $count } { $count ->
 }
 table-members-empty = No hay miembros de la mesa listados por ahora. Usa Atrás para volver y actualizar la vista de la mesa.
 table-member-entry = { $player }: { $status }
-table-member-status-host = Anfitrión
-table-member-status-player = Jugador
-table-member-status-spectator = Espectador
+table-member-status-host = { $player_gender ->
+    [female] Anfitriona
+    [male] Anfitrión
+   *[other] Anfitrión
+}
+table-member-status-player = { $player_gender ->
+    [female] Jugadora
+    [male] Jugador
+   *[other] Jugador
+}
+table-member-status-spectator = { $player_gender ->
+    [female] Espectadora
+    [male] Espectador
+   *[other] Espectador
+}
 table-member-status-bot = Bot
 table-member-status-voice-chat = en chat de voz
 table-member-status-bot-takeover = bot jugando en { GENDER_TERM($member_gender, "possessive-determiner") } nombre: { $bot }
@@ -460,7 +523,11 @@ my-stats-score-per-round = Puntuación por ronda: { $value }
 my-stats-most-enemies-defeated = Más enemigos derrotados: { $value }
 my-stats-deepest-wave-reached = Oleada más profunda alcanzada: { $value }
 
-confirm-leave-game = ¿Seguro que quieres salir de la mesa?
+confirm-leave-game = { $user_gender ->
+    [female] ¿Segura que quieres salir de la mesa?
+    [male] ¿Seguro que quieres salir de la mesa?
+   *[other] ¿Seguro que quieres salir de la mesa?
+}
 confirm-yes = Sí
 confirm-no = No
 
@@ -474,7 +541,11 @@ account-approved = La cuenta de { $player } ha sido aprobada.
 account-declined = La cuenta de { $player } fue rechazada y eliminada.
 
 waiting-for-approval = Tu cuenta está esperando la aprobación de un administrador. Por favor espera...
-account-approved-welcome = ¡Tu cuenta fue aprobada! ¡Bienvenido a PlayAural!
+account-approved-welcome = { $user_gender ->
+    [female] ¡Tu cuenta fue aprobada! ¡Bienvenida a PlayAural!
+    [male] ¡Tu cuenta fue aprobada! ¡Bienvenido a PlayAural!
+   *[other] ¡Tu cuenta fue aprobada! ¡Bienvenido a PlayAural!
+}
 account-declined-goodbye = Tu solicitud de cuenta fue rechazada.
 
 account-action = acción de cuenta realizada
@@ -607,6 +678,40 @@ admin-broadcast-prompt = Ingresa el mensaje para anunciar a todos los usuarios e
 admin-broadcast-sent = Anuncio enviado a { $count } usuarios.
 
 manage-motd = Gestionar mensaje del día
+admin-section-users = Gestión de usuarios
+admin-desc-section-users = Gestionar aprobación de cuentas, ascensos, degradaciones y monedas.
+admin-section-moderation = Moderación y sanciones
+admin-desc-section-moderation = Panel de moderación del chat, reportes, expulsiones, silencios y baneos.
+admin-section-server-content = Servidor y contenido
+admin-desc-section-server-content = Anuncios generales, mensaje del día, sonidos y palabras de Infiltrado.
+admin-section-system = Mantenimiento del sistema
+admin-desc-section-system = Control de energía del servidor, base de datos y configuración SMTP.
+admin-switch-server = Cambiar de servidor
+admin-desc-switch-server = Desconectar y volver al selector de servidores del cliente.
+admin-account-approval-toggle = Requerir aprobación de cuentas: { $status }
+admin-desc-account-approval-toggle = Si está activado, las nuevas cuentas registradas deberán ser aprobadas manualmente por un administrador antes de poder acceder al servidor.
+admin-account-approval-toggle-feedback = Requerir aprobación de cuentas cambiado a { $status }.
+admin-new-account-request = Nueva cuenta registrada pendiente de aprobación: { $username }.
+auth-registration-pending-approval = Tu cuenta ha sido registrada con éxito y está pendiente de aprobación por un administrador.
+admin-sound-settings = Configuración de sonidos del servidor
+admin-desc-sound-settings = Configura los sonidos predeterminados para eventos del servidor como creación de mesas, entrada de jugadores y mensajes.
+sound-events-menu-title = Eventos de sonido del servidor
+sound-picker-menu-title = Seleccionar sonido para { $event }
+sound-event-updated = Sonido para { $event } actualizado a { $sound }.
+sound-event-table-created = Creación de mesa
+sound-event-desc-table-created = Sonido reproducido cuando se crea una nueva mesa pública en el servidor.
+sound-event-table-joined = Entrada a una mesa
+sound-event-desc-table-joined = Sonido reproducido cuando un jugador entra a la mesa.
+sound-event-table-left = Salida de una mesa
+sound-event-desc-table-left = Sonido reproducido cuando un jugador sale de la mesa.
+sound-event-table-invite = Invitación a una mesa
+sound-event-desc-table-invite = Sonido reproducido cuando recibes una invitación para unirte a una mesa.
+sound-event-private-message = Mensaje privado
+sound-event-desc-private-message = Sonido reproducido al enviar o recibir un mensaje privado.
+sound-event-friend-request = Solicitud de amistad
+sound-event-desc-friend-request = Sonido reproducido cuando recibes una solicitud de amistad.
+default-selection = predeterminado
+current-selection = actual
 create-update-motd = Crear/Actualizar mensaje del día
 view-motd = Ver mensaje del día activo
 delete-motd = Eliminar mensaje del día
@@ -625,7 +730,11 @@ unknown-player = Jugador desconocido
 unknown-user = Usuario desconocido
 user-account-unavailable = Esta cuenta de usuario ya no está disponible.
 
-logout-confirm-title = ¿Seguro que quieres cerrar sesión y salir del juego?
+logout-confirm-title = { $user_gender ->
+    [female] ¿Segura que quieres cerrar sesión y salir del juego?
+    [male] ¿Seguro que quieres cerrar sesión y salir del juego?
+   *[other] ¿Seguro que quieres cerrar sesión y salir del juego?
+}
 logout-confirm-yes = Sí, cerrar sesión
 logout-confirm-no = No, quedarme
 
@@ -689,6 +798,17 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } minutos y { $seconds } segundos
 duration-hours-minutes = { $hours } horas y { $minutes } minutos
+duration-days = { $count ->
+    [one] 1 día
+   *[other] { $count } días
+}
+duration-days-hours = { $days ->
+    [one] 1 día
+   *[other] { $days } días
+} y { $hours ->
+    [one] 1 hora
+   *[other] { $hours } horas
+}
 server-error-changing-language = No se pudo cambiar el idioma. Tu interfaz anterior sigue activa.
 default-save-name = { $game } - { $date }
 
@@ -711,7 +831,11 @@ mobile-tts-rate-option = Velocidad de voz móvil: { $value }%
 mobile-tts-enter-rate = Ingresa la velocidad de voz móvil (50-200)
 mobile-tts-invalid-rate = Velocidad de voz móvil no válida. Usa un valor entre 50 y 200.
 
-player-kicked-offline = El jugador { $player } fue expulsado (desconectado).
+player-kicked-offline = { $player_gender ->
+    [female] La jugadora { $player } fue expulsada (desconectada).
+    [male] El jugador { $player } fue expulsado (desconectado).
+   *[other] El jugador { $player } fue expulsado (desconectado).
+}
 
 auth-error-username-length = El nombre de usuario debe tener entre 3 y 30 caracteres.
 auth-error-username-invalid-chars = El nombre de usuario solo puede contener letras, números y espacios (sin espacios consecutivos ni caracteres especiales).
@@ -722,10 +846,66 @@ profile = Perfil
 friends = Amigos
 profile-registration-date = Fecha de registro: { $date }
 profile-username = Nombre de usuario: { $username }
+profile-coins = Monedas: { $coins }
+profile-wallet-entry = Monedero: { $coins } monedas
+wallet-title = Monedero virtual
+wallet-balance = Saldo actual: { $coins } monedas
+wallet-total-won = Total ganado en juegos: { $coins } monedas
+wallet-total-bet = Total apostado: { $coins } monedas
+wallet-claim-bonus = Reclamar bono de actividad ({ $amount } monedas)
+wallet-claimed-success = ¡Has reclamado tu bono de { $amount } monedas! Tu nuevo saldo es de { $balance } monedas.
+wallet-claim-failed = No se pudo reclamar el bono: { $reason }
+wallet-bonus-cooldown = Bono disponible en { $minutes } minutos
+wallet-bonus-cap-reached = Bono no disponible (el saldo supera el límite de { $max_coins } monedas)
+
+# Apuestas en mesas (Table-level betting)
+host-management-table-bet = Apuesta de la mesa: { $coins } monedas
+host-management-table-bet-friendly = Apuesta de la mesa: Sin apuesta (Amistoso)
+table-bet-friendly = Sin apuesta (Amistoso)
+table-bet-coins = { $coins } monedas
+table-bet-changed = El anfitrión ha establecido la apuesta de la mesa en { $coins } monedas.
+table-bet-changed-friendly = El anfitrión ha establecido la mesa en modo amistoso (sin apuestas).
+table-error-insufficient-coins = No se puede iniciar el juego: { $player } no tiene suficientes monedas (tiene { $coins }, se requieren { $required }).
+table-error-insufficient-coins-self = No tienes suficientes monedas para jugar (tienes { $coins }, se requieren { $required }).
+table-insufficient-coins-spectating = No tienes suficientes monedas para jugar en esta mesa (tienes { $coins }, se requieren { $required }). Te has unido como espectador.
+table-error-host-cannot-afford-bet = No puedes establecer una apuesta de { $required } monedas porque solo tienes { $coins }.
+table-bet-custom = Cantidad personalizada...
+table-enter-custom-bet = Ingrese el monto de la apuesta en monedas (0 para amistosa):
+table-error-invalid-bet-amount = Monto de apuesta inválido. Debe ser un número entero mayor o igual a 0.
+table-pot-started = ¡El juego ha comenzado con una apuesta de { $bet } monedas por jugador! El pozo acumulado es de { $pot } monedas.
+table-winner-won-pot = ¡{ $winner } ha ganado el pozo de { $pot } monedas!
+table-pot-split = ¡Empate entre { $winners }! El pozo se divide en { $share } monedas para cada uno.
+table-pot-refunded = El juego ha finalizado sin resolución. Se han devuelto las apuestas de { $bet } monedas a cada jugador.
+table-pot-refunded-no-winner = No hubo ganador humano. Se han devuelto las apuestas de { $bet } monedas a cada jugador.
+table-listing-bet = [Apuesta: { $coins } monedas]
 profile-email = Correo: { $email }
 admin-view-email = Vista de administrador - Correo: { $email }
 profile-gender = Género: { $gender }
 profile-bio = Biografía: { $bio }
+profile-privacy-setting = Privacidad del perfil: { $status }
+profile-privacy-everyone = Todos (público)
+profile-privacy-friends = Solo amigos
+profile-privacy-private = Nadie (privado)
+profile-privacy-menu-title = Privacidad del perfil
+profile-privacy-changed = Privacidad del perfil establecida en { $status }.
+general-desc-profile-privacy = Configura quién puede ver la información de tu perfil.
+profile-view-friends-only = { $target_gender ->
+    [female] Esta usuaria solo permite que sus amigas y amigos vean su información.
+    [male] Este usuario solo permite que sus amigos vean su información.
+   *[other] Este usuario solo permite que sus amigos vean su información.
+}
+profile-view-private = { $target_gender ->
+    [female] Esta usuaria tiene su perfil privado.
+    [male] Este usuario tiene su perfil privado.
+   *[other] Este usuario tiene su perfil privado.
+}
+user-not-in-table = { $target_gender ->
+    [female] Esta usuaria no está en ninguna mesa.
+    [male] Este usuario no está en ninguna mesa.
+   *[other] Este usuario no está en ninguna mesa.
+}
+invite-to-table = Invitar a la mesa
+host-invite-no-players = (No hay jugadores disponibles para invitar)
 profile-bio-empty = Sin definir
 profile-email-empty = Sin definir
 profile-date-unknown = Desconocida
@@ -768,28 +948,56 @@ friends-no-pending-requests = Solicitudes pendientes
 friends-send-request = Enviar solicitud de amistad
 friends-block-user = Bloquear a un usuario
 friends-list-empty = Aún no tienes amigos.
-friend-status-offline = Desconectado
+friend-status-offline = { $player_gender ->
+    [female] Desconectada
+    [male] Desconectado
+   *[other] Desconectado
+}
 friend-list-entry = { $username } ({ $status })
 
 view-profile = Ver perfil
 join-table = Unirse a la mesa
-remove-friend = Eliminar amigo
-friend-remove-confirm = ¿Eliminar a { $username } de tu lista de amigos?
+remove-friend = { $friend_gender ->
+    [female] Eliminar amiga
+    [male] Eliminar amigo
+   *[other] Eliminar amigo
+}
+friend-remove-confirm = { $username_gender ->
+    [female] ¿Eliminar a tu amiga { $username } de tu lista de amigos?
+    [male] ¿Eliminar a tu amigo { $username } de tu lista de amigos?
+   *[other] ¿Eliminar a { $username } de tu lista de amigos?
+}
 friend-remove-not-friends = { $username } ya no está en tu lista de amigos.
 already-in-table = Ya estás en esta mesa.
-friend-removed-success = { $username } fue eliminado de tu lista de amigos.
+friend-removed-success = { $username_gender ->
+    [female] { $username } fue eliminada de tu lista de amigos.
+    [male] { $username } fue eliminado de tu lista de amigos.
+   *[other] { $username } fue eliminado de tu lista de amigos.
+}
 
 no-pending-requests = No hay solicitudes pendientes.
 accept = Aceptar
 decline = Rechazar
-friend-accepted-success = Ahora eres amigo de { $username }.
+friend-accepted-success = { $user_gender ->
+    [female] Ahora eres amiga de { $username }.
+    [male] Ahora eres amigo de { $username }.
+   *[other] Ahora eres amigo de { $username }.
+}
 request-not-found = La solicitud de amistad ya no existe.
 friend-declined-success = Solicitud de amistad rechazada.
 
 enter-friend-username = Ingresa el nombre de usuario de la persona que quieres agregar como amigo:
 enter-block-username = Ingresa el nombre de usuario de la persona que quieres bloquear:
-friend-error-self = No puedes enviarte una solicitud de amistad a ti mismo.
-friend-error-already-friends = Ya eres amigo de este usuario.
+friend-error-self = { $user_gender ->
+    [female] No puedes enviarte una solicitud de amistad a ti misma.
+    [male] No puedes enviarte una solicitud de amistad a ti mismo.
+   *[other] No puedes enviarte una solicitud de amistad a ti mismo.
+}
+friend-error-already-friends = { $user_gender ->
+    [female] Ya eres amiga de este usuario.
+    [male] Ya eres amigo de este usuario.
+   *[other] Ya eres amigo de este usuario.
+}
 friend-error-duplicate = Ya tienes una solicitud de amistad pendiente con este usuario.
 friend-error-blocked = Las solicitudes de amistad no están disponibles entre tú y { $username }.
 friend-error-blocked-by-you = Bloqueaste a { $username }. Desbloquéa{ GENDER_TERM($username_gender, "object") } antes de enviarle una solicitud de amistad.
@@ -797,12 +1005,24 @@ friend-request-sent = Solicitud de amistad enviada a { $username }.
 
 block-confirm = ¿Bloquear a { $username }? Esto elimina cualquier amistad y solicitud de amistad pendiente entre ustedes. Ninguno de los dos podrá enviarle al otro solicitudes de amistad, mensajes privados ni invitaciones a mesas, y los mensajes de chat normales quedarán ocultos en ambas direcciones. Hasta que se desbloquee, ninguno de los dos podrá entrar de nuevo a una mesa organizada por el otro ni restaurar una mesa guardada que incluya a ambos jugadores. Bloquear no saca a ningún jugador de una mesa compartida, no impide recuperar un asiento reservado, ni silencia el chat de voz de la mesa.
 block-success = Bloqueaste a { $username }. El contacto social directo ya no está disponible entre ustedes, sus mensajes de chat normales quedan ocultos, y ninguno de los dos puede entrar de nuevo a una mesa organizada por el otro ni restaurar una mesa guardada que incluya a ambos usuarios.
-block-error-self = No puedes bloquearte a ti mismo.
+block-error-self = { $user_gender ->
+    [female] No puedes bloquearte a ti misma.
+    [male] No puedes bloquearte a ti mismo.
+   *[other] No puedes bloquearte a ti mismo.
+}
 block-already-active = Ya bloqueaste a { $username }.
 block-no-longer-active = Este bloqueo ya no está activo.
 unblock-success = Desbloqueaste a { $username }. Las amistades y solicitudes anteriores no se restauraron.
-unblock-user = Desbloquear usuario
-block-user = Bloquear usuario
+unblock-user = { $target_gender ->
+    [female] Desbloquear usuaria
+    [male] Desbloquear usuario
+   *[other] Desbloquear usuario
+}
+block-user = { $target_gender ->
+    [female] Bloquear usuaria
+    [male] Bloquear usuario
+   *[other] Bloquear usuario
+}
 friends-blocked-users = { $count ->
     [0] Usuarios Bloqueados
    *[other] Usuarios Bloqueados ({ $count })
@@ -812,7 +1032,11 @@ friends-blocked-empty = No has bloqueado a nadie.
 friends-grouped-requests = Tienes solicitudes de amistad pendientes de: { $usernames }
 friends-grouped-accepted = Tus solicitudes de amistad fueron aceptadas por: { $usernames }
 friends-grouped-declined = Tus solicitudes de amistad fueron rechazadas por: { $usernames }
-friends-grouped-removed = Fuiste eliminado de la lista de amigos por: { $usernames }
+friends-grouped-removed = { $user_gender ->
+    [female] Fuiste eliminada de la lista de amigos por: { $usernames }
+    [male] Fuiste eliminado de la lista de amigos por: { $usernames }
+   *[other] Fuiste eliminado de la lista de amigos por: { $usernames }
+}
 friends-and-others = { $names } y { $count } { $count ->
     [one] más
    *[other] más
@@ -823,13 +1047,21 @@ enter-pm-message = Ingresa tu mensaje para { $username }:
 pm-error-not-friends = Solo puedes enviar mensajes privados a tus amigos.
 pm-error-blocked = Los mensajes privados no están disponibles entre tú y este jugador.
 pm-error-offline = { $username } no está en línea en este momento.
-pm-error-self = No puedes enviarte un mensaje privado a ti mismo.
+pm-error-self = { $user_gender ->
+    [female] No puedes enviarte un mensaje privado a ti misma.
+    [male] No puedes enviarte un mensaje privado a ti mismo.
+   *[other] No puedes enviarte un mensaje privado a ti mismo.
+}
 pm-error-message-required = Escribe un mensaje privado. Si usas el chat, incluye un nombre de usuario, por ejemplo: @Usuario hola.
 pm-sent-content = Tú a { $username }: { $message }
 pm-received = Mensaje privado de { $username }: { $message }
 
 host-management = Gestión del anfitrión
-table-spectator-suffix = (Espectador)
+table-spectator-suffix = { $player_gender ->
+    [female] (Espectadora)
+    [male] (Espectador)
+   *[other] (Espectador)
+}
 host-management-set-private = Establecer mesa como privada
 host-management-set-public = Establecer mesa como pública
 host-management-invite = Invitar a un amigo
@@ -838,6 +1070,21 @@ host-management-pass-host = Ceder el anfitrionazgo a otro jugador
 host-management-kick = Expulsar a un jugador
 host-management-kick-ban = Expulsar y banear a un jugador
 host-management-restart-game = Reiniciar partida
+host-management-table-stats = Estadísticas de la mesa
+table-stats-created-at = Fecha de creación: { $date }
+table-stats-uptime = Tiempo de la mesa: { $duration }
+table-stats-user-duration = Tu tiempo en la mesa: { $duration }
+table-stats-peak = Pico de participantes: { $count }
+table-stats-total-visitors = Visitantes totales: { $count }
+table-stats-game = Tipo de actividad: { $game }
+table-stats-host = { $host_gender ->
+    [female] Anfitriona: { $host }
+    [male] Anfitrión: { $host }
+   *[other] Anfitrión: { $host }
+}
+table-stats-members = Participantes ({ $count }): { $members }
+table-stats-spectators = Espectadores ({ $count }): { $spectators }
+table-stats-spectators-none = Espectadores: Ninguno
 host-management-table-now-private = Esta mesa ahora es privada. Solo los jugadores invitados pueden unirse.
 host-management-table-now-public = Esta mesa ahora es pública.
 host-restart-confirm = ¿Reiniciar la partida actual y devolver esta mesa a la sala de espera? Los jugadores actuales y el chat de voz seguirán conectados, pero la partida en curso se cancelará.
@@ -846,30 +1093,70 @@ host-restart-you = Reiniciaste la partida. La mesa volvió a la sala de espera.
 host-restart-not-playing = No hay ninguna partida activa para reiniciar.
 host-invite-no-friends = (No hay amigos disponibles para invitar)
 host-invite-sent = Invitación enviada a { $player }.
-host-invite-friend-unavailable = Ese amigo ya no está disponible para ser invitado.
-host-invite-already-pending = Ya hay una invitación pendiente para ese amigo.
-host-invite-friend-busy = Ese amigo ya está en una partida.
+host-invite-friend-unavailable = { $friend_gender ->
+    [female] Esa amiga ya no está disponible para ser invitada.
+    [male] Ese amigo ya no está disponible para ser invitado.
+   *[other] Ese amigo ya no está disponible para ser invitado.
+}
+host-invite-already-pending = { $friend_gender ->
+    [female] Ya hay una invitación pendiente para esa amiga.
+    [male] Ya hay una invitación pendiente para ese amigo.
+   *[other] Ya hay una invitación pendiente para ese amigo.
+}
+host-invite-friend-busy = { $friend_gender ->
+    [female] Esa amiga ya está en una partida.
+    [male] Ese amigo ya está en una partida.
+   *[other] Ese amigo ya está en una partida.
+}
 host-invite-declined = { $player } rechazó tu invitación a la mesa.
 table-invite-received = { $host } te invitó a { GENDER_TERM($host_gender, "possessive-determiner") } mesa de { $game }.
 table-invite-queued = { $host } te invitó a { GENDER_TERM($host_gender, "possessive-determiner") } mesa de { $game }. Termina tu entrada actual para responder.
 table-invite-expired = La invitación a la mesa caducó.
 invite-accept = Aceptar invitación
 invite-decline = Rechazar invitación
-host-management-no-longer-host = Ya no eres el anfitrión de esta mesa.
+host-management-no-longer-host = { $user_gender ->
+    [female] Ya no eres la anfitriona de esta mesa.
+    [male] Ya no eres el anfitrión de esta mesa.
+   *[other] Ya no eres el anfitrión de esta mesa.
+}
 host-pass-no-candidates = (No hay jugadores disponibles para ceder el anfitrionazgo)
-host-pass-no-longer-host = Cediste el anfitrionazgo a otro jugador. Ya no eres el anfitrión de esta mesa.
-host-passed = { $player } ahora es el anfitrión.
-host-passed-you = Ahora eres el anfitrión.
+host-pass-no-longer-host = { $user_gender ->
+    [female] Cediste el anfitrionazgo a otro jugador. Ya no eres la anfitriona de esta mesa.
+    [male] Cediste el anfitrionazgo a otro jugador. Ya no eres el anfitrión de esta mesa.
+   *[other] Cediste el anfitrionazgo a otro jugador. Ya no eres el anfitrión de esta mesa.
+}
+host-passed = { $player_gender ->
+    [female] { $player } ahora es la anfitriona.
+    [male] { $player } ahora es el anfitrión.
+   *[other] { $player } ahora es el anfitrión.
+}
+host-passed-you = { $user_gender ->
+    [female] Ahora eres la anfitriona.
+    [male] Ahora eres el anfitrión.
+   *[other] Ahora eres el anfitrión.
+}
 host-pass-failed = No se pudo transferir el anfitrionazgo. Es posible que el jugador se haya ido.
 host-kick-no-candidates = (No hay jugadores disponibles para expulsar)
 host-kick-invalid-target = Objetivo de expulsión no válido.
-host-kick-broadcast = { $player } fue expulsado de la mesa.
-host-kick-ban-broadcast = { $player } fue expulsado y baneado de la mesa.
+host-kick-broadcast = { $player_gender ->
+    [female] { $player } fue expulsada de la mesa.
+    [male] { $player } fue expulsado de la mesa.
+   *[other] { $player } fue expulsado de la mesa.
+}
+host-kick-ban-broadcast = { $player_gender ->
+    [female] { $player } fue expulsada y baneada de la mesa.
+    [male] { $player } fue expulsado y baneado de la mesa.
+   *[other] { $player } fue expulsado y baneado de la mesa.
+}
 host-kick-confirm = Expulsaste a { $player } de la mesa.
 host-kick-ban-confirm = Expulsaste y baneaste a { $player } de la mesa.
 host-kick-you = { $host } te expulsó de la mesa.
 host-kick-ban-you = { $host } te expulsó y baneó de la mesa.
-table-you-are-banned = Estás baneado de esta mesa.
+table-you-are-banned = { $user_gender ->
+    [female] Estás baneada de esta mesa.
+    [male] Estás baneado de esta mesa.
+   *[other] Estás baneado de esta mesa.
+}
 table-private-invite-only = Esta mesa es privada. El anfitrión debe invitarte para que puedas unirte.
 
 voice-room-table-label = Voz de la mesa de { $game }
@@ -885,8 +1172,16 @@ voice-status-connected = { $player } se conectó al chat de voz de la mesa.
 voice-status-connected-you = Te conectaste al chat de voz de la mesa.
 voice-status-disconnected = { $player } se desconectó del chat de voz.
 voice-status-disconnected-you = Te desconectaste del chat de voz.
-voice-status-connection-lost = { $player } perdió la conexión y fue eliminado del chat de voz.
-voice-status-connection-lost-you = Perdiste la conexión y fuiste eliminado del chat de voz.
+voice-status-connection-lost = { $player_gender ->
+    [female] { $player } perdió la conexión y fue eliminada del chat de voz.
+    [male] { $player } perdió la conexión y fue eliminado del chat de voz.
+   *[other] { $player } perdió la conexión y fue eliminado del chat de voz.
+}
+voice-status-connection-lost-you = { $user_gender ->
+    [female] Perdiste la conexión y fuiste eliminada del chat de voz.
+    [male] Perdiste la conexión y fuiste eliminado del chat de voz.
+   *[other] Perdiste la conexión y fuiste eliminado del chat de voz.
+}
 voice-status-left-table = { $player } salió de la mesa y del chat de voz.
 voice-status-left-table-you = Saliste de la mesa y del chat de voz.
 voice-member-status-connected = conectado al chat de voz
@@ -1150,7 +1445,11 @@ chat-global-channel-required-send = Selecciona un idioma para el chat global ant
 chat-global-log-unavailable = El chat global no está disponible temporalmente porque este mensaje no se pudo guardar de forma segura. Inténtalo de nuevo más tarde.
 chat-global-temporarily-disabled-send = El desarrollador desactivó temporalmente el chat global.
 
-report-user = Reportar a un usuario
+report-user = { $target_gender ->
+    [female] Reportar a una usuaria
+    [male] Reportar a un usuario
+   *[other] Reportar a un usuario
+}
 enter-report-username = Escribe el nombre de usuario que quieres reportar.
 report-error-self = No puedes reportar tu propia cuenta.
 report-select-reason = Reportar a { $username }: selecciona el motivo que mejor describa su conducta.
@@ -1247,12 +1546,48 @@ gender-term-reflexive =
         [female] a sí misma
        *[other] a sí
     }
+gender-term-friend =
+    { $gender ->
+        [female] amiga
+        [male] amigo
+       *[other] amigo
+    }
+gender-term-friend-capitalized =
+    { $gender ->
+        [female] Amiga
+        [male] Amigo
+       *[other] Amigo
+    }
 
 friends-sent-requests = { $count ->
     [0] Solicitudes enviadas
    *[other] Solicitudes enviadas ({ $count })
 }
-friend-status-offline-last-online = Desconectado, última conexión { $relative_time }
+friend-status-offline-last-online = { $player_gender ->
+    [female] Desconectada, última conexión { $relative_time }
+    [male] Desconectado, última conexión { $relative_time }
+   *[other] Desconectado, última conexión { $relative_time }
+}
+friend-removed-notify = { $username_gender ->
+    [female] Tu amiga { $username } te eliminó de su lista de amigos.
+    [male] Tu amigo { $username } te eliminó de su lista de amigos.
+   *[other] Tu amigo { $username } te eliminó de su lista de amigos.
+}
+friend-accepted-notify = { $username_gender ->
+    [female] Tu amiga { $username } aceptó tu solicitud de amistad.
+    [male] Tu amigo { $username } aceptó tu solicitud de amistad.
+   *[other] Tu amigo { $username } aceptó tu solicitud de amistad.
+}
+friend-declined-notify = { $username_gender ->
+    [female] Tu amiga { $username } rechazó tu solicitud de amistad.
+    [male] Tu amigo { $username } rechazó tu solicitud de amistad.
+   *[other] { $username } rechazó tu solicitud de amistad.
+}
+friend-request-received = { $username_gender ->
+    [female] Recibiste una solicitud de amistad de { $username }.
+    [male] Recibiste una solicitud de amistad de { $username }.
+   *[other] Recibiste una solicitud de amistad de { $username }.
+}
 no-sent-requests = No tienes solicitudes de amistad enviadas pendientes.
 friend-request-to = Solicitud de amistad enviada a { $username }
 friend-request-manage-sent = Gestionar solicitud de amistad enviada
@@ -1353,7 +1688,11 @@ player-substitution-complete-replacement = { $player } tomó el control del asie
 host-invite-pair-cooldown = Espera { $seconds ->
     [one] 1 segundo
    *[other] { $seconds } segundos
-} antes de volver a invitar a ese amigo.
+} antes de volver a invitar a { $friend_gender ->
+    [female] esa amiga.
+    [male] ese amigo.
+   *[other] ese amigo.
+}
 host-invite-rate-limited = Estás enviando invitaciones de mesa demasiado rápido. Inténtalo de nuevo dentro de { $seconds ->
     [one] 1 segundo
    *[other] { $seconds } segundos
@@ -1374,3 +1713,171 @@ host-game-switch-confirm-free-table = ¿Cambiar esta mesa a una mesa libre? Toda
 free-table-choose-game = Cambiar a un juego
 free-table-description = Abre una mesa para conversar por texto y voz sin iniciar un juego.
 free-table-help = Ayuda de mesa libre
+free-table-set-topic = Cambiar tema de la mesa
+free-table-topic-display = Tema de la mesa: { $topic }
+free-table-prompt-topic = Introduce el tema de la mesa libre (deja vacío para quitarlo):
+free-table-topic-changed = { $host } cambió el tema de la mesa a: { $topic }.
+free-table-topic-cleared = { $host } eliminó el tema de la mesa.
+free-table-current-topic = Tema de la mesa: { $topic }.
+free-table-read-topic = Ver tema de la mesa
+free-table-no-topic = La mesa libre no tiene un tema asignado.
+
+# Chat de voz global
+global-voice-chat = Chat de voz global
+global-voice-chat-description = Únete o consulta el chat de voz global con jugadores de todo el servidor.
+global-voice-chat-connect = Conectarse al chat de voz global
+global-voice-chat-connect-description = Conéctate al canal de chat de voz del servidor.
+global-voice-chat-disconnect = Desconectarse del chat de voz global
+global-voice-chat-disconnect-description = Sal del canal de chat de voz del servidor.
+global-voice-chat-participants-heading = Participantes conectados ({ $count }):
+global-voice-chat-no-participants = No hay participantes conectados actualmente.
+global-voice-chat-disabled-notice = El chat de voz global está desactivado por los administradores.
+admin-moderation-global-voice-chat-toggle = Chat de voz global: { $status }
+admin-moderation-global-voice-chat-toggle-description = Activa o desactiva el chat de voz en todo el servidor. Esta configuración se conserva después de reiniciar el servidor.
+admin-moderation-global-voice-chat-status-description = Estado actual en todo el servidor. Solo un Desarrollador puede cambiar esta configuración.
+admin-moderation-global-voice-chat-update-failed = La configuración del chat de voz global no se pudo guardar, por lo que no se realizó ningún cambio. Inténtalo de nuevo.
+global-voice-chat-availability-enabled = El desarrollador ha activado el chat de voz global.
+global-voice-chat-availability-disabled = El desarrollador ha desactivado temporalmente el chat de voz global.
+voice-room-global-label = Chat de voz global
+voice-global-chat-disabled = El chat de voz global está desactivado.
+# Configuración del anfitrión para el chat de voz de la mesa
+voice-host-spatial-audio-option = Audio espacial de voz: { $status }
+voice-host-desc-spatial-audio = Activa o desactiva la distribución espacial de las voces para todos los jugadores de la mesa
+voice-host-spatial-audio-changed = Audio espacial de voz de la mesa establecido en { $status }.
+voice-host-spatial-audio-broadcast = El anfitrión estableció el audio espacial de voz en { $status }.
+voice-host-quality-option = Calidad de voz: { $quality }
+voice-host-desc-quality = Cambia el perfil de calidad del chat de voz entre Alta fidelidad (64 kbps) y Estándar (24 kbps)
+voice-host-quality-changed = Calidad de voz de la mesa establecida en { $quality }.
+voice-host-quality-broadcast = El anfitrión estableció la calidad de voz de la mesa en { $quality }.
+voice-quality-high = Alta fidelidad (64 kbps)
+voice-quality-standard = Estándar (24 kbps)
+voice-host-members-heading = Participantes del chat de voz:
+
+# Preferencias personales de audio y voz
+voice-noise-suppression-option = Supresión de ruido del micrófono: { $status }
+general-desc-voice-noise-suppression = Activa o desactiva la supresión de ruido de fondo en tu micrófono
+voice-noise-suppression-changed = Supresión de ruido del micrófono establecida en { $status }.
+options-limit-unfocused-audio-toggle = Limitar audio y voz fuera de la ventana: { $status }
+general-desc-limit-unfocused-audio = Silencia el audio y las locuciones cuando la ventana de la aplicación no tenga el foco, excepto cuando sea tu turno de jugar.
+options-limit-unfocused-audio-changed = Limitación de audio fuera de la ventana establecida en { $status }.
+voice-spatial-audio-option = Audio espacial de voz: { $status }
+general-desc-voice-spatial-audio = Posiciona las voces en estéreo según la posición de los asientos en la mesa
+voice-spatial-audio-changed = Audio espacial de voz establecido en { $status }.
+voice-auto-gain-option = Control automático de ganancia del micrófono: { $status }
+general-desc-voice-auto-gain = Ajusta automáticamente el volumen de entrada de tu micrófono
+voice-auto-gain-changed = Control automático de ganancia del micrófono establecido en { $status }.
+
+# Gestión del chat de voz global
+global-voice-chat-toggle-enabled = Chat de voz global: { $status }
+global-voice-chat-desc-toggle-enabled = Activa o desactiva el chat de voz global en todo el servidor
+global-voice-chat-status-changed = El chat de voz global ahora está { $status }.
+global-voice-chat-quality-option = Calidad de voz global: { $quality }
+global-voice-chat-desc-quality = Cambia el perfil de calidad de audio del chat de voz global
+global-voice-chat-quality-changed = Calidad de voz global establecida en { $quality }.
+
+
+# Gestión de palabras del Infiltrado (Administración)
+admin-infiltrado-words = Gestión de palabras del Infiltrado
+admin-desc-infiltrado-words = Añade, edita y elimina pares de palabras y temáticas para el juego El Infiltrado.
+admin-infiltrado-add-pair = Añadir nuevo par de palabras
+admin-infiltrado-list-pairs = Ver todos los pares de palabras ({ $total } pares)
+admin-infiltrado-manage-categories = Gestionar temáticas ({ $total } temáticas)
+admin-infiltrado-add-category = Añadir nueva temática
+admin-infiltrado-prompt-category-name = Introduce el nombre de la nueva temática:
+admin-infiltrado-prompt-rename-category = Introduce el nuevo nombre para la temática { $category }:
+admin-infiltrado-category-added = Temática '{ $category }' añadida con éxito.
+admin-infiltrado-category-renamed = Temática '{ $old_category }' renombrada a '{ $new_category }'.
+admin-infiltrado-category-deleted = Temática '{ $category }' eliminada. Sus pares pasaron a 'General'.
+admin-infiltrado-category-current = Temática: { $category } ({ $count } pares)
+admin-infiltrado-list-category-pairs = Ver palabras de esta temática
+admin-infiltrado-add-pair-to-category = Añadir par a esta temática
+admin-infiltrado-rename-category = Renombrar temática
+admin-infiltrado-delete-category = Eliminar temática
+admin-infiltrado-delete-category-confirm = ¿Seguro que deseas eliminar la temática '{ $category }'? Sus { $count } pares pasarán a 'General'.
+admin-infiltrado-category-cannot-delete-general = La temática 'General' no se puede eliminar.
+admin-infiltrado-select-category = Selecciona una temática para el par de palabras:
+admin-infiltrado-change-category = Cambiar temática (actual: { $category })
+admin-infiltrado-pair-category-updated = Temática del par actualizada a '{ $category }'.
+admin-infiltrado-category-already-exists = Ya existe una temática con ese nombre.
+admin-infiltrado-category-item = { $category } ({ $count } pares)
+admin-infiltrado-pair-current-with-cat = Par #{ $id }: { $word1 } / { $word2 } [Temática: { $category }]
+admin-infiltrado-category-pairs-title = Palabras de { $category } ({ $total } pares)
+admin-infiltrado-category-create-new = + Añadir nueva temática...
+admin-infiltrado-prompt-word1 = Introduce la primera palabra (Civil):
+admin-infiltrado-prompt-word2 = Introduce la segunda palabra (Infiltrado):
+admin-infiltrado-prompt-edit-word1 = Modifica la primera palabra (actual: { $word }):
+admin-infiltrado-prompt-edit-word2 = Modifica la segunda palabra (actual: { $word }):
+admin-infiltrado-pair-added = Par añadido con éxito: { $word1 } / { $word2 } [{ $category }].
+admin-infiltrado-pair-updated = Par actualizado con éxito: { $word1 } / { $word2 }.
+admin-infiltrado-pair-deleted = Par de palabras eliminado con éxito.
+admin-infiltrado-pair-current = Par #{ $id }: { $word1 } / { $word2 }
+admin-infiltrado-edit-word1 = Editar primera palabra ({ $word })
+admin-infiltrado-edit-word2 = Editar segunda palabra ({ $word })
+admin-infiltrado-delete-pair = Eliminar este par de palabras
+admin-infiltrado-empty-pairs = No hay pares de palabras registrados.
+
+# Gestión de monedas para administradores
+admin-grant-coins = Otorgar monedas a un jugador
+admin-desc-grant-coins = Otorga monedas virtuales a la cuenta de un jugador registrado.
+admin-grant-coins-no-users = No hay usuarios registrados disponibles.
+admin-grant-coins-target-balance = Jugador: { $player }. Saldo actual: { $coins } monedas.
+admin-grant-coins-custom-amount = Ingresar cantidad personalizada...
+admin-grant-coins-prompt-amount = Ingresa la cantidad de monedas a otorgar:
+admin-grant-coins-error-positive = La cantidad de monedas debe ser un número entero mayor a 0.
+admin-grant-coins-error-invalid = Cantidad no válida. Debe ser un número entero positivo.
+admin-grant-coins-success = Se otorgaron { $amount } monedas a { $player }. Nuevo saldo: { $balance } monedas.
+coins-amount-option = { $coins } monedas
+coins-granted-notification = Has recibido { $amount } monedas de un administrador. Saldo actual: { $balance } monedas.
+
+# Cambio de nick de usuario
+nick-change-action = Cambiar nick
+nick-change-pending-status = Solicitud pendiente de aprobación: cambio a { $requested }
+nick-cooldown-counter = Tiempo restante para cambio gratuito: { $days } días, { $hours } horas y { $minutes } minutos
+nick-bypass-cooldown-option = Eliminar límite y cambiar nick ahora por { $price } monedas (saldo: { $balance })
+nick-reduce-cooldown-option = Reducir espera a { $days } días por { $price } monedas (saldo: { $balance })
+nick-cooldown-already-reduced = Reducción de espera a { $days } días ya aplicada en este periodo
+confirm-nick-reduce-cooldown = ¿Deseas pagar { $price } monedas para reducir la espera del cambio de nick de 90 a { $days } días?
+nick-cooldown-reduced-success = Se descontaron { $price } monedas. La espera del cambio de nick se redujo a { $days } días. Saldo actual: { $balance } monedas.
+enter-new-nick = Escribe tu nuevo nick:
+nick-confirm-password-prompt = Por favor, confirma tu contraseña para continuar con el cambio de nick a { $new_nick }:
+nick-confirm-password-paid-prompt = Por favor, confirma tu contraseña para continuar con el cambio de nick a { $new_nick } por { $price } monedas:
+nick-request-submitted = Tu solicitud para cambiar tu nick a { $new_nick } fue enviada y está pendiente de aprobación por un administrador.
+nick-request-submitted-paid = Se descontaron { $price } monedas y tu solicitud para cambiar tu nick a { $new_nick } fue enviada a los administradores. Saldo actual: { $balance } monedas.
+nick-error-insufficient-coins = No tienes suficientes monedas. Necesitas { $required } monedas y tienes { $balance }.
+nick-error-wrong-password = Contraseña incorrecta. No se envió la solicitud de cambio de nick.
+nick-error-invalid = El nick ingresado no es válido. Usa entre 3 y 20 caracteres alfanuméricos, guiones o guiones bajos.
+nick-error-reserved = Ese nick está reservado por el sistema y no puede utilizarse.
+nick-error-already-pending = Ya tienes una solicitud de cambio de nick pendiente de revisión.
+nick-error-cooldown-active = Aún no han transcurrido los días de espera para solicitar un cambio de nick gratuito.
+nick-change-approved-user = Un administrador aprobó tu cambio de nick. Tu nuevo nombre de usuario es { $new_nick }.
+nick-change-approved-reconnect-user = Tu nuevo nick ({ $new_nick }) ha sido aprobado por un administrador. En { $seconds } segundos serás reconectado con el nuevo nick.
+nick-change-rejected-user = Tu solicitud para cambiar el nick a { $new_nick } fue rechazada. Motivo: { $reason }.
+nick-change-rejected-refunded-user = Tu solicitud para cambiar el nick a { $new_nick } fue rechazada. Motivo: { $reason }. Se te devolvieron { $coins } monedas (saldo: { $balance }).
+
+# Administración de cambios de nick pendientes
+admin-pending-nick-changes = Cambios pendientes
+admin-desc-pending-nick-changes = Revisar, validar o rechazar solicitudes pendientes de cambio de nick.
+admin-no-pending-nick-changes = No hay cambios de nick pendientes.
+admin-nick-change-requested-notify = { $player } ha solicitado cambiar su nick a { $new_nick }.
+admin-nick-change-row = { $old_nick } -> { $new_nick }
+admin-nick-change-row-paid = { $old_nick } -> { $new_nick } (pagó { $coins } monedas)
+admin-nick-change-row-collision = { $old_nick } -> { $new_nick } [ADVERTENCIA: coincide con { $collision }]
+admin-nick-change-row-paid-collision = { $old_nick } -> { $new_nick } (pagó { $coins } monedas) [ADVERTENCIA: coincide con { $collision }]
+admin-nick-detail-summary = Solicitud: cambiar de { $old_nick } a { $new_nick }
+admin-nick-detail-free = Modalidad: cambio estándar gratuito
+admin-nick-detail-paid = Modalidad: cambio con pago de { $coins } monedas
+admin-nick-detail-collision-warning = Advertencia: el nick solicitado coincide con una cuenta existente ({ $collision }).
+admin-nick-approve = Validar cambio
+admin-nick-reject = Rechazar cambio
+admin-nick-reject-reason-prompt = Ingresa el motivo del rechazo para el cambio de { $player } a { $new_nick }:
+admin-nick-reject-reason-empty = Debes indicar un motivo para rechazar el cambio de nick.
+admin-nick-reject-refund-prompt = { $player } pagó { $coins } monedas por este cambio. ¿Deseas devolverle sus monedas al rechazar?
+admin-nick-reject-with-refund = Rechazar y devolver { $coins } monedas
+admin-nick-reject-without-refund = Rechazar sin devolver monedas
+admin-nick-approved-feedback = Se validó el cambio de nick de { $old_nick } a { $new_nick }.
+admin-nick-rejected-feedback = Se rechazó el cambio de nick de { $player } a { $new_nick }.
+admin-nick-rejected-refunded-feedback = Se rechazó el cambio de nick de { $player } a { $new_nick } y se devolvieron { $coins } monedas.
+admin-nick-error-not-pending = Esta solicitud de cambio de nick ya no está pendiente.
+admin-nick-error-already-taken = No se puede validar porque el nick { $new_nick } sigue en uso por otra cuenta activa.
+
+

@@ -136,10 +136,18 @@ export type DisconnectPacket = {
   type: "disconnect";
   reason?: string;
   reconnect?: boolean;
+  reconnect_immediate?: boolean;
+  reconnect_after_ms?: number;
+  username?: string;
+};
+
+export type UsernameUpdatedPacket = {
+  type: "username_updated";
+  username?: string;
 };
 
 export type ForceExitPacket = {
-  type: "force_exit";
+  type: "force_exit" | "switch_server";
   reason?: string;
 };
 
@@ -285,6 +293,14 @@ export type VoiceSettingsPacket = {
   version: number;
 };
 
+export type VoicePansPacket = {
+  type: "voice_pans";
+  context_id: string;
+  spatial_enabled?: boolean;
+  quality?: string;
+  pans?: Record<string, number>;
+};
+
 export type VoiceJoinErrorPacket = {
   type: "voice_join_error";
   context_id?: string;
@@ -310,6 +326,7 @@ export type ServerPacket =
   | ChatPacket
   | ClearUiPacket
   | DisconnectPacket
+  | UsernameUpdatedPacket
   | ForceExitPacket
   | LoginFailedPacket
   | MenuPacket
@@ -329,6 +346,7 @@ export type ServerPacket =
   | VoiceJoinInfoPacket
   | VoiceLeaveAckPacket
   | VoiceSettingsPacket
+  | VoicePansPacket
   | { type: string; [key: string]: unknown };
 
 export type AuthorizePacket = {
@@ -439,7 +457,7 @@ export type SetPreferencePacket = {
 export type VoiceJoinPacket = {
   type: "voice_join";
   context_id?: string;
-  scope: "table";
+  scope: "table" | "global";
 };
 
 export type VoiceLeavePacket = {
@@ -451,7 +469,7 @@ export type VoiceLeavePacket = {
 export type VoicePresencePacket = {
   type: "voice_presence";
   context_id?: string;
-  scope: "table";
+  scope: "table" | "global";
   state: "connected" | "connection_lost";
 };
 

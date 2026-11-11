@@ -283,9 +283,17 @@ test("message-history punctuation shortcuts keep their established dispatch", ()
     onNewestMessage: () => calls.push("newest"),
   });
 
-  for (const [key, shiftKey] of [[",", false], [".", false], ["<", true], [">", true]]) {
+  for (const [key, shiftKey, code] of [
+    [",", false, "Comma"],
+    [".", false, "Period"],
+    ["<", true, "Comma"],
+    [">", true, "Period"],
+    [";", true, "Comma"],
+    [":", true, "Period"],
+  ]) {
     keydown({
       key,
+      code,
       altKey: false,
       ctrlKey: false,
       shiftKey,
@@ -294,7 +302,7 @@ test("message-history punctuation shortcuts keep their established dispatch", ()
     });
   }
 
-  assert.deepEqual(calls, ["older", "newer", "oldest", "newest"]);
+  assert.deepEqual(calls, ["older", "newer", "oldest", "newest", "oldest", "newest"]);
 });
 
 test("large grids retain accessible cells and pan on both axes", async () => {
@@ -469,4 +477,64 @@ test("table roster shortcuts preserve key and modifier dispatch", () => {
   document.activeElement = { tagName: "INPUT" };
   keydown({key: "w", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, preventDefault() {}});
   assert.equal(packets.length, 4);
+});
+
+test("desktop global hotkeys match remapped layout for friends, chat, volume, and personal options", () => {
+  const actions = [];
+  let keydown = null;
+  const menuElement = { contains: () => true };
+  globalThis.document = {
+    activeElement: menuElement,
+    addEventListener(type, listener) {
+      if (type === "keydown") keydown = listener;
+    },
+  };
+  installKeybinds({
+    store: {
+      state: {
+        connection: { authenticated: true },
+        currentMenu: { items: [], selection: 0 },
+      },
+    },
+    menuView: { getElement: () => menuElement },
+    onOpenFriends: () => actions.push("friends"),
+    onToggleTableChat: () => actions.push("table_chat"),
+    onToggleGlobalChat: () => actions.push("global_chat"),
+    onCycleVolumeNext: () => actions.push("vol_next"),
+    onCycleVolumePrev: () => actions.push("vol_prev"),
+    onActiveVolumeDown: () => actions.push("vol_down"),
+    onActiveVolumeUp: () => actions.push("vol_up"),
+    onOpenPersonalOptions: () => actions.push("personal_options"),
+  });
+
+  const press = (key, { ctrl = false, alt = false, shift = false } = {}) => {
+    keydown({
+      key,
+      ctrlKey: ctrl,
+      altKey: alt,
+      shiftKey: shift,
+      metaKey: false,
+      preventDefault() {},
+    });
+  };
+
+  press("f", { ctrl: true });
+  press("F5");
+  press("F5", { shift: true });
+  press("F6");
+  press("F6", { shift: true });
+  press("F7");
+  press("F8");
+  press("F9");
+
+  assert.deepEqual(actions, [
+    "friends",
+    "table_chat",
+    "global_chat",
+    "vol_next",
+    "vol_prev",
+    "vol_down",
+    "vol_up",
+    "personal_options",
+  ]);
 });

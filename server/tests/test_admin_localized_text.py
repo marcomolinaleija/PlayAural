@@ -104,8 +104,9 @@ def test_localized_content_codec_supports_fallback_legacy_and_malformed_data() -
 def test_official_locale_registry_is_metadata_driven() -> None:
     official = Localization.official_locale_codes()
 
-    assert DEFAULT_LOCALE in official
-    assert "vi" in official
+    assert "es" in official
+    assert "en" not in official
+    assert "vi" not in official
     assert "fa" not in official
 
 
@@ -154,15 +155,14 @@ async def test_motd_editor_requires_official_locales_and_skips_community(
     server, admin = _make_server(tmp_path)
     try:
         await _select(server, admin, "main_menu", "administration")
-        await _select(server, admin, "admin_menu", "manage_motd")
+        await _select(server, admin, "admin_menu", "admin_server_content")
+        await _select(server, admin, "admin_server_content_menu", "manage_motd")
         await _select(server, admin, "manage_motd_menu", "create_update")
 
         ids = _menu_ids(admin)
-        assert ids.index("localized_text_locale_en") < ids.index(
-            "localized_text_locale_vi"
-        )
-        assert "required" in _menu_text(admin, "localized_text_locale_en")
-        assert "required" in _menu_text(admin, "localized_text_locale_vi")
+        assert "required" in _menu_text(admin, "localized_text_locale_es")
+        assert "optional" in _menu_text(admin, "localized_text_locale_en")
+        assert "optional" in _menu_text(admin, "localized_text_locale_vi")
         assert "optional" in _menu_text(admin, "localized_text_locale_fa")
 
         await _edit_translation(server, admin, "en", "English MOTD")
@@ -178,10 +178,10 @@ async def test_motd_editor_requires_official_locales_and_skips_community(
             "admin_localized_text_menu"
         )
         assert admin.menus["admin_localized_text_menu"]["selection_id"] == (
-            "localized_text_locale_vi"
+            "localized_text_locale_es"
         )
 
-        await _edit_translation(server, admin, "vi", "MOTD tiếng Việt")
+        await _edit_translation(server, admin, "es", "MOTD en español")
         await _select(
             server,
             admin,
@@ -189,9 +189,9 @@ async def test_motd_editor_requires_official_locales_and_skips_community(
             "localized_text_submit",
         )
 
+        assert server._db.get_motd(1, "es") == "MOTD en español"
         assert server._db.get_motd(1, "en") == "English MOTD"
-        assert server._db.get_motd(1, "vi") == "MOTD tiếng Việt"
-        assert server._db.get_motd(1, "fa") == "English MOTD"
+        assert server._db.get_motd(1, "fa") == "MOTD en español"
     finally:
         server._db.close()
 
@@ -333,11 +333,12 @@ async def test_power_reason_editor_preserves_draft_and_falls_back_to_english(
     server, admin = _make_server(tmp_path)
     try:
         await _select(server, admin, "main_menu", "administration")
-        await _select(server, admin, "admin_menu", "server_power")
+        await _select(server, admin, "admin_menu", "admin_system")
+        await _select(server, admin, "admin_system_menu", "server_power")
         await _select(server, admin, "server_power_menu", "reboot")
         await _select(server, admin, "server_power_delay_menu", "delay_30")
         await _select(server, admin, "server_power_reason_menu", "reason_custom")
-        await _edit_translation(server, admin, "en", "English reason")
+        await _edit_translation(server, admin, "es", "Razón en español")
         await _edit_translation(server, admin, "vi", "Lý do tiếng Việt")
         await _select(
             server,
@@ -351,14 +352,14 @@ async def test_power_reason_editor_preserves_draft_and_falls_back_to_english(
         reasons = state["power_custom_reasons"]
         assert "fa" not in reasons
         assert server.power_manager._custom_reason_for_locale("fa", reasons) == (
-            "English reason"
+            "Razón en español"
         )
 
         await _select(server, admin, "server_power_confirm_menu", "back")
         restored = server._user_states[admin.username]
         assert restored["menu"] == "admin_localized_text_menu"
         assert restored["localized_text_translations"] == {
-            "en": "English reason",
+            "es": "Razón en español",
             "vi": "Lý do tiếng Việt",
         }
     finally:
@@ -387,7 +388,7 @@ async def test_penalty_editor_persists_and_broadcasts_localized_reasons(
             {},
             {"target_username": target_name, "duration": "1h"},
         )
-        await _edit_translation(server, admin, "en", f"English {purpose} reason")
+        await _edit_translation(server, admin, "es", f"Razón en español para {purpose}")
         await _edit_translation(server, admin, "vi", f"Lý do {purpose} tiếng Việt")
         await _select(
             server,
@@ -404,13 +405,13 @@ async def test_penalty_editor_persists_and_broadcasts_localized_reasons(
         assert record is not None
         stored_reason = record.reason_key if purpose == "ban" else record.reason
         assert decode_localized_custom_text(stored_reason) == {
-            "en": f"English {purpose} reason",
+            "es": f"Razón en español para {purpose}",
             "vi": f"Lý do {purpose} tiếng Việt",
         }
         assert f"Lý do {purpose} tiếng Việt" in (
             vi_recipient.get_last_spoken() or ""
         )
-        assert f"English {purpose} reason" in (
+        assert f"Razón en español para {purpose}" in (
             fa_recipient.get_last_spoken() or ""
         )
     finally:

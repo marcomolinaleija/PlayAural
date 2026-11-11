@@ -85,6 +85,9 @@ table-full = میز پر است.
 player-replaced-by-bot = { $bot } اکنون به جای { $player } بازی می‌کند.
 player-reclaimed-from-bot = { $player } بازگشت و جای خود را از { $bot } پس گرفت.
 spectator-joined = به عنوان تماشاگر به میز { $host } پیوست.
+table-game-in-progress = بازی در حال انجام است.
+spectator-watching-game = در حال تماشای بازی.
+spectator-stopped-watching = تماشای بازی متوقف شد.
 
 spectate = تماشا
 now-playing = { $player } اکنون در حال بازی است.
@@ -505,6 +508,8 @@ admin-broadcast-prompt = پیام خود را برای پخش به همه‌ی �
 admin-broadcast-sent = اعلامیه برای { $count } کاربر ارسال شد.
 
 manage-motd = مدیریت پیام روز
+admin-switch-server = تغییر سرور
+admin-desc-switch-server = قطع اتصال و بازگشت به بخش انتخاب سرور در برنامه.
 create-update-motd = ایجاد/به‌روزرسانی پیام روز
 view-motd = مشاهده‌ی پیام روز فعال
 delete-motd = حذف پیام روز
@@ -584,6 +589,8 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } دقیقه و { $seconds } ثانیه
 duration-hours-minutes = { $hours } ساعت و { $minutes } دقیقه
+duration-days = { $count } روز
+duration-days-hours = { $days } روز و { $hours } ساعت
 server-error-changing-language = خطا در تغییر زبان: { $error }
 default-save-name = { $game } - { $date }
 
@@ -710,6 +717,17 @@ host-management-pass-host = انتقال میزبانی به بازیکن دیگ
 host-management-kick = اخراج یک بازیکن
 host-management-kick-ban = اخراج و مسدود کردن یک بازیکن
 host-management-restart-game = راه‌اندازی مجدد بازی
+host-management-table-stats = آمار میز
+table-stats-created-at = تاریخ ساخت: { $date }
+table-stats-uptime = مدت زمان فعالیت میز: { $duration }
+table-stats-user-duration = زمان حضور شما در میز: { $duration }
+table-stats-peak = بیشترین تعداد حاضرین: { $count }
+table-stats-total-visitors = مجموع کل بازدیدکنندگان: { $count }
+table-stats-game = فعالیت: { $game }
+table-stats-host = میزبان: { $host }
+table-stats-members = اعضا ({ $count }): { $members }
+table-stats-spectators = تماشاگران ({ $count }): { $spectators }
+table-stats-spectators-none = تماشاگران: هیچ‌کدام
 host-management-table-now-private = این میز اکنون خصوصی است. فقط بازیکنان دعوت‌شده می‌توانند بپیوندند.
 host-management-table-now-public = این میز اکنون عمومی است.
 host-restart-confirm = آیا بازی فعلی را راه‌اندازی مجدد کرده و این میز را به اتاق انتظار بازمی‌گردانید؟ بازیکنان فعلی و مکالمه‌ی صوتی متصل می‌مانند، اما مسابقه‌ی فعلی لغو می‌شود.
@@ -760,3 +778,53 @@ success-reset-email-sent = یک کد بازنشانی به آدرس ایمیل �
 error-smtp-send-failed = ارسال ایمیل بازنشانی ناموفق بود. لطفاً بعداً دوباره تلاش کنید.
 error-invalid-reset-code = کد بازنشانی نامعتبر یا منقضی شده است.
 success-password-reset = رمز عبور شما با موفقیت بازنشانی شد. اکنون می‌توانید وارد شوید.
+
+# Global voice chat
+global-voice-chat = Global Voice Chat
+global-voice-chat-description = Join or view global voice chat with players across the server.
+global-voice-chat-connect = Connect to global voice chat
+global-voice-chat-connect-description = Connect to the server-wide voice chat channel.
+global-voice-chat-disconnect = Disconnect from global voice chat
+global-voice-chat-disconnect-description = Leave the server-wide voice chat channel.
+global-voice-chat-participants-heading = Connected participants ({ $count }):
+global-voice-chat-no-participants = No participants currently connected.
+global-voice-chat-disabled-notice = Global voice chat is currently disabled by the administrators.
+admin-moderation-global-voice-chat-toggle = Global voice chat: { $status }
+admin-moderation-global-voice-chat-toggle-description = Turn voice chat on or off server-wide. This setting persists after the server restarts.
+admin-moderation-global-voice-chat-status-description = Current server-wide state. Only a Developer can change this setting.
+admin-moderation-global-voice-chat-update-failed = The global voice chat setting could not be saved, so no change was made. Please try again.
+global-voice-chat-availability-enabled = Global voice chat has been enabled by the developer.
+global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
+voice-room-global-label = Global Voice Chat
+voice-global-chat-disabled = Global voice chat is currently disabled.
+# تنظیمات میزبان مکالمه صوتی میز
+voice-host-spatial-audio-option = صدای مکانی مکالمه: { $status }
+voice-host-desc-spatial-audio = تغییر وضعیت صدای استریوی مکانی برای همه بازیکنان این میز
+voice-host-spatial-audio-changed = صدای مکانی مکالمه میز روی { $status } تنظیم شد.
+voice-host-spatial-audio-broadcast = میزبان صدای مکانی مکالمه میز را روی { $status } تنظیم کرد.
+voice-host-quality-option = کیفیت صدا: { $quality }
+voice-host-desc-quality = تغییر کیفیت مکالمه صوتی بین کیفیت بالا (64 kbps) و استاندارد (24 kbps)
+voice-host-quality-changed = کیفیت صدای میز روی { $quality } تنظیم شد.
+voice-host-quality-broadcast = میزبان کیفیت صدای میز را روی { $quality } تنظیم کرد.
+voice-quality-high = کیفیت بالا (64 kbps)
+voice-quality-standard = استاندارد (24 kbps)
+voice-host-members-heading = اعضای حاضر در مکالمه صوتی میز:
+
+# ترجیحات صوتی شخصی
+voice-noise-suppression-option = کاهش نویز میکروفون: { $status }
+general-desc-voice-noise-suppression = فعال یا غیرفعال کردن حذف نویز محیط در میکروفون
+voice-noise-suppression-changed = کاهش نویز میکروفون روی { $status } تنظیم شد.
+voice-spatial-audio-option = صدای مکانی مکالمه: { $status }
+general-desc-voice-spatial-audio = موقعیت‌دهی استریو به صداها بر اساس صندلی‌های سر میز
+voice-spatial-audio-changed = صدای مکانی مکالمه روی { $status } تنظیم شد.
+voice-auto-gain-option = تنظیم خودکار حساسیت میکروفون: { $status }
+general-desc-voice-auto-gain = تنظیم خودکار بلندی ورودی میکروفون
+voice-auto-gain-changed = تنظیم خودکار حساسیت میکروفون روی { $status } قرار گرفت.
+
+# مدیریت مکالمه صوتی عمومی
+global-voice-chat-toggle-enabled = مکالمه صوتی عمومی: { $status }
+global-voice-chat-desc-toggle-enabled = فعال یا غیرفعال کردن مکالمه صوتی عمومی در کل سرور
+global-voice-chat-status-changed = مکالمه صوتی عمومی اکنون { $status } است.
+global-voice-chat-quality-option = کیفیت صدای عمومی: { $quality }
+global-voice-chat-desc-quality = تغییر مشخصات کیفیت صدای مکالمه صوتی عمومی
+global-voice-chat-quality-changed = کیفیت صدای عمومی روی { $quality } تنظیم شد.

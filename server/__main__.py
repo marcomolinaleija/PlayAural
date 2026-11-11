@@ -66,7 +66,7 @@ Examples:
         parser.error("Both --ssl-cert and --ssl-key must be provided together")
 
     protocol = "wss" if args.ssl_cert else "ws"
-    print(f"Starting PlayAural v{VERSION} server on {protocol}://{args.host}:{args.port}")
+    print(f"Starting PlayAural server v{VERSION} on {protocol}://{args.host}:{args.port}")
 
     asyncio.run(
         run_server(

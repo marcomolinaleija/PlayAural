@@ -60,7 +60,16 @@ class AuthManager:
 
         return self.verify_password(password, user.password_hash)
 
-    def register(self, username: str, password: str, locale: str = "en", email: str = "", bio: str = "") -> str:
+    def register(
+        self,
+        username: str,
+        password: str,
+        locale: str = "en",
+        email: str = "",
+        bio: str = "",
+        *,
+        approved: bool = True,
+    ) -> str:
         """
         Register a new user.
 
@@ -85,7 +94,7 @@ class AuthManager:
             password_hash,
             locale,
             1,
-            True,
+            approved,
             email,
             bio,
             promote_first_user=True,

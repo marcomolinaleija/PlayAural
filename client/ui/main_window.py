@@ -193,6 +193,8 @@ class MainWindow(wx.Frame):
             on_join_failed=lambda: wx.CallAfter(self.on_voice_join_failed),
         )
         self.available_audio_input_devices = []
+        self._volume_channels = ["sound", "music", "ambience", "voice"]
+        self._current_volume_channel_index = 0
 
         # Store user's options
         # Client-side options from the local global configuration.
@@ -558,10 +560,14 @@ class MainWindow(wx.Frame):
         self.ID_TOGGLE_VOICE_CHAT = wx.NewIdRef()
         self.ID_TOGGLE_VOICE_MIC = wx.NewIdRef()
         self.ID_FOCUS_HISTORY = wx.NewIdRef()        
-        self.ID_VOLUME_DOWN = wx.NewIdRef()
-        self.ID_VOLUME_UP = wx.NewIdRef()
-        self.ID_AMBIENCE_DOWN = wx.NewIdRef()
-        self.ID_AMBIENCE_UP = wx.NewIdRef()
+        self.ID_CYCLE_VOLUME = wx.NewIdRef()
+        self.ID_CYCLE_VOLUME_PREV = wx.NewIdRef()
+        self.ID_ACTIVE_VOLUME_DOWN = wx.NewIdRef()
+        self.ID_ACTIVE_VOLUME_UP = wx.NewIdRef()
+        self.ID_VOLUME_DOWN = self.ID_ACTIVE_VOLUME_DOWN
+        self.ID_VOLUME_UP = self.ID_ACTIVE_VOLUME_UP
+        self.ID_AMBIENCE_DOWN = self.ID_ACTIVE_VOLUME_DOWN
+        self.ID_AMBIENCE_UP = self.ID_ACTIVE_VOLUME_UP
         self.ID_TOGGLE_TABLE_CHAT = wx.NewIdRef()
         self.ID_TOGGLE_GLOBAL_CHAT = wx.NewIdRef()
         self.ID_PING = wx.NewIdRef()
@@ -570,6 +576,7 @@ class MainWindow(wx.Frame):
         self.ID_OPEN_FRIENDS_HUB = wx.NewIdRef()
         self.ID_OPEN_ADMIN_MENU = wx.NewIdRef()
         self.ID_OPEN_OPTIONS = wx.NewIdRef()
+        self.ID_OPEN_PERSONAL_OPTIONS = wx.NewIdRef()
 
         # Buffer system IDs
         self.ID_PREV_BUFFER = wx.NewIdRef()
@@ -588,25 +595,44 @@ class MainWindow(wx.Frame):
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("C"), self.ID_FOCUS_CHAT),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("V"), self.ID_TOGGLE_VOICE_CHAT),
             wx.AcceleratorEntry(
+                wx.ACCEL_CTRL | wx.ACCEL_SHIFT,
+                ord("V"),
+                self.ID_TOGGLE_VOICE_CHAT,
+            ),
+            wx.AcceleratorEntry(
                 wx.ACCEL_ALT | wx.ACCEL_SHIFT,
                 ord("V"),
                 self.ID_TOGGLE_VOICE_MIC,
             ),
+            wx.AcceleratorEntry(
+                wx.ACCEL_CTRL | wx.ACCEL_SHIFT,
+                ord("M"),
+                self.ID_TOGGLE_VOICE_MIC,
+            ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("H"), self.ID_FOCUS_HISTORY),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F6, self.ID_TOGGLE_TABLE_CHAT),
-            wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F6, self.ID_TOGGLE_GLOBAL_CHAT),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F7, self.ID_AMBIENCE_DOWN),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F8, self.ID_AMBIENCE_UP),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F9, self.ID_VOLUME_DOWN),
-            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F10, self.ID_VOLUME_UP),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F5, self.ID_TOGGLE_TABLE_CHAT),
+            wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F5, self.ID_TOGGLE_GLOBAL_CHAT),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F6, self.ID_CYCLE_VOLUME),
+            wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F6, self.ID_CYCLE_VOLUME_PREV),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F7, self.ID_ACTIVE_VOLUME_DOWN),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F8, self.ID_ACTIVE_VOLUME_UP),
+            wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F9, self.ID_OPEN_PERSONAL_OPTIONS),
             wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F2, self.ID_LIST_ONLINE),
             wx.AcceleratorEntry(
                 wx.ACCEL_SHIFT, wx.WXK_F2, self.ID_LIST_ONLINE_WITH_GAMES
             ),
+            wx.AcceleratorEntry(
+                wx.ACCEL_CTRL, ord("U"), self.ID_LIST_ONLINE_WITH_GAMES
+            ),
             wx.AcceleratorEntry(wx.ACCEL_ALT, ord("P"), self.ID_PING),
-            wx.AcceleratorEntry(wx.ACCEL_ALT, ord("F"), self.ID_OPEN_FRIENDS_HUB),
+            wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB),
             wx.AcceleratorEntry(
                 wx.ACCEL_ALT | wx.ACCEL_SHIFT,
+                ord("A"),
+                self.ID_OPEN_ADMIN_MENU,
+            ),
+            wx.AcceleratorEntry(
+                wx.ACCEL_CTRL | wx.ACCEL_SHIFT,
                 ord("A"),
                 self.ID_OPEN_ADMIN_MENU,
             ),
@@ -656,10 +682,11 @@ class MainWindow(wx.Frame):
         self.Bind(
             wx.EVT_MENU, self.on_toggle_global_chat, id=self.ID_TOGGLE_GLOBAL_CHAT
         )
-        self.Bind(wx.EVT_MENU, self.on_ambience_down, id=self.ID_AMBIENCE_DOWN)
-        self.Bind(wx.EVT_MENU, self.on_ambience_up, id=self.ID_AMBIENCE_UP)
-        self.Bind(wx.EVT_MENU, self.on_volume_down, id=self.ID_VOLUME_DOWN)
-        self.Bind(wx.EVT_MENU, self.on_volume_up, id=self.ID_VOLUME_UP)
+        self.Bind(wx.EVT_MENU, self.on_cycle_volume, id=self.ID_CYCLE_VOLUME)
+        self.Bind(wx.EVT_MENU, self.on_cycle_volume_prev, id=self.ID_CYCLE_VOLUME_PREV)
+        self.Bind(wx.EVT_MENU, self.on_active_volume_down, id=self.ID_ACTIVE_VOLUME_DOWN)
+        self.Bind(wx.EVT_MENU, self.on_active_volume_up, id=self.ID_ACTIVE_VOLUME_UP)
+        self.Bind(wx.EVT_MENU, self.on_open_personal_options, id=self.ID_OPEN_PERSONAL_OPTIONS)
         self.Bind(wx.EVT_MENU, self.on_ping, id=self.ID_PING)
         self.Bind(wx.EVT_MENU, self.on_open_friends_hub, id=self.ID_OPEN_FRIENDS_HUB)
         self.Bind(wx.EVT_MENU, self.on_open_admin_menu, id=self.ID_OPEN_ADMIN_MENU)
@@ -905,18 +932,17 @@ class MainWindow(wx.Frame):
         if not self.voice_capability.get("enabled"):
             self.on_voice_status("voice-chat-unavailable", True)
             return
-        if not self.current_table_context_id:
-            self.on_voice_status("voice-not-at-table", True)
-            return
+        scope = "table" if self.current_table_context_id else "global"
+        context_id = self.current_table_context_id if scope == "table" else "lobby"
         self.voice_state = "connecting"
         self.voice_mic_enabled = False
-        self.voice_requested_context_id = self.current_table_context_id
+        self.voice_requested_context_id = context_id
         self.update_voice_ui()
         self.on_voice_status("voice-chat-joining", True)
         if not self.network.send_packet(
             {
                 "type": "voice_join",
-                "scope": "table",
+                "scope": scope,
                 "context_id": self.voice_requested_context_id,
             }
         ):
@@ -971,11 +997,16 @@ class MainWindow(wx.Frame):
         packet_scope = packet.get("scope", "table")
         packet_context_id = packet.get("context_id", "")
         if server_requested:
-            if (
-                packet_scope != "table"
-                or not packet_context_id
-                or packet_context_id != self.current_table_context_id
-            ):
+            if packet_scope == "table":
+                invalid = (
+                    not packet_context_id
+                    or packet_context_id != self.current_table_context_id
+                )
+            elif packet_scope == "global":
+                invalid = not packet_context_id
+            else:
+                invalid = True
+            if invalid:
                 self.network.send_packet(
                     {
                         "type": "voice_leave",
@@ -1051,7 +1082,7 @@ class MainWindow(wx.Frame):
         packet_context_id = packet.get("context_id", "")
         if (
             self.voice_state == "connecting"
-            and packet_scope == "table"
+            and packet_scope in {"table", "global"}
             and packet_context_id
             and packet_context_id == self.voice_requested_context_id
         ):
@@ -1077,7 +1108,7 @@ class MainWindow(wx.Frame):
             and self.current_table_context_id != previous_context_id
         ):
             self.sound_manager.stop_all(fade_ms=800)
-        if not self.current_table_context_id:
+        if not self.current_table_context_id and self.voice_context.get("scope", "table") == "table":
             if self.voice_state in {"connected", "connecting"}:
                 self.cleanup_voice_chat(send_leave=False, announce=False)
             self.voice_requested_context_id = ""
@@ -1222,41 +1253,108 @@ class MainWindow(wx.Frame):
                 "value": value
             })
 
+    def _get_active_volume_channel(self) -> str:
+        return self._volume_channels[self._current_volume_channel_index % len(self._volume_channels)]
+
+    def _get_channel_volume_percent(self, channel: str) -> int:
+        if channel == "sound":
+            return int(round(self.sound_manager.sound_volume * 100)) if self.sound_manager else 100
+        elif channel == "music":
+            return int(round(self.sound_manager.music_volume * 100)) if self.sound_manager else 20
+        elif channel == "ambience":
+            return int(round(self.sound_manager.ambience_volume * 100)) if self.sound_manager else 20
+        elif channel == "voice":
+            if self.voice_manager and hasattr(self.voice_manager, "_get_voice_volume"):
+                return int(round(self.voice_manager._get_voice_volume() * 100))
+            return int(round(getattr(self.preferences, "voice_volume", 0.8) * 100))
+        return 100
+
+    def _set_channel_volume_percent(self, channel: str, percent: int):
+        msg_keys = {
+            "sound": "main-sound-volume",
+            "music": "main-music-volume",
+            "ambience": "main-ambience-volume",
+            "voice": "main-voice-volume",
+        }
+        msg_key = msg_keys.get(channel, "main-sound-volume")
+        if channel == "sound":
+            clamped = max(10, min(100, percent))
+            if self.sound_manager:
+                self.sound_manager.set_sound_volume(clamped / 100.0)
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/sound_volume", clamped)
+        elif channel == "music":
+            clamped = max(0, min(100, percent))
+            if self.sound_manager:
+                self.sound_manager.set_music_volume(clamped / 100.0)
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/music_volume", clamped)
+        elif channel == "ambience":
+            clamped = max(0, min(100, percent))
+            if self.sound_manager:
+                self.sound_manager.set_ambience_volume(clamped / 100.0)
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/ambience_volume", clamped)
+        elif channel == "voice":
+            clamped = max(10, min(100, percent))
+            if self.voice_manager:
+                self.voice_manager.set_voice_volume(clamped / 100.0)
+            self.preferences.voice_volume = clamped / 100.0
+            self._pending_voice_volume = clamped / 100.0
+            self.speaker.speak(Localization.get(msg_key, value=clamped))
+            self.modify_option_value("audio/voice_volume", clamped)
+
+    def _speak_current_volume_channel(self):
+        channel = self._get_active_volume_channel()
+        pct = self._get_channel_volume_percent(channel)
+        msg_keys = {
+            "sound": "main-sound-volume",
+            "music": "main-music-volume",
+            "ambience": "main-ambience-volume",
+            "voice": "main-voice-volume",
+        }
+        msg_key = msg_keys.get(channel, "main-sound-volume")
+        self.speaker.speak(Localization.get(msg_key, value=pct))
+
+    def on_cycle_volume(self, event):
+        """Handle F6 to cycle to next volume channel."""
+        self._current_volume_channel_index = (self._current_volume_channel_index + 1) % len(self._volume_channels)
+        self._speak_current_volume_channel()
+
+    def on_cycle_volume_prev(self, event):
+        """Handle Shift+F6 to cycle to previous volume channel."""
+        self._current_volume_channel_index = (self._current_volume_channel_index - 1) % len(self._volume_channels)
+        self._speak_current_volume_channel()
+
+    def on_active_volume_down(self, event):
+        """Handle F7 to decrease volume of current active channel."""
+        channel = self._get_active_volume_channel()
+        current_pct = self._get_channel_volume_percent(channel)
+        self._set_channel_volume_percent(channel, current_pct - 10)
+
+    def on_active_volume_up(self, event):
+        """Handle F8 to increase volume of current active channel."""
+        channel = self._get_active_volume_channel()
+        current_pct = self._get_channel_volume_percent(channel)
+        self._set_channel_volume_percent(channel, current_pct + 10)
+
     def on_ambience_down(self, event):
-        """Handle F7 to decrease ambience volume."""
-        current_volume = self.sound_manager.ambience_volume
-        new_volume = max(0.0, current_volume - 0.1)
-        self.sound_manager.set_ambience_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-ambience-volume", value=percentage))
-        self.modify_option_value("audio/ambience_volume", percentage)
+        self._set_channel_volume_percent("ambience", self._get_channel_volume_percent("ambience") - 10)
 
     def on_ambience_up(self, event):
-        """Handle F8 to increase ambience volume."""
-        current_volume = self.sound_manager.ambience_volume
-        new_volume = min(1.0, current_volume + 0.1)
-        self.sound_manager.set_ambience_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-ambience-volume", value=percentage))
-        self.modify_option_value("audio/ambience_volume", percentage)
+        self._set_channel_volume_percent("ambience", self._get_channel_volume_percent("ambience") + 10)
 
     def on_volume_down(self, event):
-        """Handle F9 to decrease music volume."""
-        current_volume = self.sound_manager.music_volume
-        new_volume = max(0.0, current_volume - 0.1)
-        self.sound_manager.set_music_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-music-volume", value=percentage))
-        self.modify_option_value("audio/music_volume", percentage)
+        self._set_channel_volume_percent("music", self._get_channel_volume_percent("music") - 10)
 
     def on_volume_up(self, event):
-        """Handle F10 to increase music volume."""
-        current_volume = self.sound_manager.music_volume
-        new_volume = min(1.0, current_volume + 0.1)
-        self.sound_manager.set_music_volume(new_volume)
-        percentage = int(new_volume * 100)
-        self.speaker.speak(Localization.get("main-music-volume", value=percentage))
-        self.modify_option_value("audio/music_volume", percentage)
+        self._set_channel_volume_percent("music", self._get_channel_volume_percent("music") + 10)
+
+    def on_open_personal_options(self, event):
+        """Handle F9 to open the personal and options menu from anywhere."""
+        if self.connected and self.current_menu_id != "personal_options_menu":
+            self._prepare_for_menu_shortcut_navigation()
+            self.network.send_packet({"type": "open_personal_options"})
 
     def on_ping(self, event):
         """Handle Alt+P to ping the server and measure latency."""
@@ -1291,7 +1389,9 @@ class MainWindow(wx.Frame):
     })
     # Administration-family menus. Permission remains enforced by the server.
     _ADMIN_MENU_IDS = frozenset({
-        "admin_menu", "account_approval_menu", "pending_user_actions_menu",
+        "admin_menu", "admin_users_menu", "admin_moderation_menu", "admin_sanctions_menu",
+        "admin_server_content_menu", "admin_system_menu",
+        "account_approval_menu", "pending_user_actions_menu",
         "promote_admin_menu", "demote_admin_menu", "promote_confirm_menu",
         "demote_confirm_menu", "kick_menu", "kick_confirm_menu",
         "broadcast_choice_menu", "ban_menu", "ban_duration_menu",
@@ -1302,6 +1402,9 @@ class MainWindow(wx.Frame):
         "admin_motd_version_input", "admin_motd_input",
         "ban_custom_reason_input", "mute_custom_reason_input",
         "admin_target_search_input",
+        "grant_coins_menu", "grant_coins_amount_menu", "grant_coins_input",
+        "admin_nick_changes_menu", "admin_nick_change_actions_menu",
+        "admin_nick_reject_reason_input", "admin_nick_reject_refund_menu",
     })
     # Options-family menus.
     _OPTIONS_MENU_IDS = frozenset({
@@ -1318,7 +1421,7 @@ class MainWindow(wx.Frame):
     })
 
     def on_open_friends_hub(self, event):
-        """Handle Alt+F to open the friends hub from anywhere."""
+        """Handle Ctrl+F to open the friends hub from anywhere."""
         if self.connected and self.current_menu_id not in self._FRIENDS_MENU_IDS:
             self._prepare_for_menu_shortcut_navigation()
             self.network.send_packet({"type": "open_friends_hub"})
@@ -1764,6 +1867,10 @@ class MainWindow(wx.Frame):
                 key_name = "enter"
         # Handle letter keys (case insensitive)
         elif 65 <= key_code <= 90:  # A-Z
+            # Ctrl+F and Ctrl+U are handled by the accelerator table.
+            if event.ControlDown() and key_code in [ord("F"), ord("U")] and not event.AltDown() and not event.ShiftDown():
+                event.Skip()
+                return
             # Alt shortcuts are handled by the accelerator table.
             if event.AltDown() and key_code in [
                 ord("P"), ord("M"), ord("C"), ord("V"), ord("H"),
@@ -2421,22 +2528,52 @@ class MainWindow(wx.Frame):
              self._reconnect_delay = min(self._reconnect_delay * 2, 10)
              wx.CallLater(self._reconnect_delay * 1000, self._attempt_silent_reconnect)
 
+    def _apply_username_update(self, canonical_username):
+        """Update in-memory and saved credentials when the server renames the account."""
+        if not isinstance(canonical_username, str) or not canonical_username:
+            return
+        previous_username = self.credentials.get("username")
+        self.credentials["username"] = canonical_username
+        if self.network:
+            self.network.username = canonical_username
+        account_id = self.credentials.get("account_id")
+        if (
+            previous_username != canonical_username
+            and self.config_manager
+            and self.server_id
+            and account_id
+        ):
+            self.config_manager.update_account(
+                self.server_id,
+                account_id,
+                username=canonical_username,
+            )
+
+    def on_username_updated(self, packet):
+        """Handle immediate username update packet from server."""
+        self._apply_username_update(packet.get("username"))
+
     def on_server_disconnect(self, packet):
         """Handle server disconnect packet."""
         if getattr(self, 'forum_media', None):
             self.forum_media.close()
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.current_table_context_id = ""
+        if packet.get("username"):
+            self._apply_username_update(packet.get("username"))
         should_reconnect = packet.get("reconnect", False)
 
         if should_reconnect:
-            # Server is restarting, reconnect after 3 seconds
+            self.connected = False
             self.expecting_reconnect = True
-            self.speaker.speak(
-                Localization.get("main-reconnecting-in-3s"), interrupt=False
-            )
+            reconnect_immediate = bool(packet.get("reconnect_immediate", False))
+            if not reconnect_immediate:
+                self.speaker.speak(
+                    Localization.get("main-reconnecting-in-3s"), interrupt=False
+                )
 
             def reconnect():
+                self.reconnect_attempts = 0
                 server_url = self.credentials.get("server_url")
                 username = self.credentials.get("username")
                 password = self.credentials.get("password", "")
@@ -2444,7 +2581,12 @@ class MainWindow(wx.Frame):
                     self.speaker.speak(Localization.get("main-reconnecting"), interrupt=False)
                     self._do_reconnect(server_url, username, password)
 
-            wx.CallLater(3000, reconnect)
+            delay_ms = (
+                200
+                if reconnect_immediate
+                else int(packet.get("reconnect_after_ms", 3000) or 3000)
+            )
+            wx.CallLater(delay_ms, reconnect)
             return
 
         # Explicit disconnect, close the client
@@ -2499,6 +2641,20 @@ class MainWindow(wx.Frame):
         except Exception:
             self._finish_local_exit()
 
+    def on_switch_server(self, packet):
+        """Handle server switch request: cleanly exit to server selector without reconnecting."""
+        self.disconnect_reason = "switch_server"
+        self.quitting = True
+        self.is_reconnecting = False
+        self.expecting_reconnect = False
+        self._logout_request_pending = False
+        self._cancel_logout_response_timer()
+        try:
+            self.speaker.speak(Localization.get("login-server-switched-exit"), interrupt=True)
+        except Exception:
+            pass
+        wx.CallLater(300, self._finish_local_exit)
+
     def on_update_preference(self, packet):
         """Handle preference update from server."""
         key = packet.get("key") # e.g. "audio/music_volume"
@@ -2537,6 +2693,15 @@ class MainWindow(wx.Frame):
             self._pending_voice_volume = vol / 100.0
         elif key == "audio/input_device_id" and not value:
             self.config_manager.set_client_option("audio/input_device_name", "", create_mode=True)
+        elif key == "audio/voice_noise_suppression":
+            if self.voice_manager:
+                self.voice_manager.set_noise_suppression(bool(value))
+        elif key == "audio/voice_spatial_audio":
+            if self.voice_manager:
+                self.voice_manager.set_spatial_audio_enabled(bool(value))
+        elif key == "audio/voice_auto_gain":
+            if self.voice_manager:
+                self.voice_manager.set_auto_gain_control(bool(value))
 
         # Reload full options to be safe
         self.client_options = self.config_manager.get_client_options()
@@ -2734,6 +2899,12 @@ class MainWindow(wx.Frame):
                 self.config_manager.set_client_option(
                     "audio/input_device_name",
                     preferences["desktop_audio_input_device_name"],
+                    create_mode=True,
+                )
+            if "limit_unfocused_audio" in preferences:
+                self.config_manager.set_client_option(
+                    "audio/limit_unfocused_audio_and_tts",
+                    bool(preferences["limit_unfocused_audio"]),
                     create_mode=True,
                 )
             
@@ -3164,6 +3335,19 @@ class MainWindow(wx.Frame):
         )  # Check if message should be muted (no TTS)
         store_in_history = packet.get("history", True) is not False
 
+        limit_unfocused = self.config_manager.get_client_option(
+            "audio/limit_unfocused_audio_and_tts", False
+        )
+        if limit_unfocused and not self.IsActive():
+            key = str(packet.get("key") or "")
+            is_turn = key == "game-turn-start-you"
+            if not is_turn:
+                is_muted = True
+            else:
+                is_muted = False
+                if hasattr(self, "sound_manager") and self.sound_manager:
+                    self.sound_manager.play_sound("turn.ogg")
+
         if text:
             self.add_history(
                 text,
@@ -3210,6 +3394,15 @@ class MainWindow(wx.Frame):
         buffer_name = packet.get("buffer")
         if buffer_name and self.buffer_system.is_effectively_muted(buffer_name):
             return
+
+        limit_unfocused = self.config_manager.get_client_option(
+            "audio/limit_unfocused_audio_and_tts", False
+        )
+        if limit_unfocused and not self.IsActive():
+            asset = str(packet.get("asset") or "").lower()
+            if "turn" not in asset:
+                return
+
         self.sound_manager.handle_audio_command(packet)
 
     def on_table_create(self, packet):
@@ -3586,6 +3779,8 @@ class MainWindow(wx.Frame):
         in place of the generic menuclick. Indices must match the current
         list contents, so this is called after the menu is fully built.
         """
+        if hasattr(self.sound_manager, "stop_sound"):
+            self.sound_manager.stop_sound("menu_item_preview")
         for i in range(self.menu_list.GetCount()):
             sound = item_sounds[i] if i < len(item_sounds) else None
             self.menu_list.SetClientData(i, {"sound": sound} if sound else None)
@@ -3668,6 +3863,11 @@ class MainWindow(wx.Frame):
             self.voice_mic_toggle_pending = None
             self.voice_mic_enabled = False
         self.update_voice_ui()
+
+    def on_voice_pans(self, packet):
+        """Apply spatial voice panning directives from server."""
+        if hasattr(self, "voice_manager") and self.voice_manager:
+            self.voice_manager.apply_voice_pans(packet)
 
     def on_server_game_list(self, packet):
         """Handle game_list packet from server."""

@@ -323,20 +323,21 @@ class TestTableInviteReclaim:
         assert "decline" not in action_ids
 
     @pytest.mark.asyncio
-    async def test_direct_invite_rejects_non_friend_without_notifying_target(self):
+    async def test_direct_invite_allows_non_friend_without_automatic_admission(self):
         host = self._create_online_user("Host")
         guest = self._create_online_user("Guest")
         seated = self._create_online_user("Seated")
         table, _ = self._create_started_table(host, seated)
 
-        assert not await self.server._send_table_invite(host, table, guest)
+        assert await self.server._send_table_invite(host, table, guest)
 
-        assert guest.username not in self.server._pending_invites
-        assert guest.messages == []
-        assert host.get_last_spoken() == Localization.get(
-            host.locale,
-            "host-invite-friend-unavailable",
-        )
+        assert guest.username in self.server._pending_invites
+        assert self.server._tables.find_user_table(guest.username) is None
+        assert self.server._pending_invites[guest.username]["invitee_uuid"] == guest.uuid
+        assert "table_invite.ogg" in self._sound_names(guest)
+        actions = self._get_menu_action_ids(guest, "table_invite_prompt")
+        assert self._invite_decision_id(guest, "accept") in actions
+        assert self._invite_decision_id(guest, "decline") in actions
 
     @pytest.mark.asyncio
     async def test_direct_invite_allows_human_to_share_bot_base_name(
@@ -1100,6 +1101,41 @@ class TestTableInviteReclaim:
         assert self.db.get_saved_table(record.id) is None
 
     @pytest.mark.asyncio
+    async def test_saved_table_restore_with_offline_replaced_human_continues_with_bot(self):
+        restorer = self._create_online_user("Restorer")
+        guest = self._create_online_user("Guest")
+        record = self._save_pig_game(restorer, guest, replace=guest)
+
+        # Guest goes offline before restore
+        self.server._users.pop(guest.username)
+
+        restorer.clear_messages()
+        await self.server._restore_saved_table(restorer, record.id)
+
+        table = self.server._tables.find_user_table(restorer.username)
+        assert table is not None
+        assert self.server._tables.find_user_table(guest.username) is None
+        restored = table.game.get_player_by_id(guest.uuid)
+        assert restored is not None
+        assert restored.is_bot is True
+        assert restored.replaced_human is True
+        assert restored.replaced_human_name == guest.username
+        assert self.db.get_saved_table(record.id) is None
+        assert restorer.get_last_spoken() == Localization.get(
+            restorer.locale,
+            "table-restored",
+        )
+
+        # When guest returns and rejoins later, they can reclaim the seat
+        self.server._users[guest.username] = guest
+        self.server._auto_join_table(guest, table, table.game_type)
+        assert self.server._tables.find_user_table(guest.username) is table
+        reclaimed = table.game.get_player_by_id(guest.uuid)
+        assert reclaimed.is_bot is False
+        assert reclaimed.replaced_human is False
+        assert reclaimed.name == guest.username
+
+    @pytest.mark.asyncio
     async def test_saved_humanity_table_restore_replays_music_after_menu_stop(self):
         host = self._create_online_user("Host")
         guest = self._create_online_user("Guest")
@@ -1169,7 +1205,10 @@ class TestTableInviteReclaim:
         saved_state = json.loads(record.table_state_json)
         assert saved_state["properties"] == {
             "banned_uuids": [banned.uuid],
+            "created_at": table.created_at,
             "is_private": True,
+            "peak_occupancy": 2,
+            "total_unique_visitors": ["Banned", "Host"],
         }
 
         await self.server._restore_saved_table(host, record.id)

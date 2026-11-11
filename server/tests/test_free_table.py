@@ -13,6 +13,7 @@ from ..core.server import (
     HOST_GAME_SWITCH_ACTION_PREFIX,
     HOST_GAME_SWITCH_CONFIRM_MENU,
     HOST_GAME_SWITCH_MENU,
+    HOST_TABLE_STATS_MENU,
     VERSION,
     TABLE_MEMBERS_MENU,
     Server,
@@ -69,15 +70,32 @@ async def test_free_table_creation_and_conversation_menu(room, client_type):
     assert len(table.members) == 2
     assert game.status == "waiting" and not game.game_active
     for user in (host, guest):
+        surface = user.get_current_menu_items("turn_menu")
+        assert len(surface) == 0
+        participant = game.get_player_by_id(user.uuid)
+        game.handle_event(participant, {
+            "type": "keybind", "key": "escape",
+        })
+        action_ids = {item.id for item in user.get_current_menu_items("actions_menu")}
+        assert {"whos_at_table", "read_table_presence", "read_table_topic", "leave_game", "game_rules", "go_back"} <= action_ids
+        if user is host:
+            assert {"host_management", "switch_game", "set_table_topic"} <= action_ids
+        else:
+            assert not {"host_management", "switch_game", "set_table_topic"} & action_ids
+        game.handle_event(participant, {
+            "type": "menu", "menu_id": "actions_menu", "selection_id": "go_back",
+        })
+        assert user.get_current_menu_items("turn_menu") == surface
         ids = [a.action.id for a in game.get_all_visible_actions(game.get_player_by_id(user.uuid))]
         assert "whos_at_table" in ids and "read_table_presence" in ids
         assert "leave_game" in ids
-        assert not set(ids) & {"start_game", "add_bot", "remove_bot", "check_scores", "save_table", "whose_turn"}
+        assert not set(ids) & {"start_game", "add_bot", "remove_bot", "check_scores", "whose_turn"}
     player = game.get_player_by_id(host.uuid)
-    for action in ("start_game", "add_bot", "remove_bot", "save_table"):
+    for action in ("start_game", "add_bot", "remove_bot"):
         assert game.find_action(player, action) is None
+    assert game.find_action(player, "save_table") is not None
     before = game.to_json()
-    for key in ("enter", "b", "ctrl+s"):
+    for key in ("enter", "b"):
         game.handle_event(player, {"type": "keybind", "key": key})
     assert game.to_json() == before
     with pytest.raises(ValueError, match="only admit people"):
@@ -169,13 +187,19 @@ async def test_w_speaks_presence_and_ctrl_w_opens_people_menu(room, control):
 
 
 @pytest.mark.asyncio
-async def test_ctrl_u_still_opens_the_same_people_menu(room):
+async def test_ctrl_u_opens_online_users_and_returns_to_the_same_table(room):
     server, host, _guest = room
     table = await create_room(server, host)
     await server._handle_keybind(
         SimpleNamespace(username=host.username), {"type": "keybind", "key": "u", "control": True}
     )
-    assert server._user_states[host.username]["menu"] == TABLE_MEMBERS_MENU
+    assert server._user_states[host.username]["menu"] == "online_users"
+    assert server._tables.find_user_table(host.username) is table
+    await server._handle_online_users_selection(
+        host, "back", dict(server._user_states[host.username])
+    )
+    assert server._user_states[host.username]["menu"] == "in_game"
+    assert server._tables.find_user_table(host.username) is table
 
 
 def test_w_is_reserved_in_every_activity_and_shifted_bindings_remain_available():
@@ -322,7 +346,7 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await receive(ws, lambda p: p.get("menu_id") == "main_menu")
             await menu_choice("main_menu", "create_free_table")
             menu = await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
-            assert "start_game" not in [i.get("id") for i in menu["items"]]
+            assert len(menu["items"]) == 0
             table = service._tables.find_user_table("RoomTester")
             table_id = table.table_id
             await send({"type": "keybind", "key": "w", "menu_id": "turn_menu"})
@@ -333,7 +357,9 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await menu_choice(TABLE_MEMBERS_MENU, "back")
             await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
             # Select a real first-page target, then switch back through the host menu.
-            await menu_choice("turn_menu", "switch_game")
+            await send({"type": "keybind", "key": "escape", "menu_id": "turn_menu"})
+            await receive(ws, lambda p: p.get("menu_id") == "actions_menu")
+            await menu_choice("actions_menu", "switch_game")
             choices = await receive(ws, lambda p: p.get("menu_id") == HOST_GAME_SWITCH_MENU)
             target_id = next(i["id"] for i in choices["items"] if i.get("id", "").startswith(HOST_GAME_SWITCH_ACTION_PREFIX))
             await menu_choice(HOST_GAME_SWITCH_MENU, target_id)
@@ -352,7 +378,8 @@ async def test_free_table_creation_and_bidirectional_switch_over_websocket(tmp_p
             await menu_choice(HOST_GAME_SWITCH_MENU, HOST_GAME_SWITCH_ACTION_PREFIX + "freetable")
             await receive(ws, lambda p: p.get("menu_id") == HOST_GAME_SWITCH_CONFIRM_MENU)
             await menu_choice(HOST_GAME_SWITCH_CONFIRM_MENU, "yes")
-            await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
+            menu = await receive(ws, lambda p: p.get("menu_id") == "turn_menu")
+            assert len(menu["items"]) == 0
             assert isinstance(table.game, FreeTable) and table.table_id == table_id
             await send({"type": "logout"})
             await receive(ws, lambda p: p.get("type") == "force_exit")
@@ -410,3 +437,214 @@ def test_old_game_saves_gain_w_without_replacing_their_actions(status, spectator
     restored.handle_event(player, {"type": "keybind", "key": "w"})
     assert "1 persona" in host.get_last_spoken()
     assert "El jefe de mesa es LegacyHost" in host.get_last_spoken()
+
+
+@pytest.mark.asyncio
+async def test_free_table_host_management_statistics_and_saving(room):
+    server, host, guest = room
+    # Register host in db for saves
+    rec_host = server._db.create_user(host.username, "password", locale="es")
+    host._uuid = rec_host.uuid
+    rec_guest = server._db.create_user(guest.username, "password", locale="es")
+    guest._uuid = rec_guest.uuid
+
+    table = await create_room(server, host)
+    server._auto_join_table(guest, table, "freetable")
+    table.created_at = 1775563200.0  # 2026-04-07 12:00:00 UTC (07/04/2026)
+
+    # Open host management menu
+    server._open_host_management_from_game(host, table)
+    assert server._user_states[host.username]["menu"] == "host_management_menu"
+    menu_items = host.get_current_menu_items("host_management_menu")
+    menu_ids = [item.id for item in menu_items]
+    assert "save_table" in menu_ids
+    assert "table_stats" in menu_ids
+
+    # View table stats
+    await server._handle_host_management_selection(host, "table_stats", {"table_id": table.table_id})
+    assert server._user_states[host.username]["menu"] == HOST_TABLE_STATS_MENU
+    stats_items = host.get_current_menu_items(HOST_TABLE_STATS_MENU)
+    stats_map = {item.id: item.text for item in stats_items}
+
+    # Verify readable creation date formatted as 07/04/2026
+    assert "stat_created_at" in stats_map
+    assert "07/04/2026" in stats_map["stat_created_at"]
+    assert "stat_uptime" in stats_map
+    assert "stat_user_duration" in stats_map
+    assert "stat_peak" in stats_map
+    assert "2" in stats_map["stat_peak"]
+    assert "stat_total_visitors" in stats_map
+    assert "2" in stats_map["stat_total_visitors"]
+    assert "stat_game" in stats_map
+    assert "Mesa libre" in stats_map["stat_game"]
+    assert "stat_host" in stats_map
+    assert "Host" in stats_map["stat_host"]
+    assert "stat_members" in stats_map
+    assert "Host" in stats_map["stat_members"] and "Guest" in stats_map["stat_members"]
+    assert "stat_spectators" in stats_map
+    # Confirm modifiers (voice and privacy) are removed
+    assert "stat_privacy" not in stats_map
+    assert "stat_voice" not in stats_map
+
+    # Selecting back returns to host management menu
+    await server._handle_table_stats_selection(host, "back", {"table_id": table.table_id})
+    assert server._user_states[host.username]["menu"] == "host_management_menu"
+
+    # Save table from host management menu
+    await server._handle_host_management_selection(host, "save_table", {"table_id": table.table_id})
+    assert server._tables.get_table(table.table_id) is None
+    assert server._user_states[host.username]["menu"] == "main_menu"
+    assert server._user_states[guest.username]["menu"] == "main_menu"
+
+    saved_records = server._db.get_user_saved_tables(host.username)
+    assert len(saved_records) == 1
+    assert saved_records[0].game_type == "freetable"
+
+
+@pytest.mark.asyncio
+async def test_free_table_save_and_restore(room):
+    server, host, guest = room
+    rec_host = server._db.create_user(host.username, "password", locale="es")
+    host._uuid = rec_host.uuid
+    rec_guest = server._db.create_user(guest.username, "password", locale="es")
+    guest._uuid = rec_guest.uuid
+
+    table = await create_room(server, host)
+    server._auto_join_table(guest, table, "freetable")
+    original_created_at = 1775563200.0  # 2026-04-07 12:00:00 UTC
+    table.created_at = original_created_at
+
+    # Host saves table via ctrl+s keybind
+    player = table.game.get_player_by_id(host.uuid)
+    table.game.handle_event(player, {"type": "keybind", "key": "ctrl+s"})
+
+    # Table is destroyed upon save
+    assert server._tables.find_user_table(host.username) is None
+    assert server._tables.find_user_table(guest.username) is None
+
+    # Verify saved record exists in database
+    saved_records = server._db.get_user_saved_tables(host.username)
+    assert len(saved_records) == 1
+    save_id = saved_records[0].id
+    assert saved_records[0].game_type == "freetable"
+
+    # Host restores the saved table
+    await server._restore_saved_table(host, save_id)
+
+    restored_table = server._tables.find_user_table(host.username)
+    assert restored_table is not None
+    assert isinstance(restored_table.game, FreeTable)
+    assert restored_table.game_type == "freetable"
+    assert restored_table.host == host.username
+    assert len(restored_table.members) == 2
+    assert {m.username for m in restored_table.members} == {host.username, guest.username}
+    # Verify created_at is preserved
+    assert restored_table.created_at == original_created_at
+
+    # Check stats on restored table
+    stats_items = server._get_table_stats_items(host, restored_table)
+    stats_map = {item.id: item.text for item in stats_items}
+    assert "07/04/2026" in stats_map["stat_created_at"]
+    assert "Host" in stats_map["stat_host"]
+    assert "stat_peak" in stats_map
+    assert "stat_total_visitors" in stats_map
+    assert "stat_user_duration" in stats_map
+    assert "stat_privacy" not in stats_map
+    assert "stat_voice" not in stats_map
+
+
+@pytest.mark.asyncio
+async def test_free_table_set_topic_flow(room):
+    server, host, guest = room
+    table = await create_room(server, host)
+    game = table.game
+    server._auto_join_table(guest, table, "freetable")
+    game.flush_menus()
+
+    host_player = game.get_player_by_id(host.uuid)
+    guest_player = game.get_player_by_id(guest.uuid)
+
+    # Pressing t when no topic is set announces no topic
+    guest.clear_messages()
+    game.handle_event(guest_player, {"type": "keybind", "key": "t"})
+    assert any(
+        Localization.get("es", "free-table-no-topic") in s
+        for s in guest.get_spoken_messages()
+    )
+
+    # Guest cannot set topic via action or keybind
+    game.handle_event(guest_player, {"type": "keybind", "key": "ctrl+t"})
+    assert not any(msg.type == "show_editbox" for msg in guest.messages)
+    assert any(
+        Localization.get("es", "action-not-host") in s
+        for s in guest.get_spoken_messages()
+    )
+
+    # Host presses ctrl+t
+    game.handle_event(host_player, {"type": "keybind", "key": "ctrl+t"})
+    editbox_msgs = [m for m in host.messages if m.type == "show_editbox"]
+    assert len(editbox_msgs) > 0
+    assert editbox_msgs[-1].data["input_id"] == "action_input_editbox"
+
+    # Host submits topic
+    game.handle_event(host_player, {
+        "type": "editbox",
+        "input_id": "action_input_editbox",
+        "text": "Charla nocturna",
+    })
+    assert game.topic == "Charla nocturna"
+    assert any("Charla nocturna" in s for s in host.get_spoken_messages())
+    assert any("Charla nocturna" in s for s in guest.get_spoken_messages())
+
+    # Pressing t now announces the topic
+    guest.clear_messages()
+    game.handle_event(guest_player, {"type": "keybind", "key": "t"})
+    assert any("Charla nocturna" in s for s in guest.get_spoken_messages())
+
+    # Actions menu label reflects dynamic topic
+    game.handle_event(host_player, {"type": "keybind", "key": "escape"})
+    actions = {item.id: item.text for item in host.get_current_menu_items("actions_menu")}
+    assert "set_table_topic" in actions
+    assert "Charla nocturna" in actions["set_table_topic"]
+
+    # Listing reflects the topic
+    listing = server._format_active_table_listing(host, table, "Mesa libre")
+    assert "Mesa libre (Charla nocturna)" in listing
+
+    # New guest joining hears the current topic
+    third = MockUser("Third", uuid="third-id", locale="es")
+    server._users["Third"] = third
+    server._auto_join_table(third, table, "freetable")
+    assert any("Charla nocturna" in s for s in third.get_spoken_messages())
+
+    # Pressing W (read presence) also announces topic
+    third_player = game.get_player_by_id(third.uuid)
+    third.clear_messages()
+    game.handle_event(third_player, {"type": "keybind", "key": "w"})
+    assert any("Charla nocturna" in s for s in third.get_spoken_messages())
+
+    # Host clears topic by submitting empty text
+    game.handle_event(host_player, {"type": "keybind", "key": "ctrl+t"})
+    game.handle_event(host_player, {
+        "type": "editbox",
+        "input_id": "action_input_editbox",
+        "text": "",
+    })
+    assert game.topic == ""
+    listing_cleared = server._format_active_table_listing(host, table, "Mesa libre")
+    assert "(Charla nocturna)" not in listing_cleared
+
+    # Pressing t after topic cleared announces no topic
+    host.clear_messages()
+    game.handle_event(host_player, {"type": "keybind", "key": "t"})
+    assert any(
+        Localization.get("es", "free-table-no-topic") in s
+        for s in host.get_spoken_messages()
+    )
+
+    # Serialization and save/load
+    game.topic = "Filosofía y café"
+    saved_json = game.to_json()
+    restored = FreeTable.from_json(saved_json)
+    assert restored.topic == "Filosofía y café"
+

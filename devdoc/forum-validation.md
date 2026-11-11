@@ -1,5 +1,9 @@
 # Cierre de pruebas de esta etapa — 10 de noviembre de 2026
 
+Este informe corresponde a la base anterior a la sincronización con develop.
+Para el estado actualizado y su validación, consultar
+[forum-develop-sync.md](forum-develop-sync.md).
+
 Se retomaron las pruebas de escritorio, web y servidor por indicación del usuario.
 Móvil conserva su pausa y su código pendiente. No se inició Android ni se reparó
 su instalación de dependencias.

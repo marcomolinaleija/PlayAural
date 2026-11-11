@@ -64,8 +64,8 @@ async def test_motd_admin_flow(mock_server):
         "text": "2"
     })
 
-    # Official languages are edited in any order; the community locale is skipped.
-    for language in ("vi", "en"):
+    # The official language (es) is edited; community locales like en and vi can also be edited.
+    for language in ("es", "en", "vi"):
         await server._handle_menu(
             user.connection,
             {"selection_id": f"localized_text_locale_{language}"},
@@ -90,7 +90,7 @@ async def test_motd_admin_flow(mock_server):
     assert version == 2
     assert server._db.get_motd(version, "en") == "Message for en"
     assert server._db.get_motd(version, "vi") == "Message for vi"
-    assert server._db.get_motd(version, "fa") == "Message for en"
+    assert server._db.get_motd(version, "fa") == "Message for es"
 
     # 5. Admin clicks View
     await server._handle_menu(user.connection, {"selection_id": "view"})

@@ -44,6 +44,10 @@ class NetworkManager:
             client_version: Version string of the client
         """
         try:
+            # Wait for old thread to finish if it is stopping
+            if self.should_stop and self.thread and self.thread.is_alive():
+                self.thread.join(timeout=2.0)
+
             # Prevent multiple concurrent connection attempts
             if self.is_connecting():
                 return False
@@ -248,6 +252,8 @@ class NetworkManager:
             self.main_window.on_receive_chat(packet)
         elif packet_type == "force_exit":
              self.main_window.on_force_exit(packet)
+        elif packet_type == "switch_server":
+             self.main_window.on_switch_server(packet)
         elif packet_type == "update_preference":
              self.main_window.on_update_preference(packet)
         elif packet_type == "pong":
@@ -262,5 +268,9 @@ class NetworkManager:
             self.main_window.on_voice_context_closed(packet)
         elif packet_type == "voice_settings":
             self.main_window.on_voice_settings(packet)
+        elif packet_type == "voice_pans":
+            self.main_window.on_voice_pans(packet)
         elif packet_type == "table_context":
             self.main_window.on_table_context(packet)
+        elif packet_type == "username_updated":
+            self.main_window.on_username_updated(packet)

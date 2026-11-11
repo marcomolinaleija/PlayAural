@@ -45,7 +45,7 @@ const WEB_CLIENT_CONFIG = window.PLAYAURAL_WEB_CONFIG || {};
 const DEFAULT_SERVER_URL = String(
   WEB_CLIENT_CONFIG.serverUrl
   || window.PLAYAURAL_SERVER_URL
-  || "wss://playaural.ddt.one:443",
+  || "wss://playaural.app:443",
 ).trim();
 const CONFIG_KEY = "playaural_config";
 const REMEMBER_KEY = "pa_remember";
@@ -750,7 +750,7 @@ class VoiceChatManager {
     if (previous && this.currentTableContextId && previous !== this.currentTableContextId) {
       this.app.audio.stopAll(800);
     }
-    if (!this.currentTableContextId) {
+    if (!this.currentTableContextId && (this.context?.scope || "table") === "table") {
       if (this.state === "connected" || this.state === "connecting") {
         this.cleanup(false, false);
       }
@@ -844,23 +844,21 @@ class VoiceChatManager {
       this.setStatus("voice-chat-unavailable", true);
       return;
     }
-    if (!this.currentTableContextId) {
-      this.setStatus("voice-not-at-table", true);
-      return;
-    }
+    const scope = this.currentTableContextId ? "table" : "global";
+    const contextId = this.currentTableContextId || "lobby";
     if (!window.LivekitClient || !window.LivekitClient.Room) {
       this.setStatus("voice-chat-sdk-missing", true);
       return;
     }
     this.joinGeneration += 1;
-    this.requestedContextId = this.currentTableContextId;
+    this.requestedContextId = contextId;
     this.pendingJoin = true;
     this.state = "connecting";
     this.setStatus("voice-chat-joining", true);
     this.updateUI();
     this.app.send({
       type: "voice_join",
-      scope: "table",
+      scope: scope,
       context_id: this.requestedContextId,
     });
   }
@@ -868,7 +866,12 @@ class VoiceChatManager {
   acceptServerJoin(packet) {
     const scope = packet.scope || "table";
     const contextId = packet.context_id || "";
-    if (scope !== "table" || !contextId || contextId !== this.currentTableContextId) {
+    const invalid = scope === "table"
+      ? (!contextId || contextId !== this.currentTableContextId)
+      : scope === "global"
+        ? !contextId
+        : true;
+    if (invalid) {
       this.app.send({
         type: "voice_leave",
         scope,
@@ -1206,9 +1209,17 @@ class VoiceChatManager {
   }
 }
 
+const VOLUME_CHANNELS = [
+  { id: "sound", flatKey: "sound_volume", serverKey: "audio/sound_volume", min: 10, max: 100, step: 10, messageKey: "main-sound-volume" },
+  { id: "music", flatKey: "music_volume", serverKey: "audio/music_volume", min: 0, max: 100, step: 10, messageKey: "main-music-volume" },
+  { id: "ambience", flatKey: "ambience_volume", serverKey: "audio/ambience_volume", min: 0, max: 100, step: 10, messageKey: "main-ambience-volume" },
+  { id: "voice", flatKey: "voice_volume", serverKey: "audio/voice_volume", min: 10, max: 100, step: 10, messageKey: "main-voice-volume" },
+];
+
 class PlayAuralWebApp {
   constructor({ validator }) {
     this.validator = validator;
+    this.currentVolumeChannelIndex = 0;
     this.store = createStore();
     this.a11y = createA11y({
       politeEl: byId("live-polite"),
@@ -1519,6 +1530,11 @@ class PlayAuralWebApp {
       onToggleBufferMute: () => this.historyView.toggleCurrentBufferMute(),
       onToggleTableChat: () => this.toggleChatMute("table"),
       onToggleGlobalChat: () => this.toggleChatMute("global"),
+      onCycleVolumeNext: () => this.cycleVolumeChannel(1),
+      onCycleVolumePrev: () => this.cycleVolumeChannel(-1),
+      onActiveVolumeDown: () => this.adjustActiveVolume(-10),
+      onActiveVolumeUp: () => this.adjustActiveVolume(10),
+      onOpenPersonalOptions: () => this.openPersonalOptions(),
       onAmbienceDown: () => this.adjustVolumePreference("ambience_volume", "audio/ambience_volume", -10, 0, 100, 10),
       onAmbienceUp: () => this.adjustVolumePreference("ambience_volume", "audio/ambience_volume", 10, 0, 100, 10),
       onMusicDown: () => this.adjustVolumePreference("music_volume", "audio/music_volume", -10, 0, 100, 10),
@@ -1695,6 +1711,38 @@ class PlayAuralWebApp {
     });
   }
 
+  getActiveVolumeChannel() {
+    const len = VOLUME_CHANNELS.length;
+    return VOLUME_CHANNELS[((this.currentVolumeChannelIndex % len) + len) % len];
+  }
+
+  speakCurrentVolumeChannel() {
+    const channel = this.getActiveVolumeChannel();
+    const value = snapNumberToStep(this.preferences[channel.flatKey] ?? channel.max, channel.min, channel.max, channel.max, channel.step);
+    const message = Localization.get(channel.messageKey, { value });
+    this.speak(message, { buffer: "system", noHistory: true });
+  }
+
+  cycleVolumeChannel(step = 1) {
+    this.currentVolumeChannelIndex = (this.currentVolumeChannelIndex + step + VOLUME_CHANNELS.length) % VOLUME_CHANNELS.length;
+    this.speakCurrentVolumeChannel();
+  }
+
+  adjustActiveVolume(delta) {
+    const channel = this.getActiveVolumeChannel();
+    this.adjustVolumePreference(channel.flatKey, channel.serverKey, delta, channel.min, channel.max, channel.step);
+  }
+
+  openPersonalOptions() {
+    if (!this.isConnected()) {
+      return;
+    }
+    if (this.store.state.currentMenu?.menuId === "personal_options_menu") {
+      return;
+    }
+    this.send({ type: "open_personal_options" });
+  }
+
   adjustVolumePreference(flatKey, serverKey, delta, min, max, step = 1) {
     const current = snapNumberToStep(this.preferences[flatKey] ?? max, min, max, max, step);
     const value = snapNumberToStep(current + delta, min, max, current, step);
@@ -1708,7 +1756,11 @@ class PlayAuralWebApp {
       ? "main-ambience-volume"
       : flatKey === "music_volume"
         ? "main-music-volume"
-        : "";
+        : flatKey === "sound_volume"
+          ? "main-sound-volume"
+          : flatKey === "voice_volume"
+            ? "main-voice-volume"
+            : "";
     const message = messageKey ? Localization.get(messageKey, { value }) : `${value}%`;
     this.speak(message, { buffer: "system", noHistory: true });
   }
@@ -2479,7 +2531,7 @@ class PlayAuralWebApp {
         this.webSpeech.speak(text);
       }
     } else {
-      this.a11y.announce(text, { assertive });
+      this.a11y.announce(text, { assertive, interrupt });
     }
   }
 
@@ -2572,10 +2624,22 @@ class PlayAuralWebApp {
       case "voice_settings":
         this.voice.applySettings(packet);
         break;
+      case "voice_pans":
+        break;
       case "disconnect":
         this.handleServerDisconnect(packet);
         break;
+      case "username_updated":
+        if (packet.username) {
+          this.lastUser = packet.username;
+          if (this.elements.username) {
+            this.elements.username.value = packet.username;
+          }
+          this.saveLocalConfig();
+        }
+        break;
       case "force_exit":
+      case "switch_server":
         this.handleForceExit(packet);
         break;
       case "audio":
@@ -2759,6 +2823,13 @@ class PlayAuralWebApp {
   }
 
   handleServerDisconnect(packet) {
+    if (packet.username) {
+      this.lastUser = packet.username;
+      if (this.elements.username) {
+        this.elements.username.value = packet.username;
+      }
+      this.saveLocalConfig();
+    }
     if (packet.reconnect === true) {
       this.shouldReconnect = true;
       this.manualDisconnect = false;
@@ -2766,11 +2837,15 @@ class PlayAuralWebApp {
       this.cleanupRuntime();
       this.network.disconnect();
       this.store.setConnection({ authenticated: false, status: "disconnected" });
+      const immediate = packet.reconnect_immediate === true;
+      const delayMs = immediate
+        ? 200
+        : (Number(packet.reconnect_after_ms) || SERVER_RESTART_RECONNECT_DELAY_MS);
       this.startReconnectWindow({
-        initialDelayMs: SERVER_RESTART_RECONNECT_DELAY_MS,
-        statusKey: "main-reconnecting-in-3s",
-        params: { seconds: Math.round(SERVER_RESTART_RECONNECT_DELAY_MS / 1000) },
-        speak: true,
+        initialDelayMs: delayMs,
+        statusKey: immediate ? "main-reconnecting" : "main-reconnecting-in-3s",
+        params: { seconds: Math.round(delayMs / 1000) },
+        speak: !immediate,
       });
       return;
     }
@@ -2806,9 +2881,10 @@ class PlayAuralWebApp {
   }
 
   handleVoiceContextClosed(packet) {
+    const packetScope = packet.scope || "table";
     if (
       this.voice.state === "connecting"
-      && (packet.scope || "table") === "table"
+      && (packetScope === "table" || packetScope === "global")
       && (packet.context_id || "") === this.voice.requestedContextId
     ) {
       this.voice.cleanup(false, false);
@@ -3109,6 +3185,7 @@ class PlayAuralWebApp {
   }
 
   activateMenuItem(item, index) {
+    this.audio.stopHandle?.("menu_item_preview");
     if (!isMenuItemActionable(item)) {
       return;
     }
@@ -3139,8 +3216,9 @@ class PlayAuralWebApp {
 
   playSelectionSound(item) {
     if (item?.sound) {
-      this.audio.playSound({ asset: item.sound });
+      this.audio.playSound({ asset: item.sound, handle: "menu_item_preview" });
     } else {
+      this.audio.stopHandle?.("menu_item_preview");
       this.audio.playSound({ asset: "menuclick.ogg", volume: 50 });
     }
     if (this.preferences.speech_mode === "web_speech" && item?.text) {
@@ -3149,6 +3227,7 @@ class PlayAuralWebApp {
   }
 
   sendEscape() {
+    this.audio.stopHandle?.("menu_item_preview");
     if (!this.isConnected()) {
       return;
     }

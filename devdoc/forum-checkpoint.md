@@ -1,5 +1,13 @@
 # Estado guardado del foro — 6 de noviembre de 2026
 
+## Sincronización autorizada con develop — 10 de noviembre
+
+El estado anterior se guardó en commits locales y en la rama
+`backup/forum-before-develop-20261110`. Se incorpora `origin/develop` (`8eef1c42`)
+exclusivamente en la rama del foro. El estado y la validación de esta base se
+documentan en [forum-develop-sync.md](forum-develop-sync.md). Móvil permanece
+pausado y la revisión interactiva de escritorio sigue pendiente.
+
 ## Pruebas retomadas y cierre de etapa — 10 de noviembre
 
 El usuario indicó continuar las pruebas para cerrar esta etapa por ahora. Se

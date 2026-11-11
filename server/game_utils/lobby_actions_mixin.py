@@ -64,12 +64,39 @@ class LobbyActionsMixin:
         """Start gameplay after all lobby-only preparation has completed."""
         if hasattr(self, "_dismiss_all_end_screens"):
             self._dismiss_all_end_screens()
+        for p in self.players:
+            p.is_watching = True
         # Enforce a clean music boundary before on_start() can dispatch an
         # intro, ambience, or immediate game track. This also protects delayed
         # intros if a future extension temporarily owns the music handle while
         # preparing a game.
         self.stop_music(fade_ms=0)
         self.broadcast_l("game-starting", buffer="system")
+
+        # Escrow deduction for table bet
+        table = getattr(self, "_table", None)
+        if table and getattr(table, "bet", 0) > 0:
+            table_bet = table.bet
+            db = getattr(table, "_db", None) or getattr(getattr(table, "_server", None), "_db", None)
+            if db:
+                if hasattr(table, "_pot_contributors"):
+                    table._pot_contributors.clear()
+                else:
+                    table._pot_contributors = set()
+                pot_accumulated = 0
+                for p in self.get_active_players():
+                    if not p.is_bot:
+                        try:
+                            db.adjust_wallet_balance(p.id, -table_bet, is_bet=True)
+                            table._pot_contributors.add(p.id)
+                            pot_accumulated += table_bet
+                        except Exception:
+                            pass
+                table.pot = pot_accumulated
+                if pot_accumulated > 0:
+                    self.play_sound("game_citadels/coins_small.ogg")
+                    self.broadcast_l("table-pot-started", buffer="game", pot=pot_accumulated, bet=table_bet)
+
         self.on_start()
         self._focus_initial_gameplay_menu_items()
         self._clear_team_arrangement_state()
@@ -450,7 +477,7 @@ class LobbyActionsMixin:
         self, player: "Player", action_id: str
     ) -> None:
         """Confirm arranged teams and start the game."""
-        if player.name != self.host or not self.team_arrangement_active:
+        if not self._is_host_or_admin(player) or not self.team_arrangement_active:
             return
 
         if not self._validate_start_request():
@@ -475,7 +502,7 @@ class LobbyActionsMixin:
         self, player: "Player", action_id: str
     ) -> None:
         """Cancel arranged teams and return to normal lobby setup."""
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return
         self._cancel_team_arrangement("team-arrangement-cancelled")
 
@@ -494,7 +521,7 @@ class LobbyActionsMixin:
         self, player: "Player", selected_id: str, action_id: str
     ) -> None:
         """Select a team member before choosing a swap target."""
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return
         selected = self._find_team_arrangement_player(selected_id)
         user = self.get_user(player)
@@ -524,7 +551,7 @@ class LobbyActionsMixin:
         self, player: "Player", target_id: str, action_id: str
     ) -> None:
         """Swap the selected team member with another active player."""
-        if player.name != self.host:
+        if not self._is_host_or_admin(player):
             return
 
         user = self.get_user(player)
@@ -739,7 +766,7 @@ class LobbyActionsMixin:
         if self.team_arrangement_active:
             return
 
-        # If currently a spectator trying to become a player, check capacity
+        # If currently a spectator trying to become a player, check capacity and coins
         if player.is_spectator:
             active_players = sum(1 for p in self.players if not p.is_spectator)
             if active_players >= self.get_max_players():
@@ -747,6 +774,23 @@ class LobbyActionsMixin:
                 if user:
                     user.speak_l("table-full", buffer="game")
                 return
+
+            table = getattr(self, "_table", None)
+            if table and getattr(table, "bet", 0) > 0 and not player.is_bot:
+                table_bet = table.bet
+                db = getattr(table, "_db", None) or getattr(getattr(table, "_server", None), "_db", None)
+                if db:
+                    wallet = db.get_wallet(player.id)
+                    if wallet.balance < table_bet:
+                        user = self.get_user(player)
+                        if user:
+                            user.speak_l(
+                                "table-error-insufficient-coins-self",
+                                buffer="game",
+                                coins=wallet.balance,
+                                required=table_bet,
+                            )
+                        return
 
         rate_limit_reason = self._role_change_rate_limit_reason(
             player,
@@ -906,8 +950,8 @@ class LobbyActionsMixin:
         )
 
     def _action_host_management(self, player: "Player", action_id: str) -> None:
-        """Open the server-level host management menu (host only)."""
-        if player.name != self.host:
+        """Open the server-level host management menu (host or admin/dev)."""
+        if not self._is_host_or_admin(player):
             return
         user = self.get_user(player)
         if not user or not self._table:
@@ -919,6 +963,24 @@ class LobbyActionsMixin:
                 self._table,
                 return_focus_id=self._get_action_return_focus_id(player, action_id),
             )
+
+    def _action_toggle_privacy(self, player: "Player", action_id: str) -> None:
+        """Toggle table privacy between private and public (host or admin/dev)."""
+        if not self._is_host_or_admin(player):
+            return
+        table = getattr(self, "_table", None)
+        if not table:
+            return
+        table.is_private = not table.is_private
+        key = (
+            "host-management-table-now-private"
+            if table.is_private
+            else "host-management-table-now-public"
+        )
+        self.broadcast_l(key, buffer="system")
+        server = getattr(table, "_server", None)
+        if server and hasattr(server, "on_tables_changed"):
+            server.on_tables_changed()
 
     def _action_save_table(self, player: "Player", action_id: str) -> None:
         """Save the current table state (host only). This destroys the table."""
@@ -986,11 +1048,18 @@ class LobbyActionsMixin:
         self._notify_table_presence_changed()
         return player
 
-    def add_spectator(self, name: str, user: "User") -> "Player":
+    def add_spectator(
+        self,
+        name: str,
+        user: "User",
+        *,
+        is_watching: bool = True,
+    ) -> "Player":
         """Add a spectator to the game."""
         self.prepare_human_name_for_roster(name)
         player = self.create_player(user.uuid, name, is_bot=False)
         player.is_spectator = True
+        player.is_watching = is_watching
         self.players.append(player)
         self.attach_user(player.id, user)
         self.setup_player_actions(player)

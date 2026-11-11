@@ -84,6 +84,37 @@ def delete_item_from_dict(dictionary: dict, key_path: (str, tuple), *, delete_em
   return True
 
 
+def parse_server_endpoint(raw: str, default_name: str = "") -> tuple[str, str, str, str]:
+    """Parse raw URL or host:port into (server_id, display_name, host, port)."""
+    raw = str(raw or "").strip()
+    if not raw:
+        return "", "", "", ""
+
+    scheme = "ws"
+    rest = raw
+    if "://" in raw:
+        scheme, rest = raw.split("://", 1)
+        scheme = scheme.lower()
+    else:
+        scheme = "wss" if ":443" in rest else "ws"
+
+    if ":" in rest:
+        host_part, port_part = rest.rsplit(":", 1)
+        port_clean = port_part.split("/")[0]
+        port = port_clean if port_clean.isdigit() else ("443" if scheme == "wss" else "8000")
+        host = f"{scheme}://{host_part}"
+    else:
+        host_part = rest.split("/")[0]
+        port = "443" if scheme == "wss" else "8000"
+        host = f"{scheme}://{host_part}"
+
+    display_name = default_name or host_part
+    import re
+    safe_slug = re.sub(r"[^a-zA-Z0-9_]+", "_", f"{host_part}_{port}").lower().strip("_")
+    server_id = f"custom_{safe_slug}"
+    return server_id, display_name, host, port
+
+
 class ConfigManager:
     """Manages client configuration and per-server settings.
 
@@ -165,6 +196,7 @@ class ConfigManager:
                 "spatial_audio": "headphones",
                 "input_device_id": "",
                 "input_device_name": "",
+                "limit_unfocused_audio_and_tts": False,
             },
             "social": {
                 "mute_global_chat": False,
@@ -285,13 +317,17 @@ class ConfigManager:
         if server_id is None:
             server_id = str(uuid.uuid4())
 
+        existing_accounts = {}
+        if server_id in self.identities["servers"]:
+            existing_accounts = self.identities["servers"][server_id].get("accounts", {})
+
         self.identities["servers"][server_id] = {
             "server_id": server_id,
             "name": name,
             "host": host,
             "port": port,
             "notes": notes,
-            "accounts": {},  # account_id -> account info
+            "accounts": existing_accounts,
         }
         self.save_identities()
         return server_id
@@ -555,6 +591,16 @@ class ConfigManager:
         return self._deep_copy(
             self.identities.get("client_options", self._get_default_client_options())
         )
+
+    def get_client_option(self, key_path: str, default: Any = None) -> Any:
+        """Return a single client option by path, or default if not found."""
+        target = self.identities.get(
+            "client_options", self._get_default_client_options()
+        )
+        try:
+            return get_item_from_dict(target, key_path)
+        except (KeyError, TypeError, ValueError):
+            return default
 
     def set_client_option(
         self, key_path: str, value: Any, *, create_mode: bool = False

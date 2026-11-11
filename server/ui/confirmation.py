@@ -104,6 +104,7 @@ def show_confirmation_menu(
         raise ValueError("Confirmation menu item ids must be unique")
 
     localized_kwargs = dict(prompt_kwargs or {})
+    localized_kwargs.setdefault("user_gender", user.gender.selector)
     prompt_text = Localization.get(user.locale, prompt_key, **localized_kwargs)
     items = [
         MenuItem(

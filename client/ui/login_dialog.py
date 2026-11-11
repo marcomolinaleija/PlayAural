@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Add parent directory to path to import config_manager
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config_manager import ConfigManager
+from config_manager import ConfigManager, parse_server_endpoint
 from auth_error_messages import get_login_failure_message
 from client_info import client_auth_metadata
 from localization import Localization
@@ -43,41 +43,95 @@ def _find_saved_account_id(
     return matching_ids[0] if matching_ids else None
 
 
+OFFICIAL_SERVERS = [
+    {
+        "server_id": "playaural_dev",
+        "name": "dev.playaural.app",
+        "host": "wss://dev.playaural.app",
+        "port": "443",
+    },
+    {
+        "server_id": "playaural_prod",
+        "name": "playaural.app",
+        "host": "wss://playaural.app",
+        "port": "443",
+    },
+]
+if not getattr(sys, "frozen", False):
+    OFFICIAL_SERVERS.append(
+        {
+            "server_id": "playaural_local",
+            "name": "Servidor local (localhost:8000)",
+            "host": "ws://localhost",
+            "port": "8000",
+        }
+    )
+
+
 class LoginDialog(wx.Dialog):
     """Login dialog with simplified flow."""
 
-    def __init__(self, parent=None, disconnect_message=None):
+    def __init__(
+        self,
+        parent=None,
+        disconnect_message=None,
+        initial_server_url=None,
+        initial_server_name=None,
+    ):
         """Initialize the login dialog."""
-        super().__init__(parent, title=Localization.get("login-title"), size=(450, 450))
+        super().__init__(parent, title=Localization.get("login-title"), size=(450, 480))
 
         if disconnect_message:
-            wx.CallAfter(lambda: wx.MessageBox(
-                disconnect_message,
-                Localization.get("common-disconnected"),
-                wx.OK | wx.ICON_INFORMATION
-            ))
+            if disconnect_message != "switch_server":
+                wx.CallAfter(lambda: wx.MessageBox(
+                    disconnect_message,
+                    Localization.get("common-disconnected"),
+                    wx.OK | wx.ICON_INFORMATION
+                ))
+            else:
+                wx.CallAfter(lambda: self.server_choice.SetFocus() if hasattr(self, "server_choice") else None)
 
         # Initialize config manager
         self.config_manager = ConfigManager()
 
-        # Keep this deployment's accounts separate from the upstream service.
-        self.server_id = "marco_server"
-        if not self.config_manager.get_server_by_id(self.server_id):
-            self.config_manager.add_server("PlayAural Marco", "wss://play.marco-ml.com", "443", server_id=self.server_id)
-
-        # Local dev server toggle: only when running from source (never in a
-        # packaged/production build), so testers can point at a local server
-        # without hand-editing identities.json.
-        self.is_source_build = not getattr(sys, "frozen", False)
-        self.local_server_id = "local_dev_server"
-        if self.is_source_build:
-            if not self.config_manager.get_server_by_id(self.local_server_id):
+        # Fixed server list: dev.playaural.app and playaural.app
+        for srv in OFFICIAL_SERVERS:
+            if not self.config_manager.get_server_by_id(srv["server_id"]):
                 self.config_manager.add_server(
-                    "Local Dev Server", "localhost", "8000", server_id=self.local_server_id
+                    srv["name"],
+                    srv["host"],
+                    srv["port"],
+                    server_id=srv["server_id"],
                 )
-            # Remember the last-used choice across launches (source builds only).
-            if self.config_manager.identities.get("last_server_id") == self.local_server_id:
-                self.server_id = self.local_server_id
+            else:
+                self.config_manager.update_server(
+                    srv["server_id"],
+                    name=srv["name"],
+                    host=srv["host"],
+                    port=srv["port"],
+                )
+
+        official_ids = [s["server_id"] for s in OFFICIAL_SERVERS]
+        if initial_server_url:
+            srv_id, srv_name, srv_host, srv_port = parse_server_endpoint(
+                initial_server_url,
+                default_name=initial_server_name or "Custom Server",
+            )
+            if srv_id in official_ids:
+                self.server_id = srv_id
+            else:
+                for srv in OFFICIAL_SERVERS:
+                    if srv["name"] in (initial_server_name or "") or srv["host"] in initial_server_url:
+                        self.server_id = srv["server_id"]
+                        break
+                else:
+                    self.server_id = OFFICIAL_SERVERS[0]["server_id"]
+        else:
+            last_srv = self.config_manager.get_last_server_id()
+            if last_srv in official_ids:
+                self.server_id = last_srv
+            else:
+                self.server_id = OFFICIAL_SERVERS[0]["server_id"]
 
         self.server_url = self.config_manager.get_server_url(self.server_id)
 
@@ -85,6 +139,7 @@ class LoginDialog(wx.Dialog):
         self.password = ""
         self.account_id = None
         self.auto_login = False
+        self._server_ids_in_choice = []
 
         self._create_ui()
         self.CenterOnScreen()
@@ -109,15 +164,16 @@ class LoginDialog(wx.Dialog):
         self.info_text = wx.StaticText(self.panel, label=Localization.get("login-welcome-info"))
         self.sizer.Add(self.info_text, 0, wx.ALL | wx.CENTER, 10)
 
-        # Dev-only: switch between the official server and a local dev server.
-        # Hidden entirely in packaged/production builds.
-        if self.is_source_build:
-            self.chk_local_server = wx.CheckBox(
-                self.panel, label=Localization.get("login-use-local-server")
-            )
-            self.chk_local_server.SetValue(self.server_id == self.local_server_id)
-            self.chk_local_server.Bind(wx.EVT_CHECKBOX, self.on_toggle_local_server)
-            self.sizer.Add(self.chk_local_server, 0, wx.ALL | wx.CENTER, 10)
+        # Server selection row
+        server_box = wx.BoxSizer(wx.HORIZONTAL)
+        lbl_server = wx.StaticText(self.panel, label=Localization.get("login-server-label"))
+        server_box.Add(lbl_server, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+
+        self.server_choice = wx.Choice(self.panel)
+        self._populate_server_choice()
+        self.server_choice.Bind(wx.EVT_CHOICE, self.on_server_choice_changed)
+        server_box.Add(self.server_choice, 1, wx.ALIGN_CENTER_VERTICAL)
+        self.sizer.Add(server_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Content Sizers (swapped based on state)
         self.action_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -220,21 +276,96 @@ class LoginDialog(wx.Dialog):
         """Login with current cached credentials."""
         self._verify_and_login(self.username, self.password)
 
-    def on_toggle_local_server(self, event):
-        """Switch between the official and local dev server (source builds only)."""
-        use_local = self.chk_local_server.GetValue()
-        self.server_id = self.local_server_id if use_local else "marco_server"
-        self.server_url = self.config_manager.get_server_url(self.server_id)
-        self.config_manager.set_last_server(self.server_id)
-        # Refresh the account area for the newly selected server.
-        self._check_existing_account()
-        self.status_text.SetLabel(
-            Localization.get(
-                "login-server-switched",
-                server=self.config_manager.get_server_display_name(self.server_id),
+    def _populate_server_choice(self):
+        """Populate server dropdown strictly with the 2 fixed servers."""
+        self.server_choice.Clear()
+        self._server_ids_in_choice = []
+        selected_idx = 0
+        for idx, srv in enumerate(OFFICIAL_SERVERS):
+            s_id = srv["server_id"]
+            self.server_choice.Append(srv["name"])
+            self._server_ids_in_choice.append(s_id)
+            if s_id == self.server_id:
+                selected_idx = idx
+        if self._server_ids_in_choice:
+            self.server_choice.SetSelection(selected_idx)
+
+    def on_server_choice_changed(self, event):
+        """Handle server dropdown selection."""
+        idx = self.server_choice.GetSelection()
+        if 0 <= idx < len(self._server_ids_in_choice):
+            self.server_id = self._server_ids_in_choice[idx]
+            self.server_url = self.config_manager.get_server_url(self.server_id)
+            self.config_manager.set_last_server(self.server_id)
+            self._check_existing_account()
+            self.status_text.SetLabel(
+                Localization.get(
+                    "login-server-switched",
+                    server=self.config_manager.get_server_display_name(self.server_id),
+                )
             )
+            self.panel.Layout()
+
+    def on_add_custom_server(self, event):
+        """Prompt to add a custom server address and switch to it."""
+        dlg = wx.TextEntryDialog(
+            self,
+            Localization.get("login-custom-server-url-prompt"),
+            Localization.get("login-custom-server-title"),
         )
-        self.panel.Layout()
+        apply_text_layout_direction(dlg, Localization.current_locale())
+        if dlg.ShowModal() == wx.ID_OK:
+            raw_url = dlg.GetValue().strip()
+            if raw_url:
+                name_dlg = wx.TextEntryDialog(
+                    self,
+                    Localization.get("login-custom-server-name-prompt"),
+                    Localization.get("login-custom-server-title"),
+                )
+                apply_text_layout_direction(name_dlg, Localization.current_locale())
+                custom_name = ""
+                if name_dlg.ShowModal() == wx.ID_OK:
+                    custom_name = name_dlg.GetValue().strip()
+                name_dlg.Destroy()
+
+                srv_id, srv_name, srv_host, srv_port = parse_server_endpoint(
+                    raw_url,
+                    default_name=custom_name,
+                )
+                if srv_id:
+                    self.config_manager.add_server(
+                        srv_name,
+                        srv_host,
+                        srv_port,
+                        server_id=srv_id,
+                    )
+                    self.server_id = srv_id
+                    self.server_url = self.config_manager.get_server_url(self.server_id)
+                    self.config_manager.set_last_server(self.server_id)
+                    self._populate_server_choice()
+                    self._check_existing_account()
+                    self.status_text.SetLabel(
+                        Localization.get("login-server-switched", server=srv_name)
+                    )
+                    self.panel.Layout()
+        dlg.Destroy()
+
+    def on_toggle_local_server(self, event):
+        """Legacy helper for switching server."""
+        if hasattr(self, "chk_local_server"):
+            use_local = self.chk_local_server.GetValue()
+            self.server_id = self.local_server_id if use_local else self.official_server_id
+            self.server_url = self.config_manager.get_server_url(self.server_id)
+            self.config_manager.set_last_server(self.server_id)
+            self._populate_server_choice()
+            self._check_existing_account()
+            self.status_text.SetLabel(
+                Localization.get(
+                    "login-server-switched",
+                    server=self.config_manager.get_server_display_name(self.server_id),
+                )
+            )
+            self.panel.Layout()
 
     def on_remove_account(self, event):
         """Remove current account and reset UI."""

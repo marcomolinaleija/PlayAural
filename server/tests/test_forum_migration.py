@@ -5,6 +5,7 @@ import sqlite3
 import pytest
 
 from ..forum.models import ForumError
+from ..forum.polls import PollConfig
 from ..forum.repository import ForumRepository
 from ..forum.service import ForumService
 from ..persistence.database import Database
@@ -93,6 +94,7 @@ def version_four_database(path):
     db._conn.execute('PRAGMA foreign_keys = ON')
     with db._transaction(immediate=True) as cursor:
         db._create_tables_in_transaction(cursor, forum_version=4)
+        cursor.execute('DROP TABLE user_wallets')
         cursor.execute(f'PRAGMA application_id = {Database.APPLICATION_ID}')
         cursor.execute('PRAGMA user_version = 4')
     user = db.create_user('Forum Veteran', 'retained-hash')
@@ -156,3 +158,120 @@ def test_unapproved_banned_and_muted_accounts_cannot_bypass_forum_rules(tmp_path
             service.topics(user.uuid)
     finally:
         db.close()
+
+
+def historical_branch_database(path, *, version, forum):
+    """The two branches used v4 independently, before their merge into v6."""
+    db = Database(str(path))
+    db._conn = db._open_connection(str(path), timeout=30)
+    db._conn.execute('PRAGMA foreign_keys = ON')
+    with db._transaction(immediate=True) as cursor:
+        db._create_tables_in_transaction(cursor, include_forum=forum, forum_version=version)
+        if forum:
+            cursor.execute('DROP TABLE user_wallets')
+        cursor.execute(f'PRAGMA application_id = {Database.APPLICATION_ID}')
+        cursor.execute(f'PRAGMA user_version = {version}')
+    owner = db.create_user('Historical Owner', 'retained-hash')
+    recipient = db.create_user('Historical Recipient', 'second-hash')
+    db.approve_user(owner.username)
+    db.approve_user(recipient.username)
+    post = None
+    if not forum:
+        db.adjust_wallet_balance(owner.uuid, 713, is_win=True)
+        db.adjust_wallet_balance(owner.uuid, -19, is_bet=True)
+    elif version == 5:
+        service = ForumService(ForumRepository(db))
+        topic, post = service.conversations.create(
+            owner.uuid, 'Retained private topic', 'Retained private message', (recipient.uuid,),
+            poll=PollConfig('Retained question', ('One', 'Two')),
+        )
+        invitation = service.conversations.invitations(recipient.uuid)[0]['id']
+        service.conversations.respond(recipient.uuid, invitation, accept=True)
+        option = service.polls.get(recipient.uuid, post)['options'][0]['id']
+        service.polls.vote(recipient.uuid, post, (option,))
+        service.bookmark(recipient.uuid, topic, True)
+    db.close()
+    return owner, recipient, post
+
+
+@pytest.mark.parametrize(('version', 'forum'), [(4, False), (5, True)])
+def test_branch_schema_upgrade_preserves_wallets_or_private_forum(tmp_path, version, forum):
+    path = tmp_path / 'historical.db'
+    owner, recipient, post = historical_branch_database(path, version=version, forum=forum)
+    backups = tmp_path / 'backups'
+    db = Database(str(path))
+    db.connect(migration_backup_dir=backups)
+    try:
+        assert db.get_user_by_uuid(owner.uuid).password_hash == 'retained-hash'
+        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == 6
+        wallet = db.get_wallet(owner.uuid)
+        assert wallet.balance == (250 if forum else 944)
+        assert wallet.total_won == (0 if forum else 713)
+        assert wallet.total_bet == (0 if forum else 19)
+        service = ForumService(ForumRepository(db))
+        if forum:
+            assert service.post(recipient.uuid, post).body == 'Retained private message'
+            assert service.polls.get(recipient.uuid, post)['voters'] == 1
+            assert service.topics(recipient.uuid, view='saved').total == 1
+            assert service.topics(recipient.uuid).total == 0
+        else:
+            assert service.topics(owner.uuid).total == 0
+    finally:
+        db.close()
+    snapshots = list(backups.glob('*.sqlite3'))
+    assert len(snapshots) == 1
+    with sqlite3.connect(snapshots[0]) as snapshot:
+        assert snapshot.execute('PRAGMA user_version').fetchone()[0] == version
+        assert bool(snapshot.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = 'user_wallets'"
+        ).fetchone()) is not forum
+    # Reopening the combined schema must not run another migration.
+    db.connect(migration_backup_dir=backups)
+    db.close()
+    assert list(backups.glob('*.sqlite3')) == snapshots
+
+
+@pytest.mark.parametrize(('version', 'forum', 'index'), [
+    (4, False, 'idx_user_wallets_balance'),
+    (5, True, 'idx_forum_posts_topic'),
+])
+def test_branch_schema_drift_fails_before_backup_or_mutation(tmp_path, version, forum, index):
+    path = tmp_path / 'drift.db'
+    historical_branch_database(path, version=version, forum=forum)
+    with sqlite3.connect(path) as connection:
+        connection.execute(f'DROP INDEX {index}')
+    before = path.read_bytes()
+    with pytest.raises(sqlite3.DatabaseError):
+        Database(str(path)).connect(migration_backup_dir=tmp_path / 'backups')
+    assert path.read_bytes() == before
+    assert not list((tmp_path / 'backups').glob('*.sqlite3'))
+
+
+def test_failed_combined_migration_preserves_v5_and_reuses_backup(tmp_path, monkeypatch):
+    path = tmp_path / 'v5.db'
+    owner, recipient, post = historical_branch_database(path, version=5, forum=True)
+    original = database_module.create_forum_schema
+
+    def fail_after_wallet_creation(cursor, **kwargs):
+        original(cursor, **kwargs)
+        raise sqlite3.OperationalError('injected combined migration fault')
+
+    monkeypatch.setattr(database_module, 'create_forum_schema', fail_after_wallet_creation)
+    db = Database(str(path))
+    backups = tmp_path / 'backups'
+    with pytest.raises(sqlite3.OperationalError, match='injected combined migration fault'):
+        db.connect(migration_backup_dir=backups)
+    with sqlite3.connect(path) as connection:
+        assert connection.execute('PRAGMA user_version').fetchone()[0] == 5
+        assert not connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = 'user_wallets'"
+        ).fetchone()
+        assert connection.execute('SELECT COUNT(*) FROM forum_poll_votes').fetchone()[0] == 1
+    monkeypatch.setattr(database_module, 'create_forum_schema', original)
+    db.connect(migration_backup_dir=backups)
+    try:
+        assert db.get_user_by_uuid(owner.uuid)
+        assert ForumService(ForumRepository(db)).post(recipient.uuid, post)
+    finally:
+        db.close()
+    assert len(list(backups.glob('*.sqlite3'))) == 1

@@ -1,5 +1,9 @@
 game-name-deadmansdeck = La Baraja del Muerto
 
+deadmansdeck-set-natural-voices = Usar voces TTS naturales: { $enabled }
+deadmansdeck-option-changed-natural-voices = Usar voces TTS naturales cambiado a { $enabled }.
+deadmansdeck-desc-natural-voices = Activa la voz del narrador sombrío de la taberna en la introducción, rondas, desafíos, ruleta y final de partida.
+
 deadmansdeck-call-liar = Acusar de mentiroso
 deadmansdeck-play-selected = Jugar cartas seleccionadas
 deadmansdeck-clear-selection = Borrar selección

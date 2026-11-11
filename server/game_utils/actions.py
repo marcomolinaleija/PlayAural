@@ -78,6 +78,7 @@ class EditboxInput(DataClassJSONMixin):
     default: str = ""  # Default value (static string only now)
     bot_input: str | None = None  # Method name for bot auto-input
     should_prompt: str | None = None  # Method name returning whether humans need input
+    allow_empty: bool = False  # Whether submitting empty text executes action rather than cancelling
 
 
 @dataclass

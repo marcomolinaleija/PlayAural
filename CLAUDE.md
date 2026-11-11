@@ -25,6 +25,21 @@ before integration. Automated upstream integration advances `develop` only;
 publication uses exact human-approved `main` commits. Never publish development
 branches or silently add pending upstream changes to a release.
 
+### Agent Workflow & Conventions
+
+- **Commit Messages**: All git commit messages must be written in Spanish
+  following Conventional Commits formatting: `<tipo>(<ámbito>): <descripción>`
+  (e.g., `feat(voice): agregar soporte de audio espacial`, `fix(ui): corregir foco en menú`).
+- **Feature Branch Isolation**: Never develop or experiment directly on `develop`
+  or `main`. Create isolated `feature/<name>` branches for spikes, prototypes, or
+  new capabilities. Only integrate into `develop` when verified and explicitly requested.
+- **Verification Before Integration**: Always run relevant automated test suites
+  via `uv run --project server --extra dev python -m pytest ...` before committing
+  or concluding changes.
+- **Clean Environment Teardown**: Terminate all background daemons (LiveKit, test
+  servers, sidecars) and remove temporary spike scripts, wave recordings, and
+  scratch artifacts before switching branches or completing a task.
+
 ## Commands
 
 ### Server
@@ -97,7 +112,7 @@ build_prod.bat
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v5), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v6), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
@@ -196,6 +211,31 @@ disconnected human's account UUID and reclaim metadata. Reconcile labels across
 joins, leaves, replacements, reconnects, and save/load. Never reserve localized
 bot bases from registration, infer bot status from text, or route an action by
 an unqualified base name.
+
+### Screen Reader & Accessibility Doctrine
+
+PlayAural is designed from the ground up as an audio-first platform for blind
+and low-vision users utilizing screen readers (NVDA, JAWS, VoiceOver, TalkBack).
+Visual presentation is strictly secondary chrome; no feature or interaction may
+require sight, mouse hovering, or visual-only cues.
+
+Core Accessibility Mandates:
+- **Complete Keyboard & Gesture Parity**: Every action, menu, and state query
+  must be operable entirely via keyboard (desktop/web) or screen-reader-compatible
+  touch gestures (mobile/web touch). Mouse coordinates or drag-and-drop are forbidden.
+- **Dual Auditory Modality**: Every important state change (turn changes, rolls,
+  deals, plays, reveals, captures, errors, leaves, joins) must be conveyed through
+  clear localized TTS speech and/or unambiguous earcons/SFX. Never leave a player
+  in silence wondering what happened or whose turn it is.
+- **Predictable Focus Anchoring**: Screen readers rely on stable focus. Never steal
+  or reset focus without deliberate action intent. Preserve item focus across
+  dynamic menu updates using stable semantic IDs, and ensure Escape / Back reliably
+  returns to the parent context without trapping focus.
+- **Informative, Actionable Feedback**: Reject generic error messages (e.g., "Cannot do that").
+  Always explain what was attempted, why it failed, and what valid actions remain.
+- **TTS Buffer Categorization & Non-Interference**: Spoken messages must use explicit
+  buffers (`chat`, `private`, `game`, `system`, `misc`) so players can tune volumes,
+  mute non-essential channels, or review history without speech collisons.
 
 ### Audio Control Protocol
 
@@ -349,7 +389,7 @@ loading an asset.
 ### Server Architecture
 - **`server/core/server.py`** — Main orchestrator, auth routing, menus, reconnect, moderation, MOTD, presence
 - **`server/network/websocket_server.py`** — Async WebSocket transport
-- **`server/games/`** — 51 registered game implementations
+- **`server/games/`** — 52 registered game implementations
 - **`server/game_utils/`** — shared game mixins and helpers
 - **`server/tables/`** — table lifecycle, save/restore, membership
 - **`server/auth/`** — authentication, CAPTCHA checks, password reset, rate limiting
@@ -514,7 +554,7 @@ conflicting, as UNO does. Likewise, `enter` can start the game while idle and
 select a grid cell while active.
 
 Base/client bindings to respect include `enter`, `escape`, `b`, `shift+b`,
-`f3`, `t`, `s`, `shift+s`, `ctrl+m`, `ctrl+q`, `ctrl+u`, `ctrl+w`, `w`, `ctrl+s`,
+`f3`, `t`, `s`, `shift+s`, `ctrl+m`, `q`, `ctrl+q`, `ctrl+p`, `ctrl+u`, `ctrl+w`, `w`, `ctrl+s`,
 `ctrl+i`, `f1`, and `ctrl+f1`. Plain `F1` is the client-owned
 focused-menu-description command and sends `menu_description`, never a game
 keybind; `Ctrl+F1` remains How to Play. Do not reuse `ALWAYS` bindings or
@@ -881,6 +921,19 @@ maintenance, not server-power finalization. Route them through
   pre-migration backup before any existing schema is changed. Reject databases
   created by newer server versions. Opening SQLite must never run retention or
   compatibility cleanup; destructive cleanup is an explicit operation.
+- **Mandatory Schema Version Bump & Migration Rule**: Never add a new table,
+  column, constraint, or index only to `_create_tables_in_transaction()` and
+  canonical `_validate_schema()` without incrementing `CURRENT_SCHEMA_VERSION`.
+  `_create_tables_in_transaction()` runs exclusively on brand new, empty
+  databases (`schema_version == 0`). Existing databases in production run at the
+  previous `CURRENT_SCHEMA_VERSION` and evaluate `schema_version == CURRENT_SCHEMA_VERSION`,
+  skipping table creation and running `_validate_schema()` directly. If the version
+  is not incremented and an explicit migration path (e.g., `vN -> vN+1`) registered,
+  production databases will fail schema validation and crash at startup. Every
+  schema addition or alteration MUST:
+  1. Increment `Database.CURRENT_SCHEMA_VERSION`.
+  2. Add the previous version to the supported migration set in `_initialize_storage()`.
+  3. Execute the new DDL inside the backed-up migration transaction before validation.
 - Schema version 2 atomically rebuilds legacy `users.username_key` storage so
   version-zero and version-one databases acquire the canonical non-null identity
   contract without losing account ids or rows. Preserve this backed-up migration
@@ -1103,17 +1156,24 @@ and cleanup rules required for genuinely persistent data.
   concatenate pronouns in Python. Missing contextual forms fall back to shared
   forms and unspecified/non-binary values fall back to the locale's neutral
   form.
-- PlayAural ships English and Vietnamese, and — unlike upstream PlayPalace,
-  where translators own everything but `en` — here the agent authors **both**.
-  A new or changed `en` key must land with its `vi` counterpart, kept in
-  structural parity: same keys, same data-bearing `$variables`, and matching
-  plural/select arms. A locale may omit a variable used only as the first
-  argument to `GENDER_TERM(...)` when its natural sentence does not need
+- **Gender Variants in Selectors (Mandatory)**: When authoring or updating localized
+  strings that vary by gender (or identity-bearing strings referring to players, users,
+  friends, hosts, or participants), always author explicit arms for at least `[male]`
+  and `[female]` in Fluent select expressions (e.g. `[male]`, `[female]`), with `*[other]`
+  serving as the neutral/unspecified fallback. Never omit `[male]` or collapse it
+  implicitly into `*[other]` when authoring strings in Spanish (`es`) or other gendered
+  locales. Both male and female variants must be explicitly defined and tested.
+- Spanish (ES) is the sole mandatory language in PlayAural for all new strings,
+  options, features, and documentation. English (EN), Vietnamese (VI), and other
+  community locales are optional.
+- All new or updated keys and data-bearing variables must be authored in Spanish
+  (`es`). Adding translations in `en`, `vi`, or other languages is optional. When
+  translating, maintain structural parity: same keys, same data-bearing `$variables`,
+  and matching plural/select arms. A locale may omit a variable used only as the
+  first argument to `GENDER_TERM(...)` when its natural sentence does not need
   gender; if the selector is used, its name must match the source key. Never
   omit names, counts, scores, formatted values, or other player/game data.
-- Agent-authored Vietnamese is provisional: write it and keep parity, but flag
-  it for native review rather than treating it as final.
-- Prefer writing the `en` strings before the game/feature code — it forces the
+- Prefer writing the `es` strings before the game/feature code — it forces the
   flow to be planned and every announcement to be enumerated up front.
 - Locale discovery, language selection, and fallback must remain dynamic. Do
   not hardcode feature branches for specific language codes; add new languages
@@ -1173,7 +1233,7 @@ reachable state. This is part of the feature work, not optional cleanup.
   change or what action is available next. Avoid generic feedback such as
   "Invalid action", "Not allowed", or "You cannot do that" when a precise
   situational explanation can be provided.
-- Maintain EN/VI key, variable, plural, and select-arm parity. Add regression
+- Ensure ES key, variable, plural, and select-arm accuracy. Add regression
   coverage for actor and observer forms, listener-specific rendering, and the
   important success, failure, edge, and validation branches introduced or
   changed by the work.
@@ -1195,9 +1255,10 @@ game experience, not a developer changelog.
 - Never write manuals like changelogs, patch notes, design notes, or
   implementation summaries. Do not include unnecessary technical development
   details, justifications, or rationale that do not help someone play.
-- Keep EN and VI documentation synchronized in structure, meaning, terminology,
-  and attribution. Vietnamese manuals should be natural, friendly, and aligned
-  with the matching `.ftl` terminology.
+- Spanish (ES) documentation is mandatory for all new games and features.
+  English and Vietnamese manuals are optional; keep them synchronized in
+  structure, meaning, and terminology when authored. Vietnamese manuals should be
+  natural, friendly, and aligned with the matching `.ftl` terminology.
 - Community translation work must follow `TRANSLATING.md`: preserve variables,
   maintain first-person/third-person key parity, keep documentation
   player-facing, and update language contributor metadata.
@@ -1317,17 +1378,17 @@ Mobile rules:
   language names; metadata complements it and does not replace it.
 
 ### Game Counts and Catalog
-The server currently registers **51 games**:
+The server currently registers **52 games**:
 - category ids are `cards`, `dice`, `board`, `poker`, `arcade`, and `misc`
 - the Play menu exposes a persisted category filter with dynamic per-category game counts
 - games usually expose one category through `get_category()`, while `get_categories()` supports future multi-category games
-- recent additions include `Flip 7`, `Zombie Dice`, `Dead Man's Dice`, `Skip-Bo`, `Bingo`, `Metal Pipe`, `Nine`, `Senet`, `Cards Against Humanity`, `21`, `Age of Heroes`, `UNO`, `Exploding Kittens`, `BANG! The Bullet`, and `Monopoly`
+- recent additions include `Flip 7`, `Zombie Dice`, `Dead Man's Dice`, `Skip-Bo`, `Bingo`, `Metal Pipe`, `Nine`, `Senet`, `Cards Against Humanity`, `21`, `Age of Heroes`, `UNO`, `Exploding Kittens`, `BANG! The Bullet`, `Monopoly`, and `Mexican Monopoly`
 
 ### Key Tech Stack
 - Python 3.11, `asyncio`, `websockets>=12.0`, `mashumaro`, `fluent-runtime`, `openskill`, `argon2-cffi`
 - Desktop: `wxPython`, `accessible-output2`, `Cosmos` (miniaudio and Steam Audio), `keyring`, `livekit`, `sounddevice`
 - Mobile: `expo`, `react-native`, `expo-audio`, `expo-speech`, `@react-native-async-storage/async-storage`, `expo-secure-store`
 - Package manager: `uv` for Python components, `npm` for the mobile client
-- Languages: English and Vietnamese are official defaults; partial community translations fall back to English
+- Languages: Spanish is the official mandatory language; English, Vietnamese, and other community translations are optional
 
-Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W and Ctrl+U open the interactive roster, and displaced game-specific W bindings use Alt+W.
+Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W opens the table roster and Ctrl+U opens the global online list, and displaced game-specific W bindings use Alt+W.

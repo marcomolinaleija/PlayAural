@@ -145,6 +145,7 @@ def test_registration_metadata() -> None:
         "italy",
         "london",
         "madrid",
+        "mexico",
         "new_zealand",
         "paris",
         "standard",
@@ -303,7 +304,11 @@ def test_each_bundled_board_is_complete_and_valid(board_id: str) -> None:
         assert board.bank_houses == 0
         assert board.bank_hotels == 0
     assert len(board.property_groups) == 10
-    assert board.property_group("orange").name_key == "monopoly-group-orange"
+    assert board.property_group("orange").name_key == (
+        "monopoly-group-mexico-orange"
+        if board_id == "mexico"
+        else "monopoly-group-orange"
+    )
     assert board.rules.auction_opening_bid > 0
 
 
@@ -1200,7 +1205,7 @@ def test_board_validation_rejects_invalid_regional_content() -> None:
                 terminology=replace(BOARD.terminology, utility_kind_key=""),
             )
         )
-    with pytest.raises(ValueError, match="five levels"):
+    with pytest.raises(ValueError, match="level keys"):
         validate_board(
             replace(
                 BOARD,
@@ -2467,6 +2472,7 @@ def test_user_opened_selection_menus_explicitly_focus_the_first_item() -> None:
         "italy",
         "london",
         "madrid",
+        "mexico",
         "new_zealand",
         "paris",
         "tokyo",
@@ -2554,6 +2560,7 @@ def test_board_menu_sorts_regional_boards_by_the_viewers_localized_names() -> No
         "hanoi",
         "london",
         "madrid",
+        "mexico",
         "new_zealand",
         "paris",
         "tokyo",

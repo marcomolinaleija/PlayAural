@@ -189,3 +189,52 @@ class TestProfileSystem:
         # Should not have updated
         assert db_user.bio == "A valid bio"
         user.speak_l.assert_called_with("error-bio-length", buffer="system")
+
+    @pytest.mark.asyncio
+    async def test_wallet_menu_and_bonus_claim(self):
+        from server.core.server import Server
+        from unittest.mock import MagicMock
+
+        server = Server(db_path=self.temp_file.name)
+        server._db = self.db
+
+        u = self.db.create_user("walletuser", "hash")
+
+        user = MagicMock()
+        user.username = "walletuser"
+        user.locale = "es"
+        user.uuid = u.uuid
+        server._users["walletuser"] = user
+
+        # 1. Show profile menu: contains wallet entry
+        server._show_profile_menu(user)
+        user.show_menu.assert_called()
+        profile_menu_args = user.show_menu.call_args[0]
+        assert profile_menu_args[0] == "profile_menu"
+        items = profile_menu_args[1]
+        wallet_item = next((item for item in items if item.id == "wallet"), None)
+        assert wallet_item is not None
+        assert "250" in wallet_item.text
+
+        # 2. Select wallet: shows wallet menu
+        await server._handle_profile_selection(user, "wallet")
+        user.show_menu.assert_called()
+        wallet_menu_args = user.show_menu.call_args[0]
+        assert wallet_menu_args[0] == "wallet_menu"
+
+        # 3. Simulate passed cooldown and claim bonus
+        self.db._conn.execute(
+            "UPDATE user_wallets SET last_activity_bonus_utc = '2000-01-01T00:00:00' WHERE user_uuid = ?",
+            (u.uuid,),
+        )
+        self.db._conn.commit()
+
+        await server._handle_wallet_selection(user, "claim_bonus")
+        user.play_sound.assert_called_with("game_citadels/coins_small.ogg")
+        user.speak_l.assert_called_with(
+            "wallet-claimed-success",
+            buffer="misc",
+            amount=150,
+            balance=400,
+        )
+        assert self.db.get_wallet(u.uuid).balance == 400

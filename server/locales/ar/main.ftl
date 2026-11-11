@@ -111,6 +111,9 @@ player-replaced-by-bot = { $bot } يلعب الآن نيابةً عن { $player 
 player-reclaimed-from-bot = عاد { $player } واستعاد المقعد { GENDER_TERM($player_gender, "possessive-determiner") } من { $bot }.
 player-reclaimed-from-bot-you = عدت واستعدت مقعدك من { $bot }.
 spectator-joined = انضممتَ إلى طاولة { $host } كمتفرّج.
+table-game-in-progress = اللعبة قيد التقدم.
+spectator-watching-game = مشاهدة اللعبة.
+spectator-stopped-watching = توقفت عن مشاهدة اللعبة.
 
 spectate = المشاهدة
 now-playing = { $player } يلعب الآن.
@@ -800,6 +803,8 @@ admin-broadcast-prompt = أدخل الرسالة لبثّها لجميع الم�
 admin-broadcast-sent = تم إرسال البث إلى { $count } مستخدم.
 
 manage-motd = إدارة رسالة اليوم
+admin-switch-server = تبديل الخادم
+admin-desc-switch-server = قطع الاتصال والعودة إلى محدد الخوادم في التطبيق.
 create-update-motd = إنشاء/تحديث رسالة اليوم
 view-motd = عرض رسالة اليوم النشطة
 delete-motd = حذف رسالة اليوم
@@ -904,6 +909,8 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } دقيقة و{ $seconds } ثانية
 duration-hours-minutes = { $hours } ساعة و{ $minutes } دقيقة
+duration-days = { $count } يوم
+duration-days-hours = { $days } يوم و{ $hours } ساعة
 server-error-changing-language = تعذّر تغيير اللغة. تبقى واجهتك السابقة نشطة.
 default-save-name = { $game } - { $date }
 
@@ -1163,6 +1170,17 @@ host-management-kick = طرد لاعب
 host-management-kick-ban = طرد وحظر لاعب
 host-management-player-substitution = استبدال لاعب
 host-management-restart-game = إعادة بدء اللعبة
+host-management-table-stats = إحصائيات الطاولة
+table-stats-created-at = تاريخ الإنشاء: { $date }
+table-stats-uptime = وقت الطاولة: { $duration }
+table-stats-user-duration = وقتك على الطاولة: { $duration }
+table-stats-peak = ذروة المشاركين: { $count }
+table-stats-total-visitors = إجمالي الزوار: { $count }
+table-stats-game = النشاط: { $game }
+table-stats-host = المضيف: { $host }
+table-stats-members = المشاركون ({ $count }): { $members }
+table-stats-spectators = المشاهدون ({ $count }): { $spectators }
+table-stats-spectators-none = المشاهدون: لا يوجد
 host-management-table-now-private = أصبحت هذه الطاولة خاصة الآن. يمكن للمستخدمين المدعوّين فقط الانضمام.
 host-management-table-now-public = أصبحت هذه الطاولة عامة الآن.
 host-game-switch-current = اللعبة الحالية: { $game }. تحتوي هذه الطاولة على { $seats } { $seats ->
@@ -1326,3 +1344,53 @@ success-reset-email-sent = تم إرسال رمز إعادة التعيين إل
 error-smtp-send-failed = فشل إرسال بريد إعادة التعيين. يرجى المحاولة لاحقاً.
 error-invalid-reset-code = رمز إعادة تعيين غير صالح أو منتهي الصلاحية.
 success-password-reset = تمت إعادة تعيين كلمة مرورك بنجاح. يمكنك الآن تسجيل الدخول.
+
+# Global voice chat
+global-voice-chat = Global Voice Chat
+global-voice-chat-description = Join or view global voice chat with players across the server.
+global-voice-chat-connect = Connect to global voice chat
+global-voice-chat-connect-description = Connect to the server-wide voice chat channel.
+global-voice-chat-disconnect = Disconnect from global voice chat
+global-voice-chat-disconnect-description = Leave the server-wide voice chat channel.
+global-voice-chat-participants-heading = Connected participants ({ $count }):
+global-voice-chat-no-participants = No participants currently connected.
+global-voice-chat-disabled-notice = Global voice chat is currently disabled by the administrators.
+admin-moderation-global-voice-chat-toggle = Global voice chat: { $status }
+admin-moderation-global-voice-chat-toggle-description = Turn voice chat on or off server-wide. This setting persists after the server restarts.
+admin-moderation-global-voice-chat-status-description = Current server-wide state. Only a Developer can change this setting.
+admin-moderation-global-voice-chat-update-failed = The global voice chat setting could not be saved, so no change was made. Please try again.
+global-voice-chat-availability-enabled = Global voice chat has been enabled by the developer.
+global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
+voice-room-global-label = Global Voice Chat
+voice-global-chat-disabled = Global voice chat is currently disabled.
+# إعدادات المضيف للدردشة الصوتية على الطاولة
+voice-host-spatial-audio-option = الصوت المكاني للدردشة: { $status }
+voice-host-desc-spatial-audio = تبديل توزيع الصوت المكاني لجميع اللاعبين على هذه الطاولة
+voice-host-spatial-audio-changed = تم ضبط الصوت المكاني للدردشة على الطاولة إلى { $status }.
+voice-host-spatial-audio-broadcast = قام المضيف بضبط الصوت المكاني للدردشة على الطاولة إلى { $status }.
+voice-host-quality-option = جودة الصوت: { $quality }
+voice-host-desc-quality = تغيير ملف جودة الدردشة الصوتية بين دقة عالية (64 ك.بت/ث) وقياسي (24 ك.بت/ث)
+voice-host-quality-changed = تم ضبط جودة صوت الطاولة إلى { $quality }.
+voice-host-quality-broadcast = قام المضيف بضبط جودة صوت الطاولة إلى { $quality }.
+voice-quality-high = دقة عالية (64 ك.بت/ث)
+voice-quality-standard = قياسي (24 ك.بت/ث)
+voice-host-members-heading = المشاركون في الدردشة الصوتية للطاولة:
+
+# تفضيلات الصوت الشخصية
+voice-noise-suppression-option = عزل ضوضاء الميكروفون: { $status }
+general-desc-voice-noise-suppression = تبديل عزل الضوضاء الخلفية على الميكروفون الخاص بك
+voice-noise-suppression-changed = تم ضبط عزل ضوضاء الميكروفون إلى { $status }.
+voice-spatial-audio-option = الصوت المكاني للدردشة: { $status }
+general-desc-voice-spatial-audio = توزيع الأصوات في ستيريو استنادًا إلى مواقع المقاعد على الطاولة
+voice-spatial-audio-changed = تم ضبط الصوت المكاني للدردشة إلى { $status }.
+voice-auto-gain-option = التحكم التلقائي في مستوى صوت الميكروفون: { $status }
+general-desc-voice-auto-gain = ضبط مستوى صوت الميكروفون تلقائيًا
+voice-auto-gain-changed = تم ضبط التحكم التلقائي في صوت الميكروفون إلى { $status }.
+
+# إدارة الدردشة الصوتية العامة
+global-voice-chat-toggle-enabled = الدردشة الصوتية العامة: { $status }
+global-voice-chat-desc-toggle-enabled = تمكين أو تعطيل الدردشة الصوتية العامة على مستوى الخادم
+global-voice-chat-status-changed = أصبحت الدردشة الصوتية العامة الآن { $status }.
+global-voice-chat-quality-option = جودة الصوت العامة: { $quality }
+global-voice-chat-desc-quality = تغيير ملف جودة صوت الدردشة الصوتية العامة
+global-voice-chat-quality-changed = تم ضبط جودة الصوت العامة إلى { $quality }.

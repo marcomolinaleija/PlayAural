@@ -121,6 +121,9 @@ game-cancelled-no-controller = Match cancelled and table closed: no player or ho
 player-reclaimed-from-bot = { $player } has returned and taken { GENDER_TERM($player_gender, "possessive-determiner") } seat back from { $bot }.
 player-reclaimed-from-bot-you = You have returned and taken your seat back from { $bot }.
 spectator-joined = Joined { $host }'s table as a spectator.
+table-game-in-progress = Game in progress.
+spectator-watching-game = Watching game.
+spectator-stopped-watching = Stopped watching game.
 
 spectate = Spectate
 now-playing = { $player } is now playing.
@@ -810,6 +813,40 @@ admin-broadcast-prompt = Enter the message to broadcast to all online users. (Th
 admin-broadcast-sent = Broadcast sent to { $count } users.
 
 manage-motd = Manage MOTD
+admin-section-users = User Management
+admin-desc-section-users = Manage account approval, promotions, demotions, and coins.
+admin-section-moderation = Moderation & Sanctions
+admin-desc-section-moderation = Moderation center, reports, kicks, mutes, and bans.
+admin-section-server-content = Server & Content
+admin-desc-section-server-content = Global announcements, MOTD, sound settings, and Infiltrado words.
+admin-section-system = System Maintenance
+admin-desc-section-system = Server power management, database management, and SMTP settings.
+admin-switch-server = Switch Server
+admin-desc-switch-server = Disconnect and return to the client server selector.
+admin-account-approval-toggle = Require account approval: { $status }
+admin-desc-account-approval-toggle = When enabled, newly registered accounts must be manually approved by an administrator before accessing the server.
+admin-account-approval-toggle-feedback = Require account approval changed to { $status }.
+admin-new-account-request = New registered account pending approval: { $username }.
+auth-registration-pending-approval = Your account has been registered successfully and is pending approval by an administrator.
+admin-sound-settings = Server Sound Settings
+admin-desc-sound-settings = Configure default sounds for server events like table creation, player joins, and messages.
+sound-events-menu-title = Server Sound Events
+sound-picker-menu-title = Select sound for { $event }
+sound-event-updated = Sound for { $event } updated to { $sound }.
+sound-event-table-created = Table creation
+sound-event-desc-table-created = Sound played when a new public table is created on the server.
+sound-event-table-joined = Player joined table
+sound-event-desc-table-joined = Sound played when a player joins the table.
+sound-event-table-left = Player left table
+sound-event-desc-table-left = Sound played when a player leaves the table.
+sound-event-table-invite = Table invitation
+sound-event-desc-table-invite = Sound played when you receive an invitation to join a table.
+sound-event-private-message = Private message
+sound-event-desc-private-message = Sound played when sending or receiving a private message.
+sound-event-friend-request = Friend request received
+sound-event-desc-friend-request = Sound played when you receive a friend request.
+default-selection = default
+current-selection = current
 create-update-motd = Create/Update MOTD
 view-motd = View Active MOTD
 delete-motd = Delete MOTD
@@ -914,6 +951,17 @@ duration-hours = { $count ->
 }
 duration-minutes-seconds = { $minutes } minutes and { $seconds } seconds
 duration-hours-minutes = { $hours } hours and { $minutes } minutes
+duration-days = { $count ->
+    [one] 1 day
+   *[other] { $count } days
+}
+duration-days-hours = { $days ->
+    [one] 1 day
+   *[other] { $days } days
+} and { $hours ->
+    [one] 1 hour
+   *[other] { $hours } hours
+}
 server-error-changing-language = The language could not be changed. Your previous interface remains active.
 default-save-name = { $game } - { $date }
 
@@ -948,10 +996,54 @@ friends = Friends
 profile-registration-date = Registration Date: { $date }
 profile-date-unknown = Unknown
 profile-username = Username: { $username }
+profile-coins = Coins: { $coins }
+profile-wallet-entry = Wallet: { $coins } coins
+wallet-title = Virtual wallet
+wallet-balance = Current balance: { $coins } coins
+wallet-total-won = Total won in games: { $coins } coins
+wallet-total-bet = Total bet: { $coins } coins
+wallet-claim-bonus = Claim activity bonus ({ $amount } coins)
+wallet-claimed-success = You claimed your bonus of { $amount } coins! Your new balance is { $balance } coins.
+wallet-claim-failed = Could not claim bonus: { $reason }
+wallet-bonus-cooldown = Bonus available in { $minutes } minutes
+wallet-bonus-cap-reached = Bonus unavailable (balance exceeds limit of { $max_coins } coins)
+
+# Table-level betting
+host-management-table-bet = Table bet: { $coins } coins
+host-management-table-bet-friendly = Table bet: Friendly (No bet)
+table-bet-friendly = Friendly (No bet)
+table-bet-coins = { $coins } coins
+table-bet-changed = The host set the table bet to { $coins } coins.
+table-bet-changed-friendly = The host set the table to friendly mode (no bets).
+table-error-insufficient-coins = Cannot start the game: { $player } does not have enough coins ({ $coins } available, { $required } required).
+table-error-insufficient-coins-self = You do not have enough coins to play ({ $coins } available, { $required } required).
+table-insufficient-coins-spectating = You do not have enough coins to play at this table ({ $coins } available, { $required } required). You joined as a spectator.
+table-error-host-cannot-afford-bet = You cannot set a bet of { $required } coins because you only have { $coins }.
+table-bet-custom = Custom amount...
+table-enter-custom-bet = Enter the bet amount in coins (0 for friendly):
+table-error-invalid-bet-amount = Invalid bet amount. Must be an integer greater than or equal to 0.
+table-pot-started = Game started with a bet of { $bet } coins per player! The accumulated pot is { $pot } coins.
+table-winner-won-pot = { $winner } won the pot of { $pot } coins!
+table-pot-split = Tie between { $winners }! The pot is split into { $share } coins each.
+table-pot-refunded = The game ended without resolution. The bets of { $bet } coins have been refunded to each player.
+table-pot-refunded-no-winner = No human winner. The bets of { $bet } coins have been refunded to each player.
+table-listing-bet = [Bet: { $coins } coins]
 profile-email = Email: { $email }
 admin-view-email = Admin View - Email: { $email }
 profile-gender = Gender: { $gender }
 profile-bio = Bio: { $bio }
+profile-privacy-setting = Profile privacy: { $status }
+profile-privacy-everyone = Everyone (public)
+profile-privacy-friends = Friends only
+profile-privacy-private = Nobody (private)
+profile-privacy-menu-title = Profile Privacy
+profile-privacy-changed = Profile privacy set to { $status }.
+general-desc-profile-privacy = Configure who can view your profile information.
+profile-view-friends-only = This user only allows friends to view their profile.
+profile-view-private = This user keeps their profile private.
+user-not-in-table = This user is not at any table.
+invite-to-table = Invite to table
+host-invite-no-players = (No players available to invite)
 profile-bio-empty = Not set
 profile-email-empty = Not set
 
@@ -1028,6 +1120,14 @@ gender-term-reflexive =
         [female] herself
        *[other] themself
     }
+gender-term-friend =
+    { $gender ->
+       *[other] friend
+    }
+gender-term-friend-capitalized =
+    { $gender ->
+       *[other] Friend
+    }
 
 action-set-edit = Set / Edit
 action-delete = Delete
@@ -1094,6 +1194,10 @@ decline = Decline
 friend-accepted-success = You are now friends with { $username }.
 request-not-found = Friend request no longer exists.
 friend-declined-success = Friend request declined.
+friend-removed-notify = { $username } removed you from their friends list.
+friend-accepted-notify = { $username } accepted your friend request.
+friend-declined-notify = { $username } declined your friend request.
+friend-request-received = You received a friend request from { $username }.
 friend-request-manage-sent = Manage Sent Friend Request
 friend-request-accept-action = Accept Friend Request
 friend-request-cancel-action = Cancel Friend Request
@@ -1173,6 +1277,17 @@ host-management-kick = Kick a Player
 host-management-kick-ban = Kick and Ban a Player
 host-management-player-substitution = Player Substitution
 host-management-restart-game = Restart Game
+host-management-table-stats = Table statistics
+table-stats-created-at = Created: { $date }
+table-stats-uptime = Table uptime: { $duration }
+table-stats-user-duration = Your time at table: { $duration }
+table-stats-peak = Peak attendance: { $count }
+table-stats-total-visitors = Total visitors: { $count }
+table-stats-game = Activity: { $game }
+table-stats-host = Host: { $host }
+table-stats-members = Participants ({ $count }): { $members }
+table-stats-spectators = Spectators ({ $count }): { $spectators }
+table-stats-spectators-none = Spectators: None
 host-management-table-now-private = This table is now private. Only invited users can join.
 host-management-table-now-public = This table is now public.
 host-game-switch-current = Current game: { $game }. This table has { $seats } active { $seats ->
@@ -1360,3 +1475,171 @@ host-game-switch-confirm-free-table = Switch this table to a free table? Everyon
 free-table-choose-game = Choose a game
 free-table-description = Open a table to talk by text and voice without starting a game.
 free-table-help = Free table help
+free-table-set-topic = Set table topic
+free-table-topic-display = Table topic: { $topic }
+free-table-prompt-topic = Enter the new topic for the free table (leave empty to clear):
+free-table-topic-changed = { $host } changed the table topic to: { $topic }.
+free-table-topic-cleared = { $host } cleared the table topic.
+free-table-current-topic = Table topic: { $topic }.
+free-table-read-topic = Read table topic
+free-table-no-topic = The free table has no topic set.
+
+# Global voice chat
+global-voice-chat = Global Voice Chat
+global-voice-chat-description = Join or view global voice chat with players across the server.
+global-voice-chat-connect = Connect to global voice chat
+global-voice-chat-connect-description = Connect to the server-wide voice chat channel.
+global-voice-chat-disconnect = Disconnect from global voice chat
+global-voice-chat-disconnect-description = Leave the server-wide voice chat channel.
+global-voice-chat-participants-heading = Connected participants ({ $count }):
+global-voice-chat-no-participants = No participants currently connected.
+global-voice-chat-disabled-notice = Global voice chat is currently disabled by the administrators.
+admin-moderation-global-voice-chat-toggle = Global voice chat: { $status }
+admin-moderation-global-voice-chat-toggle-description = Turn voice chat on or off server-wide. This setting persists after the server restarts.
+admin-moderation-global-voice-chat-status-description = Current server-wide state. Only a Developer can change this setting.
+admin-moderation-global-voice-chat-update-failed = The global voice chat setting could not be saved, so no change was made. Please try again.
+global-voice-chat-availability-enabled = Global voice chat has been enabled by the developer.
+global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
+voice-room-global-label = Global Voice Chat
+voice-global-chat-disabled = Global voice chat is currently disabled.
+# Table Voice Host Settings
+voice-host-spatial-audio-option = Spatial voice audio: { $status }
+voice-host-desc-spatial-audio = Toggle spatial voice panning for all players at this table
+voice-host-spatial-audio-changed = Table spatial voice audio set to { $status }.
+voice-host-spatial-audio-broadcast = Table spatial voice audio was set to { $status } by the host.
+voice-host-quality-option = Voice quality: { $quality }
+voice-host-desc-quality = Change voice chat quality profile between High Fidelity (64 kbps) and Standard (24 kbps)
+voice-host-quality-changed = Table voice quality set to { $quality }.
+voice-host-quality-broadcast = Table voice quality was set to { $quality } by the host.
+voice-quality-high = High Fidelity (64 kbps)
+voice-quality-standard = Standard (24 kbps)
+voice-host-members-heading = Table Voice Participants:
+
+# Personal Audio Voice Preferences
+voice-noise-suppression-option = Voice noise suppression: { $status }
+general-desc-voice-noise-suppression = Toggle background noise suppression on your microphone
+voice-noise-suppression-changed = Voice noise suppression set to { $status }.
+options-limit-unfocused-audio-toggle = Limit audio and speech outside window: { $status }
+general-desc-limit-unfocused-audio = Mutes audio and speech when the application window is unfocused, except when it is your turn to play.
+options-limit-unfocused-audio-changed = Audio limiting outside window set to { $status }.
+voice-spatial-audio-option = Spatial voice audio: { $status }
+general-desc-voice-spatial-audio = Position voices in stereo based on seat positions at the table
+voice-spatial-audio-changed = Spatial voice audio set to { $status }.
+voice-auto-gain-option = Microphone auto gain control: { $status }
+general-desc-voice-auto-gain = Automatically adjust microphone volume
+voice-auto-gain-changed = Microphone auto gain control set to { $status }.
+
+# Global Voice Chat Management
+global-voice-chat-toggle-enabled = Global voice chat: { $status }
+global-voice-chat-desc-toggle-enabled = Enable or disable global voice chat server-wide
+global-voice-chat-status-changed = Global voice chat is now { $status }.
+global-voice-chat-quality-option = Global voice quality: { $quality }
+global-voice-chat-desc-quality = Change global voice chat audio quality profile
+global-voice-chat-quality-changed = Global voice quality set to { $quality }.
+
+
+# Undercover words management (Administration)
+admin-infiltrado-words = Undercover word pairs management
+admin-desc-infiltrado-words = Add, edit and delete word pairs and categories for the Undercover game.
+admin-infiltrado-add-pair = Add new word pair
+admin-infiltrado-list-pairs = View all word pairs ({ $total } pairs)
+admin-infiltrado-manage-categories = Manage categories ({ $total } categories)
+admin-infiltrado-add-category = Add new category
+admin-infiltrado-prompt-category-name = Enter new category name:
+admin-infiltrado-prompt-rename-category = Enter new name for category { $category }:
+admin-infiltrado-category-added = Category '{ $category }' added successfully.
+admin-infiltrado-category-renamed = Category '{ $old_category }' renamed to '{ $new_category }'.
+admin-infiltrado-category-deleted = Category '{ $category }' deleted. Its pairs were moved to 'General'.
+admin-infiltrado-category-current = Category: { $category } ({ $count } pairs)
+admin-infiltrado-list-category-pairs = View words in this category
+admin-infiltrado-add-pair-to-category = Add pair to this category
+admin-infiltrado-rename-category = Rename category
+admin-infiltrado-delete-category = Delete category
+admin-infiltrado-delete-category-confirm = Are you sure you want to delete category '{ $category }'? Its { $count } pairs will be moved to 'General'.
+admin-infiltrado-category-cannot-delete-general = The 'General' category cannot be deleted.
+admin-infiltrado-select-category = Select a category for the word pair:
+admin-infiltrado-change-category = Change category (current: { $category })
+admin-infiltrado-pair-category-updated = Pair category updated to '{ $category }'.
+admin-infiltrado-category-already-exists = A category with that name already exists.
+admin-infiltrado-category-item = { $category } ({ $count } pairs)
+admin-infiltrado-pair-current-with-cat = Pair #{ $id }: { $word1 } / { $word2 } [Category: { $category }]
+admin-infiltrado-category-pairs-title = Words in { $category } ({ $total } pairs)
+admin-infiltrado-category-create-new = + Add new category...
+admin-infiltrado-prompt-word1 = Enter first word (Civilian):
+admin-infiltrado-prompt-word2 = Enter second word (Undercover):
+admin-infiltrado-prompt-edit-word1 = Edit first word (current: { $word }):
+admin-infiltrado-prompt-edit-word2 = Edit second word (current: { $word }):
+admin-infiltrado-pair-added = Pair successfully added: { $word1 } / { $word2 } [{ $category }].
+admin-infiltrado-pair-updated = Pair successfully updated: { $word1 } / { $word2 }.
+admin-infiltrado-pair-deleted = Word pair successfully deleted.
+admin-infiltrado-pair-current = Pair #{ $id }: { $word1 } / { $word2 }
+admin-infiltrado-edit-word1 = Edit first word ({ $word })
+admin-infiltrado-edit-word2 = Edit second word ({ $word })
+admin-infiltrado-delete-pair = Delete this word pair
+admin-infiltrado-empty-pairs = No word pairs registered.
+
+# Admin coin granting
+admin-grant-coins = Grant coins to a player
+admin-desc-grant-coins = Grant virtual coins to a registered player's account.
+admin-grant-coins-no-users = No registered users available.
+admin-grant-coins-target-balance = Player: { $player }. Current balance: { $coins } coins.
+admin-grant-coins-custom-amount = Enter custom amount...
+admin-grant-coins-prompt-amount = Enter the amount of coins to grant:
+admin-grant-coins-error-positive = The amount of coins must be an integer greater than 0.
+admin-grant-coins-error-invalid = Invalid amount. Must be a positive integer.
+admin-grant-coins-success = Granted { $amount } coins to { $player }. New balance: { $balance } coins.
+coins-amount-option = { $coins } coins
+coins-granted-notification = You received { $amount } coins from an administrator. Current balance: { $balance } coins.
+
+# User nick change
+nick-change-action = Change nick
+nick-change-pending-status = Pending admin approval: change to { $requested }
+nick-cooldown-counter = Remaining time for free change: { $days } days, { $hours } hours, and { $minutes } minutes
+nick-bypass-cooldown-option = Remove limit and change nick now for { $price } coins (balance: { $balance })
+nick-reduce-cooldown-option = Shorten cooldown to { $days } days for { $price } coins (balance: { $balance })
+nick-cooldown-already-reduced = Cooldown reduction to { $days } days already applied for this period
+confirm-nick-reduce-cooldown = Do you want to pay { $price } coins to shorten the nick change cooldown from 90 to { $days } days?
+nick-cooldown-reduced-success = Deducted { $price } coins. Nick change cooldown shortened to { $days } days. Current balance: { $balance } coins.
+enter-new-nick = Enter your new nick:
+nick-confirm-password-prompt = Please confirm your password to continue with changing your nick to { $new_nick }:
+nick-confirm-password-paid-prompt = Please confirm your password to continue with changing your nick to { $new_nick } for { $price } coins:
+nick-request-submitted = Your request to change your nick to { $new_nick } has been submitted and is pending administrator approval.
+nick-request-submitted-paid = Deducted { $price } coins and submitted your request to change your nick to { $new_nick } for administrator review. Current balance: { $balance } coins.
+nick-error-insufficient-coins = You do not have enough coins. You need { $required } coins and have { $balance }.
+nick-error-wrong-password = Incorrect password. The nick change request was not submitted.
+nick-error-invalid = The entered nick is invalid. Use 3 to 20 alphanumeric characters, hyphens, or underscores.
+nick-error-reserved = That nick is reserved by the system and cannot be used.
+nick-error-already-pending = You already have a pending nick change request awaiting review.
+nick-error-cooldown-active = The cooldown period for a free nick change has not elapsed yet.
+nick-change-approved-user = An administrator approved your nick change. Your new username is { $new_nick }.
+nick-change-approved-reconnect-user = Your new nick ({ $new_nick }) has been approved by an administrator. In { $seconds } seconds you will be reconnected with the new nick.
+nick-change-rejected-user = Your request to change your nick to { $new_nick } was rejected. Reason: { $reason }.
+nick-change-rejected-refunded-user = Your request to change your nick to { $new_nick } was rejected. Reason: { $reason }. { $coins } coins were refunded (balance: { $balance }).
+
+# Admin pending nick changes
+admin-pending-nick-changes = Pending changes
+admin-desc-pending-nick-changes = Review, approve, or reject pending user nick change requests.
+admin-no-pending-nick-changes = There are no pending nick changes.
+admin-nick-change-requested-notify = { $player } has requested to change their nick to { $new_nick }.
+admin-nick-change-row = { $old_nick } -> { $new_nick }
+admin-nick-change-row-paid = { $old_nick } -> { $new_nick } (paid { $coins } coins)
+admin-nick-change-row-collision = { $old_nick } -> { $new_nick } [WARNING: collides with { $collision }]
+admin-nick-change-row-paid-collision = { $old_nick } -> { $new_nick } (paid { $coins } coins) [WARNING: collides with { $collision }]
+admin-nick-detail-summary = Request: change from { $old_nick } to { $new_nick }
+admin-nick-detail-free = Mode: standard free change
+admin-nick-detail-paid = Mode: paid change ({ $coins } coins)
+admin-nick-detail-collision-warning = Warning: the requested nick collides with an existing account ({ $collision }).
+admin-nick-approve = Validate change
+admin-nick-reject = Reject change
+admin-nick-reject-reason-prompt = Enter the rejection reason for { $player }'s change to { $new_nick }:
+admin-nick-reject-reason-empty = You must provide a reason to reject the nick change.
+admin-nick-reject-refund-prompt = { $player } paid { $coins } coins for this change. Do you want to refund their coins upon rejection?
+admin-nick-reject-with-refund = Reject and refund { $coins } coins
+admin-nick-reject-without-refund = Reject without refunding coins
+admin-nick-approved-feedback = Validated nick change from { $old_nick } to { $new_nick }.
+admin-nick-rejected-feedback = Rejected nick change from { $player } to { $new_nick }.
+admin-nick-rejected-refunded-feedback = Rejected nick change from { $player } to { $new_nick } and refunded { $coins } coins.
+admin-nick-error-not-pending = This nick change request is no longer pending.
+admin-nick-error-already-taken = Cannot validate because the nick { $new_nick } is still in use by another active account.
+
+

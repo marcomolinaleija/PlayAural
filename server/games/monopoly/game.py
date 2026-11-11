@@ -31,6 +31,7 @@ from . import hanoi as _hanoi  # noqa: F401 - registers bundled board
 from . import italy as _italy  # noqa: F401 - registers bundled board
 from . import london as _london  # noqa: F401 - registers bundled board
 from . import madrid as _madrid  # noqa: F401 - registers bundled board
+from . import mexico as _mexico  # noqa: F401 - registers bundled board
 from . import new_zealand as _new_zealand  # noqa: F401 - registers bundled board
 from . import paris as _paris  # noqa: F401 - registers bundled board
 from . import standard as _standard  # noqa: F401 - registers bundled board
@@ -207,8 +208,7 @@ class SnakeEyesBonusOption(BoolOption):
         player: Player | None = None,
     ) -> str:
         del current_value, player
-        board_id = getattr(getattr(game, "options", None), "board_id", DEFAULT_BOARD_ID)
-        board = get_board(board_id)
+        board = game.board if game is not None else get_board(DEFAULT_BOARD_ID)
         return Localization.get(
             locale,
             self.description,
@@ -406,7 +406,8 @@ class MonopolyGame(Game):
     def prestart_validate(self) -> list[str | tuple[str, dict]]:
         errors: list[str | tuple[str, dict]] = list(super().prestart_validate())
         try:
-            get_board(self.options.board_id)
+            # Derived games may own a board outside the classic edition registry.
+            _ = self.board
         except ValueError:
             errors.append(
                 (
@@ -1589,7 +1590,7 @@ class MonopolyGame(Game):
             if not self._bot_prefers_jail(player):
                 if player.jail_card_ids:
                     return "jail_card"
-                if player.cash >= self.board.jail_fine:
+                if player.cash >= self._jail_fine(player):
                     return "jail_pay"
             return "jail_roll"
         if self.phase == PHASE_PROPERTY:
@@ -2317,17 +2318,22 @@ class MonopolyGame(Game):
             None if self._is_actor(player, PHASE_JAIL) else self._waiting_reason(player)
         )
 
+    def _jail_fine(self, player: MonopolyPlayer) -> int:
+        del player
+        return self.board.jail_fine
+
     def _is_jail_pay_enabled(
         self, player: MonopolyPlayer
     ) -> str | tuple[str, dict] | None:
         if not self._is_actor(player, PHASE_JAIL):
             return self._waiting_reason(player)
-        if player.cash < self.board.jail_fine:
+        fine = self._jail_fine(player)
+        if player.cash < fine:
             locale = self._locale(player)
             return (
                 "monopoly-error-jail-fine-cash",
                 {
-                    "fine": self._money(locale, self.board.jail_fine),
+                    "fine": self._money(locale, fine),
                     "cash": self._money(locale, player.cash),
                 },
             )
@@ -2848,16 +2854,42 @@ class MonopolyGame(Game):
 
     def _rent_schedule_text(self, locale: str, space: BoardSpaceDefinition) -> str:
         if space.kind == SPACE_STREET:
-            return Localization.get(
-                locale,
-                self.board.development.rent_schedule_key,
-                base=self._money(locale, space.rents[0]),
-                house1=self._money(locale, space.rents[1]),
-                house2=self._money(locale, space.rents[2]),
-                house3=self._money(locale, space.rents[3]),
-                house4=self._money(locale, space.rents[4]),
-                hotel=self._money(locale, space.rents[5]),
+            h_per_hotel = self.board.development.houses_per_hotel
+            if h_per_hotel == 4 and len(space.rents) == 6:
+                return Localization.get(
+                    locale,
+                    self.board.development.rent_schedule_key,
+                    base=self._money(locale, space.rents[0]),
+                    house1=self._money(locale, space.rents[1]),
+                    house2=self._money(locale, space.rents[2]),
+                    house3=self._money(locale, space.rents[3]),
+                    house4=self._money(locale, space.rents[4]),
+                    hotel=self._money(locale, space.rents[5]),
+                )
+            parts = [f"base {self._money(locale, space.rents[0])}"]
+            for h in range(1, h_per_hotel + 1):
+                h_name = Localization.get(locale, "monopoly-building-house-count", count=h)
+                parts.append(f"{h_name} {self._money(locale, space.rents[h])}")
+            parts.append(
+                f"{Localization.get(locale, 'monopoly-building-one-hotel')} {self._money(locale, space.rents[h_per_hotel + 1])}"
             )
+            if space.max_hotels > 1 and len(space.rents) > h_per_hotel + 2:
+                parts.append(
+                    f"{Localization.get(locale, 'mexicopoly-building-two-hotels', count=2)} {self._money(locale, space.rents[h_per_hotel + 2])}"
+                )
+            schedule = "; ".join(parts)
+            hotel_str = (
+                Localization.get(locale, "monopoly-building-one-hotel")
+                if space.max_hotels == 1
+                else Localization.get(locale, "mexicopoly-building-two-hotels", count=space.max_hotels)
+            )
+            spec = Localization.get(
+                locale,
+                "mexicopoly-building-spec",
+                houses=h_per_hotel,
+                hotels=hotel_str,
+            )
+            return f"{schedule}. {spec}"
         if space.kind == SPACE_TRANSIT:
             return Localization.format_list_and(
                 locale,
@@ -2938,13 +2970,13 @@ class MonopolyGame(Game):
             amount=self._money(locale, amount),
         )
 
-    def _get_jail_pay_label(self, player: Player, action_id: str) -> str:
+    def _get_jail_pay_label(self, player: MonopolyPlayer, action_id: str) -> str:
         del action_id
         locale = self._locale(player)
         return Localization.get(
             locale,
             "monopoly-jail-pay-label",
-            amount=self._money(locale, self.board.jail_fine),
+            amount=self._money(locale, self._jail_fine(player)),
         )
 
     def _auction_minimum_bid(self) -> int:
@@ -4068,16 +4100,17 @@ class MonopolyGame(Game):
         del action_id
         if self._is_jail_pay_enabled(player):
             return
-        player.cash -= self.board.jail_fine
+        fine = self._jail_fine(player)
+        player.cash -= fine
         if self.options.free_parking_cash:
-            self.free_parking_pot += self.board.jail_fine
+            self.free_parking_pot += fine
         player.in_jail = False
         player.jail_turns = 0
         self._broadcast_actor(
             player,
             "monopoly-you-pay-jail",
             "monopoly-player-pays-jail",
-            amount=lambda locale: self._money(locale, self.board.jail_fine),
+            amount=lambda locale: self._money(locale, fine),
             cash=lambda locale: self._money(locale, player.cash),
             brief_personal_key="monopoly-you-pay-jail-brief",
             brief_others_key="monopoly-player-pays-jail-brief",
@@ -4232,10 +4265,11 @@ class MonopolyGame(Game):
             return
         player.in_jail = False
         player.jail_turns = 0
+        fine = self._jail_fine(player)
         self._start_debt(
             player,
             "",
-            self.board.jail_fine,
+            fine,
             "monopoly-debt-jail",
             continuation="move_after_jail",
         )
@@ -5408,7 +5442,11 @@ class MonopolyGame(Game):
             for group_id in available_group_ids
             for space in self.board.group_spaces(group_id)
         ]
-        if all(self.property_states[space.id].buildings >= 5 for space in candidates):
+        if all(
+            self.property_states[space.id].buildings
+            >= (self.board.development.houses_per_hotel + space.max_hotels)
+            for space in candidates
+        ):
             key = (
                 "monopoly-error-build-none-developed-or-mortgaged"
                 if available_group_ids != complete_group_ids
@@ -5699,10 +5737,13 @@ class MonopolyGame(Game):
         player.cash -= space.building_cost
         built_level = state.buildings + 1
         state.buildings = built_level
+        h_per_hotel = self.board.development.houses_per_hotel
         if self.board.development.finite_supply:
-            if built_level == 5:
+            if built_level == h_per_hotel + 1:
                 self.bank_hotels -= 1
-                self.bank_houses += 4
+                self.bank_houses += h_per_hotel
+            elif built_level > h_per_hotel + 1:
+                self.bank_hotels -= 1
             else:
                 self.bank_houses -= 1
         if announce:
@@ -5748,10 +5789,13 @@ class MonopolyGame(Game):
         state = self.property_states[property_id]
         sold_level = state.buildings
         state.buildings -= 1
+        h_per_hotel = self.board.development.houses_per_hotel
         if self.board.development.finite_supply:
-            if sold_level == 5:
+            if sold_level == h_per_hotel + 1:
                 self.bank_hotels += 1
-                self.bank_houses -= 4
+                self.bank_houses -= h_per_hotel
+            elif sold_level > h_per_hotel + 1:
+                self.bank_hotels += 1
             else:
                 self.bank_houses += 1
         value = self._building_sale_value(space)
@@ -5784,10 +5828,11 @@ class MonopolyGame(Game):
             return
         houses = 0
         hotels = 0
+        h_per_hotel = self.board.development.houses_per_hotel
         for space in group:
             state = self.property_states[space.id]
-            if state.buildings == 5:
-                hotels += 1
+            if state.buildings > h_per_hotel:
+                hotels += (state.buildings - h_per_hotel)
             else:
                 houses += state.buildings
             state.buildings = 0
@@ -7174,18 +7219,20 @@ class MonopolyGame(Game):
             if level <= 0:
                 return Localization.get(locale, self.board.development.empty_key)
             return Localization.get(locale, keys[min(level, len(keys)) - 1])
-        return Localization.get(
-            locale,
-            "monopoly-building-hotel"
-            if level >= 5
-            else "monopoly-building-house",
-        )
+        h_per_hotel = self.board.development.houses_per_hotel
+        if level <= h_per_hotel:
+            return Localization.get(locale, "monopoly-building-house")
+        num_hotels = level - h_per_hotel
+        if num_hotels == 1:
+            return Localization.get(locale, "monopoly-building-hotel")
+        return Localization.get(locale, "mexicopoly-building-second-hotel")
 
     def _development_collective_text(self, locale: str) -> str:
         return Localization.get(locale, self.board.development.collective_key)
 
     def _building_text(self, locale: str, buildings: int) -> str:
-        buildings = min(max(buildings, 0), 5)
+        h_per_hotel = self.board.development.houses_per_hotel
+        buildings = max(buildings, 0)
         if self.board.development.level_keys:
             key = (
                 self.board.development.empty_key
@@ -7195,8 +7242,13 @@ class MonopolyGame(Game):
                 ]
             )
             return Localization.get(locale, key)
-        if buildings == 5:
-            return Localization.get(locale, "monopoly-building-one-hotel")
+        if buildings > h_per_hotel:
+            num_hotels = buildings - h_per_hotel
+            if num_hotels == 1:
+                return Localization.get(locale, "monopoly-building-one-hotel")
+            return Localization.get(
+                locale, "mexicopoly-building-two-hotels", count=num_hotels
+            )
         return Localization.get(
             locale, "monopoly-building-house-count", count=buildings
         )
@@ -7461,10 +7513,11 @@ class MonopolyGame(Game):
     def _owned_building_counts(self, owner_id: str) -> tuple[int, int]:
         houses = 0
         hotels = 0
+        h_per_hotel = self.board.development.houses_per_hotel
         for property_id in self._owned_property_ids(owner_id):
             buildings = self.property_states[property_id].buildings
-            if buildings == 5:
-                hotels += 1
+            if buildings > h_per_hotel:
+                hotels += (buildings - h_per_hotel)
             else:
                 houses += buildings
         return houses, hotels
@@ -7479,8 +7532,9 @@ class MonopolyGame(Game):
     def _return_buildings_to_bank(self, state: PropertyState) -> None:
         if not self.board.development.finite_supply:
             return
-        if state.buildings == 5:
-            self.bank_hotels += 1
+        h_per_hotel = self.board.development.houses_per_hotel
+        if state.buildings > h_per_hotel:
+            self.bank_hotels += (state.buildings - h_per_hotel)
         else:
             self.bank_houses += state.buildings
 

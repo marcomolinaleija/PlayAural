@@ -6,6 +6,8 @@ Bàn tự do là nơi trò chuyện bằng văn bản và giọng nói mà khôn
 
 Chọn Tạo bàn tự do trong trình đơn chính để làm chủ bàn. Người khác có thể tìm bàn công khai trong danh sách bàn đang hoạt động hoặc vào bằng lời mời. Chọn Rời bàn để rời đi. Khi chủ bàn rời đi, một người khác ở bàn sẽ làm chủ; bàn đóng khi không còn ai.
 
+Vùng chính để trống và có thể nhận tiêu điểm. Nhấn Escape để mở các hành động của bàn, hoặc dùng nút Hành động trên máy khách cảm ứng. Các phím tắt vẫn dùng được từ vùng trống.
+
 \*\*Người tham gia và giọng nói\*\*
 
 Dùng Ai đang ở trong bàn để mở trình đơn người tham gia. Nghe danh sách người tham gia và chủ bàn sẽ đọc số người, tên mọi người và tên chủ bàn. Khán giả từ trò chơi trước cũng được tính. Bot trong trò chơi được đọc riêng và không được tính là người.

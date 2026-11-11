@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -18,8 +19,8 @@ def _script_prefix() -> str:
 
 
 def _run_script_functions(tmp_path: Path, commands: str) -> subprocess.CompletedProcess[str]:
-    if BASH is None:
-        pytest.skip("bash is required for server management script behavior tests")
+    if BASH is None or sys.platform == "win32":
+        pytest.skip("POSIX bash environment is required for server management script behavior tests")
     (tmp_path / "sc-functions.sh").write_text(
         _script_prefix(),
         encoding="utf-8",

@@ -6,6 +6,8 @@ Una mesa libre sirve para conversar por texto y voz sin iniciar un juego. No tie
 
 Elige Crear mesa libre en el menú principal para ser su jefe de mesa. Otras personas pueden encontrar una mesa pública en Mesas activas o entrar mediante una invitación. Elige Salir de la mesa para salir. Cuando sale el jefe, otra persona de la mesa asume el cargo; la mesa se cierra cuando no queda nadie.
 
+El área principal está vacía y puede recibir el foco. Pulsa Escape para abrir las acciones de la mesa, o usa el control Acciones en los clientes táctiles. Los atajos de teclado siguen disponibles desde el área vacía.
+
 \*\*Personas y voz\*\*
 
 Usa Quién está en la mesa para abrir el menú de personas. Escuchar participantes y jefe de mesa anuncia cuántas personas hay, sus nombres y quién dirige la mesa. Se incluyen los espectadores procedentes de un juego. Los bots de un juego se anuncian por separado y no se cuentan como personas.

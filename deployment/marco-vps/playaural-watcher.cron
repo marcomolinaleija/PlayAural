@@ -1,0 +1,3 @@
+# PlayAural develop branch automated build and deploy watcher
+# Runs every minute, checks origin/develop, notifies players, and updates seamlessly
+* * * * * root /opt/playaural/source/deployment/marco-vps/watcher_develop.sh >> /var/log/playaural-watcher.log 2>&1

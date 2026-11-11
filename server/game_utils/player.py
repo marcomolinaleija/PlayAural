@@ -26,3 +26,4 @@ class Player(DataClassJSONMixin):
     bot_pending_action: str | None = None
     bot_target: int | None = None
     reconnect_grace_ticks: int = 0
+    is_watching: bool = True

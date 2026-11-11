@@ -329,6 +329,7 @@ class TestGameRegistryIntegration:
             "flip7": "cards",
             "holdem": "poker",
             "humanitycards": "cards",
+            "infiltrado": "misc",
             "leftrightcenter": "dice",
             "lightturret": "arcade",
             "ludo": "board",
@@ -336,6 +337,7 @@ class TestGameRegistryIntegration:
             "midnight": "dice",
             "milebymile": "cards",
             "monopoly": "board",
+            "mexicopoly": "board",
             "nine": "cards",
             "ninetynine": "cards",
             "pig": "dice",
@@ -343,6 +345,7 @@ class TestGameRegistryIntegration:
             "pusoydos": "cards",
             "rollingballs": "misc",
             "bingo": "misc",
+            "loteria": "misc",
             "scopa": "cards",
             "senet": "board",
             "skipbo": "cards",
@@ -356,6 +359,7 @@ class TestGameRegistryIntegration:
             "uno": "cards",
             "yahtzee": "dice",
             "zombiedice": "dice",
+            "tomatodo": "dice",
         }
 
         actual_categories = {

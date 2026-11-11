@@ -60,6 +60,7 @@ from ..core.maintenance import (
     DatabaseMaintenanceBusyError,
     DatabaseMaintenanceUnavailableError,
 )
+from ..core.sound_events import AVAILABLE_SOUND_ASSETS, SOUND_EVENTS
 from ..menu_pagination import (
     DEFAULT_MENU_PAGE_SIZE,
     MENU_PAGE_IDS,
@@ -72,6 +73,7 @@ from ..menu_pagination import (
     pagination_menu_items,
     paginate_sequence,
 )
+from ..games.infiltrado.words import InfiltradoWordManager
 
 if TYPE_CHECKING:
     from ..core.server import Server
@@ -80,6 +82,51 @@ ADMIN_TARGET_PAGE_SIZE = DEFAULT_MENU_PAGE_SIZE
 ADMIN_TARGET_SEARCH_INPUT = "admin_target_search_input"
 ADMIN_LOCALIZED_TEXT_MENU = "admin_localized_text_menu"
 ADMIN_LOCALIZED_TEXT_INPUT = "admin_localized_text_input"
+ADMIN_SOUND_EVENTS_MENU = "admin_sound_events_menu"
+ADMIN_SOUND_PICKER_MENU = "admin_sound_picker_menu"
+ADMIN_INFILTRADO_WORDS_MENU = "admin_infiltrado_words_menu"
+ADMIN_INFILTRADO_PAIRS_LIST_MENU = "admin_infiltrado_pairs_list_menu"
+ADMIN_INFILTRADO_PAIR_DETAIL_MENU = "admin_infiltrado_pair_detail_menu"
+ADMIN_INFILTRADO_CATEGORIES_MENU = "admin_infiltrado_categories_menu"
+ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU = "admin_infiltrado_category_detail_menu"
+ADMIN_INFILTRADO_SELECT_CATEGORY_MENU = "admin_infiltrado_select_category_menu"
+ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU = "admin_infiltrado_delete_category_confirm_menu"
+ADMIN_INFILTRADO_ADD_WORD1_INPUT = "admin_infiltrado_add_word1_input"
+ADMIN_INFILTRADO_ADD_WORD2_INPUT = "admin_infiltrado_add_word2_input"
+ADMIN_INFILTRADO_EDIT_WORD1_INPUT = "admin_infiltrado_edit_word1_input"
+ADMIN_INFILTRADO_EDIT_WORD2_INPUT = "admin_infiltrado_edit_word2_input"
+ADMIN_INFILTRADO_ADD_CATEGORY_INPUT = "admin_infiltrado_add_category_input"
+ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT = "admin_infiltrado_rename_category_input"
+ADMIN_USERS_MENU = "admin_users_menu"
+ADMIN_SANCTIONS_MENU = "admin_sanctions_menu"
+ADMIN_SERVER_CONTENT_MENU = "admin_server_content_menu"
+ADMIN_SYSTEM_MENU = "admin_system_menu"
+
+ADMIN_SUBMENU_ROOT_ITEM_MAP = {
+    "account_approval": "admin_users",
+    "toggle_account_approval": "admin_users",
+    "pending_nick_changes": "admin_users",
+    "promote_admin": "admin_users",
+    "demote_admin": "admin_users",
+    "grant_coins": "admin_users",
+    "moderation": "admin_moderation",
+    "kick_user": "admin_moderation",
+    "mute_user": "admin_moderation",
+    "unmute_user": "admin_moderation",
+    "ban_user": "admin_moderation",
+    "unban_user": "admin_moderation",
+    "broadcast_announcement": "admin_server_content",
+    "manage_motd": "admin_server_content",
+    "sound_settings": "admin_server_content",
+    "manage_infiltrado_words": "admin_server_content",
+    "server_power": "admin_system",
+    "database_management": "admin_system",
+    "smtp_settings": "admin_system",
+}
+ADMIN_NICK_CHANGES_MENU = "admin_nick_changes_menu"
+ADMIN_NICK_CHANGE_ACTIONS_MENU = "admin_nick_change_actions_menu"
+ADMIN_NICK_REJECT_REASON_INPUT = "admin_nick_reject_reason_input"
+ADMIN_NICK_REJECT_REFUND_MENU = "admin_nick_reject_refund_menu"
 ADMIN_MODERATION_MENU = "admin_moderation_menu"
 ADMIN_MODERATION_REPORTS_MENU = "admin_moderation_reports_menu"
 ADMIN_MODERATION_REPORT_DETAIL_MENU = "admin_moderation_report_detail_menu"
@@ -103,6 +150,11 @@ DATABASE_STORAGE_SIZE_UNITS = (
     ("mib", 1024**2),
     ("kib", 1024),
 )
+GRANT_COINS_MENU = "grant_coins_menu"
+GRANT_COINS_AMOUNT_MENU = "grant_coins_amount_menu"
+GRANT_COINS_INPUT = "grant_coins_input"
+GRANT_COINS_PRESET_AMOUNTS = (100, 500, 1000, 5000, 10000, 50000)
+
 
 
 def _localized_database_size(locale: str, size_bytes: int) -> str:
@@ -163,6 +215,10 @@ ADMIN_LOCALIZED_TEXT_SPECS = {
 
 ADMIN_MENU_IDS = {
     "admin_menu",
+    ADMIN_USERS_MENU,
+    ADMIN_SANCTIONS_MENU,
+    ADMIN_SERVER_CONTENT_MENU,
+    ADMIN_SYSTEM_MENU,
     ADMIN_MODERATION_MENU,
     ADMIN_MODERATION_REPORTS_MENU,
     ADMIN_MODERATION_REPORT_DETAIL_MENU,
@@ -202,6 +258,8 @@ ADMIN_MENU_IDS = {
     "server_power_reason_menu",
     "server_power_confirm_menu",
     ADMIN_LOCALIZED_TEXT_MENU,
+    ADMIN_SOUND_EVENTS_MENU,
+    ADMIN_SOUND_PICKER_MENU,
     "smtp_settings_menu",
     "smtp_encryption_menu",
     "smtp_setting_input",
@@ -210,6 +268,26 @@ ADMIN_MENU_IDS = {
     "server_power_custom_delay_input",
     ADMIN_TARGET_SEARCH_INPUT,
     ADMIN_MODERATION_HISTORY_INPUT,
+    ADMIN_INFILTRADO_WORDS_MENU,
+    ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+    ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+    ADMIN_INFILTRADO_CATEGORIES_MENU,
+    ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+    ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
+    ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU,
+    ADMIN_INFILTRADO_ADD_WORD1_INPUT,
+    ADMIN_INFILTRADO_ADD_WORD2_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD1_INPUT,
+    ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
+    ADMIN_INFILTRADO_ADD_CATEGORY_INPUT,
+    ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT,
+    GRANT_COINS_MENU,
+    GRANT_COINS_AMOUNT_MENU,
+    GRANT_COINS_INPUT,
+    ADMIN_NICK_CHANGES_MENU,
+    ADMIN_NICK_CHANGE_ACTIONS_MENU,
+    ADMIN_NICK_REJECT_REASON_INPUT,
+    ADMIN_NICK_REJECT_REFUND_MENU,
 }
 
 
@@ -247,8 +325,6 @@ class AdministrationManager:
         """Return metadata-driven required and optional editor locales."""
         languages = Localization.get_available_languages(display_locale)
         official_codes = set(Localization.official_locale_codes())
-        if DEFAULT_LOCALE in languages:
-            official_codes.add(DEFAULT_LOCALE)
         official = [
             (code, name) for code, name in languages.items() if code in official_codes
         ]
@@ -288,7 +364,7 @@ class AdministrationManager:
         if not self._require_localized_text_access(user, spec):
             return
         official, community = self._localized_text_locale_groups(user.locale)
-        if not official or not any(code == DEFAULT_LOCALE for code, _ in official):
+        if not official:
             user.speak_l("error-no-languages", buffer="system")
             self.server._nav_back(user)
             return
@@ -300,14 +376,14 @@ class AdministrationManager:
         )
         editor_context = dict(context or {})
         subject = Localization.get(user.locale, spec.subject_key)
-        default_name = dict(official).get(DEFAULT_LOCALE, DEFAULT_LOCALE)
+        fallback_name = official[0][1] if official else DEFAULT_LOCALE
         items = [
             MenuItem(
                 text=Localization.get(
                     user.locale,
                     "admin-localized-text-instructions",
                     subject=subject,
-                    fallback=default_name,
+                    fallback=fallback_name,
                 ),
                 id="",
             )
@@ -607,8 +683,9 @@ class AdministrationManager:
 
         restore_frame = dict(admin_frame or {"menu": "admin_menu"})
         if focus_id:
-            restore_frame["_restore_focus_id"] = focus_id
-            restore_frame["_last_selection_id"] = focus_id
+            mapped_focus = ADMIN_SUBMENU_ROOT_ITEM_MAP.get(focus_id, focus_id)
+            restore_frame["_restore_focus_id"] = mapped_focus
+            restore_frame["_last_selection_id"] = mapped_focus
             restore_frame.pop("_restore_focus_position", None)
             restore_frame.pop("_last_selection_position", None)
 
@@ -750,6 +827,7 @@ class AdministrationManager:
             "unban": self._show_unban_menu,
             "mute": self._show_mute_menu,
             "unmute": self._show_unmute_menu,
+            "grant_coins": self._show_grant_coins_menu,
         }.get(mode)
         if show_fn is None:
             self._return_to_admin_root(user)
@@ -1141,6 +1219,7 @@ class AdministrationManager:
             statuses=CLOSED_REPORT_STATUSES
         )
         global_chat_enabled = self.server.global_chat_sending_enabled
+        global_voice_chat_enabled = self.server.global_voice_chat_enabled
         items = [
             MenuItem(
                 text=Localization.get(
@@ -1156,6 +1235,23 @@ class AdministrationManager:
                     "admin-moderation-global-chat-toggle-description"
                     if user.trust_level >= DEVELOPER_TRUST_LEVEL
                     else "admin-moderation-global-chat-status-description"
+                ),
+                read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-moderation-global-voice-chat-toggle",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if global_voice_chat_enabled else "option-off",
+                    ),
+                ),
+                id="toggle_global_voice_chat",
+                description_key=(
+                    "admin-moderation-global-voice-chat-toggle-description"
+                    if user.trust_level >= DEVELOPER_TRUST_LEVEL
+                    else "admin-moderation-global-voice-chat-status-description"
                 ),
                 read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
             ),
@@ -2500,15 +2596,73 @@ class AdministrationManager:
     # ==================== Menu Display Functions ====================
 
     def _show_admin_menu(self, user: NetworkUser) -> None:
-        """Show administration menu."""
+        """Show administration menu compacted into logical submenus."""
         items = [
             MenuItem(
-                text=Localization.get(user.locale, "admin-moderation"),
-                id="moderation",
+                text=Localization.get(user.locale, "admin-section-users"),
+                id="admin_users",
+                description_key="admin-desc-section-users",
             ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-section-moderation"),
+                id="admin_moderation",
+                description_key="admin-desc-section-moderation",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-section-server-content"),
+                id="admin_server_content",
+                description_key="admin-desc-section-server-content",
+            ),
+        ]
+        if user.trust_level >= DEVELOPER_TRUST_LEVEL:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-section-system"),
+                    id="admin_system",
+                    description_key="admin-desc-section-system",
+                )
+            )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "admin-switch-server"),
+                id="switch_server",
+                description_key="admin-desc-switch-server",
+            )
+        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            "admin_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": "admin_menu"}
+
+    def _show_admin_users_menu(self, user: NetworkUser) -> None:
+        """Show user and account administration submenu."""
+        items = [
             MenuItem(
                 text=Localization.get(user.locale, "account-approval"),
                 id="account_approval",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-account-approval-toggle",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on"
+                        if self.server.account_approval_required
+                        else "option-off",
+                    ),
+                ),
+                id="toggle_account_approval",
+                description_key="admin-desc-account-approval-toggle",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-pending-nick-changes"),
+                id="pending_nick_changes",
+                description_key="admin-desc-pending-nick-changes",
             ),
             MenuItem(
                 text=Localization.get(user.locale, "promote-admin"),
@@ -2519,12 +2673,30 @@ class AdministrationManager:
                 id="demote_admin",
             ),
             MenuItem(
-                text=Localization.get(user.locale, "ban-user"),
-                id="ban_user",
+                text=Localization.get(user.locale, "admin-grant-coins"),
+                id="grant_coins",
+                description_key="admin-desc-grant-coins",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_USERS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": ADMIN_USERS_MENU}
+
+    def _show_admin_sanctions_menu(self, user: NetworkUser) -> None:
+        """Show moderation and sanctions administration submenu."""
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "admin-moderation"),
+                id="moderation",
             ),
             MenuItem(
-                text=Localization.get(user.locale, "unban-user"),
-                id="unban_user",
+                text=Localization.get(user.locale, "kick-user"),
+                id="kick_user",
             ),
             MenuItem(
                 text=Localization.get(user.locale, "mute-user"),
@@ -2535,48 +2707,82 @@ class AdministrationManager:
                 id="unmute_user",
             ),
             MenuItem(
-                text=Localization.get(user.locale, "broadcast-announcement"),
-                id="broadcast_announcement",
+                text=Localization.get(user.locale, "ban-user"),
+                id="ban_user",
             ),
             MenuItem(
-                text=Localization.get(user.locale, "kick-user"),
-                id="kick_user",
+                text=Localization.get(user.locale, "unban-user"),
+                id="unban_user",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_SANCTIONS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": ADMIN_SANCTIONS_MENU}
+
+    def _show_admin_server_content_menu(self, user: NetworkUser) -> None:
+        """Show server and content administration submenu."""
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "broadcast-announcement"),
+                id="broadcast_announcement",
             ),
             MenuItem(
                 text=Localization.get(user.locale, "manage-motd"),
                 id="manage_motd",
             ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-sound-settings"),
+                id="sound_settings",
+                description_key="admin-desc-sound-settings",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-words"),
+                id="manage_infiltrado_words",
+                description_key="admin-desc-infiltrado-words",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
         ]
-        if user.trust_level >= DEVELOPER_TRUST_LEVEL:
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "server-power-management"),
-                    id="server_power",
-                )
-            )
-            items.append(
-                MenuItem(
-                    text=Localization.get(
-                        user.locale,
-                        "admin-database-management",
-                    ),
-                    id="database_management",
-                )
-            )
-            items.append(
-                MenuItem(
-                    text=Localization.get(user.locale, "admin-smtp-settings"),
-                    id="smtp_settings",
-                )
-            )
-        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
-            "admin_menu",
+            ADMIN_SERVER_CONTENT_MENU,
             items,
             multiletter=True,
             escape_behavior=EscapeBehavior.SELECT_LAST,
         )
-        self.server.user_states[user.username] = {"menu": "admin_menu"}
+        self.server.user_states[user.username] = {"menu": ADMIN_SERVER_CONTENT_MENU}
+
+    def _show_admin_system_menu(self, user: NetworkUser) -> None:
+        """Show developer-only system maintenance submenu."""
+        if user.trust_level < DEVELOPER_TRUST_LEVEL:
+            user.speak_l("dev-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "server-power-management"),
+                id="server_power",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-database-management"),
+                id="database_management",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-smtp-settings"),
+                id="smtp_settings",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_SYSTEM_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {"menu": ADMIN_SYSTEM_MENU}
 
     def _pending_users_page(self, page: int) -> PaginatedMenuPage[Any]:
         total = self.server.db.count_pending_users()
@@ -2676,6 +2882,263 @@ class AdministrationManager:
             "pending_username": pending_username,
         }
 
+    def _pending_nick_requests_page(self, page: int) -> PaginatedMenuPage[Any]:
+        total = self.server.db.count_pending_nick_requests()
+        safe_page = clamp_page(page, total, ADMIN_TARGET_PAGE_SIZE)
+        offset = (safe_page - 1) * ADMIN_TARGET_PAGE_SIZE
+        return PaginatedMenuPage(
+            items=self.server.db.list_pending_nick_requests(
+                limit=ADMIN_TARGET_PAGE_SIZE,
+                offset=offset,
+            ),
+            total=total,
+            page=safe_page,
+            page_size=ADMIN_TARGET_PAGE_SIZE,
+        )
+
+    def refresh_pending_nick_changes_menus(self, *, exclude_username: str = "") -> None:
+        """Refresh open pending nick-change menus after the queue changes."""
+        for username, user in self.server.users.items():
+            if username == exclude_username:
+                continue
+            state = self.server.user_states.get(username, {})
+            if state.get("menu") != ADMIN_NICK_CHANGES_MENU:
+                continue
+            self.server._nav_refresh(
+                user,
+                self._show_pending_nick_changes_menu,
+                state.get("nick_changes_page", 1),
+            )
+
+    def _show_pending_nick_changes_menu(
+        self, user: NetworkUser, page: int = 1, *, focus_page_start: bool = False
+    ) -> None:
+        """Show paginated menu of pending user nick-change requests."""
+        pending = self._pending_nick_requests_page(page)
+        items: list[MenuItem] = []
+        focus_position: int | None = None
+        if not pending.items:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-no-pending-nick-changes"),
+                    id="",
+                    read_only=True,
+                )
+            )
+            items.extend(
+                pagination_menu_items(user.locale, pending, include_refresh=True)
+            )
+        else:
+            if focus_page_start:
+                focus_position = len(items) + 1
+            for req in pending.items:
+                collisions = self.server.db.find_nick_collision_usernames(
+                    req.requested_username,
+                    exclude_uuid=req.user_uuid,
+                )
+                if req.coins_paid > 0 and collisions:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row-paid-collision",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                        coins=req.coins_paid,
+                        collision=", ".join(collisions),
+                    )
+                elif req.coins_paid > 0:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row-paid",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                        coins=req.coins_paid,
+                    )
+                elif collisions:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row-collision",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                        collision=", ".join(collisions),
+                    )
+                else:
+                    row_text = Localization.get(
+                        user.locale,
+                        "admin-nick-change-row",
+                        old_nick=req.old_username,
+                        new_nick=req.requested_username,
+                    )
+                items.append(
+                    MenuItem(
+                        text=row_text,
+                        id=f"nick_req_{req.id}",
+                    )
+                )
+            if pending.total_pages > 1:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "menu-page-summary",
+                            start=pending.start_index,
+                            end=pending.end_index,
+                            total=pending.total,
+                            page=pending.page,
+                            pages=pending.total_pages,
+                        ),
+                        id="page_summary",
+                        read_only=True,
+                    )
+                )
+            items.extend(
+                pagination_menu_items(user.locale, pending, include_refresh=True)
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            ADMIN_NICK_CHANGES_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+            position=focus_position,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_NICK_CHANGES_MENU,
+            "nick_changes_page": pending.page,
+            "nick_changes_page_count": pending.total_pages,
+        }
+
+    def _show_pending_nick_change_actions_menu(
+        self, user: NetworkUser, request_id: int
+    ) -> None:
+        """Show details and actions (validate, reject) for one pending nick change request."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            user.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        collisions = self.server.db.find_nick_collision_usernames(
+            req.requested_username,
+            exclude_uuid=req.user_uuid,
+        )
+        items: list[MenuItem] = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-detail-summary",
+                    old_nick=req.old_username,
+                    new_nick=req.requested_username,
+                ),
+                id="nick_detail_summary",
+                read_only=True,
+            ),
+            MenuItem(
+                text=(
+                    Localization.get(
+                        user.locale,
+                        "admin-nick-detail-paid",
+                        coins=req.coins_paid,
+                    )
+                    if req.coins_paid > 0
+                    else Localization.get(user.locale, "admin-nick-detail-free")
+                ),
+                id="nick_detail_paid",
+                read_only=True,
+            ),
+        ]
+        if collisions:
+            collision_str = ", ".join(collisions)
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "admin-nick-detail-collision-warning",
+                        collision=collision_str,
+                    ),
+                    id="nick_detail_collision",
+                    read_only=True,
+                )
+            )
+            user.speak_l(
+                "admin-nick-detail-collision-warning",
+                buffer="system",
+                collision=collision_str,
+            )
+
+        items.extend(
+            [
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-nick-approve"),
+                    id="approve",
+                ),
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-nick-reject"),
+                    id="reject",
+                ),
+                MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+            ]
+        )
+        user.show_menu(
+            ADMIN_NICK_CHANGE_ACTIONS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_NICK_CHANGE_ACTIONS_MENU,
+            "nick_request_id": int(request_id),
+        }
+
+    def _show_pending_nick_reject_refund_menu(
+        self, user: NetworkUser, request_id: int, reason: str
+    ) -> None:
+        """Ask the admin whether to refund the 30,000 coins when rejecting a paid nick change."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            user.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-reject-refund-prompt",
+                    player=req.old_username,
+                    coins=req.coins_paid,
+                ),
+                id="nick_reject_refund_prompt",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-reject-with-refund",
+                    coins=req.coins_paid,
+                ),
+                id="reject_refund",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-nick-reject-without-refund",
+                ),
+                id="reject_no_refund",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_NICK_REJECT_REFUND_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_NICK_REJECT_REFUND_MENU,
+            "nick_request_id": int(request_id),
+            "reject_reason": reason,
+        }
+
     def _show_promote_admin_menu(
         self,
         user: NetworkUser,
@@ -2772,6 +3235,13 @@ class AdministrationManager:
         """Main entry point for handling admin-related menu selections."""
         if current_menu == "admin_menu":
             await self._handle_admin_menu_selection(user, selection_id)
+        elif current_menu in (
+            ADMIN_USERS_MENU,
+            ADMIN_SANCTIONS_MENU,
+            ADMIN_SERVER_CONTENT_MENU,
+            ADMIN_SYSTEM_MENU,
+        ):
+            await self._handle_admin_submenu_selection(user, selection_id, current_menu)
         elif current_menu == ADMIN_MODERATION_MENU:
             await self._handle_moderation_selection(user, selection_id)
         elif current_menu == ADMIN_MODERATION_REPORTS_MENU:
@@ -2830,10 +3300,24 @@ class AdministrationManager:
             await self._handle_database_compact_confirm_selection(
                 user, selection_id
             )
+        elif current_menu == ADMIN_SOUND_EVENTS_MENU:
+            await self._handle_sound_events_menu_selection(user, selection_id)
+        elif current_menu == ADMIN_SOUND_PICKER_MENU:
+            await self._handle_sound_picker_menu_selection(user, selection_id)
         elif current_menu == "account_approval_menu":
             await self._handle_account_approval_selection(user, selection_id, state)
         elif current_menu == "pending_user_actions_menu":
             await self._handle_pending_user_actions_selection(user, selection_id, state)
+        elif current_menu == ADMIN_NICK_CHANGES_MENU:
+            await self._handle_pending_nick_changes_selection(user, selection_id, state)
+        elif current_menu == ADMIN_NICK_CHANGE_ACTIONS_MENU:
+            await self._handle_pending_nick_change_actions_selection(
+                user, selection_id, state
+            )
+        elif current_menu == ADMIN_NICK_REJECT_REFUND_MENU:
+            await self._handle_pending_nick_reject_refund_selection(
+                user, selection_id, state
+            )
         elif current_menu == "promote_admin_menu":
             await self._handle_promote_admin_selection(user, selection_id, state)
         elif current_menu == "demote_admin_menu":
@@ -2864,6 +3348,10 @@ class AdministrationManager:
              await self._handle_mute_reason_selection(user, selection_id, state)
         elif current_menu == "unmute_menu":
              await self._handle_unmute_selection(user, selection_id, state)
+        elif current_menu == GRANT_COINS_MENU:
+             await self._handle_grant_coins_selection(user, selection_id, state)
+        elif current_menu == GRANT_COINS_AMOUNT_MENU:
+             await self._handle_grant_coins_amount_selection(user, selection_id, state)
         elif current_menu == "manage_motd_menu":
              await self._handle_manage_motd_selection(user, selection_id, state)
         elif current_menu == "view_motd_menu":
@@ -2883,29 +3371,127 @@ class AdministrationManager:
              await self._handle_smtp_settings_selection(user, selection_id)
         elif current_menu == "smtp_encryption_menu":
              await self._handle_smtp_encryption_selection(user, selection_id)
+        elif current_menu == ADMIN_INFILTRADO_WORDS_MENU:
+             await self._handle_infiltrado_words_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_PAIRS_LIST_MENU:
+             await self._handle_infiltrado_pairs_list_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_PAIR_DETAIL_MENU:
+             await self._handle_infiltrado_pair_detail_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_CATEGORIES_MENU:
+             await self._handle_infiltrado_categories_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU:
+             await self._handle_infiltrado_category_detail_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_SELECT_CATEGORY_MENU:
+             await self._handle_infiltrado_select_category_selection(user, selection_id, state)
+        elif current_menu == ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU:
+             await self._handle_infiltrado_delete_category_confirm_selection(user, selection_id, state)
+
+    async def _handle_admin_submenu_selection(
+        self, user: NetworkUser, selection_id: str, current_menu: str
+    ) -> None:
+        """Handle selection in an admin submenu."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if selection_id == "toggle_account_approval":
+            new_value = not self.server.account_approval_required
+            self.server.set_account_approval_required(new_value)
+            status_text = Localization.get(
+                user.locale,
+                "option-on" if new_value else "option-off",
+            )
+            user.speak_l(
+                "admin-account-approval-toggle-feedback",
+                buffer="system",
+                status=status_text,
+            )
+            user.play_sound("menuenter.ogg")
+            self._show_admin_users_menu(user)
+            return
+        await self._handle_admin_menu_selection(user, selection_id)
 
     async def _handle_admin_menu_selection(
         self, user: NetworkUser, selection_id: str
     ) -> None:
         """Handle admin menu selection."""
-        if selection_id == "account_approval":
+        if selection_id == "admin_users":
+            self.server._nav_push(user, self._show_admin_users_menu)
+        elif selection_id in ("admin_moderation", "admin_sanctions"):
+            self.server._nav_push(user, self._show_admin_sanctions_menu)
+        elif selection_id == "admin_server_content":
+            self.server._nav_push(user, self._show_admin_server_content_menu)
+        elif selection_id == "admin_system":
+            if user.trust_level >= DEVELOPER_TRUST_LEVEL:
+                self.server._nav_push(user, self._show_admin_system_menu)
+            else:
+                user.speak_l("dev-only-action", buffer="system")
+                self.server._nav_refresh(user, self._show_admin_menu)
+        elif selection_id == "account_approval":
+            if self.server.db.count_pending_users() == 0:
+                user.speak_l("no-pending-accounts", buffer="system")
+                return
             self.server._nav_push(user, self._show_account_approval_menu)
+        elif selection_id == "pending_nick_changes":
+            if self.server.db.count_pending_nick_requests() == 0:
+                user.speak_l("admin-no-pending-nick-changes", buffer="system")
+                return
+            self.server._nav_push(user, self._show_pending_nick_changes_menu)
+        elif selection_id == "toggle_account_approval":
+            new_value = not self.server.account_approval_required
+            self.server.set_account_approval_required(new_value)
+            status_text = Localization.get(
+                user.locale,
+                "option-on" if new_value else "option-off",
+            )
+            user.speak_l(
+                "admin-account-approval-toggle-feedback",
+                buffer="system",
+                status=status_text,
+            )
+            user.play_sound("menuenter.ogg")
+            self._show_admin_menu(user)
         elif selection_id == "moderation":
             self.server._nav_push(user, self._show_moderation_menu)
         elif selection_id == "promote_admin":
+            if self._search_promote_targets("", 1).total == 0:
+                user.speak_l("no-users-to-promote", buffer="system")
+                return
             self.server._nav_push(user, self._show_promote_admin_menu)
         elif selection_id == "demote_admin":
+            if self._search_demote_targets(user, "", 1).total == 0:
+                user.speak_l("no-admins-to-demote", buffer="system")
+                return
             self.server._nav_push(user, self._show_demote_admin_menu)
         elif selection_id == "ban_user":
+            if self._search_ban_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-ban", buffer="system")
+                return
             self.server._nav_push(user, self._show_ban_menu)
         elif selection_id == "unban_user":
+            if self.server.db.count_active_banned_users("") == 0:
+                user.speak_l("no-banned-users", buffer="system")
+                return
             self.server._nav_push(user, self._show_unban_menu)
         elif selection_id == "mute_user":
+            if self._search_mute_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-mute", buffer="system")
+                return
             self.server._nav_push(user, self._show_mute_menu)
         elif selection_id == "unmute_user":
+            if self.server.db.count_active_muted_users("") == 0:
+                user.speak_l("no-muted-users", buffer="system")
+                return
             self.server._nav_push(user, self._show_unmute_menu)
         elif selection_id == "kick_user":
+            if self._search_kick_targets(user, "", 1).total == 0:
+                user.speak_l("no-users-to-kick", buffer="system")
+                return
             self.server._nav_push(user, self._show_kick_menu)
+        elif selection_id == "grant_coins":
+            if self._search_grant_coins_targets(user, "", 1).total == 0:
+                user.speak_l("admin-grant-coins-no-users", buffer="system")
+                return
+            self.server._nav_push(user, self._show_grant_coins_menu)
         elif selection_id == "broadcast_announcement":
             self._show_broadcast_input_menu(user)
         elif selection_id == "manage_motd":
@@ -2931,7 +3517,134 @@ class AdministrationManager:
             else:
                 user.speak_l("dev-only-action", buffer="system")
                 self.server._nav_refresh(user, self._show_admin_menu)
+        elif selection_id == "sound_settings":
+            if user.trust_level < ADMIN_TRUST_LEVEL:
+                user.speak_l("admin-only-action", buffer="system")
+                return
+            self.server._nav_push(user, self._show_sound_events_menu)
+        elif selection_id == "manage_infiltrado_words":
+            if user.trust_level < ADMIN_TRUST_LEVEL:
+                user.speak_l("admin-only-action", buffer="system")
+                return
+            self.server._nav_push(user, self._show_infiltrado_words_menu)
+        elif selection_id == "switch_server":
+            await self.server._complete_switch_server(user)
         elif selection_id == "back":
+            self.server._nav_back(user)
+
+    def _show_sound_events_menu(self, user: NetworkUser) -> None:
+        """Show menu of configurable sound events."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+        items = []
+        for event_id, event_def in SOUND_EVENTS.items():
+            current_sound = self.server.get_sound_for_event(event_id)
+            event_name = Localization.get(user.locale, event_def.label_key)
+            text = f"{event_name}: {current_sound}"
+            desc_key = event_def.description_key
+            items.append(
+                MenuItem(
+                    text=text,
+                    id=event_id,
+                    description_key=desc_key,
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            ADMIN_SOUND_EVENTS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_SOUND_EVENTS_MENU,
+        }
+
+    async def _handle_sound_events_menu_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle selection in sound events menu."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if selection_id in SOUND_EVENTS:
+            self.server._nav_push(
+                user, self._show_sound_picker_menu, selection_id
+            )
+
+    def _show_sound_picker_menu(
+        self, user: NetworkUser, event_id: str
+    ) -> None:
+        """Show menu to pick a sound for the given event."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+        event_def = SOUND_EVENTS.get(event_id)
+        if not event_def:
+            self.server._nav_back(user)
+            return
+        current_sound = self.server.get_sound_for_event(event_id)
+        items = []
+        current_tag = Localization.get(user.locale, "current-selection")
+        default_tag = Localization.get(user.locale, "default-selection")
+        for sound_name in AVAILABLE_SOUND_ASSETS:
+            tags = []
+            if sound_name == current_sound:
+                tags.append(current_tag)
+            if sound_name == event_def.default_sound:
+                tags.append(default_tag)
+            tag_str = f" ({', '.join(tags)})" if tags else ""
+            items.append(
+                MenuItem(
+                    text=f"{sound_name}{tag_str}",
+                    id=sound_name,
+                    sound=sound_name,
+                )
+            )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "cancel"),
+                id="back",
+            )
+        )
+        user.show_menu(
+            ADMIN_SOUND_PICKER_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+            selection_id=current_sound,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_SOUND_PICKER_MENU,
+            "sound_event_id": event_id,
+        }
+
+    async def _handle_sound_picker_menu_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle sound picker selection."""
+        state = self.server.user_states.get(user.username, {})
+        event_id = state.get("sound_event_id")
+        if not event_id or event_id not in SOUND_EVENTS:
+            self.server._nav_back(user)
+            return
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if selection_id in AVAILABLE_SOUND_ASSETS:
+            event_def = SOUND_EVENTS[event_id]
+            self.server.set_sound_for_event(event_id, selection_id)
+            event_label = Localization.get(user.locale, event_def.label_key)
+            user.speak_l(
+                "sound-event-updated",
+                buffer="system",
+                event=event_label,
+                sound=selection_id,
+            )
+            user.play_sound(selection_id, buffer="system")
             self.server._nav_back(user)
 
     def _require_developer_database_access(self, user: NetworkUser) -> bool:
@@ -3458,19 +4171,65 @@ class AdministrationManager:
                         recipient,
                         self._show_moderation_menu,
                     )
+        elif selection_id == "toggle_global_voice_chat":
+            if user.trust_level < DEVELOPER_TRUST_LEVEL:
+                user.speak_l("dev-only-action", buffer="system")
+                self.server._nav_refresh(user, self._show_moderation_menu)
+                return
+            enabled = not self.server.global_voice_chat_enabled
+            try:
+                self.server.set_global_voice_chat_enabled(enabled)
+            except Exception:
+                logging.getLogger("playaural").exception(
+                    "Failed to persist the global-voice-chat availability setting"
+                )
+                user.speak_l(
+                    "admin-moderation-global-voice-chat-update-failed",
+                    buffer="system",
+                )
+                return
+            announcement_key = (
+                "global-voice-chat-availability-enabled"
+                if enabled
+                else "global-voice-chat-availability-disabled"
+            )
+            for recipient in tuple(self.server.users.values()):
+                recipient.play_sound_family("notify", buffer="system")
+                recipient.speak_l(announcement_key, buffer="system")
+                recipient_state = self.server.user_states.get(
+                    recipient.username,
+                    {},
+                )
+                if recipient_state.get("menu") == ADMIN_MODERATION_MENU:
+                    self.server._nav_refresh(
+                        recipient,
+                        self._show_moderation_menu,
+                    )
         elif selection_id == "reports_open":
+            if self.server.db.count_moderation_reports(status="open") == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "open"
             )
         elif selection_id == "reports_closed":
+            if self.server.db.count_moderation_reports(statuses=CLOSED_REPORT_STATUSES) == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "closed"
             )
         elif selection_id == "reports_all":
+            if self.server.db.count_moderation_reports() == 0:
+                user.speak_l("admin-moderation-no-reports", buffer="system")
+                return
             self.server._nav_push(
                 user, self._show_moderation_reports_menu, "all"
             )
         elif selection_id == "browse_messages":
+            if self.server.db.count_global_chat_messages() == 0:
+                user.speak_l("admin-moderation-message-list-empty", buffer="system")
+                return
             self.server._nav_push(user, self._show_moderation_messages_menu)
         elif selection_id == "find_history":
             self._show_moderation_history_input(user)
@@ -3889,6 +4648,260 @@ class AdministrationManager:
         elif selection_id == "back":
             self.server._nav_back(user)
 
+    async def _handle_pending_nick_changes_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in the pending nick-changes queue menu."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+        elif selection_id in MENU_PAGE_IDS:
+            next_page = page_for_selection(
+                selection_id,
+                state.get("nick_changes_page", 1),
+                state.get("nick_changes_page_count", 1),
+            )
+            if next_page is None:
+                return
+            if is_page_refresh(selection_id):
+                announce_page_refresh(user)
+            self.server._nav_refresh(
+                user,
+                self._show_pending_nick_changes_menu,
+                next_page,
+                focus_page_start=is_page_navigation(selection_id),
+            )
+        elif selection_id.startswith("nick_req_"):
+            try:
+                req_id = int(selection_id[len("nick_req_") :])
+            except ValueError:
+                return
+            self.server._nav_push(
+                user, self._show_pending_nick_change_actions_menu, req_id
+            )
+
+    async def _handle_pending_nick_change_actions_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle validate/reject actions for one pending nick change request."""
+        try:
+            request_id = int(state.get("nick_request_id", 0) or 0)
+        except (TypeError, ValueError):
+            request_id = 0
+        if request_id <= 0:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "approve":
+            await self._approve_nick_change_request(user, request_id)
+        elif selection_id == "reject":
+            req = self.server.db.get_nick_change_request(request_id)
+            if req is None or req.status != "pending":
+                user.speak_l("admin-nick-error-not-pending", buffer="system")
+                self.server._nav_back(user)
+                return
+            user.show_editbox(
+                ADMIN_NICK_REJECT_REASON_INPUT,
+                Localization.get(
+                    user.locale,
+                    "admin-nick-reject-reason-prompt",
+                    player=req.old_username,
+                    new_nick=req.requested_username,
+                ),
+                multiline=False,
+                max_length=200,
+            )
+            self.server.enter_input_state(
+                user,
+                ADMIN_NICK_REJECT_REASON_INPUT,
+                nick_request_id=request_id,
+            )
+        elif selection_id == "back":
+            self.server._nav_back(user)
+
+    async def _handle_pending_nick_reject_refund_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle refund choice when rejecting a paid nick change request."""
+        try:
+            request_id = int(state.get("nick_request_id", 0) or 0)
+        except (TypeError, ValueError):
+            request_id = 0
+        reason = str(state.get("reject_reason") or "").strip()
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+        if request_id <= 0 or not reason:
+            self.server._nav_back(user)
+            return
+        if selection_id == "reject_refund":
+            await self._complete_reject_nick_change_request(
+                user, request_id, reason, refund_coins=True
+            )
+        elif selection_id == "reject_no_refund":
+            await self._complete_reject_nick_change_request(
+                user, request_id, reason, refund_coins=False
+            )
+
+    @require_admin
+    async def _approve_nick_change_request(
+        self, admin: NetworkUser, request_id: int
+    ) -> None:
+        """Approve a pending nick change request and propagate the new username."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        target_online = any(
+            u.uuid == req.user_uuid for u in self.server.users.values()
+        )
+        outcome = self.server.db.approve_nick_change_request(
+            request_id,
+            reviewer_uuid=admin.uuid,
+            reviewer_username=admin.username,
+            mark_notified=target_online,
+        )
+        if outcome.code == "username_taken":
+            admin.speak_l(
+                "admin-nick-error-already-taken",
+                buffer="system",
+                new_nick=outcome.new_username or req.requested_username,
+            )
+            return
+        if not outcome.ok or outcome.request is None:
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        target_user = self.server.apply_runtime_username_change(
+            outcome.request.user_uuid,
+            outcome.old_username,
+            outcome.new_username,
+        )
+        if target_user is not admin:
+            admin.play_sound("accountapprove.ogg")
+            admin.speak_l(
+                "admin-nick-approved-feedback",
+                buffer="system",
+                old_nick=outcome.old_username,
+                new_nick=outcome.new_username,
+            )
+        self.server._notify_admins(
+            "account-action",
+            "accountactionnotify.ogg",
+            exclude_username=admin.username,
+        )
+
+        if target_user is not None:
+            target_user.play_sound("accountapprove.ogg")
+            target_user.speak_l(
+                "nick-change-approved-reconnect-user",
+                buffer="system",
+                new_nick=outcome.new_username,
+                seconds=5,
+            )
+            self.server.schedule_nick_change_reconnect(
+                target_user,
+                outcome.new_username,
+                delay_seconds=5.0,
+            )
+
+        self.refresh_pending_nick_changes_menus(exclude_username=admin.username)
+        if self.server.db.count_pending_nick_requests() > 0:
+            self.server._nav_back(admin)
+        else:
+            self._return_to_admin_root(admin, "pending_nick_changes")
+
+    @require_admin
+    async def _complete_reject_nick_change_request(
+        self,
+        admin: NetworkUser,
+        request_id: int,
+        reason: str,
+        *,
+        refund_coins: bool,
+    ) -> None:
+        """Reject a pending nick change request with a reason and optional coin refund."""
+        req = self.server.db.get_nick_change_request(request_id)
+        if req is None or req.status != "pending":
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        target_user = next(
+            (u for u in self.server.users.values() if u.uuid == req.user_uuid),
+            None,
+        )
+        outcome = self.server.db.reject_nick_change_request(
+            request_id,
+            reviewer_uuid=admin.uuid,
+            reviewer_username=admin.username,
+            reason=reason,
+            refund_coins=refund_coins,
+            mark_notified=target_user is not None,
+        )
+        if not outcome.ok or outcome.request is None:
+            admin.speak_l("admin-nick-error-not-pending", buffer="system")
+            self.server._nav_back(admin)
+            return
+
+        if target_user is not admin:
+            admin.play_sound("accountdeni.ogg")
+            if outcome.refunded_coins > 0:
+                admin.speak_l(
+                    "admin-nick-rejected-refunded-feedback",
+                    buffer="system",
+                    player=outcome.old_username,
+                    new_nick=outcome.new_username,
+                    coins=outcome.refunded_coins,
+                )
+            else:
+                admin.speak_l(
+                    "admin-nick-rejected-feedback",
+                    buffer="system",
+                    player=outcome.old_username,
+                    new_nick=outcome.new_username,
+                )
+
+        self.server._notify_admins(
+            "account-action",
+            "accountactionnotify.ogg",
+            exclude_username=admin.username,
+        )
+
+        if target_user is not None:
+            target_user.play_sound("accountdeni.ogg")
+            if outcome.refunded_coins > 0:
+                target_user.play_sound("game_citadels/coins_small.ogg")
+                target_user.speak_l(
+                    "nick-change-rejected-refunded-user",
+                    buffer="system",
+                    new_nick=outcome.new_username,
+                    reason=outcome.request.reject_reason,
+                    coins=outcome.refunded_coins,
+                    balance=outcome.balance,
+                )
+            else:
+                target_user.speak_l(
+                    "nick-change-rejected-user",
+                    buffer="system",
+                    new_nick=outcome.new_username,
+                    reason=outcome.request.reject_reason,
+                )
+            self.server.refresh_user_nick_menu_if_open(target_user)
+
+        self.refresh_pending_nick_changes_menus(exclude_username=admin.username)
+        if self.server.db.count_pending_nick_requests() > 0:
+            # Pop back to the pending list
+            while (
+                self.server.user_states.get(admin.username, {}).get("menu")
+                in (ADMIN_NICK_REJECT_REFUND_MENU, ADMIN_NICK_CHANGE_ACTIONS_MENU)
+            ):
+                self.server._nav_back(admin)
+        else:
+            self._return_to_admin_root(admin, "pending_nick_changes")
+
     async def _handle_promote_admin_selection(
         self, user: NetworkUser, selection_id: str, state: dict[str, Any]
     ) -> None:
@@ -4278,6 +5291,14 @@ class AdministrationManager:
             if not username:
                 self.server._restore_input_parent(user, state)
                 return True
+            if self.server.db.count_global_chat_sender_identities(username) == 0:
+                self.server._restore_input_parent(user, state)
+                user.speak_l(
+                    "admin-moderation-no-sender-history",
+                    buffer="system",
+                    username=username,
+                )
+                return True
             self.server._nav_push_from_input(
                 user,
                 self._show_moderation_sender_results_menu,
@@ -4303,6 +5324,27 @@ class AdministrationManager:
             else:
                 # Cancelled or empty
                 self.server._restore_input_parent(user, state)
+            return True
+        elif menu_id == GRANT_COINS_INPUT and input_id == "grant_coins_custom_amount":
+            target_username = state.get("target_username")
+            if not target_username:
+                self.server._restore_input_parent(user, state)
+                return True
+            if not value or not value.strip():
+                self.server._restore_input_parent(user, state)
+                return True
+            try:
+                amount = int(value.strip())
+                if amount <= 0:
+                    user.speak_l("admin-grant-coins-error-positive", buffer="system")
+                    self.server._restore_input_parent(user, state)
+                    return True
+            except ValueError:
+                user.speak_l("admin-grant-coins-error-invalid", buffer="system")
+                self.server._restore_input_parent(user, state)
+                return True
+
+            await self._grant_coins_to_user(user, target_username, amount)
             return True
         elif (
             menu_id == "server_power_custom_delay_input"
@@ -4390,6 +5432,158 @@ class AdministrationManager:
 
             state["_parent_frame"] = parent
             self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_ADD_WORD1_INPUT:
+            if value:
+                clean_w1 = str(value).strip()
+                parent = dict(state.get("_parent_frame") or {})
+                target_cat = state.get("draft_category")
+                self.server.enter_input_state(
+                    user,
+                    ADMIN_INFILTRADO_ADD_WORD2_INPUT,
+                    draft_word1=clean_w1,
+                    draft_category=target_cat,
+                    _parent_frame=parent,
+                )
+                user.show_editbox(
+                    "infiltrado_add_word2",
+                    Localization.get(user.locale, "admin-infiltrado-prompt-word2"),
+                )
+            else:
+                self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_ADD_WORD2_INPUT:
+            word1 = state.get("draft_word1")
+            clean_w2 = str(value or "").strip()
+            target_cat = state.get("draft_category")
+            parent = dict(state.get("_parent_frame") or {})
+            if word1 and clean_w2:
+                if target_cat:
+                    pair = InfiltradoWordManager.add_pair(word1, clean_w2, category=target_cat)
+                    user.speak_l(
+                        "admin-infiltrado-pair-added",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                        category=pair.category,
+                    )
+                    user.play_sound("menuenter.ogg")
+                    self.server._restore_input_parent(user, state)
+                else:
+                    self._show_infiltrado_select_category_menu(
+                        user, draft_word1=word1, draft_word2=clean_w2, parent_frame=parent
+                    )
+            else:
+                self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_ADD_CATEGORY_INPUT:
+            cat_name = str(value or "").strip()
+            parent = dict(state.get("_parent_frame") or {})
+            draft_w1 = state.get("draft_word1")
+            draft_w2 = state.get("draft_word2")
+            if cat_name:
+                added = InfiltradoWordManager.add_category(cat_name)
+                if not added:
+                    user.speak_l("admin-infiltrado-category-already-exists", buffer="system")
+                else:
+                    user.speak_l(
+                        "admin-infiltrado-category-added", buffer="system", category=cat_name
+                    )
+                    user.play_sound("menuenter.ogg")
+                    if draft_w1 and draft_w2:
+                        pair = InfiltradoWordManager.add_pair(
+                            draft_w1, draft_w2, category=cat_name
+                        )
+                        user.speak_l(
+                            "admin-infiltrado-pair-added",
+                            buffer="system",
+                            word1=pair.word1,
+                            word2=pair.word2,
+                            category=pair.category,
+                        )
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT:
+            old_cat = state.get("category")
+            new_name = str(value or "").strip()
+            if old_cat and new_name:
+                renamed = InfiltradoWordManager.rename_category(old_cat, new_name)
+                if renamed:
+                    user.speak_l(
+                        "admin-infiltrado-category-renamed",
+                        buffer="system",
+                        old_category=old_cat,
+                        new_category=new_name,
+                    )
+                    user.play_sound("menuenter.ogg")
+                else:
+                    user.speak_l("admin-infiltrado-category-already-exists", buffer="system")
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_EDIT_WORD1_INPUT:
+            pair_id = state.get("pair_id")
+            clean_w1 = str(value or "").strip()
+            if pair_id and clean_w1:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), word1=clean_w1)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-updated",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                    )
+                    user.play_sound("menuenter.ogg")
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_INFILTRADO_EDIT_WORD2_INPUT:
+            pair_id = state.get("pair_id")
+            clean_w2 = str(value or "").strip()
+            if pair_id and clean_w2:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), word2=clean_w2)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-updated",
+                        buffer="system",
+                        word1=pair.word1,
+                        word2=pair.word2,
+                    )
+                    user.play_sound("menuenter.ogg")
+            self.server._restore_input_parent(user, state)
+            return True
+
+        elif menu_id == ADMIN_NICK_REJECT_REASON_INPUT:
+            try:
+                request_id = int(state.get("nick_request_id", 0) or 0)
+            except (TypeError, ValueError):
+                request_id = 0
+            clean_reason = " ".join(str(value or "").split()).strip()
+            if not clean_reason:
+                user.speak_l("admin-nick-reject-reason-empty", buffer="system")
+                self.server._restore_input_parent(user, state)
+                return True
+            req = self.server.db.get_nick_change_request(request_id)
+            if req is None or req.status != "pending":
+                user.speak_l("admin-nick-error-not-pending", buffer="system")
+                self.server._restore_input_parent(user, state)
+                return True
+            if req.coins_paid > 0:
+                self.server._nav_push_from_input(
+                    user,
+                    self._show_pending_nick_reject_refund_menu,
+                    request_id,
+                    clean_reason,
+                )
+            else:
+                self.server._restore_input_parent(user, state)
+                await self._complete_reject_nick_change_request(
+                    user, request_id, clean_reason, refund_coins=False
+                )
             return True
 
         return False
@@ -5588,3 +6782,750 @@ class AdministrationManager:
             str(state.get("search_query", "")),
             int(state.get("target_page", 1) or 1),
         )
+
+    # ------------------------------------------------------------------ #
+    # Grant Coins to Players                                             #
+    # ------------------------------------------------------------------ #
+
+    def _search_grant_coins_targets(
+        self, user: NetworkUser, query: str, page: int
+    ) -> PaginatedMenuPage[str]:
+        return self._search_user_targets_page(
+            query,
+            page,
+            approved=True,
+        )
+
+    def _show_grant_coins_menu(
+        self,
+        user: NetworkUser,
+        query: str = "",
+        page: int = 1,
+        *,
+        focus_page_start: bool = False,
+    ) -> None:
+        """Show searchable list of users to grant coins."""
+        self._show_admin_target_menu(
+            user,
+            menu_id=GRANT_COINS_MENU,
+            mode="grant_coins",
+            action_prefix="grant_coins",
+            targets=self._search_grant_coins_targets(user, query, page),
+            empty_key="admin-grant-coins-no-users",
+            query=query,
+            focus_page_start=focus_page_start,
+        )
+
+    async def _handle_grant_coins_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        if selection_id == "back":
+            self.server._nav_back(user)
+        elif selection_id == "search":
+            self._handle_target_search_selection(user, state)
+        elif self._handle_target_page_selection(user, selection_id, state):
+            return
+        elif selection_id.startswith("grant_coins_"):
+            target_username = selection_id[len("grant_coins_"):]
+            self.server._nav_push(user, self._show_grant_coins_amount_menu, target_username)
+
+    def _show_grant_coins_amount_menu(
+        self, user: NetworkUser, target_username: str
+    ) -> None:
+        """Show amount options to grant coins to the selected user."""
+        resolution = self.server.db.resolve_user(target_username)
+        target_record = resolution.user
+        current_balance = 0
+        if target_record:
+            wallet = self.server.db.get_wallet(target_record.uuid)
+            current_balance = wallet.balance
+            display_name = target_record.username
+        else:
+            display_name = target_username
+
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-grant-coins-target-balance",
+                    player=display_name,
+                    coins=current_balance,
+                ),
+                id="target_balance",
+                read_only=True,
+            )
+        ]
+
+        for amount in GRANT_COINS_PRESET_AMOUNTS:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "coins-amount-option",
+                        coins=amount,
+                    ),
+                    id=f"amount_{amount}",
+                )
+            )
+
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-grant-coins-custom-amount",
+                ),
+                id="amount_custom",
+            )
+        )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            GRANT_COINS_AMOUNT_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": GRANT_COINS_AMOUNT_MENU,
+            "target_username": target_username,
+        }
+
+    async def _handle_grant_coins_amount_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        target_username = state.get("target_username")
+        if not target_username:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "back":
+            self.server._nav_back(user)
+        elif selection_id == "amount_custom":
+            user.show_editbox(
+                "grant_coins_custom_amount",
+                Localization.get(user.locale, "admin-grant-coins-prompt-amount"),
+            )
+            self.server.enter_input_state(
+                user,
+                GRANT_COINS_INPUT,
+                target_username=target_username,
+            )
+        elif selection_id.startswith("amount_"):
+            try:
+                amount = int(selection_id[len("amount_"):])
+                if amount > 0:
+                    await self._grant_coins_to_user(user, target_username, amount)
+            except ValueError:
+                self.server._nav_back(user)
+
+    @require_admin
+    async def _grant_coins_to_user(
+        self, admin: NetworkUser, target_username: str, amount: int
+    ) -> None:
+        """Grant virtual coins to a player and broadcast audio and speech notifications."""
+        if amount <= 0:
+            admin.speak_l("admin-grant-coins-error-positive", buffer="system")
+            return
+
+        resolution = self.server.db.resolve_user(target_username)
+        if resolution.ambiguous:
+            admin.speak_l(
+                "username-ambiguous",
+                buffer="system",
+                username=target_username,
+            )
+            self._return_to_admin_root(admin, "grant_coins")
+            return
+
+        target_record = resolution.user
+        if not target_record:
+            admin.speak_l("auth-error-user-not-found", buffer="system")
+            self._return_to_admin_root(admin, "grant_coins")
+            return
+
+        success, new_balance = self.server.db.adjust_wallet_balance(
+            target_record.uuid,
+            amount,
+        )
+        if not success:
+            admin.speak_l("auth-registration-error", buffer="system")
+            self._return_to_admin_root(admin, "grant_coins")
+            return
+
+        admin.play_sound("coins_grant.ogg")
+        admin.speak_l(
+            "admin-grant-coins-success",
+            buffer="system",
+            player=target_record.username,
+            amount=amount,
+            balance=new_balance,
+        )
+
+        target_user = self.server.users.get(target_record.username)
+        if target_user and target_user.username != admin.username:
+            target_user.play_sound("coins_grant.ogg")
+            target_user.speak_l(
+                "coins-granted-notification",
+                buffer="system",
+                amount=amount,
+                balance=new_balance,
+            )
+
+        self._return_to_admin_root(admin, "grant_coins")
+
+    # ------------------------------------------------------------------ #
+    # Infiltrado Word Pairs Management                                  #
+    # ------------------------------------------------------------------ #
+
+    def _show_infiltrado_words_menu(self, user: NetworkUser) -> None:
+        """Show Infiltrado word pairs management hub."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        total_pairs = InfiltradoWordManager.count_pairs()
+        total_cats = len(InfiltradoWordManager.get_categories())
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-add-pair"),
+                id="add_pair",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-manage-categories", total=total_cats
+                ),
+                id="manage_categories",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-list-pairs", total=total_pairs
+                ),
+                id="list_pairs",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            ADMIN_INFILTRADO_WORDS_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_WORDS_MENU,
+        }
+
+    async def _handle_infiltrado_words_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in Infiltrado word pairs hub."""
+        if selection_id == "add_pair":
+            self.server.enter_input_state(user, ADMIN_INFILTRADO_ADD_WORD1_INPUT)
+            user.show_editbox(
+                "infiltrado_add_word1",
+                Localization.get(user.locale, "admin-infiltrado-prompt-word1"),
+            )
+        elif selection_id == "manage_categories":
+            self.server._nav_push(user, self._show_infiltrado_categories_menu)
+        elif selection_id == "list_pairs":
+            self.server._nav_push(user, self._show_infiltrado_pairs_list_menu, 1, None)
+        elif selection_id == "back":
+            self.server._nav_back(user)
+
+    def _show_infiltrado_pairs_list_menu(
+        self, user: NetworkUser, page: int = 1, category: str | None = None
+    ) -> None:
+        """Show paginated list of word pairs, optionally filtered by category."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        pairs = InfiltradoWordManager.get_pairs_by_category(category)
+        page_size = 20
+        paginated = paginate_sequence(pairs, page, page_size=page_size)
+
+        items: list[MenuItem] = []
+        if category:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "admin-infiltrado-category-pairs-title",
+                        category=category,
+                        total=len(pairs),
+                    ),
+                    id="",
+                    read_only=True,
+                )
+            )
+
+        if not pairs:
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-infiltrado-empty-pairs"),
+                    id="",
+                    read_only=True,
+                )
+            )
+        else:
+            for pair in paginated.items:
+                cat_tag = f" [{pair.category}]" if not category else ""
+                items.append(
+                    MenuItem(
+                        text=f"{pair.id}. {pair.word1} / {pair.word2}{cat_tag}",
+                        id=f"pair_{pair.id}",
+                    )
+                )
+
+        if paginated.total_pages > 1:
+            items.extend(
+                pagination_menu_items(user.locale, paginated, include_refresh=True)
+            )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+            "page": paginated.page,
+            "total_pages": paginated.total_pages,
+            "category": category,
+        }
+
+    async def _handle_infiltrado_pairs_list_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in paginated pairs list."""
+        category = state.get("category")
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+
+        if is_page_navigation(selection_id) or selection_id in MENU_PAGE_IDS:
+            current_page = state.get("page", 1)
+            total_pages = state.get("total_pages", 1)
+            target_page = page_for_selection(selection_id, current_page, total_pages)
+            if target_page is not None:
+                if is_page_refresh(selection_id):
+                    announce_page_refresh(user)
+                self._show_infiltrado_pairs_list_menu(user, target_page, category)
+            return
+
+        if selection_id.startswith("pair_"):
+            try:
+                pair_id = int(selection_id.split("_")[1])
+                self.server._nav_push(user, self._show_infiltrado_pair_detail_menu, pair_id)
+            except (ValueError, IndexError):
+                pass
+
+    def _show_infiltrado_pair_detail_menu(
+        self, user: NetworkUser, pair_id: int
+    ) -> None:
+        """Show detail / actions menu for a specific word pair."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        pair = InfiltradoWordManager.get_pair_by_id(pair_id)
+        if not pair:
+            user.speak_l("admin-infiltrado-empty-pairs", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "admin-infiltrado-pair-current-with-cat",
+                    id=pair.id,
+                    word1=pair.word1,
+                    word2=pair.word2,
+                    category=pair.category,
+                ),
+                id="",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-edit-word1", word=pair.word1
+                ),
+                id="edit_word1",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-edit-word2", word=pair.word2
+                ),
+                id="edit_word2",
+            ),
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-change-category", category=pair.category
+                ),
+                id="change_category",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-delete-pair"),
+                id="delete_pair",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+
+        user.show_menu(
+            ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+            "pair_id": pair_id,
+        }
+
+    async def _handle_infiltrado_pair_detail_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle edit/delete action for a word pair."""
+        pair_id = state.get("pair_id")
+        if not pair_id:
+            self.server._nav_back(user)
+            return
+
+        pair = InfiltradoWordManager.get_pair_by_id(int(pair_id))
+        if not pair:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "edit_word1":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_EDIT_WORD1_INPUT,
+                pair_id=pair.id,
+            )
+            user.show_editbox(
+                "infiltrado_edit_word1",
+                Localization.get(
+                    user.locale, "admin-infiltrado-prompt-edit-word1", word=pair.word1
+                ),
+                default_value=pair.word1,
+            )
+        elif selection_id == "edit_word2":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_EDIT_WORD2_INPUT,
+                pair_id=pair.id,
+            )
+            user.show_editbox(
+                "infiltrado_edit_word2",
+                Localization.get(
+                    user.locale, "admin-infiltrado-prompt-edit-word2", word=pair.word2
+                ),
+                default_value=pair.word2,
+            )
+        elif selection_id == "change_category":
+            self.server._nav_push(
+                user, self._show_infiltrado_select_category_menu, None, None, int(pair.id)
+            )
+        elif selection_id == "delete_pair":
+            InfiltradoWordManager.delete_pair(pair.id)
+            user.speak_l("admin-infiltrado-pair-deleted", buffer="system")
+            user.play_sound("menuenter.ogg")
+            self.server._nav_back(user)
+        elif selection_id == "back":
+            self.server._nav_back(user)
+
+    # ------------------------------------------------------------------ #
+    # Categories Management                                              #
+    # ------------------------------------------------------------------ #
+
+    def _show_infiltrado_categories_menu(self, user: NetworkUser) -> None:
+        """Show Infiltrado categories list and actions."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        categories = InfiltradoWordManager.get_categories()
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-add-category"),
+                id="add_category",
+            )
+        ]
+        for cat in categories:
+            cnt = InfiltradoWordManager.count_pairs_by_category(cat)
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale, "admin-infiltrado-category-item", category=cat, count=cnt
+                    ),
+                    id=f"cat_{cat}",
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_CATEGORIES_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_CATEGORIES_MENU,
+        }
+
+    async def _handle_infiltrado_categories_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selection in categories list."""
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "add_category":
+            self.server.enter_input_state(user, ADMIN_INFILTRADO_ADD_CATEGORY_INPUT)
+            user.show_editbox(
+                "infiltrado_add_category",
+                Localization.get(user.locale, "admin-infiltrado-prompt-category-name"),
+            )
+            return
+
+        if selection_id.startswith("cat_"):
+            cat_name = selection_id[4:]
+            self.server._nav_push(user, self._show_infiltrado_category_detail_menu, cat_name)
+
+    def _show_infiltrado_category_detail_menu(
+        self, user: NetworkUser, category: str
+    ) -> None:
+        """Show detail and options for a specific category."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        cnt = InfiltradoWordManager.count_pairs_by_category(category)
+        items = [
+            MenuItem(
+                text=Localization.get(
+                    user.locale, "admin-infiltrado-category-current", category=category, count=cnt
+                ),
+                id="",
+                read_only=True,
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-list-category-pairs"),
+                id="list_pairs",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-add-pair-to-category"),
+                id="add_pair_to_category",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-rename-category"),
+                id="rename_category",
+            ),
+        ]
+        if category.lower() != "general":
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "admin-infiltrado-delete-category"),
+                    id="delete_category",
+                )
+            )
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+            "category": category,
+        }
+
+    async def _handle_infiltrado_category_detail_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle actions on a category."""
+        cat = state.get("category")
+        if not cat:
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "back":
+            self.server._nav_back(user)
+            return
+
+        if selection_id == "list_pairs":
+            self.server._nav_push(user, self._show_infiltrado_pairs_list_menu, 1, cat)
+            return
+
+        if selection_id == "add_pair_to_category":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_ADD_WORD1_INPUT,
+                draft_category=cat,
+            )
+            user.show_editbox(
+                "infiltrado_add_word1",
+                Localization.get(user.locale, "admin-infiltrado-prompt-word1"),
+            )
+            return
+
+        if selection_id == "rename_category":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_RENAME_CATEGORY_INPUT,
+                category=cat,
+            )
+            user.show_editbox(
+                "infiltrado_rename_category",
+                Localization.get(user.locale, "admin-infiltrado-prompt-rename-category", category=cat),
+                default_value=cat,
+            )
+            return
+
+        if selection_id == "delete_category":
+            if cat.lower() == "general":
+                user.speak_l("admin-infiltrado-category-cannot-delete-general", buffer="system")
+                return
+            cnt = InfiltradoWordManager.count_pairs_by_category(cat)
+            show_confirmation_menu(
+                user,
+                ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU,
+                prompt_key="admin-infiltrado-delete-category-confirm",
+                prompt_kwargs={"category": cat, "count": cnt},
+                confirm_choice=ConfirmationChoice("confirm", "confirm-yes"),
+                cancel_choice=ConfirmationChoice("back", "confirm-no"),
+                buffer="system",
+            )
+            self.server.user_states[user.username] = {
+                "menu": ADMIN_INFILTRADO_DELETE_CATEGORY_CONFIRM_MENU,
+                "category": cat,
+            }
+            return
+
+    async def _handle_infiltrado_delete_category_confirm_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle confirmation of category deletion."""
+        cat = state.get("category")
+        if selection_id == "confirm" and cat:
+            InfiltradoWordManager.delete_category(cat, reassign_to="General")
+            user.speak_l(
+                "admin-infiltrado-category-deleted", buffer="system", category=cat
+            )
+            user.play_sound("menuenter.ogg")
+            self.server._nav_back(user)
+        else:
+            self.server._nav_back(user)
+
+    def _show_infiltrado_select_category_menu(
+        self,
+        user: NetworkUser,
+        draft_word1: str | None = None,
+        draft_word2: str | None = None,
+        pair_id: int | None = None,
+        parent_frame: dict[str, Any] | None = None,
+    ) -> None:
+        """Show category selection picker for a pair."""
+        if user.trust_level < ADMIN_TRUST_LEVEL:
+            user.speak_l("admin-only-action", buffer="system")
+            self.server._nav_back(user)
+            return
+
+        categories = InfiltradoWordManager.get_categories()
+        items = []
+        for cat in categories:
+            items.append(
+                MenuItem(
+                    text=cat,
+                    id=f"sel_cat_{cat}",
+                )
+            )
+        items.append(
+            MenuItem(
+                text=Localization.get(user.locale, "admin-infiltrado-category-create-new"),
+                id="create_new_cat",
+            )
+        )
+        items.append(MenuItem(text=Localization.get(user.locale, "cancel"), id="cancel"))
+
+        user.show_menu(
+            ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self.server.user_states[user.username] = {
+            "menu": ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
+            "draft_word1": draft_word1,
+            "draft_word2": draft_word2,
+            "pair_id": pair_id,
+            "_parent_frame": parent_frame,
+        }
+
+    async def _handle_infiltrado_select_category_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle category selection for a pair."""
+        draft_w1 = state.get("draft_word1")
+        draft_w2 = state.get("draft_word2")
+        pair_id = state.get("pair_id")
+        parent = state.get("_parent_frame")
+
+        if selection_id == "cancel":
+            if parent:
+                self.server._restore_input_parent(user, state)
+            else:
+                self.server._nav_back(user)
+            return
+
+        if selection_id == "create_new_cat":
+            self.server.enter_input_state(
+                user,
+                ADMIN_INFILTRADO_ADD_CATEGORY_INPUT,
+                draft_word1=draft_w1,
+                draft_word2=draft_w2,
+                _parent_frame=parent,
+            )
+            user.show_editbox(
+                "infiltrado_add_category",
+                Localization.get(user.locale, "admin-infiltrado-prompt-category-name"),
+            )
+            return
+
+        if selection_id.startswith("sel_cat_"):
+            cat_name = selection_id[8:]
+            if draft_w1 and draft_w2:
+                pair = InfiltradoWordManager.add_pair(draft_w1, draft_w2, category=cat_name)
+                user.speak_l(
+                    "admin-infiltrado-pair-added",
+                    buffer="system",
+                    word1=pair.word1,
+                    word2=pair.word2,
+                    category=pair.category,
+                )
+                user.play_sound("menuenter.ogg")
+            elif pair_id:
+                pair = InfiltradoWordManager.update_pair(int(pair_id), category=cat_name)
+                if pair:
+                    user.speak_l(
+                        "admin-infiltrado-pair-category-updated",
+                        buffer="system",
+                        category=cat_name,
+                    )
+                    user.play_sound("menuenter.ogg")
+
+            if parent:
+                self.server._restore_input_parent(user, state)
+            else:
+                self.server._nav_back(user)

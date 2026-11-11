@@ -547,8 +547,10 @@ def test_admin_power_menu_is_dev_only(tmp_path) -> None:
     server.admin_manager._show_admin_menu(admin)
     server.admin_manager._show_admin_menu(dev)
 
-    assert "server_power" not in _item_ids(admin.get_current_menu_items("admin_menu"))
-    assert "server_power" in _item_ids(dev.get_current_menu_items("admin_menu"))
+    assert "admin_system" not in _item_ids(admin.get_current_menu_items("admin_menu"))
+    assert "admin_system" in _item_ids(dev.get_current_menu_items("admin_menu"))
+    server.admin_manager._show_admin_system_menu(dev)
+    assert "server_power" in _item_ids(dev.get_current_menu_items("admin_system_menu"))
 
 
 @pytest.mark.asyncio
@@ -996,3 +998,41 @@ def test_power_restore_no_show_host_is_replaced_and_host_promoted(
         ) in bob.get_spoken_messages()
     finally:
         server.db.close()
+
+
+@pytest.mark.asyncio
+async def test_check_power_command_schedules_reboot(tmp_path) -> None:
+    server = Server()
+    cmd_file = tmp_path / "power-command.json"
+    server._power_command_path = str(cmd_file)
+    cmd_file.write_text(
+        '{"action": "reboot", "delay_seconds": 60, "requested_by": "autoupdate", "reason_id": "update"}',
+        encoding="utf-8",
+    )
+
+    try:
+        server._check_power_command()
+
+        assert not cmd_file.exists()
+        assert server.power_manager.is_scheduled
+        op = server.power_manager.active_operation
+        assert op is not None
+        assert op.action == PowerAction.REBOOT
+        assert op.delay_seconds == 60
+        assert op.requested_by == "autoupdate"
+        assert op.reason_id == "update"
+    finally:
+        server.power_manager.cancel()
+
+
+def test_check_power_command_handles_corrupt_file_cleanly(tmp_path) -> None:
+    server = Server()
+    cmd_file = tmp_path / "power-command.json"
+    server._power_command_path = str(cmd_file)
+    cmd_file.write_text("invalid json content!", encoding="utf-8")
+
+    server._check_power_command()
+
+    assert not server.power_manager.is_scheduled
+    assert not cmd_file.exists()
+
