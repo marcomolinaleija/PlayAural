@@ -187,13 +187,19 @@ async def test_w_speaks_presence_and_ctrl_w_opens_people_menu(room, control):
 
 
 @pytest.mark.asyncio
-async def test_ctrl_u_still_opens_the_same_people_menu(room):
+async def test_ctrl_u_opens_online_users_and_returns_to_the_same_table(room):
     server, host, _guest = room
     table = await create_room(server, host)
     await server._handle_keybind(
         SimpleNamespace(username=host.username), {"type": "keybind", "key": "u", "control": True}
     )
-    assert server._user_states[host.username]["menu"] == TABLE_MEMBERS_MENU
+    assert server._user_states[host.username]["menu"] == "online_users"
+    assert server._tables.find_user_table(host.username) is table
+    await server._handle_online_users_selection(
+        host, "back", dict(server._user_states[host.username])
+    )
+    assert server._user_states[host.username]["menu"] == "in_game"
+    assert server._tables.find_user_table(host.username) is table
 
 
 def test_w_is_reserved_in_every_activity_and_shifted_bindings_remain_available():

@@ -33,6 +33,9 @@ branches or silently add pending upstream changes to a release.
 - **Feature Branch Isolation**: Never develop or experiment directly on `develop`
   or `main`. Create isolated `feature/<name>` branches for spikes, prototypes, or
   new capabilities. Only integrate into `develop` when verified and explicitly requested.
+- **Primary Checkout**: The user prefers one repository directory and switching
+  branches with `git switch`. Work in the primary `PlayAural` checkout; do not
+  create linked worktrees unless the user explicitly requests them.
 - **Verification Before Integration**: Always run relevant automated test suites
   via `uv run --project server --extra dev python -m pytest ...` before committing
   or concluding changes.
@@ -107,6 +110,54 @@ build_prod.bat
 ```
 
 ## Architecture
+
+### Native Community Forum
+
+The native forum lives in `server/forum/`: keep schema, repository, service,
+navigation, composing, and presentation separate. It shares account UUIDs,
+approval/moderation/block rules, the central SQLite lifecycle (schema v10), and
+the existing menu/input/speech protocol across desktop, web, and mobile.
+Opening a message shows its full body in a read-only multiline input. Message
+menus keep one short body row that reopens the reader, with actions below.
+Closing restores message focus without reopening; never accept reader text as
+an edit, and recheck visibility on open. Read-only multiline starts at the top
+without automatic full-text selection. Private/member/block rules still apply.
+Forum content precedes all actions. Menu titles are metadata; announce brief
+context on entry without adding heading/help rows or repeating it on refresh.
+Message composers use one editable row per field (label: current value),
+with a bounded body excerpt and the complete text retained in the editbox.
+Do not duplicate message text as preview rows plus separate edit actions.
+Forum message bodies allow 64,000 characters; previews stay bounded and reports
+retain the full body. Schema-10 post rebuilding runs only in the central startup
+migration, with FK checks before commit and enforcement restored on every exit.
+Drafts are bounded session data, never account preferences. See
+`devdoc/forum-foundation.md` for the feature scope and data lifecycle.
+Forum availability is a persistent server setting controlled by admins/developers.
+The main entry stays visible and only speaks a notice while disabled. Gate all
+new shared-menu actions and media grants/HTTP access; preserve local drafts and
+allow cancellation, cleanup and already-started background preparation.
+Public subforums have a fixed language; topics inherit it through their category.
+Scope public lists/search/counts/saved topics and category administration to the
+selected language. Keep private memberships and saved private chats independent.
+Store explicit forum language by account UUID, independently of interface locale.
+Preserve category/topic ids and freeze draft/category destinations to their own
+language. Never move a populated category across languages through deletion.
+Reports cover public threads/posts only, never private conversations. Recheck
+access and revision inside the central report transaction. Preserve immutable
+text/title/identity evidence in the existing moderation queue; share report
+quotas and notify staff only on creation. Reports never auto-hide or sanction.
+Subforum management is restricted to approved administrators/developers in the
+service layer. Deleting a populated subforum requires an explicit destination
+and atomically preserves topics, posts, attachments, polls and personal state.
+Private discussions use a protected internal category, never a public subforum.
+Private conversations require accepted UUID membership, including for admins;
+never leak them into public lists/search/counts. Poll ballots are atomic and
+question/options freeze after the first vote, including after withdrawal.
+Uploaded files use authenticated HTTP, never WebSocket binaries or public
+object URLs. CPU/media/storage work runs off-loop; SQLite remains on its
+central owner loop behind maintenance barriers. Only explicit playback starts
+an attachment, and closing its player restores focus and temporary mixing.
+See `devdoc/forum-enhancements.md` for rollout status and remaining checks.
 
 ### Network Protocol
 All communication is WebSocket JSON packets:
@@ -1372,4 +1423,4 @@ The server currently registers **52 games**:
 - Package manager: `uv` for Python components, `npm` for the mobile client
 - Languages: Spanish is the official mandatory language; English, Vietnamese, and other community translations are optional
 
-Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W and Ctrl+U open the interactive roster, and displaced game-specific W bindings use Alt+W.
+Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W opens the table roster and Ctrl+U opens the global online list, and displaced game-specific W bindings use Alt+W.

@@ -18,18 +18,18 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from ..chat_channels import MAX_CHAT_MESSAGE_LENGTH, normalize_global_chat_channel
 from ..messages.localization import DEFAULT_LOCALE, Localization
 from ..moderation.chat_history import GLOBAL_CHAT_HISTORY_SORT_ORDERS
+from ..moderation.report_schema import CURRENT_CHECKS, LEGACY_CHECKS, create_reports_table, migrate_reports_table
 from ..moderation.reports import (
     AUTOMATED_SPAM_REPORT_COOLDOWN_SECONDS,
     CLOSED_REPORT_STATUSES,
     MAX_MODERATION_QUERY_PAGE_SIZE,
     MAX_REPORT_DETAILS_LENGTH,
     MAX_REPORTS_PER_WINDOW,
-    REPORT_CONTEXT_CODES,
     REPORT_CONTEXT_GLOBAL,
     REPORT_LIMIT_WINDOW_SECONDS,
     REPORT_ORIGIN_AUTOMATED_SPAM,
@@ -55,6 +55,11 @@ from ..users.nick_policy import (
 )
 from ..users.system_identities import is_reserved_system_username
 from ..gender import Gender, normalize_gender, require_gender
+from ..forum.schema import (
+    CHECK_CONSTRAINTS as FORUM_CHECK_CONSTRAINTS,
+    create_schema as create_forum_schema,
+    erase_account as erase_forum_account,
+)
 from ..users.roles import (
     ADMIN_TRUST_LEVEL,
     DEVELOPER_TRUST_LEVEL,
@@ -68,6 +73,10 @@ from .retention import (
     TRANSIENT_TABLE_CHECKPOINT_RETENTION_DAYS,
     USER_NOTIFICATION_RETENTION_DAYS,
 )
+
+if TYPE_CHECKING:
+    from ..forum.reporting import ReportTarget
+
 
 _USER_RECORD_COLUMNS = (
     "id, username, password_hash, uuid, locale, preferences_json, "
@@ -320,6 +329,8 @@ class DatabaseBackupResult:
     created_at_utc: str
     incomplete_files_removed: int = 0
     incomplete_file_bytes_removed: int = 0
+    archive_path: Path | None = None
+    archive_size_bytes: int = 0
 
 
 @dataclass(frozen=True)
@@ -468,7 +479,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 4
+    CURRENT_SCHEMA_VERSION = 10
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -504,6 +515,7 @@ class Database:
         }
     )
     SCHEMA_REQUIRED_TABLE_SQL_FRAGMENTS = {
+        **FORUM_CHECK_CONSTRAINTS,
         "user_blocks": ("CHECK (blocker_id != blocked_id)",),
         "global_chat_messages": (
             "CHECK (sender_uuid != '')",
@@ -511,38 +523,7 @@ class Database:
             "CHECK (channel_code != '')",
             "CHECK (message != '')",
         ),
-        "moderation_reports": (
-            "CHECK (reporter_uuid != '')",
-            "CHECK (reported_uuid != '')",
-            "CHECK (reporter_uuid != reported_uuid)",
-            "CHECK (status IN ('open', 'reviewed', 'dismissed', 'actioned'))",
-            "CHECK (origin_code IN ('manual', 'automated_spam'))",
-            "CHECK (context_code IN ('global', 'table'))",
-            """
-                CHECK (
-                    (origin_code = 'manual'
-                        AND context_code = 'global'
-                        AND evidence_json IS NULL)
-                    OR
-                    (origin_code = 'automated_spam'
-                        AND evidence_json IS NOT NULL
-                        AND evidence_json != '')
-                )
-            """,
-            """
-                CHECK (
-                    context_code != 'table'
-                    OR (channel_code IS NULL AND context_anchor_message_id IS NULL)
-                )
-            """,
-            """
-                CHECK (
-                    origin_code != 'automated_spam'
-                    OR context_code != 'global'
-                    OR channel_code IS NOT NULL
-                )
-            """,
-        ),
+        "moderation_reports": CURRENT_CHECKS,
         "server_settings": ("CHECK (setting_key != '')",),
         "smtp_config": ("CHECK (id = 1)",),
     }
@@ -1620,14 +1601,15 @@ class Database:
         # introduced identity/version headers, but its compatibility migration
         # could leave users.username_key nullable. Version two made that lookup
         # key non-null, but did not enforce immutable account-id uniqueness and
-        # used canonical rather than compatibility normalization. All supported
+        # used canonical rather than compatibility normalization. Version three
+        # protects that identity. Version six combines wallets and forums. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2, 3}:
+        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
-        if schema_version in {1, 2, 3} and application_id != self.APPLICATION_ID:
+        if schema_version and application_id != self.APPLICATION_ID:
             raise sqlite3.DatabaseError(
                 f"version-{schema_version} database is missing the PlayAural "
                 "identifier"
@@ -1661,7 +1643,14 @@ class Database:
                     "unversioned SQLite database is not a recognizable PlayAural "
                     f"database; refusing to modify it{detail}"
                 )
-        if schema_version in {1, 2, 3}:
+        # Develop v4 introduced wallets; the isolated forum branch used v4/v5
+        # for public/private forums before those histories were combined.
+        # Choose the historical contract, then validate it in full before backup
+        # or mutation. Missing pieces of either contract are never repaired here.
+        legacy_forum = schema_version >= 5 or (
+            schema_version == 4 and any(name.startswith("forum_") for name in table_names)
+        )
+        if schema_version:
             self._validate_schema(
                 expected_schema_version=schema_version,
                 allowed_column_attributes=(
@@ -1674,7 +1663,8 @@ class Database:
                     else None
                 ),
                 legacy_identity_contract=schema_version in {1, 2},
-                legacy_wallets_contract=schema_version < 4,
+                legacy_wallets_contract=schema_version < 4 or (legacy_forum and schema_version < 6),
+                include_forum=legacy_forum,
             )
 
         migration_backup: DatabaseBackupResult | None = None
@@ -1918,6 +1908,9 @@ class Database:
 
     def _canonical_schema_contract(
         self,
+        *,
+        include_forum: bool = True,
+        forum_version: int = 10,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -1939,7 +1932,7 @@ class Database:
         try:
             connection.execute("PRAGMA foreign_keys = ON")
             cursor.execute("BEGIN IMMEDIATE")
-            self._create_tables_in_transaction(cursor)
+            self._create_tables_in_transaction(cursor, include_forum=include_forum, forum_version=forum_version)
             connection.commit()
             canonical_table_names = frozenset(
                 str(row[0])
@@ -1993,6 +1986,7 @@ class Database:
         | None = None,
         legacy_identity_contract: bool = False,
         legacy_wallets_contract: bool = False,
+        include_forum: bool | None = None,
     ) -> None:
         """Require the canonical schema contract without repairing drift."""
         executor = cursor if cursor is not None else self._conn
@@ -2019,7 +2013,10 @@ class Database:
             canonical_unique_keys,
             canonical_foreign_keys,
             canonical_triggers,
-        ) = self._canonical_schema_contract()
+        ) = self._canonical_schema_contract(
+            include_forum=(required_schema_version >= 5 if include_forum is None else include_forum),
+            forum_version=required_schema_version,
+        )
         if legacy_identity_contract:
             # Schema versions one and two used the same named UUID index but
             # did not declare it unique. Derive the legacy exception from the
@@ -2085,6 +2082,10 @@ class Database:
                 + "; ".join(details)
                 + ")"
             )
+
+        if required_schema_version >= 7 and 'forum_categories' in actual_tables:
+            if executor.execute("SELECT 1 FROM forum_categories WHERE id = '__private__'").fetchone() is None:
+                raise sqlite3.DatabaseError('database is missing the internal private forum category')
 
         unexpected_views = executor.execute(
             """
@@ -2160,6 +2161,14 @@ class Database:
                 table_name,
                 (),
             )
+            if table_name == 'forum_posts' and required_schema_version < 10:
+                required_fragments = ('CHECK (length(body) BETWEEN 1 AND 8000)', *required_fragments[1:])
+            if table_name == "moderation_reports" and required_schema_version < 8:
+                required_fragments = LEGACY_CHECKS
+            if table_name == 'forum_categories' and required_schema_version in (7, 8):
+                required_fragments = required_fragments[:-1]
+            if table_name == "forum_categories" and required_schema_version < 7:
+                required_fragments = ()
             normalized_sql = self._normalize_schema_sql(
                 actual_table_sql[table_name]
             )
@@ -2285,13 +2294,29 @@ class Database:
                 )
 
     def _create_tables(self) -> None:
-        """Create or migrate the schema in one atomic transaction."""
-        self._conn.execute("PRAGMA foreign_keys = ON;")
-        with self._transaction(immediate=True) as cursor:
-            self._create_tables_in_transaction(cursor)
-            cursor.execute(f"PRAGMA application_id = {self.APPLICATION_ID}")
-            cursor.execute(f"PRAGMA user_version = {self.CURRENT_SCHEMA_VERSION}")
-            self._validate_schema(cursor)
+        """Create or migrate the schema in one atomic startup transaction."""
+        if self._conn.in_transaction:
+            raise RuntimeError("Nested database transactions are not supported")
+        source_version = self._conn.execute('PRAGMA user_version').fetchone()[0]
+        rebuild_posts = source_version < 10 and self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forum_posts'"
+        ).fetchone() is not None
+        # SQLite requires FK enforcement off before BEGIN for a table rebuild.
+        # Startup has no admitted sessions; the backup and source validation
+        # have already completed. Check all retained relationships before commit.
+        self._conn.execute('PRAGMA foreign_keys = OFF' if rebuild_posts else 'PRAGMA foreign_keys = ON')
+        self._require_pragma_value(self._conn, 'foreign_keys', 0 if rebuild_posts else 1)
+        try:
+            with self._transaction(immediate=True) as cursor:
+                self._create_tables_in_transaction(cursor)
+                cursor.execute(f"PRAGMA application_id = {self.APPLICATION_ID}")
+                cursor.execute(f"PRAGMA user_version = {self.CURRENT_SCHEMA_VERSION}")
+                self._validate_schema(cursor)
+                if rebuild_posts:
+                    self._verify_connection_integrity(self._conn, full=False)
+        finally:
+            self._conn.execute('PRAGMA foreign_keys = ON')
+            self._require_pragma_value(self._conn, 'foreign_keys', 1)
 
     @classmethod
     def _create_users_table(
@@ -2392,7 +2417,8 @@ class Database:
         )
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
-    def _create_tables_in_transaction(self, cursor: sqlite3.Cursor) -> None:
+    def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
+                                      forum_version: int = 10) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(
@@ -2651,52 +2677,13 @@ class Database:
         # Reports are immutable identity/evidence snapshots with no user-table
         # foreign keys. Manual cleanup owns their retention, so deleting an
         # account cannot erase a pending review or orphan a constrained row.
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS moderation_reports (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                reporter_uuid TEXT NOT NULL,
-                reporter_username TEXT NOT NULL,
-                reported_uuid TEXT NOT NULL,
-                reported_username TEXT NOT NULL,
-                reported_at_utc TEXT NOT NULL,
-                reason_code TEXT NOT NULL,
-                details TEXT NOT NULL DEFAULT '',
-                channel_code TEXT,
-                context_anchor_message_id INTEGER
-                    REFERENCES global_chat_messages(id) ON DELETE SET NULL,
-                status TEXT NOT NULL DEFAULT 'open',
-                reviewed_by_uuid TEXT,
-                reviewed_by_username TEXT,
-                reviewed_at_utc TEXT,
-                origin_code TEXT NOT NULL,
-                context_code TEXT NOT NULL,
-                evidence_json TEXT,
-                CHECK (reporter_uuid != ''),
-                CHECK (reported_uuid != ''),
-                CHECK (reporter_uuid != reported_uuid),
-                CHECK (status IN ('open', 'reviewed', 'dismissed', 'actioned')),
-                CHECK (origin_code IN ('manual', 'automated_spam')),
-                CHECK (context_code IN ('global', 'table')),
-                CHECK (
-                    (origin_code = 'manual'
-                        AND context_code = 'global'
-                        AND evidence_json IS NULL)
-                    OR
-                    (origin_code = 'automated_spam'
-                        AND evidence_json IS NOT NULL
-                        AND evidence_json != '')
-                ),
-                CHECK (
-                    context_code != 'table'
-                    OR (channel_code IS NULL AND context_anchor_message_id IS NULL)
-                ),
-                CHECK (
-                    origin_code != 'automated_spam'
-                    OR context_code != 'global'
-                    OR channel_code IS NOT NULL
-                )
-            )
-        """)
+        reports_existed = cursor.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'moderation_reports'"
+        ).fetchone() is not None
+        if reports_existed and source_schema_version < 8 and forum_version >= 8:
+            migrate_reports_table(cursor)
+        else:
+            create_reports_table(cursor, forum=forum_version >= 8)
 
         # Small server-wide feature settings persist independently of any
         # account. Rows live until explicitly changed or the database itself
@@ -2846,6 +2833,9 @@ class Database:
                 SELECT RAISE(ABORT, 'account username and id are immutable');
             END
         """)
+
+        if include_forum:
+            create_forum_schema(cursor, version=forum_version)
 
     def _ensure_column(
         self,
@@ -3961,18 +3951,19 @@ class Database:
         *,
         reporter_uuid: str,
         reporter_username: str,
-        reported_uuid: str,
-        reported_username: str,
+        reported_uuid: str = "",
+        reported_username: str = "",
         reason_code: str,
         details: str = "",
         channel_code: str | None = None,
+        forum_target: "ReportTarget | None" = None,
     ) -> ModerationReportSubmission:
         """Atomically enforce report limits and retain one manual-review case."""
         reporter_id = str(reporter_uuid or "").strip()
         reporter_name = str(reporter_username or "").strip()
         reported_id = str(reported_uuid or "").strip()
         reported_name = str(reported_username or "").strip()
-        if not reporter_id or not reporter_name or not reported_id or not reported_name:
+        if not reporter_id or not reporter_name or (forum_target is None and (not reported_id or not reported_name)):
             raise ValueError("Moderation reports require both account identities")
         if reporter_id == reported_id:
             raise ValueError("An account cannot report itself")
@@ -3983,6 +3974,9 @@ class Database:
         normalized_details = details.strip()
         if len(normalized_details) > MAX_REPORT_DETAILS_LENGTH:
             raise ValueError("Moderation report details exceed the limit")
+        if forum_target is not None and channel_code is not None:
+            raise ValueError("Forum reports cannot have a chat channel")
+        evidence = None
         normalized_channel = None
         if channel_code is not None:
             normalized_channel = normalize_global_chat_channel(channel_code)
@@ -3999,6 +3993,18 @@ class Database:
         ).isoformat(timespec="microseconds")
 
         with self._transaction(immediate=True) as cursor:
+            if forum_target is not None:
+                from ..forum.reporting import ReportTarget, capture_public_report
+                from ..forum.repository import ForumRepository
+                from ..forum.service import ForumService
+                from ..forum.models import ForumError
+                if not isinstance(forum_target, ReportTarget):
+                    raise ValueError("Unsupported forum report target")
+                evidence = capture_public_report(ForumService(ForumRepository(self)), reporter_id,
+                                                 forum_target.kind, forum_target.id)
+                if evidence.target != forum_target:
+                    raise ForumError('forum-report-changed')
+                reported_id, reported_name = evidence.author_uuid or '', evidence.author_name
             cursor.execute(
                 "SELECT uuid, username FROM users WHERE uuid IN (?, ?)",
                 (reporter_id, reported_id),
@@ -4009,12 +4015,20 @@ class Database:
             }
             if (
                 current_accounts.get(reporter_id) != reporter_name
-                or current_accounts.get(reported_id) != reported_name
+                or (reported_id and current_accounts.get(reported_id) != reported_name)
             ):
                 raise ValueError(
                     "Moderation report identities must match current accounts"
                 )
 
+            if forum_target is not None:
+                duplicate = cursor.execute(
+                    """SELECT 1 FROM forum_report_targets WHERE reporter_uuid = ?
+                       AND target_kind = ? AND target_id = ? AND revision = ?""",
+                    (reporter_id, forum_target.kind, forum_target.id, forum_target.revision),
+                ).fetchone()
+                if duplicate:
+                    return ModerationReportSubmission(outcome='duplicate')
             cursor.execute(
                 """
                 SELECT COUNT(*) AS count
@@ -4062,13 +4076,14 @@ class Database:
                 WHERE reporter_uuid = ?
                   AND reported_uuid = ?
                   AND reported_at_utc >= ?
+                  AND context_code != 'forum'
                 ORDER BY reported_at_utc DESC, id DESC
                 LIMIT 1
                 """,
                 (reporter_id, reported_id, target_cooldown_start),
             )
             latest_same_target = cursor.fetchone()
-            if latest_same_target:
+            if latest_same_target and evidence is None:
                 latest_at = datetime.fromisoformat(
                     latest_same_target["reported_at_utc"]
                 )
@@ -4087,18 +4102,20 @@ class Database:
                     retry_after_seconds=retry_after,
                 )
 
-            anchor_query = (
-                "SELECT id FROM global_chat_messages "
-                "WHERE sender_uuid = ? AND sent_at_utc <= ?"
-            )
-            anchor_params: list[object] = [reported_id, reported_at_utc]
-            if normalized_channel is not None:
-                anchor_query += " AND channel_code = ?"
-                anchor_params.append(normalized_channel)
-            anchor_query += " ORDER BY sent_at_utc DESC, id DESC LIMIT 1"
-            cursor.execute(anchor_query, anchor_params)
-            anchor_row = cursor.fetchone()
-            anchor_id = int(anchor_row["id"]) if anchor_row else None
+            anchor_id = None
+            if evidence is None:
+                anchor_query = (
+                    "SELECT id FROM global_chat_messages "
+                    "WHERE sender_uuid = ? AND sent_at_utc <= ?"
+                )
+                anchor_params: list[object] = [reported_id, reported_at_utc]
+                if normalized_channel is not None:
+                    anchor_query += " AND channel_code = ?"
+                    anchor_params.append(normalized_channel)
+                anchor_query += " ORDER BY sent_at_utc DESC, id DESC LIMIT 1"
+                cursor.execute(anchor_query, anchor_params)
+                anchor_row = cursor.fetchone()
+                anchor_id = int(anchor_row["id"]) if anchor_row else None
 
             cursor.execute(
                 """
@@ -4114,8 +4131,9 @@ class Database:
                     context_anchor_message_id,
                     status,
                     origin_code,
-                    context_code
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
+                    context_code,
+                    evidence_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
                 """,
                 (
                     reporter_id,
@@ -4128,13 +4146,18 @@ class Database:
                     normalized_channel,
                     anchor_id,
                     REPORT_ORIGIN_MANUAL,
-                    REPORT_CONTEXT_GLOBAL,
+                    'forum' if evidence else REPORT_CONTEXT_GLOBAL,
+                    evidence.to_json() if evidence else None,
                 ),
             )
-            return ModerationReportSubmission(
-                outcome="created",
-                report_id=int(cursor.lastrowid),
-            )
+            report_id = int(cursor.lastrowid)
+            if forum_target is not None:
+                cursor.execute(
+                    """INSERT INTO forum_report_targets(report_id, reporter_uuid, target_kind, target_id, revision)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (report_id, reporter_id, forum_target.kind, forum_target.id, forum_target.revision),
+                )
+            return ModerationReportSubmission(outcome="created", report_id=report_id)
 
     def submit_automated_spam_report(
         self,
@@ -4149,7 +4172,7 @@ class Database:
         reported_name = str(reported_username or "").strip()
         if not reported_id or not reported_name:
             raise ValueError("Automated reports require a target identity")
-        if evidence.scope not in REPORT_CONTEXT_CODES:
+        if evidence.scope not in ("global", "table"):
             raise ValueError("Unsupported automated-report context")
         normalized_channel = None
         if evidence.scope == REPORT_CONTEXT_GLOBAL:
@@ -4956,6 +4979,7 @@ class Database:
 
         with self._transaction(immediate=True) as cursor:
             # Delete dependent data using explicit soft keys (username/uuid).
+            erase_forum_account(cursor, user.uuid)
             cursor.execute(
                 "DELETE FROM player_game_stats WHERE player_id = ?",
                 (user.uuid,),
@@ -8424,4 +8448,3 @@ class Database:
             if changed:
                 self._save_nick_requests_store_in_tx(cursor, next_id, requests)
             return resolved
-

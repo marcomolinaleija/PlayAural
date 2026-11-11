@@ -518,6 +518,16 @@ class SoundManager:
                 if not source.paused:
                     self._apply_source_mix_locked(source)
 
+    def set_external_ducking(self, owner: str, levels: dict[str, float] | None = None) -> None:
+        """Temporary local playback focus without rewriting user master volume."""
+        with self._lock:
+            key = f'client-duck:{owner}'
+            if levels is None:
+                self._duck_requests.pop(key, None)
+            else:
+                self._duck_requests[key] = {bus: max(0.0, min(1.0, gain)) for bus, gain in levels.items()}
+            self._apply_mix()
+
     def _set_bus_gain(self, bus: str, gain, fade_ms=0) -> None:
         target = _clamp(gain, 0, 100, 100) / 100
         duration_ms = int(_clamp(fade_ms, 0, MAX_FADE_MS, 0))

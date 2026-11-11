@@ -770,6 +770,7 @@ class User(ABC):
         grid_height: int = 0,
         grid_width: int = 1,
         capture_focus_context_id: str | None = None,
+        title: str | None = None,
     ) -> None:
         """
         Display a menu to the user.
@@ -781,6 +782,7 @@ class User(ABC):
             escape_behavior: How escape key behaves (see EscapeBehavior enum).
             position: 1-based position to select (None for first item).
             selection_id: Optional item ID to focus on (overrides position).
+            title: Localized plain-text name for the existing menu heading.
             grid_enabled: Enable grid navigation mode.
             grid_height: Number of rows in grid mode.
             grid_width: Number of columns in grid mode.

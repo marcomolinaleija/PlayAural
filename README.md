@@ -44,7 +44,7 @@ PlayAural is designed so the full state of the platform can be followed without 
 
 ## Game Catalog
 
-PlayAural includes **free tables** for text and voice conversation, with switching to and from games while keeping the same table and voice channel. Choose **Create a free table** in the main menu. **W** announces people and the host; **Ctrl+W** or **Ctrl+U** opens the participants menu. Game actions previously bound to W use **Alt+W**.
+PlayAural includes **free tables** for text and voice conversation, with switching to and from games while keeping the same table and voice channel. Choose **Create a free table** in the main menu. **W** announces people and the host; **Ctrl+W** opens the participants menu; **Ctrl+U** opens the global online list. Game actions previously bound to W use **Alt+W**.
 
 PlayAural currently includes **52 games** across backend categories:
 
@@ -91,6 +91,20 @@ documentation fall back to English rather than displaying raw translation keys.
 - `web_client/` - modular browser client source, service worker, split locale bundles, static assets, Web Audio/Web Speech handling, and table voice integration
 - `mobile_client/` - Expo application, mobile locales, sounds, build configuration, and voice integration
 - `deployment/` - deployment-specific configuration examples
+
+## Community Forum
+
+Choose **Forum** in the main menu on desktop, web, or mobile. Browse Community,
+Questions and help, or Ideas and feedback; start a discussion, read messages,
+reply, and edit your messages. Recent activity, unread discussions, saved
+discussions, and text search help you find and continue conversations.
+
+Content comes first and actions follow it. Brief context is announced on entry;
+titles and page summaries do not occupy extra menu rows. Messages remain plain
+text, and publishing always follows an explicit preview. Existing accounts,
+approval, bans, mutes, blocks, and administrator roles apply across the forum.
+See **Documentation > Forum** for the user guide and
+[the foundation notes](devdoc/forum-foundation.md) for architecture and a local demo.
 
 ## Web Client
 

@@ -30,6 +30,8 @@ config/*.json
 !config/default_*.json
 identities.json
 PlayAural.db
+# Private attachment objects and temporary uploads beside local databases.
+*.forum-media/
 *.db-wal
 *.db-shm
 *.db-journal

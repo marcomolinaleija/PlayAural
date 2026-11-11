@@ -1204,6 +1204,13 @@ export class MobileAudioManager {
     }
   }
 
+  setExternalDucking(owner: string, levels: Record<string, number> | null = null): void {
+    const key = `client-duck:${owner}`;
+    if (levels) this.commandDucking.set(key, new Map(Object.entries(levels)));
+    else this.commandDucking.delete(key);
+    this.refreshMix();
+  }
+
   private setWebMasterBus(bus: GainNode | null, value: number): void {
     if (bus && this.webAudioContext) {
       bus.gain.setTargetAtTime(value, this.webAudioContext.currentTime, 0.05);

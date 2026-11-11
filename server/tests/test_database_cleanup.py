@@ -920,6 +920,7 @@ def _create_unversioned_database(db_path: Path) -> str:
     connection = sqlite3.connect(db_path)
     try:
         connection.execute("DROP TRIGGER protect_users_immutable_identity")
+        _remove_forum_tables_for_legacy_fixture(connection)
         connection.execute("DROP TABLE moderation_reports")
         connection.execute("DROP TABLE global_chat_messages")
         connection.execute("DROP TABLE server_settings")
@@ -931,10 +932,32 @@ def _create_unversioned_database(db_path: Path) -> str:
     return user.uuid
 
 
+def _remove_forum_tables_for_legacy_fixture(connection: sqlite3.Connection) -> None:
+    """Historical v0-v3 databases did not contain the v4 forum schema."""
+    for table in ('forum_language_preferences', 'forum_report_targets', 'forum_attachment_reviews', "forum_attachments", "forum_poll_votes", "forum_poll_options", "forum_polls",
+                  "forum_private_invites", "forum_private_members", "forum_private_topics",
+                  "forum_moderation_events", "forum_bookmarks", "forum_read_positions",
+                  "forum_posts", "forum_topics", "forum_categories"):
+        connection.execute(f"DROP TABLE IF EXISTS {table}")
+    # These fixtures really predate public-forum reports, including their
+    # central table constraints. Retain historical report rows and indexes.
+    from ..moderation.report_schema import create_reports_table
+    indexes = [row[0] for row in connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'moderation_reports' AND sql IS NOT NULL"
+    )]
+    connection.execute('ALTER TABLE moderation_reports RENAME TO fixture_reports')
+    create_reports_table(connection.cursor(), forum=False)
+    connection.execute('INSERT INTO moderation_reports SELECT * FROM fixture_reports')
+    connection.execute('DROP TABLE fixture_reports')
+    for statement in indexes:
+        connection.execute(statement)
+
+
 def _replace_username_expression_index_with_v2_contract(
     connection: sqlite3.Connection,
 ) -> None:
     """Recreate the historical-chat index with schema-v2 function semantics."""
+    _remove_forum_tables_for_legacy_fixture(connection)
     connection.create_function(
         "USERNAME_KEY",
         1,
@@ -1176,7 +1199,7 @@ def test_version_two_identity_contract_migrates_atomically(tmp_path):
         backup.close()
 
 
-def test_version_three_database_migrates_atomically_to_version_four(tmp_path):
+def test_version_three_database_migrates_atomically_to_current_version(tmp_path):
     db_path = tmp_path / "version-three.db"
     backup_dir = tmp_path / "migration-backups"
     database = Database(db_path)
@@ -1186,6 +1209,7 @@ def test_version_three_database_migrates_atomically_to_version_four(tmp_path):
 
     connection = sqlite3.connect(db_path)
     try:
+        _remove_forum_tables_for_legacy_fixture(connection)
         connection.execute("DROP TABLE user_wallets")
         connection.execute("PRAGMA user_version = 3")
         connection.commit()
@@ -1196,7 +1220,7 @@ def test_version_three_database_migrates_atomically_to_version_four(tmp_path):
     database.connect(migration_backup_dir=backup_dir)
     try:
         assert database.get_user("Version Three User").uuid == retained_user.uuid
-        assert database._conn.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert database._conn.execute("PRAGMA user_version").fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
         wallet = database.get_wallet(retained_user.uuid)
         assert wallet.balance == 250
     finally:
@@ -1229,6 +1253,7 @@ def test_version_three_with_existing_wallets_migrates_atomically(tmp_path):
 
     connection = sqlite3.connect(db_path)
     try:
+        _remove_forum_tables_for_legacy_fixture(connection)
         connection.execute("PRAGMA user_version = 3")
         connection.commit()
     finally:
@@ -1237,7 +1262,7 @@ def test_version_three_with_existing_wallets_migrates_atomically(tmp_path):
     database = Database(db_path)
     database.connect(migration_backup_dir=backup_dir)
     try:
-        assert database._conn.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert database._conn.execute("PRAGMA user_version").fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
         wallet = database.get_wallet(retained_user.uuid)
         assert wallet.balance == 750
     finally:
@@ -1314,8 +1339,8 @@ def test_failed_migration_rolls_back_and_retains_recovery_backup(
     database = Database(db_path)
     original_create = database._create_tables_in_transaction
 
-    def fail_after_schema_changes(cursor):
-        original_create(cursor)
+    def fail_after_schema_changes(cursor, **kwargs):
+        original_create(cursor, **kwargs)
         raise RuntimeError("simulated migration failure")
 
     monkeypatch.setattr(
@@ -1359,8 +1384,8 @@ def test_failed_migration_retry_reuses_exact_verified_backup(
     first_attempt = Database(db_path)
     original_create = first_attempt._create_tables_in_transaction
 
-    def fail_after_schema_changes(cursor):
-        original_create(cursor)
+    def fail_after_schema_changes(cursor, **kwargs):
+        original_create(cursor, **kwargs)
         raise RuntimeError("simulated first migration failure")
 
     monkeypatch.setattr(
@@ -1402,8 +1427,8 @@ def test_migration_retry_rejects_backup_with_same_counts_but_stale_values(
     first_attempt = Database(db_path)
     original_create = first_attempt._create_tables_in_transaction
 
-    def fail_after_schema_changes(cursor):
-        original_create(cursor)
+    def fail_after_schema_changes(cursor, **kwargs):
+        original_create(cursor, **kwargs)
         raise RuntimeError("simulated first migration failure")
 
     monkeypatch.setattr(
@@ -1667,7 +1692,9 @@ def test_current_schema_rejects_missing_required_index_without_repair(tmp_path):
     connection.execute("DROP INDEX idx_users_uuid")
     connection.close()
 
-    with pytest.raises(sqlite3.DatabaseError, match="missing required indexes"):
+    # Forum foreign keys can detect a missing UUID unique index before the
+    # structural schema validator runs; both paths must preserve the file.
+    with pytest.raises(sqlite3.DatabaseError, match="missing required indexes|foreign key mismatch"):
         Database(db_path).connect()
 
     connection = sqlite3.connect(db_path)
@@ -1693,7 +1720,7 @@ def test_current_schema_rejects_malformed_required_index_without_repair(tmp_path
     connection.execute("CREATE INDEX idx_users_uuid ON users(locale)")
     connection.close()
 
-    with pytest.raises(sqlite3.DatabaseError, match="malformed definitions"):
+    with pytest.raises(sqlite3.DatabaseError, match="malformed definitions|foreign key mismatch"):
         Database(db_path).connect()
 
     connection = sqlite3.connect(db_path)

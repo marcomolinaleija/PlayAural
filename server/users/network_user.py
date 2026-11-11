@@ -352,7 +352,10 @@ class NetworkUser(User):
         grid_height: int = 0,
         grid_width: int = 1,
         capture_focus_context_id: str | None = None,
+        title: str | None = None,
     ) -> None:
+        if title is not None and (not isinstance(title, str) or len(title) > 1024):
+            raise ValueError("Menu titles must be bounded plain text")
         if capture_focus_context_id is not None:
             capture_focus_context_id = validate_menu_focus_context_id(
                 capture_focus_context_id
@@ -371,6 +374,8 @@ class NetworkUser(User):
             "grid_height": grid_height,
             "grid_width": grid_width,
         }
+        if title:
+            state["title"] = title
 
         # Content-diff skip: a repaint of the menu the client is already
         # displaying, with identical content and no explicit focus directive,
@@ -406,6 +411,8 @@ class NetworkUser(User):
         if position is not None:
             # Convert 1-based to 0-based for client
             packet["position"] = position - 1
+        if title:
+            packet["title"] = title
         if selection_id is not None:
             packet["selection_id"] = selection_id
         if capture_focus_context_id:
@@ -459,6 +466,8 @@ class NetworkUser(User):
             "grid_height": grid_height,
             "grid_width": grid_width,
         }
+        if previous and previous.get("title"):
+            packet["title"] = previous["title"]
         if position is not None:
             packet["position"] = position - 1
         if selection_id is not None:

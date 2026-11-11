@@ -162,6 +162,13 @@ from ..menu_pagination import (
     paginate_sequence,
 )
 from ..documentation.manager import DocumentationManager
+from ..forum.manager import ForumManager
+from ..forum.media_http import ForumMediaHTTP
+from ..forum.models import ForumError
+from ..forum.navigation import (
+    MENU_IDS as FORUM_MENU_IDS,
+    CONFIRMATION_IDS as FORUM_CONFIRMATION_IDS,
+)
 from .smtp_mailer import SmtpMailer
 from ..users.bot import Bot
 from ..game_utils.stats_extractor import StatsExtractor
@@ -283,6 +290,8 @@ GLOBAL_CHAT_ENABLED_SETTING_KEY = "global_chat_enabled"
 DEFAULT_GLOBAL_CHAT_SENDING_ENABLED = True
 GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY = "global_voice_chat_enabled"
 DEFAULT_GLOBAL_VOICE_CHAT_ENABLED = True
+FORUM_ENABLED_SETTING_KEY = "forum_enabled"
+DEFAULT_FORUM_ENABLED = True
 ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY = "account_approval_required"
 DEFAULT_ACCOUNT_APPROVAL_REQUIRED = False
 VOICE_JOIN_AUTHORIZATION_WINDOW_SECONDS = 120
@@ -363,6 +372,7 @@ FRIENDS_MENU_IDS = frozenset(
 )
 NON_RESUMABLE_ACTION_MENUS = frozenset(
     {
+        *FORUM_CONFIRMATION_IDS,
         "broadcast_choice_menu",
         "demote_confirm_menu",
         "email_confirm_menu",
@@ -497,6 +507,7 @@ class Server:
     # Global menus handled directly by the server, even if the user is sitting at a table.
     # This prevents active games from swallowing interactions meant for global overlays (like options or online list).
     GLOBAL_SYSTEM_MENUS = {
+        *FORUM_MENU_IDS,
         "main_menu", "personal_options_menu", "games_menu", "tables_menu",
         "game_category_filter_menu", "active_tables_menu", "active_tables_filter_menu",
         *OPTIONS_MENU_IDS,
@@ -557,11 +568,16 @@ class Server:
         locales_dir: str | Path | None = None,
         ssl_cert: str | Path | None = None,
         ssl_key: str | Path | None = None,
+        forum_media_url: str | None = None,
+        forum_media_port: int = 8001,
+        forum_media_dir: str | Path | None = None,
+        forum_media_origins: tuple[str, ...] = (),
     ):
         self.host = host
         self.port = port
         self._ssl_cert = ssl_cert
         self._ssl_key = ssl_key
+        self._forum_media_port = forum_media_port
 
         # Initialize components
         self._db = Database(db_path)
@@ -641,6 +657,7 @@ class Server:
         # synchronous and avoids a settings query for every message.
         self._global_chat_sending_enabled = DEFAULT_GLOBAL_CHAT_SENDING_ENABLED
         self._global_voice_chat_enabled = DEFAULT_GLOBAL_VOICE_CHAT_ENABLED
+        self._forum_enabled = DEFAULT_FORUM_ENABLED
         self.global_voice_quality: str = "high"
         self.global_voice_spatial_audio: bool = True
         self._sound_event_mappings: dict[str, str] = {}
@@ -648,6 +665,16 @@ class Server:
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
+        self.forum_manager = ForumManager(self)
+        # Backups still need the object store when HTTP uploads are disabled.
+        self._forum_media_directory = Path(forum_media_dir or Path(db_path).with_suffix('.forum-media')).resolve()
+        if forum_media_url:
+            self.forum_manager.media = ForumMediaHTTP(
+                self, base_url=forum_media_url,
+                directory=self._forum_media_directory,
+                origins=forum_media_origins,
+            )
+            self.forum_manager.media_ui.connect(self.forum_manager.media)
 
         # Initialize rate limiters
         self._rate_limiter = RateLimiter()
@@ -695,6 +722,17 @@ class Server:
             )
         )
 
+    @property
+    def forum_enabled(self) -> bool:
+        """Return whether new forum interactions are currently available."""
+        return getattr(self, '_forum_enabled', DEFAULT_FORUM_ENABLED)
+
+    def set_forum_enabled(self, enabled: bool) -> None:
+        if type(enabled) is not bool:
+            raise TypeError('Forum availability requires a bool value')
+        self._db.set_boolean_server_setting(FORUM_ENABLED_SETTING_KEY, enabled)
+        self._forum_enabled = enabled
+
     def _load_persistent_server_settings(self) -> None:
         """Load server-wide controls after the database is connected."""
         try:
@@ -720,6 +758,16 @@ class Server:
             )
             voice_enabled = False
         self._global_voice_chat_enabled = voice_enabled
+
+        try:
+            self._forum_enabled = self._db.get_boolean_server_setting(
+                FORUM_ENABLED_SETTING_KEY, default=DEFAULT_FORUM_ENABLED,
+            )
+        except ValueError:
+            logging.getLogger('playaural').exception(
+                'Invalid persisted forum availability setting; forum is disabled'
+            )
+            self._forum_enabled = False
 
         try:
             approval_required = self._db.get_boolean_server_setting(
@@ -889,6 +937,14 @@ PlayAural Server
             )
             await self._ws_server.start()
 
+            if self.forum_manager.media:
+                import ssl
+                media_ssl = None
+                if self._ssl_cert and self._ssl_key:
+                    media_ssl = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                    media_ssl.load_cert_chain(self._ssl_cert, self._ssl_key)
+                await self.forum_manager.media.start(self.host, self._forum_media_port, ssl_context=media_ssl)
+
             # Start tick scheduler
             self._tick_scheduler = TickScheduler(self._on_tick)
             await self._tick_scheduler.start()
@@ -897,6 +953,8 @@ PlayAural Server
             # after SQLite, deserialization, networking, and ticking are ready.
             self._db.delete_all_tables()
         except BaseException:
+            if self.forum_manager.media:
+                await self.forum_manager.media.stop()
             if self._tick_scheduler is not None:
                 try:
                     await self._tick_scheduler.stop()
@@ -945,6 +1003,9 @@ PlayAural Server
         # its SQLite handle to close before shutdown touches the live database.
         await self.maintenance_manager.wait_until_storage_idle()
         self.maintenance_manager.wake_blocked_work_for_shutdown()
+
+        if self.forum_manager.media:
+            await self.forum_manager.media.stop()
 
         # Stop tick scheduler first so no more game ticks fire during shutdown.
         if self._tick_scheduler:
@@ -1925,6 +1986,11 @@ PlayAural Server
 
         if packet_type == "menu":
             await self._handle_menu(client, packet)
+        elif packet_type == 'forum_media_session' and self.forum_manager.media:
+            try:
+                user.queue_protocol_packet({'type': 'forum_media_session', **self.forum_manager.media.credentials(user)})
+            except ForumError as error:
+                user.speak_l(error.key, buffer='system', **error.values)
         elif packet_type == "escape":
             await self._handle_menu(
                 client,
@@ -3113,6 +3179,8 @@ PlayAural Server
             )
         items = [
             MenuItem(text=Localization.get(user.locale, "play"), id="play"),
+            MenuItem(text=Localization.get(user.locale, "forum-heading"), id="forum",
+                     description_key="forum-description"),
             MenuItem(
                 text=Localization.get(user.locale, "create-free-table"),
                 id="create_free_table",
@@ -6814,7 +6882,9 @@ PlayAural Server
             return
 
         # Handle menu selections based on current menu
-        if current_menu == "main_menu":
+        if current_menu in FORUM_MENU_IDS:
+            self.forum_manager.handle_menu(user, selection_id, state)
+        elif current_menu == "main_menu":
             await self._handle_main_menu_selection(user, selection_id)
         elif current_menu == "personal_options_menu":
             await self._handle_personal_options_selection(user, selection_id)
@@ -7055,6 +7125,11 @@ PlayAural Server
         """Handle main menu selection."""
         if selection_id == "play":
             self._nav_push(user, self._show_games_list_menu)
+        elif selection_id == "forum":
+            if self.forum_enabled:
+                self._nav_push(user, self.forum_manager.home)
+            else:
+                user.speak_l('forum-unavailable', buffer='system')
         elif selection_id == "create_free_table":
             if self._tables.find_user_table(user.username):
                 return
@@ -18063,6 +18138,10 @@ PlayAural Server
                         self._show_main_menu(user)
                 return
 
+        if current_menu in FORUM_MENU_IDS:
+            self.forum_manager.handle_input(user, packet, user_state)
+            return
+
         # Handle system menu input
         if user:
             if packet.get("cancelled"):
@@ -19195,6 +19274,10 @@ PlayAural Server
     def _navigation_frame_identity(self, frame: dict) -> tuple[Any, ...] | None:
         """Return the logical identity for stack frames that must not duplicate."""
         menu = frame.get("menu")
+        if menu in FORUM_MENU_IDS:
+            return (menu, frame.get("forum_topic"), frame.get("forum_post"),
+                    frame.get("forum_view"), frame.get("forum_category"), frame.get("forum_query"),
+                    frame.get('forum_invitation'), frame.get('forum_attachment'), frame.get('forum_language'))
         if menu not in self.IN_GAME_OVERLAY_MENUS:
             return None
         table_id = frame.get("table_id")
@@ -19628,7 +19711,9 @@ PlayAural Server
                 self._restore_menu_focus(user, frame)
             return  # IN_GAME_OVERLAY_MENUS manage their own state
         # For all other menus: call show function then re-inject stack
-        if menu == "main_menu":
+        if menu in FORUM_MENU_IDS:
+            self.forum_manager.restore(user, frame)
+        elif menu == "main_menu":
             self._show_main_menu(user)
         elif menu == "personal_options_menu":
             self._show_personal_options_menu(user)
@@ -20301,6 +20386,7 @@ PlayAural Server
         user.show_menu(
             menu_id,
             self._restoreable_menu_items(menu_state.get("items", [])),
+            title=menu_state.get("title"),
             multiletter=menu_state.get(
                 "multiletter_enabled",
                 menu_state.get("multiletter", True),
@@ -20527,6 +20613,10 @@ async def run_server(
     ssl_cert: str | Path | None = None,
     ssl_key: str | Path | None = None,
     database_backup_dir: str | Path | None = None,
+    forum_media_url: str | None = None,
+    forum_media_port: int = 8001,
+    forum_media_dir: str | Path | None = None,
+    forum_media_origins: tuple[str, ...] = (),
 ) -> None:
     """Run the server.
 
@@ -20574,6 +20664,8 @@ async def run_server(
         ssl_cert=ssl_cert,
         ssl_key=ssl_key,
         database_backup_dir=database_backup_dir,
+        forum_media_url=forum_media_url, forum_media_port=forum_media_port,
+        forum_media_dir=forum_media_dir, forum_media_origins=forum_media_origins,
     )
     await server.start()
 

@@ -323,20 +323,21 @@ class TestTableInviteReclaim:
         assert "decline" not in action_ids
 
     @pytest.mark.asyncio
-    async def test_direct_invite_rejects_non_friend_without_notifying_target(self):
+    async def test_direct_invite_allows_non_friend_without_automatic_admission(self):
         host = self._create_online_user("Host")
         guest = self._create_online_user("Guest")
         seated = self._create_online_user("Seated")
         table, _ = self._create_started_table(host, seated)
 
-        assert not await self.server._send_table_invite(host, table, guest)
+        assert await self.server._send_table_invite(host, table, guest)
 
-        assert guest.username not in self.server._pending_invites
-        assert guest.messages == []
-        assert host.get_last_spoken() == Localization.get(
-            host.locale,
-            "host-invite-friend-unavailable",
-        )
+        assert guest.username in self.server._pending_invites
+        assert self.server._tables.find_user_table(guest.username) is None
+        assert self.server._pending_invites[guest.username]["invitee_uuid"] == guest.uuid
+        assert "table_invite.ogg" in self._sound_names(guest)
+        actions = self._get_menu_action_ids(guest, "table_invite_prompt")
+        assert self._invite_decision_id(guest, "accept") in actions
+        assert self._invite_decision_id(guest, "decline") in actions
 
     @pytest.mark.asyncio
     async def test_direct_invite_allows_human_to_share_bot_base_name(

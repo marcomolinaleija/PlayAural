@@ -23,9 +23,43 @@ function compile(source, scope = {}) {
   return module.exports;
 }
 function handler(name, scope) {
+  if (name === 'handleSystemSwipe') scope = {
+    forumMediaPacketRef: { current: null }, closeForumMedia: () => assert.fail('No media player is open'), ...scope,
+  };
   const expression = ts.createPrinter().printNode(ts.EmitHint.Expression, declarations.get(name), app);
   return compile(`module.exports = ${expression};`, { useCallback: (fn) => fn, useMemo: (fn) => fn(), ...scope });
 }
+
+test('Back closes an open forum player before touching the covered server menu', () => {
+  let closed = 0;
+  const back = handler('handleSystemSwipe', { forumMediaPacketRef: { current: { attachment: { id: 'file' } } },
+    closeForumMedia: () => closed++, audio: { handleUserInteraction: () => assert.fail('Covered navigation must not run') } });
+  back('left');
+  assert.equal(closed, 0);
+  back('up');
+  assert.equal(closed, 1);
+});
+
+test('closing forum media cancels its player work and restores focus without cancelling uploads', () => {
+  const revision = { current: 3 }, packet = { current: { attachment: { id: 'file' } } }, focus = { current: 'menu:attachment' };
+  let closed = 0, cleared = 0;
+  const focused = [], mixing = [];
+  const close = handler('closeForumMedia', {
+    forumMediaOpenRevisionRef: revision, forumMediaPacketRef: packet, forumMediaReturnFocusRef: focus,
+    forumMediaTransport: { closePlayer: () => closed++, reset: () => assert.fail('Closing a player must preserve uploads') },
+    setForumMediaPacket: (value) => { assert.equal(value, null); cleared++; },
+    audio: { setExternalDucking: (...args) => mixing.push(args) },
+    queueNativeAccessibilityFocus: (value) => focused.push(value),
+  });
+  close();
+  assert.equal(closed, 1);
+  assert.equal(cleared, 1);
+  assert.equal(revision.current, 4);
+  assert.equal(packet.current, null);
+  assert.equal(focus.current, null);
+  assert.deepEqual(focused, ['menu:attachment']);
+  assert.deepEqual(mixing, [['forum-media']]);
+});
 function localizationModule(url) {
   if (url.pathname.endsWith(".json")) return JSON.parse(readFileSync(url, "utf8"));
   return compile(readFileSync(url, "utf8"), {

@@ -35,6 +35,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { PoliteAnnouncementQueue } from "../accessibility/PoliteAnnouncementQueue";
 import { executeCopyDirective } from "../actions/copyDirective";
 import { MobileAudioManager } from "../audio/MobileAudioManager";
+import { ForumMediaModal } from '../forum/ForumMediaModal';
+import { ForumMediaTransport, ForumMediaUserError } from '../forum/transport';
+import type { ForumFilePickerPacket, ForumOpenMediaPacket } from '../forum/protocol';
 import { requestAndroidBatteryOptimizationExemptionOnce } from "../background/AndroidBatteryOptimization";
 import { androidForegroundService } from "../background/AndroidForegroundService";
 import { useSelfVoicingGestures } from "../gestures/useSelfVoicingGestures";
@@ -207,6 +210,7 @@ type FocusableMenuItem = {
 };
 
 type MenuState = {
+  title?: string;
   escapeBehavior: string;
   focusIndex: number;
   gridEnabled: boolean;
@@ -326,6 +330,7 @@ type StoredClientConfig = {
 };
 
 const defaultMenuState: MenuState = {
+  title: "",
   escapeBehavior: "keybind",
   focusIndex: 0,
   gridEnabled: false,
@@ -586,6 +591,11 @@ export function PlayAuralApp() {
     return instance;
   }, [initialLocale]);
   const audio = useMemo(() => new MobileAudioManager(), []);
+  const forumMediaTransport = useMemo(() => new ForumMediaTransport(), []);
+  const [forumMediaPacket, setForumMediaPacket] = useState<ForumOpenMediaPacket | null>(null);
+  const forumMediaPacketRef = useRef<ForumOpenMediaPacket | null>(null);
+  const forumMediaReturnFocusRef = useRef<string | null>(null);
+  const forumMediaOpenRevisionRef = useRef(0);
   const voice = useMemo(() => new MobileVoiceManager(), []);
 
   const [appLocale, setAppLocale] = useState<MobileLocale>(initialLocale);
@@ -933,6 +943,30 @@ export function PlayAuralApp() {
     pendingNativeAccessibilityFocusQueuedAtRef.current = Date.now();
   }, []);
 
+  const closeForumMedia = useCallback(() => {
+    forumMediaOpenRevisionRef.current += 1;
+    forumMediaTransport.closePlayer();
+    forumMediaPacketRef.current = null;
+    setForumMediaPacket(null);
+    audio.setExternalDucking('forum-media');
+    queueNativeAccessibilityFocus(forumMediaReturnFocusRef.current);
+    forumMediaReturnFocusRef.current = null;
+  }, [audio, forumMediaTransport, queueNativeAccessibilityFocus]);
+
+  const resetForumMedia = useCallback(() => {
+    forumMediaOpenRevisionRef.current += 1;
+    forumMediaTransport.reset();
+    forumMediaPacketRef.current = null;
+    forumMediaReturnFocusRef.current = null;
+    setForumMediaPacket(null);
+    audio.setExternalDucking('forum-media');
+  }, [audio, forumMediaTransport]);
+  const prepareForumPlayback = useCallback(() => audio.handleUserInteraction(), [audio]);
+  const stopForumSpeech = useCallback(() => tts.stop(), [tts]);
+  const onForumPlayback = useCallback((playing: boolean) => {
+    audio.setExternalDucking('forum-media', playing ? { music: 0.3, ambience: 0.3 } : null);
+  }, [audio]);
+
   const requestNativeMenuFocusOnNextPacket = useCallback(() => {
     nativeMenuFocusOnNextPacketRef.current = true;
     nativeMenuFocusRequestedAtRef.current = Date.now();
@@ -1217,6 +1251,10 @@ export function PlayAuralApp() {
     [addHistoryMessage, deliverInterfaceFeedback],
   );
 
+  const forumAnnouncementRef = useRef(deliverInterfaceFeedback);
+  forumAnnouncementRef.current = deliverInterfaceFeedback;
+  const announceForumMedia = useCallback((text: string) => forumAnnouncementRef.current(text), []);
+
   const announce = (text: string, buffer: BufferName = "system", speak = true) => {
     buffers.add(buffer, text);
     setHistoryRevision((value) => value + 1);
@@ -1454,6 +1492,7 @@ export function PlayAuralApp() {
       longPressResetTimerRef.current = null;
     }
     void androidForegroundService.stop();
+    forumMediaTransport.reset();
     voice.shutdown();
     audio.shutdown();
     tts.stop();
@@ -1993,6 +2032,7 @@ export function PlayAuralApp() {
     );
 
     const nextMenuState: MenuState = {
+      title: typeof packet.title === "string" ? packet.title : isSameMenuId ? previous.title : "",
       escapeBehavior:
         packet.escape_behavior !== undefined || !isSameMenuId
           ? packet.escape_behavior ?? "keybind"
@@ -2169,6 +2209,7 @@ export function PlayAuralApp() {
   }, [clearScheduledNativeFocus]);
 
   const resetRuntimeUiForSession = useCallback((sendVoiceLeave: boolean) => {
+    resetForumMedia();
     leaveVoiceChat({
       announce: false,
       clearContext: true,
@@ -2178,7 +2219,7 @@ export function PlayAuralApp() {
     connectionAudioActiveRef.current = false;
     audio.stopAll(800);
     clearRuntimeUi();
-  }, [audio, clearRuntimeUi, leaveVoiceChat]);
+  }, [audio, clearRuntimeUi, leaveVoiceChat, resetForumMedia]);
 
   const queueReconnectAttempt = useCallback((delayMs: number, statusMessage: string, speakMessage = false) => {
     const { password: reconnectPassword, serverUrl: reconnectServerUrl, username: reconnectUsername } = credentialsRef.current;
@@ -2549,6 +2590,7 @@ export function PlayAuralApp() {
   if (!connectionRef.current) {
     connectionRef.current = new PlayAuralConnection({
       onClose: (reason) => {
+        resetForumMedia();
         leaveVoiceChat({
           announce: false,
           clearContext: true,
@@ -2595,6 +2637,31 @@ export function PlayAuralApp() {
       onPacket: (packet: ServerPacket) => {
         if (ENABLE_CLIENT_DEBUG_LOGS) {
           console.info("PLAYAURAL_DEBUG Packet", packet.type);
+        }
+        if (packet.type === 'forum_file_picker') {
+          const picker = packet as ForumFilePickerPacket;
+          void forumMediaTransport.choose(picker, announceForumMedia).catch((error) => {
+            announceForumMedia(error instanceof ForumMediaUserError ? error.message : picker.labels.error);
+          });
+          return;
+        }
+        if (packet.type === 'forum_open_media') {
+          const mediaPacket = packet as ForumOpenMediaPacket;
+          forumMediaTransport.closePlayer();
+          const revision = ++forumMediaOpenRevisionRef.current;
+          forumMediaPacketRef.current = mediaPacket;
+          setForumMediaPacket(null);
+          const currentMenu = menuStateRef.current;
+          forumMediaReturnFocusRef.current = menuItemAccessibilityKey(currentMenu.menuId, currentMenu.items[currentMenu.focusIndex], currentMenu.focusIndex);
+          void forumMediaTransport.prepare(mediaPacket).then((current) => {
+            if (current && revision === forumMediaOpenRevisionRef.current) setForumMediaPacket(mediaPacket);
+          }).catch((error) => {
+            if (revision === forumMediaOpenRevisionRef.current) {
+              forumMediaPacketRef.current = null;
+              announceForumMedia(error instanceof ForumMediaUserError ? error.message : mediaPacket.labels.error);
+            }
+          });
+          return;
         }
         if (packet.type === "authorize_success") {
           const authPacket = packet as AuthorizeSuccessPacket;
@@ -2655,6 +2722,7 @@ export function PlayAuralApp() {
         }
 
         if (packet.type === "disconnect") {
+          resetForumMedia();
           const disconnectPacket = packet as DisconnectPacket;
           if (disconnectPacket.username) {
             credentialsRef.current.username = disconnectPacket.username;
@@ -2698,6 +2766,7 @@ export function PlayAuralApp() {
         }
 
         if (packet.type === "force_exit" || packet.type === "switch_server") {
+          resetForumMedia();
           const forceExitPacket = packet as ForceExitPacket;
           const reason = localizeSystemMessage(forceExitPacket.reason, "logout-complete");
           leaveVoiceChat({
@@ -4603,6 +4672,10 @@ export function PlayAuralApp() {
   };
 
   const handleSystemSwipe = (direction: "up" | "down" | "left" | "right") => {
+    if (forumMediaPacketRef.current) {
+      if (direction === 'up') closeForumMedia();
+      return;
+    }
     void audio.handleUserInteraction();
     const currentMenuState = menuStateRef.current;
     const currentDialog = dialogStateRef.current;
@@ -4692,7 +4765,7 @@ export function PlayAuralApp() {
   }, [selfVoicingEnabled]);
 
   const gestures = useSelfVoicingGestures({
-    enabled: selfVoicingGestureEnabled,
+    enabled: selfVoicingGestureEnabled && !forumMediaPacket,
     globalToggleEnabled: true,
     isNativeTextInputTarget,
     isTextInputEditing,
@@ -5220,7 +5293,7 @@ export function PlayAuralApp() {
 
   const renderMainView = () => (
     <View style={styles.panel}>
-      <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{localization.t("mode-main")}</Text>
+      <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{menuState.title || localization.t("mode-main")}</Text>
       <View
         onLayout={(event) => {
           const { height, width } = event.nativeEvent.layout;
@@ -6356,6 +6429,10 @@ export function PlayAuralApp() {
         )) : null}
         </KeyboardAvoidingView>
       </AccessibilityOrderedView>
+      {forumMediaPacket ? <ForumMediaModal key={`${forumMediaPacket.attachment.id}:${forumMediaPacket.token}`}
+        packet={forumMediaPacket} selfVoicing={selfVoicingEnabled} announce={announceForumMedia}
+        stopSpeech={stopForumSpeech} preparePlayback={prepareForumPlayback} onPlayback={onForumPlayback}
+        onClose={closeForumMedia} onSave={() => forumMediaTransport.save(forumMediaPacket)} /> : null}
     </SafeAreaView>
   );
 }

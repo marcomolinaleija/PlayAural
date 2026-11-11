@@ -13,6 +13,8 @@ import {
   normalizeLocale,
 } from "./locales/index.js";
 import { installCollapsiblePanels } from "./ui/collapsiblePanels.js";
+import { semanticMenuTitle } from "./ui/menuTitle.js";
+import { ForumMedia } from './ui/forumMedia.js';
 import {
   BUFFER_CATEGORY_NAVIGATION_ASSET,
   BUFFER_ITEM_NAVIGATION_ASSET,
@@ -1280,6 +1282,14 @@ class PlayAuralWebApp {
       || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
     ) && !window.MSStream;
     this.voice = new VoiceChatManager(this);
+    this.forumMedia = new ForumMedia({
+      isSelfVoicing: () => this.preferences.speech_mode === 'web_speech',
+      announce: (text) => this.speak(text, { noHistory: true }),
+      onPlayback: (playing) => {
+        if (playing) this.webSpeech.cancel();
+        this.audio.setExternalDucking('forum-media', playing ? { music: 0.3, ambience: 0.3 } : null);
+      },
+    });
 
     this.historyView = createHistoryView({
       store: this.store,
@@ -1530,7 +1540,7 @@ class PlayAuralWebApp {
       onMusicDown: () => this.adjustVolumePreference("music_volume", "audio/music_volume", -10, 0, 100, 10),
       onMusicUp: () => this.adjustVolumePreference("music_volume", "audio/music_volume", 10, 0, 100, 10),
       onPing: () => this.sendPing(),
-      isModalOpen: () => Boolean(!this.elements.inlineInput?.hidden),
+      isModalOpen: () => Boolean(!this.elements.inlineInput?.hidden || this.forumMedia?.isOpen()),
       a11y: this.a11y,
     });
     this.installInGameTabTrap();
@@ -2468,6 +2478,7 @@ class PlayAuralWebApp {
   }
 
   cleanupRuntime(full = false) {
+    this.forumMedia?.close(false);
     this.localeUpdateGeneration += 1;
     this.localeUpdateBarrier = null;
     this.voice.cleanup(false, false);
@@ -2589,6 +2600,14 @@ class PlayAuralWebApp {
         } else {
           this.voice.connect(packet, this.voice.joinGeneration);
         }
+        break;
+      case 'forum_file_picker':
+        this.forumMedia.choose(packet);
+        break;
+      case 'forum_open_media':
+        void this.forumMedia.open(packet).catch(() => this.speak(packet.labels?.error || '', { noHistory: true }));
+        break;
+      case 'forum_media_session':
         break;
       case "voice_join_error":
         this.handleVoiceJoinError(packet);
@@ -3093,7 +3112,9 @@ class PlayAuralWebApp {
       },
     );
 
-    const title = packet.title || this.titleFromMenuId(packet.menu_id);
+    const title = packet.title || semanticMenuTitle(packet.items) || this.titleFromMenuId(packet.menu_id);
+    const menuHeading = byId('menu-heading');
+    if (menuHeading) menuHeading.textContent = packet.title || semanticMenuTitle(packet.items) || Localization.get('tab-menu');
     const shouldFocus = this.shouldFocusMenuAfterPacket(previousMenu.menuId, packet.menu_id);
     this.store.setMenu({
       menuId: packet.menu_id || null,
@@ -3408,6 +3429,11 @@ class PlayAuralWebApp {
     this.speak(prompt, { buffer: "system", noHistory: true });
     requestAnimationFrame(() => {
       activeInput?.focus?.({ preventScroll: false });
+      if (activeInput?.readOnly) {
+        activeInput.setSelectionRange?.(0, 0);
+        activeInput.scrollTop = 0;
+        return;
+      }
       try {
         activeInput?.select?.();
       } catch {

@@ -20,6 +20,7 @@ TOP_LEVEL_DOCUMENTS: tuple[DocumentationEntry, ...] = (
     DocumentationEntry("intro", "introduction"),
     DocumentationEntry("community_rules", "community-rules"),
     DocumentationEntry("global_keys", "global-keys"),
+    DocumentationEntry("forum", "forum-heading"),
     DocumentationEntry("changelog", "changelog"),
     DocumentationEntry("donation", "donation"),
 )

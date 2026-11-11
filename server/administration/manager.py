@@ -51,6 +51,8 @@ from ..moderation.reports import (
     AutomatedSpamEvidence,
     report_reason_localization_key,
 )
+from ..forum.reporting import ForumReportEvidence
+from ..forum.text import reading_chunks
 from ..core.power import (
     POWER_MAX_CUSTOM_DELAY_MINUTES,
     PowerAction,
@@ -1256,6 +1258,13 @@ class AdministrationManager:
                 read_only=user.trust_level < DEVELOPER_TRUST_LEVEL,
             ),
             MenuItem(
+                text=Localization.get(user.locale, 'forum-availability-toggle',
+                                     status=Localization.get(user.locale, 'option-on' if self.server.forum_enabled else 'option-off')),
+                id='toggle_forum',
+                description_key='forum-availability-description',
+                read_only=user.trust_level < ADMIN_TRUST_LEVEL,
+            ),
+            MenuItem(
                 text=Localization.get(
                     user.locale,
                     "admin-moderation-section-reports",
@@ -1396,7 +1405,7 @@ class AdministrationManager:
                 user.locale,
                 report.reported_at_utc,
             ),
-            target=report.reported_username,
+            target=report.reported_username or Localization.get(user.locale, "forum-deleted-account"),
             target_id=report.reported_uuid,
             reason=self._moderation_reason_name(user.locale, report.reason_code),
             reporter=self._moderation_reporter_name(user.locale, report),
@@ -1560,8 +1569,8 @@ class AdministrationManager:
                     text=Localization.get(
                         user.locale,
                         "admin-moderation-report-target",
-                        username=report.reported_username,
-                        uuid=report.reported_uuid,
+                        username=report.reported_username or Localization.get(user.locale, "forum-deleted-account"),
+                        uuid=report.reported_uuid or Localization.get(user.locale, "admin-moderation-value-unknown"),
                     ),
                     id="target_identity",
                     read_only=True,
@@ -1582,8 +1591,7 @@ class AdministrationManager:
                         user.locale,
                         (
                             "admin-moderation-report-scope"
-                            if report.origin_code
-                            == REPORT_ORIGIN_AUTOMATED_SPAM
+                            if (report.origin_code == REPORT_ORIGIN_AUTOMATED_SPAM or report.context_code == 'forum')
                             else "admin-moderation-report-channel"
                         ),
                         **(
@@ -1593,8 +1601,7 @@ class AdministrationManager:
                                     report.context_code,
                                 )
                             }
-                            if report.origin_code
-                            == REPORT_ORIGIN_AUTOMATED_SPAM
+                            if (report.origin_code == REPORT_ORIGIN_AUTOMATED_SPAM or report.context_code == 'forum')
                             else {
                                 "channel": self._moderation_channel_name(
                                     user.locale, report.channel_code
@@ -1623,6 +1630,19 @@ class AdministrationManager:
                     )
                 )
             items.extend(self._automated_report_evidence_items(user, report))
+            if report.context_code == 'forum':
+                evidence = ForumReportEvidence.from_json(report.evidence_json)
+                if evidence is None:
+                    items.append(MenuItem(text=Localization.get(user.locale, 'forum-report-evidence-unavailable'),
+                                          id='forum_evidence_unavailable', read_only=True))
+                else:
+                    items.append(MenuItem(text=Localization.get(user.locale, 'forum-report-evidence',
+                        kind=Localization.get(user.locale, 'forum-report-' + evidence.kind),
+                        language=Localization.get(user.locale, 'forum-language-' + evidence.language),
+                        topic=evidence.topic_id, post=evidence.post_id, revision=evidence.revision, title=evidence.title),
+                        id='forum_evidence', read_only=True))
+                    items.extend(MenuItem(text=part, id=f'forum_evidence_body:{index}', read_only=True)
+                                 for index, part in enumerate(reading_chunks(evidence.body)))
             if report.details:
                 items.append(
                     MenuItem(
@@ -1681,6 +1701,8 @@ class AdministrationManager:
                         id="view_target_history",
                     )
                 )
+            if report.context_code == 'forum' and ForumReportEvidence.from_json(report.evidence_json):
+                items.append(MenuItem(text=Localization.get(user.locale, 'forum-report-view-current'), id='view_forum_current'))
             if report.status == "open":
                 items.extend(
                     [
@@ -4035,7 +4057,7 @@ class AdministrationManager:
                     user.locale,
                     result.reusable_database_bytes,
                 ),
-                filename=backup.path.name,
+                filename=(backup.archive_path or backup.path).name,
             )
         if not self.server.maintenance_manager.is_active:
             self.server._nav_back(user)
@@ -4078,8 +4100,8 @@ class AdministrationManager:
             user.speak_l(
                 "admin-database-backup-success",
                 buffer="system",
-                filename=result.path.name,
-                size=_localized_database_size(user.locale, result.size_bytes),
+                filename=(result.archive_path or result.path).name,
+                size=_localized_database_size(user.locale, result.archive_size_bytes or result.size_bytes),
             )
         if not self.server.maintenance_manager.is_active:
             self.server._nav_back(user)
@@ -4129,7 +4151,7 @@ class AdministrationManager:
                     user.locale,
                     result.reclaimed_bytes,
                 ),
-                filename=operation_result.safety_backup.path.name,
+                filename=(operation_result.safety_backup.archive_path or operation_result.safety_backup.path).name,
             )
         if not self.server.maintenance_manager.is_active:
             self.server._nav_back(user)
@@ -4137,7 +4159,25 @@ class AdministrationManager:
     async def _handle_moderation_selection(
         self, user: NetworkUser, selection_id: str
     ) -> None:
-        if selection_id == "toggle_global_chat":
+        if selection_id == 'toggle_forum':
+            account = self.server.db.get_user_by_uuid(user.uuid)
+            if (user.trust_level < ADMIN_TRUST_LEVEL or not account or not account.approved
+                    or account.trust_level < ADMIN_TRUST_LEVEL or self.server.db.get_active_ban(account.username)):
+                user.speak_l('not-admin-anymore', buffer='system')
+                return
+            enabled = not self.server.forum_enabled
+            try:
+                self.server.set_forum_enabled(enabled)
+            except Exception:
+                logging.getLogger('playaural').exception('Failed to persist forum availability')
+                user.speak_l('forum-availability-update-failed', buffer='system')
+                return
+            for recipient in tuple(self.server.users.values()):
+                recipient.play_sound_family('notify', buffer='system')
+                recipient.speak_l('forum-availability-enabled' if enabled else 'forum-unavailable', buffer='system')
+                if self.server.user_states.get(recipient.username, {}).get('menu') == ADMIN_MODERATION_MENU:
+                    self.server._nav_refresh(recipient, self._show_moderation_menu)
+        elif selection_id == "toggle_global_chat":
             if user.trust_level < DEVELOPER_TRUST_LEVEL:
                 user.speak_l("dev-only-action", buffer="system")
                 self.server._nav_refresh(user, self._show_moderation_menu)
@@ -4321,6 +4361,23 @@ class AdministrationManager:
                 "admin-moderation-report-unavailable", buffer="system"
             )
             self.server._nav_back(user)
+            return
+        if selection_id == 'view_forum_current' and report.context_code == 'forum':
+            if not self.server.forum_enabled:
+                user.speak_l('forum-unavailable', buffer='system')
+                return
+            evidence = ForumReportEvidence.from_json(report.evidence_json)
+            if evidence:
+                from ..forum.models import ForumError
+                try:
+                    # Normal ACLs still apply; this action never grants access
+                    # to hidden or private content through a historical report.
+                    current = self.server.forum_manager.service.topic(user.uuid, evidence.topic_id)
+                    if current.is_private:
+                        raise ForumError('forum-error-missing')
+                    self.server._nav_push(user, self.server.forum_manager.reader.open, evidence.post_id)
+                except ForumError as error:
+                    user.speak_l(error.key, buffer='system', **error.values)
             return
         if selection_id == "view_context":
             self.server._nav_push(

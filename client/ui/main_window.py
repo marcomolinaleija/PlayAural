@@ -2,6 +2,7 @@
 
 import wx
 from .menu_list import MenuList
+from .forum_media import NativeForumMedia
 from .menu_focus import MenuFocusContextStore, resolve_menu_focus_index
 from .text_direction import apply_text_layout_direction
 from .copy_directive import (
@@ -146,6 +147,7 @@ class MainWindow(wx.Frame):
 
         # Initialize sound manager
         self.sound_manager = SoundManager()
+        self.forum_media = NativeForumMedia(self)
         self._release_update_states = {
             kind: ReleaseUpdateState()
             for kind in ReleaseKind
@@ -795,6 +797,8 @@ class MainWindow(wx.Frame):
         if self._close_cleanup_complete:
             return
         self._close_cleanup_complete = True
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         self._cancel_logout_response_timer()
         for observer in self._typing_input_observers:
             try:
@@ -2249,7 +2253,11 @@ class MainWindow(wx.Frame):
             self.edit_input_multiline.SetValue(default_value)
             self.edit_input_multiline.SetEditable(not read_only)
             self.edit_input_multiline.SetFocus()
-            self.edit_input_multiline.SelectAll()
+            if read_only:
+                self.edit_input_multiline.SetInsertionPoint(0)
+                self.edit_input_multiline.ShowPosition(0)
+            else:
+                self.edit_input_multiline.SelectAll()
             self.current_edit_multiline = True
         else:
             self.edit_input_multiline.Hide()
@@ -2451,6 +2459,9 @@ class MainWindow(wx.Frame):
         if self.network.connected:
             return
 
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
+
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.current_table_context_id = ""
         self.connected = False
@@ -2548,6 +2559,8 @@ class MainWindow(wx.Frame):
 
     def on_server_disconnect(self, packet):
         """Handle server disconnect packet."""
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.current_table_context_id = ""
         if packet.get("username"):
@@ -2613,6 +2626,8 @@ class MainWindow(wx.Frame):
 
     def on_force_exit(self, packet):
         """Handle forced exit command from server."""
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         try:
             self.quitting = True
             self._logout_request_pending = False
@@ -3584,6 +3599,17 @@ class MainWindow(wx.Frame):
 
         items_raw = packet.get("items", [])
         menu_id = packet.get("menu_id", None)
+        menu_title = packet.get("title")
+        if not isinstance(menu_title, str) or not menu_title.strip():
+            menu_title = (getattr(self, "current_menu_title", "")
+                          if menu_id == getattr(self, "current_menu_id", None) else "")
+        menu_title = menu_title or Localization.get("main-menu-label")
+        if menu_title != getattr(self, "current_menu_title", None):
+            self.current_menu_title = menu_title
+            if hasattr(self, "menu_label"):
+                self.menu_label.SetLabel(menu_title)
+            if hasattr(self.menu_list, "SetName"):
+                self.menu_list.SetName(menu_title)
         position = packet.get("position", None)  # Optional position to move to
         selection_id = packet.get("selection_id", None)  # Optional item ID to focus
         grid_enabled = packet.get("grid_enabled", False)
@@ -3815,6 +3841,8 @@ class MainWindow(wx.Frame):
 
     def reset_runtime_for_session(self):
         """Retire all device-local state before accepting a new session."""
+        if getattr(self, 'forum_media', None):
+            self.forum_media.close()
         self.cleanup_voice_chat(send_leave=False, announce=False)
         self.voice_host_muted = False
         self.voice_manager.clear_voice_settings()
