@@ -479,7 +479,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 9
+    CURRENT_SCHEMA_VERSION = 10
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -1605,7 +1605,7 @@ class Database:
         # protects that identity. Version six combines wallets and forums. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8}:
+        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
@@ -1910,7 +1910,7 @@ class Database:
         self,
         *,
         include_forum: bool = True,
-        forum_version: int = 9,
+        forum_version: int = 10,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -2161,6 +2161,8 @@ class Database:
                 table_name,
                 (),
             )
+            if table_name == 'forum_posts' and required_schema_version < 10:
+                required_fragments = ('CHECK (length(body) BETWEEN 1 AND 8000)', *required_fragments[1:])
             if table_name == "moderation_reports" and required_schema_version < 8:
                 required_fragments = LEGACY_CHECKS
             if table_name == 'forum_categories' and required_schema_version in (7, 8):
@@ -2292,13 +2294,29 @@ class Database:
                 )
 
     def _create_tables(self) -> None:
-        """Create or migrate the schema in one atomic transaction."""
-        self._conn.execute("PRAGMA foreign_keys = ON;")
-        with self._transaction(immediate=True) as cursor:
-            self._create_tables_in_transaction(cursor)
-            cursor.execute(f"PRAGMA application_id = {self.APPLICATION_ID}")
-            cursor.execute(f"PRAGMA user_version = {self.CURRENT_SCHEMA_VERSION}")
-            self._validate_schema(cursor)
+        """Create or migrate the schema in one atomic startup transaction."""
+        if self._conn.in_transaction:
+            raise RuntimeError("Nested database transactions are not supported")
+        source_version = self._conn.execute('PRAGMA user_version').fetchone()[0]
+        rebuild_posts = source_version < 10 and self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forum_posts'"
+        ).fetchone() is not None
+        # SQLite requires FK enforcement off before BEGIN for a table rebuild.
+        # Startup has no admitted sessions; the backup and source validation
+        # have already completed. Check all retained relationships before commit.
+        self._conn.execute('PRAGMA foreign_keys = OFF' if rebuild_posts else 'PRAGMA foreign_keys = ON')
+        self._require_pragma_value(self._conn, 'foreign_keys', 0 if rebuild_posts else 1)
+        try:
+            with self._transaction(immediate=True) as cursor:
+                self._create_tables_in_transaction(cursor)
+                cursor.execute(f"PRAGMA application_id = {self.APPLICATION_ID}")
+                cursor.execute(f"PRAGMA user_version = {self.CURRENT_SCHEMA_VERSION}")
+                self._validate_schema(cursor)
+                if rebuild_posts:
+                    self._verify_connection_integrity(self._conn, full=False)
+        finally:
+            self._conn.execute('PRAGMA foreign_keys = ON')
+            self._require_pragma_value(self._conn, 'foreign_keys', 1)
 
     @classmethod
     def _create_users_table(
@@ -2400,7 +2418,7 @@ class Database:
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
     def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
-                                      forum_version: int = 9) -> None:
+                                      forum_version: int = 10) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(

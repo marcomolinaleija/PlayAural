@@ -89,7 +89,7 @@ to the input control.
 
 ## Limits
 
-- 120 title characters, 8000 message characters, 2–100 search characters.
+- 120 title characters, 64,000 message characters, 2–100 search characters.
 - 15 topics or 8 message previews per page, with SQL LIMIT/OFFSET.
 - Full message readers split text into sections of at most 500 characters;
   draft fields show a single 160-character excerpt and retain all text for editing;
@@ -157,3 +157,5 @@ Public-content reporting uses the shared moderation queue and schema 8. See
 [forum-reports.md](forum-reports.md) for evidence, quotas and retention.
 
 Public communities use schema 9 language scopes; see [forum-languages.md](forum-languages.md).
+
+Schema 10 raises message bodies to 64,000 characters; see [forum-long-posts.md](forum-long-posts.md).

@@ -316,7 +316,7 @@ async def test_compact_fields_keep_full_multiline_text_and_draft_when_cancelled(
     server, user, connection = navigation_server
     manager = server.forum_manager
     topic, post = manager.service.create_topic(user.uuid, 'general', 'Existing topic', 'Existing message')
-    body = 'Primera línea\n' + 'x' * (8000 - len('Primera línea\n'))
+    body = 'Primera línea\n' + 'x' * (64000 - len('Primera línea\n'))
     draft = Draft(kind, category_id='general', topic_id=topic, post_id=post, title='A title', body=body)
     server._nav_push(user, manager.composer.show, draft)
     packets = user.get_queued_messages()
@@ -332,7 +332,7 @@ async def test_compact_fields_keep_full_multiline_text_and_draft_when_cancelled(
     assert ids[-1] == 'back' and ids[-2] == 'publish'
     manager.handle_menu(user, 'edit_body', server._user_states[user.username])
     prompt = next(packet for packet in user.get_queued_messages() if packet['type'] == 'request_input')
-    assert prompt['default_value'] == body and prompt['multiline'] and prompt['max_length'] == 8000
+    assert prompt['default_value'] == body and prompt['multiline'] and prompt['max_length'] == 64000
     await server._handle_editbox(connection, {'type': 'editbox', 'input_id': nav.BODY_INPUT, 'cancelled': True})
     assert server._user_states[user.username]['forum_draft']['body'] == body
     assert manager.service.post(user.uuid, post).body == 'Existing message'

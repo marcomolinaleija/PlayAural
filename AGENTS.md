@@ -8,13 +8,16 @@ conflict, follow `CLAUDE.md` and update `AGENTS.md`.
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v9), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v10), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
 Message composers use one editable row per field (label: current value),
 with a bounded body excerpt and the complete text retained in the editbox.
 Do not duplicate message text as preview rows plus separate edit actions.
+Forum message bodies allow 64,000 characters; previews stay bounded and reports
+retain the full body. Schema-10 post rebuilding runs only in the central startup
+migration, with FK checks before commit and enforcement restored on every exit.
 Drafts are bounded session data, never account preferences. See
 `devdoc/forum-foundation.md` for the feature scope and data lifecycle.
 Forum availability is a persistent server setting controlled by admins/developers.

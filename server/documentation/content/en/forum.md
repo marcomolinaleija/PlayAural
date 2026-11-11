@@ -18,7 +18,7 @@ Opening a full message marks that message and earlier messages in the discussion
 
 \*\*Writing\*\*
 
-In a category, choose Start a discussion. Write a title of up to 120 characters and a message of up to 8000 characters. In an existing discussion, choose Write a reply. Submitting the text returns to the form; choose Publish to send it. Your text is plain text, so HTML and Markdown commands are not executed.
+In a category, choose Start a discussion. Write a title of up to 120 characters and a message of up to 64000 characters. In an existing discussion, choose Write a reply. Submitting the text returns to the form; choose Publish to send it. Your text is plain text, so HTML and Markdown commands are not executed.
 
 Each field shows its label and current content in one editable item: Title and Message. Replies show only Message. Long messages show an excerpt; open that same field to review and edit the full text. Actions follow the fields. Back asks before discarding a draft containing text. Drafts stay in the current session; text already submitted to the form can survive a brief reconnect or device handover, but it is not saved permanently. Text still being typed has not reached the server.
 

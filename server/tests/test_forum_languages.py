@@ -243,7 +243,7 @@ def test_v9_migration_rolls_back_language_data_and_reuses_verified_backup(tmp_pa
     monkeypatch.setattr(database_module, 'create_forum_schema', original)
     db = Database(path)
     db.connect(migration_backup_dir=tmp_path / 'backups')
-    assert db._conn.execute('PRAGMA user_version').fetchone()[0] == 9
+    assert db._conn.execute('PRAGMA user_version').fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
     assert len(list((tmp_path / 'backups').glob('*.sqlite3'))) == 1
     db.close()
 

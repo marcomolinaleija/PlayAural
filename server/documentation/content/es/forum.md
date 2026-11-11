@@ -18,7 +18,7 @@ Abrir un mensaje completo marca como leídos ese mensaje y los anteriores de la 
 
 \*\*Escribir\*\*
 
-Dentro de una categoría, elige Iniciar una conversación. Escribe un título de hasta 120 caracteres y un mensaje de hasta 8000. En una conversación existente, elige Escribir una respuesta. Al enviar el texto vuelves al formulario; elige Publicar para compartirlo. Los mensajes son texto plano: no se ejecutan instrucciones de HTML ni de Markdown.
+Dentro de una categoría, elige Iniciar una conversación. Escribe un título de hasta 120 caracteres y un mensaje de hasta 64000. En una conversación existente, elige Escribir una respuesta. Al enviar el texto vuelves al formulario; elige Publicar para compartirlo. Los mensajes son texto plano: no se ejecutan instrucciones de HTML ni de Markdown.
 
 Cada campo muestra su nombre y contenido en un único elemento editable: Título y Mensaje. Al responder solo aparece Mensaje. Los mensajes largos muestran un resumen; abre ese mismo campo para revisar y editar el texto completo. Las acciones están debajo. Atrás pide confirmación antes de descartar un borrador con texto. Los borradores pertenecen a la sesión: el texto ya enviado al formulario puede recuperarse tras una reconexión breve o un cambio de dispositivo, pero no se guarda permanentemente. Lo que aún estás escribiendo no ha llegado al servidor.
 

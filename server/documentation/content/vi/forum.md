@@ -18,7 +18,7 @@ Mở toàn bộ tin nhắn sẽ đánh dấu tin đó và các tin trước đó
 
 \*\*Viết\*\*
 
-Trong chuyên mục, chọn Bắt đầu thảo luận. Viết tiêu đề tối đa 120 ký tự và tin nhắn tối đa 8000 ký tự. Trong thảo luận có sẵn, chọn Viết trả lời. Gửi nội dung để quay lại biểu mẫu; chọn Đăng để chia sẻ. Tin nhắn là văn bản thuần: mã HTML và Markdown không được thực thi.
+Trong chuyên mục, chọn Bắt đầu thảo luận. Viết tiêu đề tối đa 120 ký tự và tin nhắn tối đa 64000 ký tự. Trong thảo luận có sẵn, chọn Viết trả lời. Gửi nội dung để quay lại biểu mẫu; chọn Đăng để chia sẻ. Tin nhắn là văn bản thuần: mã HTML và Markdown không được thực thi.
 
 Mỗi trường hiển thị nhãn và nội dung trong một mục có thể sửa: Tiêu đề và Tin nhắn. Khi trả lời chỉ có Tin nhắn. Tin nhắn dài hiển thị đoạn trích; mở chính trường đó để xem và sửa toàn bộ nội dung. Các thao tác nằm phía dưới. Quay lại sẽ hỏi trước khi bỏ bản nháp có nội dung. Bản nháp thuộc phiên hiện tại: nội dung đã gửi vào biểu mẫu có thể được khôi phục sau khi kết nối lại nhanh hoặc chuyển thiết bị, nhưng không được lưu vĩnh viễn. Nội dung vẫn đang gõ chưa được gửi đến máy chủ.
 

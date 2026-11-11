@@ -2,8 +2,9 @@
 
 import sqlite3
 
-from .models import DEFAULT_CATEGORIES, PRIVATE_CATEGORY_ID
+from .models import DEFAULT_CATEGORIES, PRIVATE_CATEGORY_ID, MAX_BODY_LENGTH
 from . import schema_v5
+from .schema_v10 import posts_ddl, expand_posts
 from .languages import FORUM_LANGUAGES, LANGUAGE_CHECK
 
 
@@ -26,7 +27,7 @@ CHECK_CONSTRAINTS = {
         "CHECK (pinned IN (0, 1))", "CHECK (closed IN (0, 1))",
     ),
     "forum_posts": (
-        "CHECK (length(body) BETWEEN 1 AND 8000)",
+        f"CHECK (length(body) BETWEEN 1 AND {MAX_BODY_LENGTH})",
         "CHECK (revision >= 0)", "CHECK (hidden IN (0, 1))",
     ),
     "forum_read_positions": ("CHECK (last_post_id >= 0)",),
@@ -36,12 +37,18 @@ CHECK_CONSTRAINTS = {
 }
 
 
-def create_schema(cursor: sqlite3.Cursor, *, version: int = 9) -> None:
+def create_schema(cursor: sqlite3.Cursor, *, version: int = 10) -> None:
     # Statements run in Database's migration transaction, never executescript
     # (which would implicitly commit its caller's transaction).
     categories_existed = cursor.execute(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forum_categories'"
     ).fetchone() is not None
+    posts_existed = cursor.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forum_posts'"
+    ).fetchone() is not None
+    source_version = cursor.execute('PRAGMA user_version').fetchone()[0]
+    if version >= 10 and posts_existed and source_version < 10:
+        expand_posts(cursor)
     statements = (
         """CREATE TABLE IF NOT EXISTS forum_categories (
             id TEXT PRIMARY KEY NOT NULL,
@@ -58,18 +65,7 @@ def create_schema(cursor: sqlite3.Cursor, *, version: int = 9) -> None:
             pinned INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1)),
             closed INTEGER NOT NULL DEFAULT 0 CHECK (closed IN (0, 1))
         )""",
-        """CREATE TABLE IF NOT EXISTS forum_posts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            topic_id INTEGER NOT NULL REFERENCES forum_topics(id) ON DELETE CASCADE,
-            author_uuid TEXT REFERENCES users(uuid) ON DELETE SET NULL,
-            author_name TEXT NOT NULL,
-            body TEXT NOT NULL CHECK (length(body) BETWEEN 1 AND 8000),
-            body_search TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            edited_at INTEGER,
-            revision INTEGER NOT NULL DEFAULT 0 CHECK (revision >= 0),
-            hidden INTEGER NOT NULL DEFAULT 0 CHECK (hidden IN (0, 1))
-        )""",
+        posts_ddl('forum_posts', MAX_BODY_LENGTH if version >= 10 else 8000),
         """CREATE TABLE IF NOT EXISTS forum_read_positions (
             user_uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
             topic_id INTEGER NOT NULL REFERENCES forum_topics(id) ON DELETE CASCADE,
