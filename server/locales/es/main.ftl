@@ -671,6 +671,8 @@ communication-voice-room-label = Voz de { $channel }
 communication-voice-restricted = Ahora mismo no puedes usar el micrófono en este canal.
 communication-voice-not-connected = Debes conectarte al chat de voz antes de poder usar el micrófono.
 chat-invalid-message = Ese mensaje no se pudo enviar porque su formato no es válido.
+chat-reply-invalid = La respuesta no es válida. Vuelve a elegir el mensaje de chat.
+chat-reply-table-unavailable = Ya no estás en la mesa, así que la respuesta no se envió al chat de mesa.
 chat-message-too-long = Ese mensaje es demasiado largo. Los mensajes pueden tener como máximo { $limit } caracteres.
 
 broadcast-announcement = Anuncio general
@@ -1055,6 +1057,8 @@ pm-error-self = { $user_gender ->
 pm-error-message-required = Escribe un mensaje privado. Si usas el chat, incluye un nombre de usuario, por ejemplo: @Usuario hola.
 pm-sent-content = Tú a { $username }: { $message }
 pm-received = Mensaje privado de { $username }: { $message }
+pm-sent-content-reply = Tú a { $username }, respondiendo a { $target }: { $message }, { $quote }
+pm-received-reply = Mensaje privado de { $username } respondiendo a { $target }: { $message }, { $quote }
 
 host-management = Gestión del anfitrión
 table-spectator-suffix = { $player_gender ->

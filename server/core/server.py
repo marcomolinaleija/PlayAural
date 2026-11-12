@@ -132,6 +132,7 @@ from ..users.roles import (
 )
 from ..chat_channels import (
     MAX_CHAT_MESSAGE_LENGTH,
+    normalize_chat_reply,
     normalize_global_chat_channel,
     ordered_global_chat_channels,
     recommended_global_chat_channel,
@@ -18564,6 +18565,7 @@ PlayAural Server
         message: str,
         *,
         expected_uuid: str = "",
+        reply: dict[str, str] | None = None,
     ) -> None:
         """Deliver a bounded private message across an allowed social relationship."""
         if not isinstance(message, str):
@@ -18641,21 +18643,38 @@ PlayAural Server
             sender.play_sound("accounterror.ogg")
             return
 
-        target_user.speak_l(
-            "pm-received",
-            buffer="private",
-            username=sender.username,
-            message=message,
-        )
+        if reply:
+            target_user.speak_l(
+                "pm-received-reply",
+                buffer="private",
+                username=sender.username,
+                target=reply["sender"],
+                message=message,
+                quote=reply["message"],
+            )
+            sender.speak_l(
+                "pm-sent-content-reply",
+                buffer="private",
+                username=target_user.username,
+                target=reply["sender"],
+                message=message,
+                quote=reply["message"],
+            )
+        else:
+            target_user.speak_l(
+                "pm-received",
+                buffer="private",
+                username=sender.username,
+                message=message,
+            )
+            sender.speak_l(
+                "pm-sent-content",
+                buffer="private",
+                username=target_user.username,
+                message=message,
+            )
         target_user.play_sound(
             self.get_sound_for_event("private_message"), buffer="private"
-        )
-
-        sender.speak_l(
-            "pm-sent-content",
-            buffer="private",
-            username=target_user.username,
-            message=message,
         )
         sender.play_sound(
             self.get_sound_for_event("private_message"), buffer="private"
@@ -18797,6 +18816,13 @@ PlayAural Server
             user.speak_l("chat-invalid-message", buffer="system")
             return
 
+        reply = None
+        if "reply_to" in packet and not message.startswith("/"):
+            reply, reply_error = normalize_chat_reply(packet.get("reply_to"))
+            if reply_error:
+                user.speak_l(reply_error, buffer="system")
+                return
+
         if message.startswith("/reboot") or message.startswith("/stop"):
             if user and user.trust_level >= DEVELOPER_TRUST_LEVEL:
                 user.speak_l("server-power-command-removed", buffer="system")
@@ -18860,7 +18886,12 @@ PlayAural Server
                 scope="direct",
             ):
                 return
-            await self._deliver_private_message(user, target_username, pm_content)
+            await self._deliver_private_message(
+                user,
+                target_username,
+                pm_content,
+                reply=reply,
+            )
 
             # Never allow a private-message command to fall through into chat.
             return
@@ -18872,6 +18903,14 @@ PlayAural Server
         # meaning in either state.
         if convo == "local" and sender_table is None:
             convo = "global"
+        if convo in TABLE_CHAT_CONVERSATIONS and sender_table is None:
+            user.speak_l("chat-reply-table-unavailable", buffer="system")
+            return
+        # Explicit table delivery stays inside the table above. Publish it as
+        # local chat so every client uses the table earcon and table silence,
+        # instead of the global chat sound.
+        if convo in {"table", "game"}:
+            convo = "local"
 
         if not explicit_global:
             if not self._check_chat_channel_send_permission(
@@ -18917,6 +18956,8 @@ PlayAural Server
             "buffer": "chat",
             # "language": language,
         }
+        if reply:
+            chat_packet["reply_to"] = reply
         if global_message is not None:
             chat_packet.update(
                 {

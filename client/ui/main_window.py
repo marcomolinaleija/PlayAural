@@ -38,6 +38,14 @@ from windows_typing import (
 )
 from network_manager import NetworkManager
 from buffer_system import BufferSystem
+from chat_reply import (
+    chat_alert_sound,
+    metadata_from_chat_packet,
+    metadata_from_speak_packet,
+    outgoing_chat_packet,
+    reply_channel_key,
+    reply_format_key,
+)
 from unfocused_audio import (
     UNFOCUSED_SILENCE_CATEGORIES,
     audio_category,
@@ -232,6 +240,7 @@ class MainWindow(wx.Frame):
         # Initialize buffer system
         self.buffer_system = BufferSystem()
         self.buffer_system.create_default_buffers()
+        self._chat_reply = None
 
         # Load muted buffers from preferences
         preferences = self._load_preferences()
@@ -1739,6 +1748,14 @@ class MainWindow(wx.Frame):
     def on_char_hook(self, event):
         """Handle character input for game keypresses."""
         focused = wx.Window.FindFocus()
+        if (
+            event.GetKeyCode() == wx.WXK_ESCAPE
+            and not event.HasAnyModifiers()
+            and self._chat_reply
+            and focused is self.chat_input
+        ):
+            self._cancel_chat_reply()
+            return
 
         # Native Windows observers cover IME-consumed keys. This hook remains
         # the cross-platform/failure fallback and always lets wx and the IME
@@ -1885,6 +1902,14 @@ class MainWindow(wx.Frame):
         # Handle letter keys (case insensitive)
         elif 65 <= key_code <= 90:  # A-Z
             # Friends, forum and online-users chords use the accelerator table.
+            if (
+                event.ControlDown()
+                and not event.AltDown()
+                and not event.ShiftDown()
+                and key_code == ord("R")
+            ):
+                self._start_chat_reply()
+                return
             if (event.ControlDown() and not event.AltDown()
                     and (key_code == ord('F') or key_code == ord('U') and not event.ShiftDown())):
                 event.Skip()
@@ -2149,13 +2174,59 @@ class MainWindow(wx.Frame):
             self.send_chat_message(message)
         self.chat_input.Clear()
 
+    def _start_chat_reply(self):
+        """Focus the chat box on the history message selected with comma or period."""
+        item = self.buffer_system.get_current_item()
+        metadata = item.get("metadata") if isinstance(item, dict) else None
+        if (
+            not isinstance(metadata, dict)
+            or metadata.get("kind") != "chat"
+            or not metadata.get("sender")
+            or not str(metadata.get("message") or "").strip()
+        ):
+            self.speaker.speak(
+                Localization.get(
+                    "chat-reply-unavailable"
+                    if item
+                    else "chat-reply-empty"
+                ),
+                interrupt=True,
+            )
+            return
+        self._chat_reply = {
+            "convo": metadata["convo"],
+            "sender": metadata["sender"],
+            "message": metadata["message"],
+        }
+        prompt = Localization.get(
+            "chat-reply-started",
+            player=metadata["sender"],
+            channel=Localization.get(reply_channel_key(metadata["convo"])),
+        )
+        self.chat_input.SetName(prompt)
+        self.chat_input.SetFocus()
+        self.speaker.speak(prompt, interrupt=True)
+
+    def _cancel_chat_reply(self):
+        """Leave reply mode and return to the menu without sending."""
+        self._chat_reply = None
+        self.chat_input.SetName(Localization.get("main-chat-label"))
+        self.menu_list.SetFocus()
+        self.speaker.speak(Localization.get("chat-reply-cancelled"), interrupt=True)
+
+    def _clear_chat_reply(self):
+        """Drop a reply after its message is sent."""
+        if not self._chat_reply:
+            return
+        self._chat_reply = None
+        self.chat_input.SetName(Localization.get("main-chat-label"))
+
     def send_chat_message(self, message: str):
         """Send chat message to server."""
         if not message:
             return
-        self.network.send_packet(
-            {"type": "chat", "convo": "local", "message": message}
-        )
+        self.network.send_packet(outgoing_chat_packet(message, self._chat_reply))
+        self._clear_chat_reply()
 
     # Legacy language methods removed
     # get_language_name, get_language_code, send_table_chat, send_global_chat removed/replaced
@@ -2166,6 +2237,7 @@ class MainWindow(wx.Frame):
         buffer_name="misc",
         speak_aloud=True,
         store_in_history=True,
+        metadata=None,
     ):
         """
         Add text to the history window and optionally speak it.
@@ -2175,6 +2247,7 @@ class MainWindow(wx.Frame):
             buffer_name: Which buffer to add to (default: "misc")
             speak_aloud: Whether to speak the text aloud (default: True)
             store_in_history: Whether to retain and display the text in history.
+            metadata: Structured fields kept with the history item.
         """
         if store_in_history:
             current_buffer_name = self.buffer_system.get_current_buffer_name()
@@ -2184,7 +2257,7 @@ class MainWindow(wx.Frame):
             )
 
             # Add to buffer system (automatically adds to "all" as well)
-            self.buffer_system.add_item(buffer_name, text)
+            self.buffer_system.add_item(buffer_name, text, metadata)
 
             should_show_in_history = (
                 not self._is_message_muted_for_history(buffer_name)
@@ -3382,13 +3455,24 @@ class MainWindow(wx.Frame):
                 buffer_name,
                 speak_aloud=(not is_muted),
                 store_in_history=store_in_history,
+                metadata=metadata_from_speak_packet(packet) if store_in_history else None,
             )
 
     def on_receive_chat(self, packet):
         """Handle chat packet from server."""
         convo = packet.get("convo")
         is_private = convo == "private"
-        if convo == "global":
+        reply = packet.get("reply_to") if isinstance(packet.get("reply_to"), dict) else None
+        if reply and isinstance(reply.get("sender"), str) and isinstance(reply.get("message"), str):
+            destination = "global" if convo == "global" else "private" if is_private else "table"
+            message = Localization.get(
+                reply_format_key(destination),
+                player=packet.get("sender"),
+                target=reply.get("sender"),
+                message=packet.get("message"),
+                quote=reply.get("message"),
+            )
+        elif convo == "global":
             message = Localization.get("chat-global", player=packet.get("sender"), message=packet.get("message"))
         elif convo == "announcement":
             message = Localization.get(
@@ -3411,12 +3495,16 @@ class MainWindow(wx.Frame):
         if should_alert:
             if convo == "announcement":
                 self.sound_manager.play_family("notify")
-            elif is_private:
-                self.sound_manager.play("pm.ogg")
             else:
-                sound = "chatlocal" if convo == "local" else "chat"
-                self.sound_manager.play(sound + ".ogg")
-        self.add_history(message, buffer_name, should_alert)
+                sound = chat_alert_sound(str(convo or ""))
+                if sound:
+                    self.sound_manager.play(sound)
+        self.add_history(
+            message,
+            buffer_name,
+            should_alert,
+            metadata=metadata_from_chat_packet(packet),
+        )
 
     def on_server_audio(self, packet):
         """Route one validated lifecycle command into the audio engine."""
