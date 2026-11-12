@@ -786,6 +786,8 @@ communication-voice-room-label = { $channel } voice
 communication-voice-restricted = Your microphone cannot be used in this channel right now.
 communication-voice-not-connected = Voice Chat must be connected before you can use the microphone.
 chat-invalid-message = That message could not be sent because its format is invalid.
+chat-reply-invalid = That reply is not valid. Choose the chat message again.
+chat-reply-table-unavailable = You are no longer at the table, so the reply was not sent to table chat.
 chat-message-too-long = That message is too long. Messages may contain at most { $limit } characters.
 
 report-user = Report a user
@@ -1264,6 +1266,8 @@ pm-error-self = You cannot send a private message to yourself.
 pm-error-message-required = Enter a private message. When using chat, include a user name, for example: @User hello.
 pm-sent-content = You to { $username }: { $message }
 pm-received = Private message from { $username }: { $message }
+pm-sent-content-reply = You to { $username }, replying to { $target }: { $message }, { $quote }
+pm-received-reply = Private message from { $username } replying to { $target }: { $message }, { $quote }
 
 host-management = Host Management
 table-spectator-suffix = (Spectator)

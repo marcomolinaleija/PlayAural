@@ -318,6 +318,26 @@ test("message navigation announces history text instead of entry objects", () =>
   assert.equal(fixture.announcements.includes("[object Object]"), false);
 });
 
+test("focused history item keeps chat reply metadata", () => {
+  const fixture = createFixture();
+  const metadata = {
+    kind: "chat",
+    convo: "table",
+    sender: "Rayo",
+    message: "hola",
+  };
+  fixture.view.addEntry("Chat de mesa, Rayo: hola", {
+    buffer: "chat",
+    announce: false,
+    metadata,
+  });
+  assert.deepEqual(fixture.view.getCurrentItem().metadata, metadata);
+  fixture.view.addEntry("system notice", { buffer: "system", announce: false });
+  assert.equal(fixture.view.getCurrentItem().metadata, undefined);
+  fixture.view.olderMessage();
+  assert.deepEqual(fixture.view.getCurrentItem().metadata, metadata);
+});
+
 test("historical navigation stays anchored when new messages arrive", () => {
   const fixture = createFixture();
   for (let number = 1; number <= 8; number += 1) {

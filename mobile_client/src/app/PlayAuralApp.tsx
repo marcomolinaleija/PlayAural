@@ -412,6 +412,21 @@ function getDefaultAuthFocusId(mode: AuthMode): string {
 function formatChatMessage(localization: MobileLocalization, packet: ChatPacket): string {
   const sender = packet.sender?.trim() || localization.t("chat-unknown-sender");
   const message = packet.message || "";
+  const replySender = typeof packet.reply_to?.sender === "string" ? packet.reply_to.sender : "";
+  const replyMessage = typeof packet.reply_to?.message === "string" ? packet.reply_to.message : "";
+  if (packet.convo !== "announcement" && replySender && replyMessage) {
+    const key = packet.convo === "global"
+      ? "chat-global-reply"
+      : packet.convo === "private"
+        ? "chat-private-reply"
+        : "chat-local-reply";
+    return localization.t(key, {
+      player: sender,
+      target: replySender,
+      message,
+      quote: replyMessage,
+    });
+  }
   if (packet.convo === "global") {
     return localization.t("chat-global", { message, player: sender });
   }

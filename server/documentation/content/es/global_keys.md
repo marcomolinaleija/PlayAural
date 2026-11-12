@@ -38,6 +38,7 @@ PlayAural agrupa los mensajes en búferes separados para que puedas revisar los 
 \* \*\*Shift + `[` / Shift + `]`:\*\* Salta al primer o al último búfer.
 \* \*\*`,` / `.`:\*\* Lee el mensaje anterior o siguiente del búfer actual.
 \* \*\*Shift + `,` / Shift + `.`:\*\* Salta al mensaje más antiguo o más reciente del búfer actual.
+\* \*\*Ctrl + R:\*\* Con un mensaje de chat enfocado, abre el cuadro de texto para responder. Escape cancela la respuesta.
 
 \*\*Navegación de menús en escritorio\*\*
 

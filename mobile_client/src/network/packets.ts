@@ -51,6 +51,10 @@ export type ChatPacket = {
   sender?: string;
   message?: string;
   silent?: boolean;
+  reply_to?: {
+    sender?: string;
+    message?: string;
+  };
 };
 
 export type RequestInputPacket = {
