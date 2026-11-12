@@ -182,3 +182,7 @@ error-email-taken = این ایمیل قبلاً توسط حساب دیگری ا
 
 auth-error-rate-limit = تلاش‌های ناموفق برای ورود بیش از حد بود. لطفاً ۱۵ دقیقه دیگر دوباره تلاش کنید.
 auth-auto-login-disabled = ورود خودکار برای این حساب غیرفعال شده است. لطفاً دستی وارد شوید و در صورت نیاز اطلاعات خود را به‌روزرسانی کنید.
+
+connection-timeout-label = مهلت ورود
+connection-timeout-value = { $seconds } ثانیه
+login-cancelled = ورود لغو شد.
