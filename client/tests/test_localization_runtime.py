@@ -12,6 +12,7 @@ if str(CLIENT_DIR) not in sys.path:
     sys.path.insert(0, str(CLIENT_DIR))
 
 from localization import Localization
+from unfocused_audio import chat_category
 
 
 @pytest.mark.parametrize("locale", sorted(path.name for path in (CLIENT_DIR / "locales").iterdir() if path.is_dir()))
@@ -22,7 +23,7 @@ def test_received_chat_retains_message_in_every_desktop_locale(locale, convo):
     module = ast.parse(source_path.read_text(encoding="utf-8"))
     window = next(node for node in module.body if isinstance(node, ast.ClassDef) and node.name == "MainWindow")
     handler = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == "on_receive_chat")
-    namespace = {"Localization": Localization}
+    namespace = {"Localization": Localization, "chat_category": chat_category}
     exec(compile(ast.Module(body=[handler], type_ignores=[]), str(source_path), "exec"), namespace)
     history = []
     alerts = []
@@ -30,6 +31,7 @@ def test_received_chat_retains_message_in_every_desktop_locale(locale, convo):
         buffer_system=SimpleNamespace(is_effectively_muted=lambda name: False),
         sound_manager=SimpleNamespace(play=alerts.append, play_family=alerts.append),
         add_history=lambda *args: history.append(args),
+        _should_silence_unfocused=lambda category: False,
     )
     content = "Hola, ¿se lee? ñ العربية { $message } <texto>"
     try:
