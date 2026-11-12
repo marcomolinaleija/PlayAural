@@ -353,6 +353,7 @@ def test_desktop_copy_directives_cover_modified_enter_and_escape(monkeypatch):
             "current_menu_item_copy_directives": [directive],
             "current_mode": "list",
             "escape_behavior": "select_last_option",
+            "_chat_reply": None,
             "menu_list": menu_list,
             "multiletter_enabled": True,
             "network": type(
@@ -385,6 +386,7 @@ def test_desktop_copy_directives_cover_modified_enter_and_escape(monkeypatch):
                     lambda: main_window_module.wx.MOD_SHIFT if shift else 0
                 ),
                 "ShiftDown": staticmethod(lambda: shift),
+                "HasAnyModifiers": staticmethod(lambda: shift),
                 "Skip": staticmethod(lambda: None),
             },
         )()

@@ -24,14 +24,16 @@ async def receive(ws, predicate):
 
 
 async def choose(ws, menu, action, result=None):
+    if menu == nav.THREAD and result == nav.POST and action.startswith('post:'):
+        await ws.send(json.dumps({'type':'keybind','key':'applications','menu_id':nav.THREAD,'menu_item_id':action}))
+        return await receive(ws, lambda p:p.get('menu_id') == nav.POST)
     await ws.send(json.dumps({"type": "menu", "menu_id": menu, "selection_id": action}))
     if result:
-        menu_packet = await receive(ws, lambda p: p.get("menu_id") == result)
-        if result == nav.POST and (menu == nav.THREAD or action == 'next_unread'):
-            await receive(ws, lambda p: p.get('input_id') == nav.BODY_READER and p.get('type') == 'request_input')
-            await ws.send(json.dumps({'type':'editbox','input_id':nav.BODY_READER,'cancelled':True}))
+        if result == nav.POST and (menu == nav.COMPOSER or action in {'continue', 'next_unread'}):
+            focused = await receive(ws, lambda p:p.get('menu_id') == nav.THREAD and str(p.get('selection_id', '')).startswith('post:'))
+            await ws.send(json.dumps({'type':'keybind','key':'applications','menu_id':nav.THREAD,'menu_item_id':focused['selection_id']}))
             return await receive(ws, lambda p:p.get('menu_id') == nav.POST)
-        return menu_packet
+        return await receive(ws, lambda p: p.get("menu_id") == result)
 
 
 async def fill(ws, field, text):
@@ -67,7 +69,7 @@ async def test_create_read_reply_edit_and_save_over_real_websocket(tmp_path, cli
                        for row in preview["items"])
             assert server.db._conn.execute("SELECT COUNT(*) FROM forum_posts").fetchone()[0] == 0
             published = await choose(alice, nav.COMPOSER, "publish", nav.POST)
-            assert "Hola a todos." in str(published)
+            assert 'speak_body' in [row['id'] for row in published['items']]
             alice_uuid = server.db.get_user("Alice").uuid
             topic = server.forum_manager.service.topics(alice_uuid).items[0]
             # A queued duplicate publish cannot execute on the new surface.
@@ -84,7 +86,8 @@ async def test_create_read_reply_edit_and_save_over_real_websocket(tmp_path, cli
             await choose(bob, nav.POST, "edit", nav.COMPOSER)
             await fill(bob, nav.BODY_INPUT, "Gracias. Esta es mi respuesta editada.")
             edited = await choose(bob, nav.COMPOSER, "publish", nav.POST)
-            assert "respuesta editada" in str(edited)
+            last = server.forum_manager.service.topic(bob_uuid, topic.id).last_post_id
+            assert 'respuesta editada' in server.forum_manager.service.post(bob_uuid, last).body
             thread = await choose(bob, nav.POST, "back", nav.THREAD)
             assert thread.get("selection_id") == f"post:{server.forum_manager.service.topic(bob_uuid, topic.id).last_post_id}"
             await choose(bob, nav.THREAD, "bookmark", nav.THREAD)
@@ -206,8 +209,8 @@ def test_content_precedes_actions_and_entry_context_is_spoken_once(navigation_se
     server._nav_push(user, manager.views.post, first)
     packets = user.get_queued_messages()
     reader = [p for p in packets if p.get("menu_id") == nav.POST][-1]
-    assert reader["items"][0]["text"] == "Primer mensaje"
-    assert reader["items"][0]["id"] == "read_body"
+    assert reader["items"][0]["id"] == "speak_body"
+    assert not any(row['text'] == 'Primer mensaje' for row in reader['items'])
     assert not reader["items"][0].get("read_only", False)
     assert reader["items"][-1]["id"] == "back"
 
@@ -380,7 +383,8 @@ async def test_private_invitation_and_poll_over_real_clients(tmp_path, client_ty
             await choose(alice, nav.EXTRAS, 'back', nav.COMPOSER)
             assert not server.db._conn.execute('SELECT 1 FROM forum_private_invites').fetchone()
             published = await choose(alice, nav.COMPOSER, 'publish', nav.POST)
-            assert published['items'][0]['text'] == 'Elijamos un juego en privado.'
+            assert published['items'][0]['id'] == 'speak_body'
+            assert 'Elijamos un juego en privado.' not in str(published['items'])
             await choose(bob, nav.HOME, 'recent', nav.TOPICS)
             assert server.forum_manager.service.topics(server.db.get_user('Bob').uuid).total == 0
             await choose(bob, nav.TOPICS, 'back', nav.HOME)

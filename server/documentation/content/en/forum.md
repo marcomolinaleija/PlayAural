@@ -12,9 +12,11 @@ On entering a view, a short announcement gives its context. Headings and page su
 
 \*\*Reading and Continuing\*\*
 
-Open a discussion to find its messages first and its actions below. Each row shows an excerpt of up to 160 characters. Opening a message displays its complete text in a read-only multiline box, where you can move through lines, select and copy text. Its author and time are announced automatically. Enter or Escape closes the box and restores focus to the message row, with attachments, its poll and actions below. Open that same row to read the full text again.
+Open a discussion to find its messages and the thread actions below. Each row shows an excerpt of up to 160 characters. On a message, press Enter or Right arrow to hear its complete text while staying in the list, without opening a text box. This reading replaces queued speech and respects your mute settings.
 
-Opening a full message marks that message and earlier messages in the discussion as read. Reading previews alone does not. Continue from the first unread message and Read the next unread message help you catch up. Your reading position and saved discussions remain available after reconnecting or switching devices.
+Applications or Shift + F10 opens the message context menu, with reply, edit, attachment, poll or report actions according to your permissions. Escape returns to the list with that message focused. To review, select or copy the text, press Shift + Enter on the message: its full text opens in a read-only multiline box. Escape closes the box and returns directly to that message in the list. You can also open the text from the context menu. Publishing or saving an edit returns focus to the message list.
+
+Hearing a full message or opening its text marks that message and earlier messages in the discussion as read. Previews and opening the context menu do not. Continue from the first unread message and Read the next unread message locate the corresponding message and read it aloud. Your reading position and saved discussions survive reconnecting or switching devices.
 
 \*\*Writing\*\*
 
@@ -30,7 +32,7 @@ Mention someone by writing @Carlos in your message. For names with spaces, use @
 
 Mentions notify their recipients; private replies notify the other members who have accepted their invitations. A mention does not invite anyone or grant access to a private conversation. Blocks apply in both directions. In a private conversation, a mention takes priority over the ordinary notice, so one message does not send two alerts.
 
-Open Notifications in the forum to review pending notices. If there are none, a spoken message tells you and you stay in the current menu. Each notice opens its full message. Pending private messages are grouped by conversation; opening a group takes you to its first pending message. Hearing an alert does not mark the message as read. Opening the message removes its notice. If none remain when you return, you hear a message and return to the forum.
+Open Notifications in the forum to review pending notices. If there are none, a spoken message tells you and you stay in the current menu. Each notice locates its message in the thread and reads the complete text aloud. Pending private messages are grouped by conversation; opening a group takes you to its first pending message. Hearing an alert does not mark the message as read. Opening the message removes its notice. If none remain when you return, you hear a message and return to the forum.
 
 While connected, alerts are spoken without changing your view. Alerts for the conversation you are already reading are suppressed. Pending private activity sends one alert until you consult it. Signing in announces a summary of new notices. The inbox keeps up to 500 pending notices for 90 days. Notices for hidden or inaccessible content are not shown.
 
@@ -51,6 +53,12 @@ If attachment approval is enabled, choosing Publish submits your ready files for
 Video subtitles can be preserved when the uploaded video contains a supported text subtitle track. Use the player's subtitle control when one is available. PlayAural does not generate subtitles automatically; separate subtitle uploads are not linked to videos.
 
 \*\*Polls\*\*
+
+The editor uses one editable row per field: Question: content, Options: content, and voting settings. Open a row to change it. Options shows a compact summary; opening it lets you review every answer in a multiline box. The Poll row in the message form opens its editor directly.
+
+Each thread can also have one general poll independent of its messages. The public thread author, administrators and developers, or the owner of a private conversation can choose Create thread poll among the bottom actions. Fill in the fields and choose Create thread poll to publish it. It stays above the messages on every page; there is no empty row when a thread has no poll. Message polls stay with their posts and have separate votes.
+
+Open the general poll to vote, view results or manage it. Before the first vote, its author or a thread moderator can choose Edit thread poll and save changes. Back asks for confirmation when there are unsaved changes. If someone edited it while your editor was open, your draft is kept and you need to reopen the poll. A closed poll stays at the top for reviewing results. Each thread can have only one general poll.
 
 While composing, choose Add, then Add a poll. Enter a question of up to 240 characters and two to ten different answers, one per line, each up to 160 characters. By default, people choose one answer, can change their vote, see results after voting, and have no automatic deadline. You can allow multiple answers, prevent vote changes, show results immediately or after closing, and set a deadline of 1, 3, 7, or 30 days. Check the question and answers in the message form, then publish.
 
@@ -90,7 +98,7 @@ The Forum entry remains visible in the main menu. While disabled, choosing it on
 
 \*\*Report public content\*\*
 
-Choose Report thread at the bottom of a public thread, or Report message when reading someone else's public message. Choose a reason, optionally add Details (up to 500 characters), then confirm. Back or No cancels without submitting. Private conversations cannot be reported through this system.
+Choose Report thread at the bottom of a public thread, or Report message from the context menu of someone else's public message. Choose a reason, optionally add Details (up to 500 characters), then confirm. Back or No cancels without submitting. Private conversations cannot be reported through this system.
 
 Reports save the title and a copy of the selected message; a thread report saves its opening message. If the content changes while you prepare the report, reopen it and review the current version. The author receives no notice. Reporting never hides content or applies penalties automatically. Reports of the same version are not duplicated. Chat and forum share a limit of five reports per hour.
 

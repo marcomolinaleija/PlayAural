@@ -1,5 +1,9 @@
 # Full-message read-only reader
 
+This records the original automatic-reader delivery. Current navigation uses
+in-place speech, a contextual action menu, and optional text on Shift+Enter;
+see `forum-post-navigation.md`. Escape now returns directly to the thread list.
+
 Thread lists show 160-character excerpts. Opening a visible message now displays
 its complete text in the existing `request_input` multiline/read-only surface.
 The underlying message menu contains one short, actionable body row followed by

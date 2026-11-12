@@ -7,6 +7,7 @@ from ..messages.localization import Localization
 from ..messages.relative_time import format_relative_time
 from ..users.base import EscapeBehavior, MenuItem
 from . import navigation as nav
+from .models import ForumError
 from .text import excerpt
 
 
@@ -144,8 +145,19 @@ class ForumViews:
                      age=age(user, post.created_at),
                      body=label(user, "forum-hidden-post") if post.hidden else excerpt(post.body))
                 for post in data.items]
+        if self.service.thread_polls.exists(topic_id):
+            try:
+                poll = self.service.thread_polls.get(user.uuid, topic_id)
+            except ForumError as error:
+                if error.key != 'forum-error-missing':
+                    raise
+            else:
+                rows.insert(0, item(user, 'forum-thread-poll-row', 'thread_poll', question=poll['question'],
+                                    status=label(user, 'forum-poll-closed' if poll['closed'] or topic.closed else 'forum-thread-poll-open')))
         if not topic.closed:
             rows.append(item(user, "forum-reply", "reply"))
+            if self.service.thread_polls.can_create(user.uuid, topic_id):
+                rows.append(item(user, 'forum-thread-poll-create', 'create_thread_poll'))
         rows.append(item(user, 'forum-notification-unmute-topic' if self.service.notifications.muted(user.uuid, topic_id)
                          else 'forum-notification-mute-topic', 'mute_notifications'))
         rows.append(item(user, "forum-unsave" if topic.bookmarked else "forum-save", "bookmark"))
@@ -175,14 +187,14 @@ class ForumViews:
                     }), forum_topic=topic_id, forum_page=data.page, forum_pages=data.total_pages, forum_language=language)
 
     def post(self, user, post_id: int) -> None:
-        post = self.service.post(user.uuid, post_id, mark_read=True)
+        post = self.service.post(user.uuid, post_id)
         topic = self.service.topic(user.uuid, post.topic_id)
         category = None if topic.is_private else self.service.repository.category(topic.category_id)
         language = category.language if category else None
         if post.hidden:
-            rows = [item(user, "forum-hidden-post", "hidden", read_only=True)]
+            rows = []
         else:
-            rows = [MenuItem(text=excerpt(post.body), id='read_body')]
+            rows = [item(user, 'forum-post-speak', 'speak_body'), item(user, 'forum-post-text', 'read_body')]
             rows.extend(item(user, 'forum-media-post-row', f"attachment:{attachment['id']}", name=attachment['name'],
                              kind=label(user, 'forum-media-kind-' + attachment['kind']))
                         for attachment in self.service.attachments.for_post(user.uuid, post_id))
@@ -200,9 +212,11 @@ class ForumViews:
             rows.append(item(user, "forum-restore-post" if post.hidden else "forum-hide-post", "toggle_hidden"))
         if not topic.is_private and not post.hidden and post.author_uuid != user.uuid:
             rows.append(item(user, 'forum-report-post', 'report_post'))
-        self.render(user, nav.POST, rows, title=topic.title,
+        self.render(user, nav.POST, rows, title=label(user, 'forum-post-actions'),
                     announcement=("forum-entry-post" if topic.is_private else "forum-entry-post-language", {
                         "language": label(user, "forum-language-" + language) if language else "",
                         "title": topic.title, "author": author(user, post), "age": age(user, post.created_at),
                         "edited": label(user, "forum-edited", age=age(user, post.edited_at)) if post.edited_at else "",
                     }), forum_topic=post.topic_id, forum_post=post.id, forum_language=language)
+        if post.hidden:
+            user.speak_l('forum-hidden-post', buffer='misc', history=False)

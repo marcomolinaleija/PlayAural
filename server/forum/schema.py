@@ -3,12 +3,13 @@
 import sqlite3
 
 from .models import DEFAULT_CATEGORIES, PRIVATE_CATEGORY_ID, MAX_BODY_LENGTH
-from . import schema_v5, schema_v11
+from . import schema_v5, schema_v11, schema_v12
 from .schema_v10 import posts_ddl, expand_posts
 from .languages import FORUM_LANGUAGES, LANGUAGE_CHECK
 
 
 CHECK_CONSTRAINTS = {
+    **schema_v12.CHECK_CONSTRAINTS,
     **schema_v11.CHECK_CONSTRAINTS,
     'forum_language_preferences': (LANGUAGE_CHECK,),
     "forum_report_targets": (
@@ -38,7 +39,7 @@ CHECK_CONSTRAINTS = {
 }
 
 
-def create_schema(cursor: sqlite3.Cursor, *, version: int = 11) -> None:
+def create_schema(cursor: sqlite3.Cursor, *, version: int = 12) -> None:
     # Statements run in Database's migration transaction, never executescript
     # (which would implicitly commit its caller's transaction).
     categories_existed = cursor.execute(
@@ -101,6 +102,8 @@ def create_schema(cursor: sqlite3.Cursor, *, version: int = 11) -> None:
             )
     if version >= 11:
         schema_v11.create_schema(cursor)
+    if version >= 12:
+        schema_v12.create_schema(cursor)
     if version >= 5:
         schema_v5.create_schema(cursor)
     if version >= 8:

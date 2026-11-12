@@ -22,6 +22,7 @@ class ForumService:
         self.clock = clock
         self.conversations = ConversationService(self)
         self.polls = PollService(self)
+        self.thread_polls = PollService(self, scope='thread')
         self.attachments = AttachmentService(self)
         self.attachment_reviews = AttachmentReviews(self)
         self.category_admin = CategoryService(self)

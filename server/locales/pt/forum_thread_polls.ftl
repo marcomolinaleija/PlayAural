@@ -1,0 +1,9 @@
+forum-poll-question-value = Pergunta: { $value }
+forum-poll-options-value = Opções: { $value }
+forum-thread-poll-create = Criar enquete do tópico
+forum-thread-poll-save = Salvar enquete do tópico
+forum-thread-poll-edit = Editar enquete do tópico
+forum-thread-poll-saved = Enquete do tópico salva.
+forum-thread-poll-row = Enquete do tópico: { $question }. { $status }
+forum-thread-poll-open = Aberta
+forum-error-thread-poll-exists = Este tópico já tem uma enquete geral.

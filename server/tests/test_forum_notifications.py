@@ -137,9 +137,8 @@ def test_pagination_settings_and_cross_language_destination_use_shared_menus(for
     rows = [p for p in bob.get_queued_messages() if p.get('menu_id') == nav.NOTIFICATIONS][-1]['items']
     target = next(row['id'] for row in rows if row['id'].startswith('notice:'))
     manager.handle_menu(bob, target, server._user_states[bob.username])
-    assert server._user_states[bob.username]['menu'] == nav.BODY_READER
+    assert server._user_states[bob.username]['menu'] == nav.THREAD
     assert service.languages.current(bob.uuid) == 'en'
-    manager.reader.close(bob, server._user_states[bob.username])
     server._nav_back(bob)
     server._nav_back(bob)
     manager.handle_menu(bob, 'notification_settings', server._user_states[bob.username])
@@ -286,9 +285,8 @@ def test_inbox_opens_exact_full_message_and_returns_to_home_when_consumed(forum)
     assert server._user_states[bob.username]['menu'] == nav.NOTIFICATIONS
     manager.handle_menu(bob, f'notice:{post}', server._user_states[bob.username])
     state = server._user_states[bob.username]
-    assert state['menu'] == nav.BODY_READER and state['forum_post'] == post
-    assert any(p.get('read_only') and p.get('default_value') == 'Hello @Bob\nFull body' for p in bob.get_queued_messages())
-    manager.reader.close(bob, state)
+    assert state['menu'] == nav.THREAD and state['_restore_focus_id'] == f'post:{post}'
+    assert any(p.get('type') == 'speak' and p.get('text') == 'Hello @Bob\nFull body' for p in bob.get_queued_messages())
     server._nav_back(bob)
     assert server._user_states[bob.username]['menu'] == nav.HOME
     assert any(p.get('key') == 'forum-notifications-empty' for p in bob.get_queued_messages())
@@ -389,7 +387,7 @@ def test_v10_migration_preserves_content_and_creates_verified_backup_and_no_retr
         assert service.topic(bob, topic).bookmarked and service.topic(bob, topic).unread_count == 0
         assert service.polls.get(bob, post)['question'] == 'Retained poll'
         assert not service.notifications.pending(bob)
-        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == 11
+        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
         assert not db._conn.execute('PRAGMA foreign_key_check').fetchall()
         backup = next((tmp_path / 'backups').glob('*.sqlite3'))
         with db._open_connection(str(backup), timeout=30) as old:
@@ -466,8 +464,8 @@ async def test_live_and_offline_notices_and_exact_reader_over_real_websocket(tmp
             inbox = await receive(bob, lambda p: p.get('menu_id') == nav.NOTIFICATIONS)
             assert f'notice:{offline}' in [row['id'] for row in inbox['items']]
             await bob.send(json.dumps({'type':'menu','menu_id':nav.NOTIFICATIONS,'selection_id':f'notice:{offline}'}))
-            reader = await receive(bob, lambda p: p.get('input_id') == nav.BODY_READER and p.get('type') == 'request_input')
-            assert reader['read_only'] and reader['multiline'] and reader['default_value'] == 'Offline @Bob'
+            reader = await receive(bob, lambda p: p.get('type') == 'speak' and p.get('text') == 'Offline @Bob')
+            assert reader['history'] is False and server._user_states['Bob']['menu'] == nav.THREAD
             assert len(service.notifications.pending(bob_id)) == 1
     finally:
         await server.stop()

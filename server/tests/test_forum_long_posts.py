@@ -23,10 +23,11 @@ from ..persistence.database import Database
 def snapshot(db):
     tables = [row[0] for row in db._conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'forum_%' ORDER BY name")]
-    # Compare the v9 content; v11 adds four empty, separately tested tables.
+    # Compare v9 content; later migrations add separately tested extension tables.
     return {table: [tuple(row) for row in db._conn.execute(f'SELECT * FROM {table} ORDER BY rowid')]
             for table in tables + ['moderation_reports'] if table not in {
-                'forum_mentions', 'forum_notifications', 'forum_notification_settings', 'forum_muted_topics'}}
+                'forum_mentions', 'forum_notifications', 'forum_notification_settings', 'forum_muted_topics',
+                'forum_thread_polls', 'forum_thread_poll_options', 'forum_thread_poll_votes'}}
 
 
 def legacy_nine(path, tmp_path):
@@ -174,14 +175,16 @@ async def test_maximum_body_over_real_websocket_editor_reader_and_report_snapsho
             await ws.send(json.dumps({'type': 'editbox', 'input_id': nav.BODY_INPUT, 'text': body}))
             draft = await receive(ws, lambda p: p.get('menu_id') == nav.COMPOSER)
             assert len(next(row['text'] for row in draft['items'] if row['id'] == 'edit_body')) < 200
-            reader = await choose(ws, nav.COMPOSER, 'publish', nav.POST)
-            assert len(reader['items'][0]['text']) <= 160
-            await ws.send(json.dumps({'type':'menu','menu_id':nav.POST,'selection_id':'read_body'}))
+            reader = await choose(ws, nav.COMPOSER, 'publish', nav.THREAD)
+            assert len(reader['items'][0]['text']) < 300
+            post = server.forum_manager.service.topic(server.db.get_user('Reader').uuid, topic).last_post_id
+            await ws.send(json.dumps({'type':'keybind','key':'enter','shift':True,'menu_id':nav.THREAD,'menu_item_id':f'post:{post}'}))
             full = await receive(ws, lambda p:p.get('type') == 'request_input' and p.get('input_id') == nav.BODY_READER)
             assert full['read_only'] and full['multiline'] and full['default_value'] == body
             await ws.send(json.dumps({'type':'editbox','input_id':nav.BODY_READER,'cancelled':True}))
+            await receive(ws, lambda p:p.get('menu_id') == nav.THREAD)
+            await ws.send(json.dumps({'type':'keybind','key':'applications','menu_id':nav.THREAD,'menu_item_id':f'post:{post}'}))
             await receive(ws, lambda p:p.get('menu_id') == nav.POST)
-            post = server.forum_manager.service.topic(server.db.get_user('Reader').uuid, topic).last_post_id
             await choose(ws, nav.POST, 'edit', nav.COMPOSER)
             await ws.send(json.dumps({'type': 'menu', 'menu_id': nav.COMPOSER, 'selection_id': 'edit_body'}))
             prompt = await receive(ws, lambda p: p.get('type') == 'request_input' and p.get('input_id') == nav.BODY_INPUT)

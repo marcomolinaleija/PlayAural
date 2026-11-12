@@ -1779,6 +1779,9 @@ class MainWindow(wx.Frame):
             event.Skip()
             return
 
+        if getattr(self, 'current_menu_id', '') == 'forum_thread' and self._handle_forum_post_key(event):
+            return
+
         key_code = event.GetKeyCode()
         
         # Get modifiers
@@ -2000,6 +2003,29 @@ class MainWindow(wx.Frame):
 
         # Let other keys be processed normally (including Enter on menu)
         event.Skip()
+
+    def _handle_forum_post_key(self, event):
+        """Read a focused post or open its actions without changing arrow navigation elsewhere."""
+        selection = self.menu_list.GetSelection()
+        if (self.current_menu_id != 'forum_thread' or not self.connected or not 0 <= selection < len(self.current_menu_item_ids)
+                or not str(self.current_menu_item_ids[selection] or '').startswith('post:')
+                or event.ControlDown() or event.AltDown() or event.MetaDown()):
+            return False
+        code, shift = event.GetKeyCode(), event.ShiftDown()
+        if code in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+            key = 'enter'
+        elif code == wx.WXK_RIGHT and not shift:
+            key = 'right'
+        elif code == wx.WXK_F10 and shift:
+            key = 'f10'
+        elif code in (wx.WXK_MENU, wx.WXK_WINDOWS_MENU) and not shift:
+            key = 'applications'
+        else:
+            return False
+        self.network.send_packet({'type': 'keybind', 'key': key, 'control': False, 'alt': False,
+                                  'shift': shift, 'meta': False, 'menu_id': self.current_menu_id,
+                                  'menu_index': selection + 1, 'menu_item_id': self.current_menu_item_ids[selection]})
+        return True
 
     @staticmethod
     def _typing_key_from_event(event):
@@ -3445,6 +3471,7 @@ class MainWindow(wx.Frame):
             "muted", False
         )  # Check if message should be muted (no TTS)
         store_in_history = packet.get("history", True) is not False
+        interrupt = packet.get('interrupt') is True
 
         if self._should_silence_unfocused(speak_category(buffer_name, str(packet.get("key") or ""))):
             is_muted = True
@@ -3453,10 +3480,12 @@ class MainWindow(wx.Frame):
             self.add_history(
                 text,
                 buffer_name,
-                speak_aloud=(not is_muted),
+                speak_aloud=(not is_muted and not interrupt),
                 store_in_history=store_in_history,
                 metadata=metadata_from_speak_packet(packet) if store_in_history else None,
             )
+            if interrupt and not is_muted and not self.buffer_system.is_effectively_muted(buffer_name):
+                self.speaker.speak(text, interrupt=True)
 
     def on_receive_chat(self, packet):
         """Handle chat packet from server."""

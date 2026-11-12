@@ -174,7 +174,7 @@ async def test_live_control_blocks_stale_actions_and_resumes_after_reenable(tmp_
             await receive(idle, lambda p: p.get('key') == 'forum-unavailable')
             assert server.user_states['Idle']['menu'] == 'main_menu'
             await choose(staff, ADMIN_MODERATION_MENU, 'toggle_forum', ADMIN_MODERATION_MENU)
-            published = await choose(reader, nav.COMPOSER, 'publish', nav.POST)
+            published = await choose(reader, nav.COMPOSER, 'publish', nav.THREAD)
             assert 'Retained body' in str(published)
             await choose(idle, 'main_menu', 'forum', nav.HOME)
     finally:

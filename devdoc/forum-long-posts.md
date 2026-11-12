@@ -7,8 +7,9 @@ and help reflect the new limit.
 
 The existing shared editor packet supplies `max_length = 64000`; desktop and web
 already consume it. Drafts and edit defaults retain the full text, while composer
-rows still contain a short excerpt. Full messages open in a read-only multiline
-reader. Report evidence uses the same body constant, so a report retains
+rows still contain a short excerpt. Full messages can be read aloud in place or
+opened in an optional read-only multiline reader; see `forum-post-navigation.md`.
+Report evidence uses the same body constant, so a report retains
 the complete message instead of truncating it. No native mobile work is needed.
 
 ## Schema 10 migration

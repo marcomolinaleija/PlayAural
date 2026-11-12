@@ -238,13 +238,13 @@ export function createMenuView({
     listEl.focus({ preventScroll: true });
   }
 
-  function contextAction(index) {
+  function contextAction(index, trigger = 'context') {
     const item = itemAt(index);
     if (!isMenuItemActionable(item)) {
       return;
     }
     setSelection(index, { playSound: false });
-    onContextAction?.(item, index);
+    onContextAction?.(item, index, trigger);
   }
 
   function installContextHandlers(target, index) {
@@ -256,7 +256,7 @@ export function createMenuView({
       if (event.key === "Enter" && event.shiftKey) {
         event.preventDefault();
         event.stopPropagation();
-        contextAction(index);
+        contextAction(index, 'reader');
       }
     });
     target.addEventListener("pointerdown", (event) => {

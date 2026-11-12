@@ -115,13 +115,21 @@ build_prod.bat
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v11), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v12), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
-Opening a message shows its full body in a read-only multiline input. Message
-menus keep one short body row that reopens the reader, with actions below.
-Closing restores message focus without reopening; never accept reader text as
-an edit, and recheck visibility on open. Read-only multiline starts at the top
-without automatic full-text selection. Private/member/block rules still apply.
+On thread post rows, Enter/Right speaks the complete body in place, without
+history storage or a menu/input transition. Explicit reading interrupts queued
+speech while respecting the client's mute preferences. Applications/Shift+F10
+opens the server-owned post action menu; opening actions does not mark a post
+read. Shift+Enter opens the optional read-only multiline text directly from the
+thread. Escape restores that same thread/page/post focus, never a detail page.
+Recheck visibility and bind keybinds to the exact visible menu/row; reject stale
+ids, mismatched positions and cross-thread targets. Never accept reader text as
+an edit. Read-only text starts at the top without full-text selection.
+Notifications/continuation locate and speak the exact post in its thread.
+Publishing/editing returns directly to the focused post list, preserving other
+drafts and game context. Private/member/block rules apply to every entry point.
+See `devdoc/forum-post-navigation.md` for keyboard and protocol details.
 Forum home pins Private conversations and Recent activity before the language
 subforums; other actions follow. Ctrl+Shift+F opens it through the existing
 keybind protocol, respecting availability, account gates and modal navigation.
@@ -141,7 +149,8 @@ requires accepted membership, and mentions never grant access. Recheck access,
 hidden posts and bilateral blocks on inbox display, alert delivery and opening.
 Keep mention history per post/recipient to prevent edit/re-add spam; moderator
 edits must not send mentions under the author's identity. Read notices only when
-their message is opened; speaking is not reading. Alert settings and per-topic
+their message is opened or read in full; alert speech alone never marks it read.
+Alert settings and per-topic
 mutes affect speech, not the inbox or unread counters. Empty Notifications only
 speaks feedback and preserves the current menu/stack; empty restored inboxes
 return to their parent. See `devdoc/forum-notifications.md` for retention/limits.
@@ -166,6 +175,13 @@ Private discussions use a protected internal category, never a public subforum.
 Private conversations require accepted UUID membership, including for admins;
 never leak them into public lists/search/counts. Poll ballots are atomic and
 question/options freeze after the first vote, including after withdrawal.
+Poll editors use one editable label/value row per field, without duplicate
+preview rows. Each thread may also own one independent general poll, shown
+before messages on every page; message polls retain their own placement and
+ballots. Both scopes share vote rules, but have separate storage/identity.
+General-poll creation requires the public author/staff or private owner; editing
+rechecks rights, first-vote freeze and revision. Never create a dummy post for
+a general poll. See `devdoc/forum-thread-polls.md` for schema and navigation.
 Uploaded files use authenticated HTTP, never WebSocket binaries or public
 object URLs. CPU/media/storage work runs off-loop; SQLite remains on its
 central owner loop behind maintenance barriers. Only explicit playback starts

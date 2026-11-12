@@ -302,6 +302,7 @@ class User(ABC):
         buffer: str = "misc",
         *,
         history: bool = True,
+        interrupt: bool = False,
     ) -> None:
         """
         Send a text message to be displayed and spoken via TTS.
@@ -310,6 +311,7 @@ class User(ABC):
             text: The message text.
             buffer: Which buffer to route the message to (chat, private, game, system, misc).
             history: Whether clients should retain the message in their history buffer.
+            interrupt: Whether this explicit reading should replace queued speech.
         """
         ...
 
