@@ -74,10 +74,9 @@ class ForumMediaDialog(wx.Dialog):
                     self.button('fullscreen', lambda _: self.ShowFullScreen(not self.IsFullScreen()))
                 self.relay = NativeMediaRelay(packet)
                 wx.CallAfter(self.load_player)
-        if attachment['description'] and attachment['kind'] != 'image':
-            description = wx.StaticText(self, label=attachment['description'])
-            description.Wrap(700)
-            root.Add(description, 0, wx.EXPAND | wx.ALL, 8)
+        description = self.add_description(attachment['description'])
+        if description is not None and attachment['kind'] == 'image':
+            wx.CallAfter(description.SetFocus)
         if self.player and packet.get('captions_url'):
             self.caption = wx.StaticText(self, style=wx.ST_NO_AUTORESIZE)
             self.caption.SetMinSize((-1, 70))
@@ -96,6 +95,17 @@ class ForumMediaDialog(wx.Dialog):
         root.Add(self.actions, 0, wx.EXPAND | wx.ALL, 6)
         self.SetSizer(root)
         self.SetMinSize((480, 300))
+
+    def add_description(self, text):
+        if not text:
+            return None
+        # Visible, focusable and copyable on images as well as audio/video.
+        description = wx.TextCtrl(self, value=text, name=self.labels['description'],
+                                  style=wx.TE_MULTILINE | wx.TE_READONLY)
+        description.SetMinSize((-1, 80))
+        description.SetInsertionPoint(0)
+        self.root.Add(description, 0, wx.EXPAND | wx.ALL, 8)
+        return description
 
     def button(self, key, callback):
         button = wx.Button(self, label=self.labels[key])

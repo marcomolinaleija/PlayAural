@@ -203,3 +203,23 @@ class PollService:
             if self._author(context, row) != viewer and not self.forum.can_moderate(viewer, self._topic_id(context)):
                 raise ForumError('forum-error-edit-permission')
             self.connection.execute(f'UPDATE {self.table} SET closed = 1 WHERE {self.key} = ?', (post_id,))
+
+    def can_delete(self, viewer: str, target_id: int) -> bool:
+        context, row = self._row(viewer, target_id)
+        return self._author(context, row) == viewer or self.forum.can_moderate(viewer, self._topic_id(context))
+
+    def delete(self, viewer: str, target_id: int, *, expected_options: tuple[int, ...]) -> None:
+        """Delete only the confirmed poll, including closed polls and ballots."""
+        with self.repository.atomic():
+            self.forum.account(viewer, writing=True)
+            self._row(viewer, target_id)
+            if not self.can_delete(viewer, target_id):
+                raise ForumError('forum-error-poll-delete-permission')
+            # Option ids are AUTOINCREMENT and replaced on every edit. They
+            # bind confirmation to this exact poll, even after delete/recreate
+            # at the same thread id and timestamp, without a schema migration.
+            current = tuple(row[0] for row in self.connection.execute(
+                f'SELECT id FROM {self.options_table} WHERE {self.key} = ? ORDER BY position', (target_id,)))
+            if current != expected_options:
+                raise ForumError('forum-error-poll-changed')
+            self.connection.execute(f'DELETE FROM {self.table} WHERE {self.key} = ?', (target_id,))

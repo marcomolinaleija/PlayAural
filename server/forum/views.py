@@ -44,6 +44,17 @@ def age(user, timestamp: int) -> str:
     return format_relative_time(user.locale, datetime.fromtimestamp(timestamp, timezone.utc))
 
 
+def post_notice(user, post) -> str:
+    """Brief resource metadata; hidden posts never expose polls or files."""
+    notices = []
+    if not post.hidden:
+        if post.has_poll:
+            notices.append(label(user, 'forum-post-poll-notice'))
+        if post.attachment_count:
+            notices.append(label(user, 'forum-post-attachment-count', count=post.attachment_count))
+    return ' '.join(notices)
+
+
 class ForumViews:
     def __init__(self, server, service):
         self.server = server
@@ -141,10 +152,14 @@ class ForumViews:
             target = resume or topic.last_post_id
             page = self.service.repository.post_page(user.uuid, topic_id, target)
         data = self.service.posts(user.uuid, topic_id, page)
-        rows = [item(user, "forum-post-row", f"post:{post.id}", author=author(user, post),
-                     age=age(user, post.created_at),
-                     body=label(user, "forum-hidden-post") if post.hidden else excerpt(post.body))
-                for post in data.items]
+        rows = []
+        for post in data.items:
+            text = label(user, 'forum-post-row', author=author(user, post), age=age(user, post.created_at),
+                         body=label(user, 'forum-hidden-post') if post.hidden else excerpt(post.body))
+            notice = post_notice(user, post)
+            if notice:
+                text = notice + ' ' + text
+            rows.append(MenuItem(text=text, id=f'post:{post.id}'))
         if self.service.thread_polls.exists(topic_id):
             try:
                 poll = self.service.thread_polls.get(user.uuid, topic_id)
@@ -186,6 +201,25 @@ class ForumViews:
                         "page": data.page, "pages": data.total_pages,
                     }), forum_topic=topic_id, forum_page=data.page, forum_pages=data.total_pages, forum_language=language)
 
+    def contents(self, user, post_id: int) -> None:
+        post = self.service.post(user.uuid, post_id)
+        if post.hidden:
+            raise ForumError('forum-error-missing')
+        rows = []
+        if post.has_poll:
+            poll = self.service.polls.get(user.uuid, post_id)
+            rows.append(item(user, 'forum-poll-preview', 'poll', question=poll['question']))
+        for attachment in self.service.attachments.for_post(user.uuid, post_id):
+            text = label(user, 'forum-media-post-row', name=attachment['name'],
+                         kind=label(user, 'forum-media-kind-' + attachment['kind']))
+            if attachment['description']:
+                text += '. ' + excerpt(attachment['description'])
+            rows.append(MenuItem(text=text, id=f"attachment:{attachment['id']}"))
+        title = label(user, 'forum-post-content-heading')
+        self.render(user, nav.CONTENTS, rows, title=title,
+                    announcement=('forum-entry-simple', {'title': title}),
+                    forum_post=post_id, forum_topic=post.topic_id)
+
     def post(self, user, post_id: int) -> None:
         post = self.service.post(user.uuid, post_id)
         topic = self.service.topic(user.uuid, post.topic_id)
@@ -198,7 +232,7 @@ class ForumViews:
             rows.extend(item(user, 'forum-media-post-row', f"attachment:{attachment['id']}", name=attachment['name'],
                              kind=label(user, 'forum-media-kind-' + attachment['kind']))
                         for attachment in self.service.attachments.for_post(user.uuid, post_id))
-            if self.service.repository.connection.execute('SELECT 1 FROM forum_polls WHERE post_id = ?', (post_id,)).fetchone():
+            if post.has_poll:
                 poll = self.service.polls.get(user.uuid, post_id)
                 rows.append(item(user, 'forum-poll-preview', 'poll', question=poll['question']))
         next_post = self.service.repository.resume_post(user.uuid, post.topic_id)

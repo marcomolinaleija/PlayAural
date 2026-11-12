@@ -91,8 +91,8 @@ to the input control.
 
 - 120 title characters, 64,000 message characters, 2–100 search characters.
 - 15 topics or 8 message previews per page, with SQL LIMIT/OFFSET.
-- Full messages are spoken in place on Enter/Right or opened in optional
-  read-only text on Shift+Enter. Draft fields use a single 160-character excerpt;
+- Full messages are spoken in place on Right (also Enter for text-only posts),
+  or opened in optional read-only text on Shift+Enter. Draft fields use a single 160-character excerpt;
   message actions live in a context menu. See `forum-post-navigation.md`.
 - Six new messages per rolling 60-second window per immutable account UUID.
   The latest identical normalized message in that window is rejected. This

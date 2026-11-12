@@ -643,6 +643,7 @@ textarea:focus-visible,
 .forum-media-content { overflow: auto; max-height: 65dvh; }
 .forum-media-content img, .forum-media-content video { display: block; max-width: 100%; height: auto; }
 .forum-media-content audio { width: 100%; }
+.forum-media-content textarea { display: block; width: 100%; box-sizing: border-box; }
 .forum-media-content img { max-width: none; width: 100%; object-fit: contain; }
 .forum-media-content video { width: 100%; max-height: 55dvh; object-fit: contain; }
 .forum-media-actions { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-top: .75rem; }
