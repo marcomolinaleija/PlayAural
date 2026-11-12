@@ -95,9 +95,11 @@ class ForumManager:
         self.service.account(user.uuid)
         push, refresh = self.server._nav_push, self.server._nav_refresh
         if selection == "back":
-            if menu == nav.COMPOSER:
+            if menu == nav.COMPOSER or (menu == nav.POLL_EDITOR and state.get('forum_draft', {}).get('kind') == 'thread_poll'):
                 draft = self.composer.draft(state)
-                if draft.title or draft.body or draft.poll or draft.recipients or draft.attachment_ids:
+                dirty = draft.poll != state.get('forum_poll_original') if menu == nav.POLL_EDITOR else (
+                    draft.title or draft.body or draft.poll or draft.recipients or draft.attachment_ids)
+                if dirty:
                     push(user, self.composer.discard, draft)
                     return
             self.server._nav_back(user)

@@ -23,10 +23,11 @@ from ..persistence.database import Database
 def snapshot(db):
     tables = [row[0] for row in db._conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'forum_%' ORDER BY name")]
-    # Compare the v9 content; v11 adds four empty, separately tested tables.
+    # Compare v9 content; later migrations add separately tested extension tables.
     return {table: [tuple(row) for row in db._conn.execute(f'SELECT * FROM {table} ORDER BY rowid')]
             for table in tables + ['moderation_reports'] if table not in {
-                'forum_mentions', 'forum_notifications', 'forum_notification_settings', 'forum_muted_topics'}}
+                'forum_mentions', 'forum_notifications', 'forum_notification_settings', 'forum_muted_topics',
+                'forum_thread_polls', 'forum_thread_poll_options', 'forum_thread_poll_votes'}}
 
 
 def legacy_nine(path, tmp_path):

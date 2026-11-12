@@ -52,6 +52,12 @@ Phụ đề có thể được giữ nếu video gốc chứa một luồng ph�
 
 \*\*Bình chọn\*\*
 
+Trình chỉnh sửa dùng một dòng có thể sửa cho mỗi trường: Câu hỏi: nội dung, Lựa chọn: nội dung và các thiết lập bỏ phiếu. Mở dòng để thay đổi. Lựa chọn hiện bản tóm tắt gọn; mở dòng này để xem đầy đủ các câu trả lời trong ô nhiều dòng. Dòng Bình chọn trong biểu mẫu tin nhắn mở trực tiếp trình chỉnh sửa.
+
+Mỗi chủ đề cũng có thể có một bình chọn chung độc lập với tin nhắn. Tác giả chủ đề công khai, quản trị viên và nhà phát triển, hoặc chủ cuộc trò chuyện riêng có thể chọn Tạo bình chọn cho chủ đề trong các thao tác phía dưới. Điền các trường rồi chọn Tạo bình chọn cho chủ đề để đăng. Bình chọn luôn ở trên các tin nhắn trên mọi trang; nếu chưa có bình chọn thì không thêm dòng trống. Bình chọn trong tin nhắn vẫn ở bài đăng của nó và có phiếu riêng.
+
+Mở bình chọn chung để bỏ phiếu, xem kết quả hoặc quản lý. Trước phiếu đầu tiên, tác giả hoặc người quản lý chủ đề có thể chọn Chỉnh sửa bình chọn của chủ đề rồi lưu thay đổi. Quay lại sẽ hỏi xác nhận nếu có thay đổi chưa lưu. Nếu người khác chỉnh sửa trong khi bạn đang mở trình chỉnh sửa, bản nháp được giữ lại và bạn cần mở lại bình chọn. Bình chọn đã đóng vẫn ở trên cùng để xem kết quả. Mỗi chủ đề chỉ có một bình chọn chung.
+
 Khi soạn tin nhắn, chọn Thêm rồi Thêm bình chọn. Nhập câu hỏi tối đa 240 ký tự và từ hai đến mười câu trả lời khác nhau, mỗi câu trên một dòng, tối đa 160 ký tự. Mặc định mỗi người chọn một câu, được đổi phiếu, xem kết quả sau khi bỏ phiếu và không có hạn tự đóng. Bạn có thể cho chọn nhiều câu, không cho đổi phiếu, hiển thị kết quả ngay hoặc khi đóng và đặt hạn 1, 3, 7 hoặc 30 ngày. Kiểm tra câu hỏi và câu trả lời trong biểu mẫu rồi đăng.
 
 Mở bình chọn trong tin nhắn, chọn câu trả lời rồi chọn Gửi phiếu để xác nhận. Chọn câu trả lời chỉ thay đổi lựa chọn đang chờ. Quay lại sẽ thoát mà chưa gửi. Nếu cho đổi phiếu, gửi lựa chọn mới để thay phiếu cũ. Kết quả xuất hiện theo cài đặt, đếm phiếu mà không liệt kê tên người bỏ phiếu. Tác giả hoặc người quản lý cuộc trò chuyện có thể đóng bình chọn sau khi xác nhận. Cuộc trò chuyện đã đóng cũng không cho bỏ phiếu. Câu hỏi và các câu trả lời không thể đổi sau phiếu đầu tiên.

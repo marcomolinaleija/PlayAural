@@ -1,0 +1,9 @@
+forum-poll-question-value = پرسش: { $value }
+forum-poll-options-value = گزینه‌ها: { $value }
+forum-thread-poll-create = ایجاد نظرسنجی موضوع
+forum-thread-poll-save = ذخیرهٔ نظرسنجی موضوع
+forum-thread-poll-edit = ویرایش نظرسنجی موضوع
+forum-thread-poll-saved = نظرسنجی موضوع ذخیره شد.
+forum-thread-poll-row = نظرسنجی موضوع: { $question }. { $status }
+forum-thread-poll-open = باز
+forum-error-thread-poll-exists = این موضوع از قبل یک نظرسنجی عمومی دارد.

@@ -3,7 +3,6 @@
 from dataclasses import asdict, replace
 
 from ..ui.confirmation import show_confirmation_menu
-from ..users.base import MenuItem
 from . import navigation as nav
 from .models import Draft, ForumError, MAX_BODY_LENGTH, MAX_TITLE_LENGTH
 from .text import excerpt, validate_text
@@ -35,10 +34,8 @@ class ForumComposer:
         rows.append(item(user, "forum-write-body", "edit_body",
                          body=excerpt(draft.body) if draft.body else label(user, "forum-not-written")))
         if draft.poll:
-            rows.append(item(user, 'forum-poll-preview', 'poll_preview', read_only=True,
+            rows.append(item(user, 'forum-poll-preview', 'poll',
                              question=draft.poll['question'] or label(user, 'forum-not-written')))
-            rows.extend(MenuItem(text=option, id=f'poll_preview:{index}', read_only=True)
-                        for index, option in enumerate(draft.poll['options']))
         attachments = []
         for attachment_id in draft.attachment_ids:
             attachment = self.service.attachments._row(attachment_id)

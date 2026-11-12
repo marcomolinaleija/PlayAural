@@ -52,6 +52,12 @@ Los subtítulos pueden conservarse cuando el video original incluye una pista de
 
 \*\*Encuestas\*\*
 
+El editor muestra cada campo en una sola fila editable: Pregunta: contenido, Opciones: contenido y los ajustes de votación. Abre la fila para cambiarla. Opciones muestra un resumen compacto; al abrirla puedes revisar todas las respuestas en un cuadro multilínea. En el formulario del mensaje, la fila Encuesta permite volver directamente a su editor.
+
+Cada hilo también puede tener una encuesta general independiente de sus mensajes. El autor de un hilo público, los administradores y desarrolladores, o el propietario de una conversación privada pueden elegir Crear encuesta del hilo entre las acciones inferiores. Completa sus campos y elige Crear encuesta del hilo para publicarla. Aparecerá fija antes de los mensajes en todas las páginas; si no hay encuesta, no se añade una fila vacía. Las encuestas de mensajes siguen en sus publicaciones y sus votos son independientes.
+
+Abre la encuesta general para votar, ver sus resultados o administrarla. Antes del primer voto, su autor o quien modera el hilo puede elegir Editar encuesta del hilo y guardar los cambios. Atrás pide confirmación si hay cambios sin guardar. Si otra persona la editó mientras la tenías abierta, se conserva tu borrador y tendrás que volver a abrirla. Al cerrarla, la encuesta sigue arriba para consultar los resultados. Solo puede existir una encuesta general por hilo.
+
 Al preparar un mensaje, elige Añadir y después Añadir encuesta. Escribe una pregunta de hasta 240 caracteres y entre dos y diez respuestas diferentes, una por línea, de hasta 160 caracteres cada una. Por defecto se elige una respuesta, se permite cambiar el voto, los resultados aparecen después de votar y no hay cierre automático. Puedes permitir varias respuestas, impedir cambios de voto, mostrar resultados inmediatamente o al cerrar y establecer un plazo de 1, 3, 7 o 30 días. Revisa la pregunta y las respuestas en el formulario y publica.
 
 Abre la encuesta de un mensaje, elige tus respuestas y activa Enviar voto para confirmar. Seleccionar una respuesta solo modifica tu selección pendiente. Atrás sale sin enviarla. Si se permiten cambios, envía otra selección para reemplazar tu voto. Los resultados aparecen según la configuración y cuentan votos sin listar los nombres de los votantes. El autor o quien modera la conversación puede cerrar la encuesta, previa confirmación. Una conversación cerrada tampoco permite votar. La pregunta y las respuestas no pueden cambiar después del primer voto.

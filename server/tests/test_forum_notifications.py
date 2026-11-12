@@ -389,7 +389,7 @@ def test_v10_migration_preserves_content_and_creates_verified_backup_and_no_retr
         assert service.topic(bob, topic).bookmarked and service.topic(bob, topic).unread_count == 0
         assert service.polls.get(bob, post)['question'] == 'Retained poll'
         assert not service.notifications.pending(bob)
-        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == 11
+        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
         assert not db._conn.execute('PRAGMA foreign_key_check').fetchall()
         backup = next((tmp_path / 'backups').glob('*.sqlite3'))
         with db._open_connection(str(backup), timeout=30) as old:

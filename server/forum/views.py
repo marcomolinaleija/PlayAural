@@ -7,6 +7,7 @@ from ..messages.localization import Localization
 from ..messages.relative_time import format_relative_time
 from ..users.base import EscapeBehavior, MenuItem
 from . import navigation as nav
+from .models import ForumError
 from .text import excerpt
 
 
@@ -144,8 +145,19 @@ class ForumViews:
                      age=age(user, post.created_at),
                      body=label(user, "forum-hidden-post") if post.hidden else excerpt(post.body))
                 for post in data.items]
+        if self.service.thread_polls.exists(topic_id):
+            try:
+                poll = self.service.thread_polls.get(user.uuid, topic_id)
+            except ForumError as error:
+                if error.key != 'forum-error-missing':
+                    raise
+            else:
+                rows.insert(0, item(user, 'forum-thread-poll-row', 'thread_poll', question=poll['question'],
+                                    status=label(user, 'forum-poll-closed' if poll['closed'] or topic.closed else 'forum-thread-poll-open')))
         if not topic.closed:
             rows.append(item(user, "forum-reply", "reply"))
+            if self.service.thread_polls.can_create(user.uuid, topic_id):
+                rows.append(item(user, 'forum-thread-poll-create', 'create_thread_poll'))
         rows.append(item(user, 'forum-notification-unmute-topic' if self.service.notifications.muted(user.uuid, topic_id)
                          else 'forum-notification-mute-topic', 'mute_notifications'))
         rows.append(item(user, "forum-unsave" if topic.bookmarked else "forum-save", "bookmark"))

@@ -1,0 +1,9 @@
+forum-poll-question-value = Pertanyaan: { $value }
+forum-poll-options-value = Pilihan: { $value }
+forum-thread-poll-create = Buat jajak pendapat topik
+forum-thread-poll-save = Simpan jajak pendapat topik
+forum-thread-poll-edit = Edit jajak pendapat topik
+forum-thread-poll-saved = Jajak pendapat topik disimpan.
+forum-thread-poll-row = Jajak pendapat topik: { $question }. { $status }
+forum-thread-poll-open = Terbuka
+forum-error-thread-poll-exists = Topik ini sudah memiliki jajak pendapat umum.

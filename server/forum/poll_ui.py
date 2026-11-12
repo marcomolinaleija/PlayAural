@@ -1,7 +1,9 @@
 """Optional poll setup and a previewable ballot using the shared menu protocol."""
 
 from dataclasses import asdict, replace
+from datetime import datetime, timezone
 
+from ..messages.localization import Localization
 from ..ui.confirmation import show_confirmation_menu
 from ..users.base import MenuItem
 from . import navigation as nav
@@ -9,6 +11,7 @@ from .draft_state import update_draft
 from .models import Draft, ForumError
 from .polls import PollConfig, validate_config
 from .views import attachment_action, item, label
+from .text import excerpt
 
 
 class PollController:
@@ -25,27 +28,50 @@ class PollController:
                           announcement=('forum-entry-simple', {'title': label(user, 'forum-add-more')}),
                           forum_draft=asdict(draft), forum_topic=draft.topic_id)
 
-    def editor(self, user, draft: Draft) -> None:
+    def editor(self, user, draft: Draft, *, existing=False, revision=None, original=None) -> None:
         config = draft.poll or asdict(PollConfig('', ()))
-        rows = []
-        if config['question']:
-            rows.append(MenuItem(text=config['question'], id='question_preview', read_only=True))
-        rows.extend(MenuItem(text=option, id=f'option_preview:{index}', read_only=True)
-                    for index, option in enumerate(config['options']))
-        rows.extend([item(user, 'forum-poll-question', 'question'), item(user, 'forum-poll-options', 'options'),
+        if existing and original is None:
+            original = draft.poll
+        deadline = label(user, f"forum-poll-days-{config.get('days', 0)}")
+        if config.get('closes_at') and not config.get('days'):
+            deadline = Localization.format_utc_datetime(user.locale, datetime.fromtimestamp(config['closes_at'], timezone.utc))
+        rows = [item(user, 'forum-poll-question-value', 'question', value=config['question'] or label(user, 'forum-not-written')),
+                item(user, 'forum-poll-options-value', 'options',
+                     value=excerpt('; '.join(config['options'])) if config['options'] else label(user, 'forum-not-written'))]
+        rows.extend([
                      item(user, 'forum-poll-multiple', 'multiple', value=label(user, 'forum-yes' if config['multiple'] else 'forum-no')),
                      item(user, 'forum-poll-change-vote', 'change_vote', value=label(user, 'forum-yes' if config['change_vote'] else 'forum-no')),
                      item(user, 'forum-poll-results', 'results', value=label(user, f"forum-poll-results-{config['results']}")),
-                     item(user, 'forum-poll-deadline', 'deadline', value=label(user, f"forum-poll-days-{config.get('days', 0)}"))])
-        if draft.poll:
+                     item(user, 'forum-poll-deadline', 'deadline', value=deadline)])
+        if draft.kind == 'thread_poll':
+            rows.append(item(user, 'forum-thread-poll-save' if existing else 'forum-thread-poll-create', 'save_thread_poll'))
+        elif draft.poll:
             rows.append(item(user, 'forum-poll-remove', 'remove'))
         self.views.render(user, nav.POLL_EDITOR, rows, title=label(user, 'forum-poll-heading'),
                           announcement=('forum-entry-simple', {'title': label(user, 'forum-poll-heading')}),
-                          forum_draft=asdict(draft), forum_poll_config=config, forum_topic=draft.topic_id)
+                          forum_draft=asdict(draft), forum_poll_config=config, forum_topic=draft.topic_id,
+                          forum_poll_existing=existing, forum_poll_revision=revision, forum_poll_original=original)
 
-    def ballot(self, user, post_id: int, choices=None) -> None:
-        poll = self.service.polls.get(user.uuid, post_id)
-        topic = self.service.topic(user.uuid, self.service.post(user.uuid, post_id).topic_id)
+    def thread_editor(self, user, topic_id, *, existing=False):
+        polls = self.service.thread_polls
+        if existing:
+            poll = polls.get(user.uuid, topic_id)
+            if not polls.can_edit(user.uuid, topic_id):
+                raise ForumError('forum-error-poll-started' if poll['started'] else 'forum-error-edit-permission')
+            config = {key: poll[key] for key in ('question', 'multiple', 'change_vote', 'results', 'closes_at')}
+            config['multiple'], config['change_vote'] = bool(config['multiple']), bool(config['change_vote'])
+            config['options'] = tuple(option['label'] for option in poll['options'])
+            revision = poll['revision']
+        else:
+            if not polls.can_create(user.uuid, topic_id):
+                raise ForumError('forum-error-edit-permission')
+            config, revision = None, None
+        self.editor(user, Draft('thread_poll', topic_id=topic_id, poll=config), existing=existing, revision=revision)
+
+    def ballot(self, user, post_id: int, choices=None, *, scope='post') -> None:
+        polls = self.service.thread_polls if scope == 'thread' else self.service.polls
+        poll = polls.get(user.uuid, post_id)
+        topic = self.service.topic(user.uuid, poll['topic_id'])
         choices = tuple(poll['selected'] if choices is None else choices)
         closed = poll['closed'] or topic.closed
         rows = []
@@ -59,23 +85,26 @@ class PollController:
             rows.append(item(user, 'forum-poll-voters', 'voters', read_only=True, count=poll['voters']))
         if not closed and (not poll['selected'] or poll['change_vote']):
             rows.append(item(user, 'forum-poll-submit', 'submit'))
-        post = self.service.post(user.uuid, post_id)
-        if not closed and (post.author_uuid == user.uuid or self.service.can_moderate(user.uuid, post.topic_id)):
+        if scope == 'thread' and polls.can_edit(user.uuid, post_id):
+            rows.append(item(user, 'forum-thread-poll-edit', 'edit'))
+        if not closed and (poll['author_uuid'] == user.uuid or self.service.can_moderate(user.uuid, topic.id)):
             rows.append(item(user, 'forum-poll-close', 'close'))
         rows.append(item(user, 'menu-page-refresh', 'refresh'))
         self.views.render(user, nav.POLL, rows, title=poll['question'],
                           announcement=('forum-entry-poll', {'question': poll['question'], 'mode': label(user,
                               'forum-poll-closed' if closed else 'forum-poll-many' if poll['multiple'] else 'forum-poll-one')}),
-                          forum_post=post_id, forum_topic=post.topic_id, forum_choices=choices)
+                          forum_post=post_id if scope == 'post' else 0, forum_poll_id=post_id,
+                          forum_poll_scope=scope, forum_topic=topic.id, forum_choices=choices)
 
     def restore(self, user, state) -> bool:
         menu = state['menu']
         if menu == nav.EXTRAS:
             self.extras(user, Draft(**state['forum_draft']))
         elif menu == nav.POLL_EDITOR:
-            self.editor(user, Draft(**state['forum_draft']))
+            self.editor(user, Draft(**state['forum_draft']), existing=state.get('forum_poll_existing', False),
+                        revision=state.get('forum_poll_revision'), original=state.get('forum_poll_original'))
         elif menu == nav.POLL:
-            self.ballot(user, state['forum_post'], state.get('forum_choices'))
+            self.ballot(user, state['forum_poll_id'], state.get('forum_choices'), scope=state['forum_poll_scope'])
         else:
             return False
         return True
@@ -83,12 +112,31 @@ class PollController:
     def handle(self, user, selection: str, state: dict) -> bool:
         menu = state['menu']
         push, refresh = self.server._nav_push, self.server._nav_refresh
-        if menu == nav.EXTRAS:
+        if menu == nav.THREAD and selection in {'thread_poll', 'create_thread_poll'}:
+            if selection == 'thread_poll':
+                push(user, self.ballot, state['forum_topic'], scope='thread')
+            else:
+                push(user, self.thread_editor, state['forum_topic'])
+        elif menu == nav.COMPOSER and selection == 'poll':
+            push(user, self.editor, Draft(**state['forum_draft']))
+        elif menu == nav.EXTRAS:
             if selection == 'poll':
                 push(user, self.editor, Draft(**state['forum_draft']))
         elif menu == nav.POLL_EDITOR:
             draft = Draft(**state['forum_draft'])
             config = dict(state['forum_poll_config'])
+            if selection == 'save_thread_poll' and draft.kind == 'thread_poll':
+                poll = draft_poll(draft)
+                if state['forum_poll_existing']:
+                    self.service.thread_polls.edit(user.uuid, draft.topic_id, poll, revision=state['forum_poll_revision'])
+                else:
+                    self.service.thread_polls.create(user.uuid, draft.topic_id, poll)
+                if state.get('_stack'):
+                    state['_stack'][-1]['forum_choices'] = ()
+                    state['_stack'][-1]['_restore_focus_id'] = 'thread_poll'
+                self.server._nav_back(user)
+                user.speak_l('forum-thread-poll-saved', buffer='system')
+                return True
             if selection in {'question', 'options'}:
                 input_id = nav.POLL_QUESTION_INPUT if selection == 'question' else nav.POLL_OPTIONS_INPUT
                 self.server.enter_input_state(user, input_id)
@@ -112,10 +160,12 @@ class PollController:
                 return True
             draft = replace(draft, poll=config)
             update_draft(state, draft)
-            refresh(user, self.editor, draft)
+            refresh(user, self.editor, draft, existing=state['forum_poll_existing'], revision=state['forum_poll_revision'],
+                    original=state['forum_poll_original'])
         elif menu == nav.POLL:
-            post_id = state['forum_post']
-            poll = self.service.polls.get(user.uuid, post_id)
+            post_id, scope = state['forum_poll_id'], state['forum_poll_scope']
+            polls = self.service.thread_polls if scope == 'thread' else self.service.polls
+            poll = polls.get(user.uuid, post_id)
             if selection.startswith('choice:') and not poll['closed']:
                 choice = int(selection.removeprefix('choice:'))
                 choices = set(state['forum_choices']) if poll['multiple'] else set()
@@ -123,18 +173,21 @@ class PollController:
                     choices.remove(choice)
                 else:
                     choices.add(choice)
-                refresh(user, self.ballot, post_id, sorted(choices))
+                refresh(user, self.ballot, post_id, sorted(choices), scope=scope)
             elif selection == 'submit':
-                self.service.polls.vote(user.uuid, post_id, state['forum_choices'])
+                polls.vote(user.uuid, post_id, state['forum_choices'])
                 user.speak_l('forum-poll-voted', buffer='system', history=False)
-                refresh(user, self.ballot, post_id)
+                refresh(user, self.ballot, post_id, scope=scope)
             elif selection == 'refresh':
-                refresh(user, self.ballot, post_id)
+                refresh(user, self.ballot, post_id, scope=scope)
+            elif selection == 'edit' and scope == 'thread':
+                push(user, self.thread_editor, post_id, existing=True)
             elif selection == 'close':
-                push(user, self.confirm_close, post_id)
+                push(user, self.confirm_close, post_id, scope=scope)
         elif menu == nav.POLL_CLOSE:
             if selection == 'yes':
-                self.service.polls.close(user.uuid, state['forum_post'])
+                polls = self.service.thread_polls if state['forum_poll_scope'] == 'thread' else self.service.polls
+                polls.close(user.uuid, state['forum_poll_id'])
                 self.server._nav_back(user)
             elif selection == 'no':
                 self.server._nav_back(user)
@@ -142,11 +195,13 @@ class PollController:
             return False
         return True
 
-    def confirm_close(self, user, post_id: int) -> None:
-        poll = self.service.polls.get(user.uuid, post_id)
+    def confirm_close(self, user, post_id: int, *, scope='post') -> None:
+        polls = self.service.thread_polls if scope == 'thread' else self.service.polls
+        poll = polls.get(user.uuid, post_id)
         show_confirmation_menu(user, nav.POLL_CLOSE, prompt_key='forum-poll-close-prompt',
                                prompt_kwargs={'question': poll['question']}, buffer='system')
-        self.server._user_states[user.username] = {'menu': nav.POLL_CLOSE, 'forum_post': post_id}
+        self.server._user_states[user.username] = {'menu': nav.POLL_CLOSE, 'forum_post': post_id if scope == 'post' else 0,
+                                                  'forum_poll_id': post_id, 'forum_poll_scope': scope}
 
     @staticmethod
     def show_input(user, input_id: str, value: str) -> None:

@@ -115,7 +115,7 @@ build_prod.bat
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v11), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v12), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 Opening a message shows its full body in a read-only multiline input. Message
 menus keep one short body row that reopens the reader, with actions below.
@@ -166,6 +166,13 @@ Private discussions use a protected internal category, never a public subforum.
 Private conversations require accepted UUID membership, including for admins;
 never leak them into public lists/search/counts. Poll ballots are atomic and
 question/options freeze after the first vote, including after withdrawal.
+Poll editors use one editable label/value row per field, without duplicate
+preview rows. Each thread may also own one independent general poll, shown
+before messages on every page; message polls retain their own placement and
+ballots. Both scopes share vote rules, but have separate storage/identity.
+General-poll creation requires the public author/staff or private owner; editing
+rechecks rights, first-vote freeze and revision. Never create a dummy post for
+a general poll. See `devdoc/forum-thread-polls.md` for schema and navigation.
 Uploaded files use authenticated HTTP, never WebSocket binaries or public
 object URLs. CPU/media/storage work runs off-loop; SQLite remains on its
 central owner loop behind maintenance barriers. Only explicit playback starts

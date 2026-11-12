@@ -52,6 +52,12 @@ Video subtitles can be preserved when the uploaded video contains a supported te
 
 \*\*Polls\*\*
 
+The editor uses one editable row per field: Question: content, Options: content, and voting settings. Open a row to change it. Options shows a compact summary; opening it lets you review every answer in a multiline box. The Poll row in the message form opens its editor directly.
+
+Each thread can also have one general poll independent of its messages. The public thread author, administrators and developers, or the owner of a private conversation can choose Create thread poll among the bottom actions. Fill in the fields and choose Create thread poll to publish it. It stays above the messages on every page; there is no empty row when a thread has no poll. Message polls stay with their posts and have separate votes.
+
+Open the general poll to vote, view results or manage it. Before the first vote, its author or a thread moderator can choose Edit thread poll and save changes. Back asks for confirmation when there are unsaved changes. If someone edited it while your editor was open, your draft is kept and you need to reopen the poll. A closed poll stays at the top for reviewing results. Each thread can have only one general poll.
+
 While composing, choose Add, then Add a poll. Enter a question of up to 240 characters and two to ten different answers, one per line, each up to 160 characters. By default, people choose one answer, can change their vote, see results after voting, and have no automatic deadline. You can allow multiple answers, prevent vote changes, show results immediately or after closing, and set a deadline of 1, 3, 7, or 30 days. Check the question and answers in the message form, then publish.
 
 Open a message's poll, choose your answers, and select Submit vote to confirm. Selecting an answer only changes your pending selection. Back leaves without submitting it. If vote changes are allowed, submit a new selection to replace your vote. Results appear according to the poll's setting; they count votes without listing voters' names. The author or conversation moderator can close a poll after confirmation. A closed conversation also prevents voting. Questions and answers cannot change after the first vote.

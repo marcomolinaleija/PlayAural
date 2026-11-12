@@ -1,0 +1,9 @@
+forum-poll-question-value = Câu hỏi: { $value }
+forum-poll-options-value = Lựa chọn: { $value }
+forum-thread-poll-create = Tạo bình chọn cho chủ đề
+forum-thread-poll-save = Lưu bình chọn của chủ đề
+forum-thread-poll-edit = Chỉnh sửa bình chọn của chủ đề
+forum-thread-poll-saved = Đã lưu bình chọn của chủ đề.
+forum-thread-poll-row = Bình chọn của chủ đề: { $question }. { $status }
+forum-thread-poll-open = Đang mở
+forum-error-thread-poll-exists = Chủ đề này đã có một bình chọn chung.

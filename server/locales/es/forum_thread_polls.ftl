@@ -1,0 +1,9 @@
+forum-poll-question-value = Pregunta: { $value }
+forum-poll-options-value = Opciones: { $value }
+forum-thread-poll-create = Crear encuesta del hilo
+forum-thread-poll-save = Guardar encuesta del hilo
+forum-thread-poll-edit = Editar encuesta del hilo
+forum-thread-poll-saved = Encuesta del hilo guardada.
+forum-thread-poll-row = Encuesta del hilo: { $question }. { $status }
+forum-thread-poll-open = Abierta
+forum-error-thread-poll-exists = Este hilo ya tiene una encuesta general.
