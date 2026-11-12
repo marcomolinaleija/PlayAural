@@ -79,6 +79,7 @@ export function installKeybinds({
   onNewerMessage,
   onOldestMessage,
   onNewestMessage,
+  onReplyToMessage,
   onToggleBufferMute,
   onToggleTableChat,
   onToggleGlobalChat,
@@ -550,6 +551,20 @@ export function installKeybinds({
         }
         return;
       }
+    }
+
+    if (
+      connected
+      && !editing
+      && event.ctrlKey
+      && !event.altKey
+      && !event.shiftKey
+      && !event.metaKey
+      && event.key.toLowerCase() === "r"
+    ) {
+      event.preventDefault();
+      onReplyToMessage?.();
+      return;
     }
 
     if (!menuFocused && !typing) {

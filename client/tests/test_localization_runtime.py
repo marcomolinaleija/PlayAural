@@ -11,6 +11,7 @@ CLIENT_DIR = Path(__file__).resolve().parents[1]
 if str(CLIENT_DIR) not in sys.path:
     sys.path.insert(0, str(CLIENT_DIR))
 
+from chat_reply import chat_alert_sound, metadata_from_chat_packet, reply_format_key
 from localization import Localization
 from unfocused_audio import chat_category
 
@@ -23,14 +24,20 @@ def test_received_chat_retains_message_in_every_desktop_locale(locale, convo):
     module = ast.parse(source_path.read_text(encoding="utf-8"))
     window = next(node for node in module.body if isinstance(node, ast.ClassDef) and node.name == "MainWindow")
     handler = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == "on_receive_chat")
-    namespace = {"Localization": Localization, "chat_category": chat_category}
+    namespace = {
+        "Localization": Localization,
+        "chat_alert_sound": chat_alert_sound,
+        "chat_category": chat_category,
+        "metadata_from_chat_packet": metadata_from_chat_packet,
+        "reply_format_key": reply_format_key,
+    }
     exec(compile(ast.Module(body=[handler], type_ignores=[]), str(source_path), "exec"), namespace)
     history = []
     alerts = []
     fake_window = SimpleNamespace(
         buffer_system=SimpleNamespace(is_effectively_muted=lambda name: False),
         sound_manager=SimpleNamespace(play=alerts.append, play_family=alerts.append),
-        add_history=lambda *args: history.append(args),
+        add_history=lambda *args, **kwargs: history.append(args),
         _should_silence_unfocused=lambda category: False,
     )
     content = "Hola, ¿se lee? ñ العربية { $message } <texto>"
@@ -46,9 +53,56 @@ def test_received_chat_retains_message_in_every_desktop_locale(locale, convo):
             assert "PruebaMarco" in text
         assert buffer_name == ("private" if convo == "private" else "chat")
         assert speak_aloud is True
-        assert len(alerts) == 1
+        assert alerts == [
+            {
+                "local": "chatlocal.ogg",
+                "global": "chat.ogg",
+                "private": "pm.ogg",
+                "announcement": "notify",
+            }[convo]
+        ]
     finally:
         Localization.init(locale="en")
+
+
+def test_table_reply_is_spoken_as_a_reply_with_the_table_sound():
+    """A table reply echo uses the table earcon and the reply sentence."""
+    source_path = CLIENT_DIR / "ui" / "main_window.py"
+    module = ast.parse(source_path.read_text(encoding="utf-8"))
+    window = next(node for node in module.body if isinstance(node, ast.ClassDef) and node.name == "MainWindow")
+    handler = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == "on_receive_chat")
+    namespace = {
+        "Localization": Localization,
+        "chat_alert_sound": chat_alert_sound,
+        "chat_category": chat_category,
+        "metadata_from_chat_packet": metadata_from_chat_packet,
+        "reply_format_key": reply_format_key,
+    }
+    exec(compile(ast.Module(body=[handler], type_ignores=[]), str(source_path), "exec"), namespace)
+    history = []
+    alerts = []
+    fake_window = SimpleNamespace(
+        buffer_system=SimpleNamespace(is_effectively_muted=lambda name: False),
+        sound_manager=SimpleNamespace(play=alerts.append, play_family=alerts.append),
+        add_history=lambda *args, **kwargs: history.append(args),
+        _should_silence_unfocused=lambda category: False,
+    )
+    try:
+        Localization.init(locale="es")
+        namespace["on_receive_chat"](fake_window, {
+            "convo": "local",
+            "sender": "Ana",
+            "message": "voy",
+            "reply_to": {"sender": "Rayo", "message": "hola"},
+        })
+    finally:
+        Localization.init(locale="en")
+
+    text, buffer_name, speak_aloud = history[0]
+    assert text == "Chat de mesa, Ana respondiendo a Rayo: voy, hola"
+    assert buffer_name == "chat"
+    assert speak_aloud is True
+    assert alerts == ["chatlocal.ogg"]
 
 
 def test_set_locale_reloads_client_bundle_without_restart(tmp_path):

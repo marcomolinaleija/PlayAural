@@ -95,6 +95,9 @@ export function createStore() {
         sequence,
         text,
       };
+      if (options.metadata && typeof options.metadata === "object") {
+        item.metadata = { ...options.metadata };
+      }
       pushCapped(state.historyBuffers[normalized], item);
       state.historyRevisions[normalized] += 1;
       if (normalized !== "all" && options.includeAll !== false) {

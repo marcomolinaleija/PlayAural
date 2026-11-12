@@ -181,17 +181,25 @@ export function createHistoryView({
     }), { assertive: true, interrupt: true });
   }
 
-  function getCurrentItemText() {
+  function getCurrentItem() {
     const lines = getCurrentBufferLines();
     if (!lines.length) {
-      return "";
+      return null;
     }
     const name = getCurrentBufferName();
     const index = resolveBufferIndex(name, lines);
     if (index < 0 || index >= lines.length) {
-      return "";
+      return null;
     }
-    return getHistoryEntryText(lines[index]);
+    const entry = lines[index];
+    if (typeof entry === "string") {
+      return { text: entry };
+    }
+    return entry || null;
+  }
+
+  function getCurrentItemText() {
+    return getHistoryEntryText(getCurrentItem());
   }
 
   function announceCurrentItem() {
@@ -326,12 +334,16 @@ export function createHistoryView({
       buffer = "misc",
       announce = true,
       assertive = false,
+      metadata = null,
     } = options;
 
     const normalizedBuffer = normalizeHistoryBuffer(buffer);
     const incomingBufferMuted = isBufferMuted(normalizedBuffer);
     const sourceDirectlyMuted = normalizedBuffer !== "all" && isBufferDirectlyMuted(normalizedBuffer);
-    store.addHistory(normalizedBuffer, text, { includeAll: !sourceDirectlyMuted });
+    store.addHistory(normalizedBuffer, text, {
+      includeAll: !sourceDirectlyMuted,
+      metadata,
+    });
     if (announce && !incomingBufferMuted) {
       a11y?.announce(text, { assertive });
     }
@@ -441,6 +453,7 @@ export function createHistoryView({
 
   return {
     addEntry,
+    getCurrentItem,
     clearHistory,
     isBufferDirectlyMuted,
     isBufferMuted,

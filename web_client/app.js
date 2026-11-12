@@ -38,6 +38,13 @@ import {
   isImeCompositionKeyEvent,
   resolveTypingSoundCue,
 } from "./typing_sounds.js";
+import {
+  metadataFromChatPacket,
+  metadataFromSpeakPacket,
+  outgoingChatPacket,
+  replyChannelKey,
+  replyFormatKey,
+} from "./chatReply.js";
 import { retireVoiceRoom } from "./voice_lifecycle.js";
 
 const CLIENT_VERSION = String(window.PLAYAURAL_WEB_VERSION || "");
@@ -1269,6 +1276,7 @@ class PlayAuralWebApp {
     this.webActionsMenuId = "";
     this.focusMenuOnNextPacket = false;
     this.pendingInput = null;
+    this.chatReply = null;
     this.localeUpdateBarrier = null;
     this.localeUpdateGeneration = 0;
     this.pingStart = null;
@@ -1473,6 +1481,19 @@ class PlayAuralWebApp {
       input?.addEventListener("keydown", (event) => this.handleInlineInputKeydown(event));
     }
     this.elements.chatInput?.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape"
+        && !event.altKey
+        && !event.ctrlKey
+        && !event.metaKey
+        && !event.shiftKey
+        && this.chatReply
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.cancelChatReply();
+        return;
+      }
       this.playTypingSoundForEvent(event, this.elements.chatInput);
     });
     this.elements.chatForm?.addEventListener("submit", (event) => {
@@ -1527,6 +1548,7 @@ class PlayAuralWebApp {
       onNewerMessage: () => this.historyView.newerMessage(),
       onOldestMessage: () => this.historyView.oldestMessage(),
       onNewestMessage: () => this.historyView.newestMessage(),
+      onReplyToMessage: () => this.startChatReply(),
       onToggleBufferMute: () => this.historyView.toggleCurrentBufferMute(),
       onToggleTableChat: () => this.toggleChatMute("table"),
       onToggleGlobalChat: () => this.toggleChatMute("global"),
@@ -1667,6 +1689,77 @@ class PlayAuralWebApp {
     if (this.isVisibleFocusTarget(this.elements.chatInput)) {
       this.elements.chatInput.focus({ preventScroll: true });
     }
+  }
+
+  applyChatReplyLabel() {
+    const label = byId("chat-input-label");
+    if (!label) {
+      return;
+    }
+    if (!this.chatReply) {
+      if (Localization.has("chat-input-label")) {
+        label.textContent = Localization.get("chat-input-label");
+      }
+      return;
+    }
+    label.textContent = Localization.get("chat-reply-started", {
+      player: this.chatReply.sender,
+      channel: Localization.get(replyChannelKey(this.chatReply.convo)),
+    });
+  }
+
+  startChatReply() {
+    const item = this.historyView.getCurrentItem?.() || null;
+    const metadata = item?.metadata;
+    const quoted = typeof metadata?.message === "string" ? metadata.message : "";
+    if (
+      !metadata
+      || metadata.kind !== "chat"
+      || !metadata.sender
+      || !quoted.trim()
+    ) {
+      this.speak(item ? "chat-reply-unavailable" : "chat-reply-empty", {
+        buffer: "system",
+        noHistory: true,
+        interrupt: true,
+      });
+      return;
+    }
+    this.chatReply = {
+      convo: metadata.convo,
+      sender: metadata.sender,
+      message: metadata.message,
+    };
+    this.applyChatReplyLabel();
+    this.focusChat();
+    this.speak("chat-reply-started", {
+      params: {
+        player: metadata.sender,
+        channel: Localization.get(replyChannelKey(metadata.convo)),
+      },
+      buffer: "system",
+      noHistory: true,
+      interrupt: true,
+    });
+  }
+
+  cancelChatReply() {
+    this.chatReply = null;
+    this.applyChatReplyLabel();
+    this.focusMenu();
+    this.speak("chat-reply-cancelled", {
+      buffer: "system",
+      noHistory: true,
+      interrupt: true,
+    });
+  }
+
+  clearChatReply() {
+    if (!this.chatReply) {
+      return;
+    }
+    this.chatReply = null;
+    this.applyChatReplyLabel();
   }
 
   toggleVoiceChatShortcut() {
@@ -1848,6 +1941,9 @@ class PlayAuralWebApp {
     }
     if (e.chatInput && Localization.has("chat-input-placeholder")) {
       e.chatInput.placeholder = Localization.get("chat-input-placeholder");
+    }
+    if (this.chatReply) {
+      this.applyChatReplyLabel();
     }
     if (e.installInstruction && this.isIOS && !this.isStandalone()) {
       e.installInstruction.textContent = Localization.get("install-fail-hint");
@@ -2501,6 +2597,8 @@ class PlayAuralWebApp {
 
   clearSessionHistory() {
     this.historyView.clearHistory();
+    this.chatReply = null;
+    this.applyChatReplyLabel();
     if (this.elements.chatInput) {
       this.elements.chatInput.value = "";
     }
@@ -2542,6 +2640,8 @@ class PlayAuralWebApp {
       assertive = false,
       noHistory = false,
       muted = false,
+      interrupt = false,
+      metadata = null,
     } = options;
     const text = Localization.has(textOrKey) ? Localization.get(textOrKey, params) : String(textOrKey || "");
     if (!text) {
@@ -2550,15 +2650,23 @@ class PlayAuralWebApp {
     const normalizedBuffer = normalizeHistoryBuffer(buffer);
     let outputAllowed = !this.historyView.isBufferMuted(normalizedBuffer);
     if (!noHistory) {
-      outputAllowed = this.historyView.addEntry(text, { buffer: normalizedBuffer, announce: false });
+      outputAllowed = this.historyView.addEntry(text, {
+        buffer: normalizedBuffer,
+        announce: false,
+        metadata,
+      });
     }
     if (muted || !outputAllowed) {
       return;
     }
     if (this.preferences.speech_mode === "web_speech") {
-      this.webSpeech.speak(text);
+      if (interrupt) {
+        this.webSpeech.speakNow(text);
+      } else {
+        this.webSpeech.speak(text);
+      }
     } else {
-      this.a11y.announce(text, { assertive });
+      this.a11y.announce(text, { assertive, interrupt });
     }
   }
 
@@ -2592,6 +2700,7 @@ class PlayAuralWebApp {
           assertive: packet.buffer === "system",
           noHistory: packet.history === false,
           muted: packet.muted === true,
+          metadata: packet.history === false ? null : metadataFromSpeakPacket(packet),
         });
         break;
       case "voice_join_info":
@@ -2931,12 +3040,31 @@ class PlayAuralWebApp {
       shouldSpeak = shouldSpeak && this.preferences.mute_table_chat !== true;
     }
 
-    const display = historyBuffer === "private"
-      ? speakText
-      : `${prefix}: ${packet.message || ""}`;
+    const reply = packet.reply_to;
+    let replyLine = "";
+    if (
+      convo !== "announcement"
+      && reply
+      && typeof reply === "object"
+      && typeof reply.sender === "string"
+      && typeof reply.message === "string"
+    ) {
+      const destination = convo === "global" ? "global" : convo === "private" ? "private" : "table";
+      replyLine = Localization.get(replyFormatKey(destination), {
+        player: sender,
+        target: reply.sender,
+        message: packet.message || "",
+        quote: reply.message,
+      });
+      speakText = replyLine;
+    }
+
+    const display = replyLine
+      || (historyBuffer === "private" ? speakText : `${prefix}: ${packet.message || ""}`);
     const outputAllowed = this.historyView.addEntry(display, {
       buffer: historyBuffer,
       announce: false,
+      metadata: metadataFromChatPacket(packet),
     });
     if (shouldSpeak && outputAllowed) {
       if (soundFamily) {
@@ -3494,6 +3622,9 @@ class PlayAuralWebApp {
     }
     if (raw.startsWith("/")) {
       this.handleChatCommand(raw);
+    } else if (this.chatReply) {
+      this.send(outgoingChatPacket(raw, this.chatReply));
+      this.clearChatReply();
     } else if (raw.startsWith(".")) {
       const message = raw.slice(1).trim();
       if (message) {

@@ -44,6 +44,7 @@ PlayAural groups messages into separate buffers so you can review game messages,
 \* \*\*Shift + `[` / Shift + `]`:\*\* Jump to the first or last buffer.
 \* \*\*`,` / `.`:\*\* Read the previous or next message in the current buffer.
 \* \*\*Shift + `,` / Shift + `.`:\*\* Jump to the oldest or newest message in the current buffer.
+\* \*\*Ctrl + R:\*\* With a chat message focused, open the text box to reply. Escape cancels the reply.
 
 \*\*Menu Navigation on Desktop\*\*
 

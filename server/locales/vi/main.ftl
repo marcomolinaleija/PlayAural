@@ -786,6 +786,8 @@ communication-voice-room-label = Thoại { $channel }
 communication-voice-restricted = Bạn không thể dùng micrô trong kênh này vào lúc này.
 communication-voice-not-connected = Bạn phải kết nối trò chuyện thoại trước khi có thể dùng micrô.
 chat-invalid-message = Không thể gửi tin nhắn này vì định dạng không hợp lệ.
+chat-reply-invalid = Câu trả lời không hợp lệ. Hãy chọn lại tin nhắn trò chuyện.
+chat-reply-table-unavailable = Bạn không còn ở bàn, nên câu trả lời không được gửi vào trò chuyện bàn.
 chat-message-too-long = Tin nhắn quá dài. Mỗi tin nhắn chỉ được chứa tối đa { $limit } ký tự.
 
 report-user = Báo cáo người dùng
@@ -1208,6 +1210,8 @@ pm-error-self = Bạn không thể gửi tin nhắn riêng cho chính mình.
 pm-error-message-required = Hãy nhập tin nhắn riêng. Khi dùng ô trò chuyện, hãy kèm tên người dùng, ví dụ: @User xin chào.
 pm-sent-content = Bạn gửi đến { $username }: { $message }
 pm-received = Tin nhắn riêng từ { $username }: { $message }
+pm-sent-content-reply = Bạn gửi đến { $username }, trả lời { $target }: { $message }, { $quote }
+pm-received-reply = Tin nhắn riêng từ { $username } trả lời { $target }: { $message }, { $quote }
 
 host-management = Quản lý bàn
 table-spectator-suffix = (Khán giả)

@@ -4,6 +4,34 @@ from dataclasses import dataclass
 
 
 MAX_CHAT_MESSAGE_LENGTH = 8000
+CHAT_REPLY_QUOTE_LIMIT = 2000
+CHAT_REPLY_SENDER_LIMIT = 30
+
+
+def normalize_chat_reply(value: object) -> tuple[dict[str, str] | None, str | None]:
+    """Return a bounded reply snapshot, or an error key when the field is unusable.
+
+    A missing field is a normal chat message. The quote is display context and
+    is not part of the message body that throttles and logs already bound.
+    """
+    if value is None:
+        return None, None
+    if not isinstance(value, dict):
+        return None, "chat-reply-invalid"
+    sender = value.get("sender")
+    message = value.get("message")
+    if not isinstance(sender, str) or not isinstance(message, str):
+        return None, "chat-reply-invalid"
+    sender = sender.strip()
+    message = message.strip()
+    if (
+        not sender
+        or len(sender) > CHAT_REPLY_SENDER_LIMIT
+        or any(ord(character) < 32 for character in sender)
+        or not message
+    ):
+        return None, "chat-reply-invalid"
+    return {"sender": sender, "message": message[:CHAT_REPLY_QUOTE_LIMIT]}, None
 
 
 @dataclass(frozen=True, slots=True)
