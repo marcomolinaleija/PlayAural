@@ -89,6 +89,8 @@ class PollController:
             rows.append(item(user, 'forum-thread-poll-edit', 'edit'))
         if not closed and (poll['author_uuid'] == user.uuid or self.service.can_moderate(user.uuid, topic.id)):
             rows.append(item(user, 'forum-poll-close', 'close'))
+        if polls.can_delete(user.uuid, post_id):
+            rows.append(item(user, 'forum-poll-delete', 'delete'))
         rows.append(item(user, 'menu-page-refresh', 'refresh'))
         self.views.render(user, nav.POLL, rows, title=poll['question'],
                           announcement=('forum-entry-poll', {'question': poll['question'], 'mode': label(user,
@@ -184,6 +186,21 @@ class PollController:
                 push(user, self.thread_editor, post_id, existing=True)
             elif selection == 'close':
                 push(user, self.confirm_close, post_id, scope=scope)
+            elif selection == 'delete':
+                push(user, self.confirm_delete, post_id, scope=scope)
+        elif menu == nav.POLL_DELETE:
+            if selection == 'yes':
+                polls = self.service.thread_polls if state['forum_poll_scope'] == 'thread' else self.service.polls
+                polls.delete(user.uuid, state['forum_poll_id'], expected_options=state['forum_poll_options'])
+                # Skip the ballot that no longer exists. Restore the actual
+                # thread or post actions, retaining earlier drafts/game frames.
+                stack = state.get('_stack', [])
+                if stack and stack[-1].get('menu') == nav.POLL:
+                    stack.pop()
+                self.server._nav_back(user)
+                user.speak_l('forum-poll-deleted', buffer='system')
+            elif selection == 'no':
+                self.server._nav_back(user)
         elif menu == nav.POLL_CLOSE:
             if selection == 'yes':
                 polls = self.service.thread_polls if state['forum_poll_scope'] == 'thread' else self.service.polls
@@ -202,6 +219,19 @@ class PollController:
                                prompt_kwargs={'question': poll['question']}, buffer='system')
         self.server._user_states[user.username] = {'menu': nav.POLL_CLOSE, 'forum_post': post_id if scope == 'post' else 0,
                                                   'forum_poll_id': post_id, 'forum_poll_scope': scope}
+
+    def confirm_delete(self, user, target_id: int, *, scope='post') -> None:
+        polls = self.service.thread_polls if scope == 'thread' else self.service.polls
+        poll = polls.get(user.uuid, target_id)
+        if not polls.can_delete(user.uuid, target_id):
+            raise ForumError('forum-error-poll-delete-permission')
+        show_confirmation_menu(user, nav.POLL_DELETE, prompt_key='forum-poll-delete-prompt',
+                               prompt_kwargs={'question': poll['question']}, buffer='system')
+        self.server._user_states[user.username] = {
+            'menu': nav.POLL_DELETE, 'forum_poll_id': target_id, 'forum_poll_scope': scope,
+            'forum_post': target_id if scope == 'post' else 0, 'forum_topic': poll['topic_id'],
+            'forum_poll_options': tuple(option['id'] for option in poll['options']),
+        }
 
     @staticmethod
     def show_input(user, input_id: str, value: str) -> None:

@@ -67,6 +67,7 @@ class Post:
     edited_at: int | None
     revision: int
     hidden: bool
+    has_poll: bool = False
 
 
 @dataclass(frozen=True)

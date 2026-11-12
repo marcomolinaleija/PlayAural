@@ -20,7 +20,7 @@ Hearing a full message or opening its text marks that message and earlier messag
 
 \*\*Writing\*\*
 
-In a category, choose Start a discussion. Write a title of up to 120 characters and a message of up to 64000 characters. In an existing discussion, choose Write a reply. Submitting the text returns to the form; choose Publish to send it. Your text is plain text, so HTML and Markdown commands are not executed.
+In a category, choose Start a discussion. Write a title of up to 120 characters and a message of up to 64000 characters. In an existing discussion, choose Reply to thread. Submitting the text returns to the form; choose Publish to send it. Your text is plain text, so HTML and Markdown commands are not executed.
 
 Each field shows its label and current content in one editable item: Title and Message. Replies show only Message. Long messages show an excerpt; open that same field to review and edit the full text. Actions follow the fields. Back asks before discarding a draft containing text. Drafts stay in the current session; text already submitted to the form can survive a brief reconnect or device handover, but it is not saved permanently. Text still being typed has not reached the server.
 
@@ -63,6 +63,8 @@ Open the general poll to vote, view results or manage it. Before the first vote,
 While composing, choose Add, then Add a poll. Enter a question of up to 240 characters and two to ten different answers, one per line, each up to 160 characters. By default, people choose one answer, can change their vote, see results after voting, and have no automatic deadline. You can allow multiple answers, prevent vote changes, show results immediately or after closing, and set a deadline of 1, 3, 7, or 30 days. Check the question and answers in the message form, then publish.
 
 Open a message's poll, choose your answers, and select Submit vote to confirm. Selecting an answer only changes your pending selection. Back leaves without submitting it. If vote changes are allowed, submit a new selection to replace your vote. Results appear according to the poll's setting; they count votes without listing voters' names. The author or conversation moderator can close a poll after confirmation. A closed conversation also prevents voting. Questions and answers cannot change after the first vote.
+
+The poll author or thread moderator can choose Delete poll, even after closure or voting. Confirmation warns that the options and all votes will be deleted; the message and thread remain. Escape cancels without deleting. A general poll can be replaced after deletion if the thread is open and you have permission. Messages with polls announce Contains a poll in the list and during full reading. Reply to thread posts in the conversation rather than replying to a specific message.
 
 \*\*Private Conversations\*\*
 

@@ -141,10 +141,13 @@ class ForumViews:
             target = resume or topic.last_post_id
             page = self.service.repository.post_page(user.uuid, topic_id, target)
         data = self.service.posts(user.uuid, topic_id, page)
-        rows = [item(user, "forum-post-row", f"post:{post.id}", author=author(user, post),
-                     age=age(user, post.created_at),
-                     body=label(user, "forum-hidden-post") if post.hidden else excerpt(post.body))
-                for post in data.items]
+        rows = []
+        for post in data.items:
+            text = label(user, 'forum-post-row', author=author(user, post), age=age(user, post.created_at),
+                         body=label(user, 'forum-hidden-post') if post.hidden else excerpt(post.body))
+            if post.has_poll:
+                text = label(user, 'forum-post-with-poll', text=text)
+            rows.append(MenuItem(text=text, id=f'post:{post.id}'))
         if self.service.thread_polls.exists(topic_id):
             try:
                 poll = self.service.thread_polls.get(user.uuid, topic_id)
@@ -198,7 +201,7 @@ class ForumViews:
             rows.extend(item(user, 'forum-media-post-row', f"attachment:{attachment['id']}", name=attachment['name'],
                              kind=label(user, 'forum-media-kind-' + attachment['kind']))
                         for attachment in self.service.attachments.for_post(user.uuid, post_id))
-            if self.service.repository.connection.execute('SELECT 1 FROM forum_polls WHERE post_id = ?', (post_id,)).fetchone():
+            if post.has_poll:
                 poll = self.service.polls.get(user.uuid, post_id)
                 rows.append(item(user, 'forum-poll-preview', 'poll', question=poll['question']))
         next_post = self.service.repository.resume_post(user.uuid, post.topic_id)

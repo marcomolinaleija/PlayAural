@@ -75,6 +75,13 @@ ballots. Both scopes share vote rules, but have separate storage/identity.
 General-poll creation requires the public author/staff or private owner; editing
 rechecks rights, first-vote freeze and revision. Never create a dummy post for
 a general poll. See `devdoc/forum-thread-polls.md` for schema and navigation.
+Published polls in either scope can be deleted by their author or the current
+thread moderator, even after voting/closure. Confirm explicitly, recheck access
+inside the transaction, and bind confirmation to the server-owned option ids so
+an edited/recreated poll is never deleted by stale approval. Cascade only poll
+options/votes; retain posts, threads and unrelated drafts. Message rows and full
+reading announce attached polls without exposing hidden-post metadata. Reply
+actions explicitly say they reply to the thread, not an individual post.
 Uploaded files use authenticated HTTP, never WebSocket binaries or public
 object URLs. CPU/media/storage work runs off-loop; SQLite remains on its
 central owner loop behind maintenance barriers. Only explicit playback starts

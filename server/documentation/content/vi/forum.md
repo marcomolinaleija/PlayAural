@@ -20,7 +20,7 @@ Nghe toàn bộ tin nhắn hoặc mở văn bản sẽ đánh dấu tin đó và
 
 \*\*Viết\*\*
 
-Trong chuyên mục, chọn Bắt đầu thảo luận. Viết tiêu đề tối đa 120 ký tự và tin nhắn tối đa 64000 ký tự. Trong thảo luận có sẵn, chọn Viết trả lời. Gửi nội dung để quay lại biểu mẫu; chọn Đăng để chia sẻ. Tin nhắn là văn bản thuần: mã HTML và Markdown không được thực thi.
+Trong chuyên mục, chọn Bắt đầu thảo luận. Viết tiêu đề tối đa 120 ký tự và tin nhắn tối đa 64000 ký tự. Trong thảo luận có sẵn, chọn Trả lời chủ đề. Gửi nội dung để quay lại biểu mẫu; chọn Đăng để chia sẻ. Tin nhắn là văn bản thuần: mã HTML và Markdown không được thực thi.
 
 Mỗi trường hiển thị nhãn và nội dung trong một mục có thể sửa: Tiêu đề và Tin nhắn. Khi trả lời chỉ có Tin nhắn. Tin nhắn dài hiển thị đoạn trích; mở chính trường đó để xem và sửa toàn bộ nội dung. Các thao tác nằm phía dưới. Quay lại sẽ hỏi trước khi bỏ bản nháp có nội dung. Bản nháp thuộc phiên hiện tại: nội dung đã gửi vào biểu mẫu có thể được khôi phục sau khi kết nối lại nhanh hoặc chuyển thiết bị, nhưng không được lưu vĩnh viễn. Nội dung vẫn đang gõ chưa được gửi đến máy chủ.
 
@@ -63,6 +63,8 @@ Mở bình chọn chung để bỏ phiếu, xem kết quả hoặc quản lý. T
 Khi soạn tin nhắn, chọn Thêm rồi Thêm bình chọn. Nhập câu hỏi tối đa 240 ký tự và từ hai đến mười câu trả lời khác nhau, mỗi câu trên một dòng, tối đa 160 ký tự. Mặc định mỗi người chọn một câu, được đổi phiếu, xem kết quả sau khi bỏ phiếu và không có hạn tự đóng. Bạn có thể cho chọn nhiều câu, không cho đổi phiếu, hiển thị kết quả ngay hoặc khi đóng và đặt hạn 1, 3, 7 hoặc 30 ngày. Kiểm tra câu hỏi và câu trả lời trong biểu mẫu rồi đăng.
 
 Mở bình chọn trong tin nhắn, chọn câu trả lời rồi chọn Gửi phiếu để xác nhận. Chọn câu trả lời chỉ thay đổi lựa chọn đang chờ. Quay lại sẽ thoát mà chưa gửi. Nếu cho đổi phiếu, gửi lựa chọn mới để thay phiếu cũ. Kết quả xuất hiện theo cài đặt, đếm phiếu mà không liệt kê tên người bỏ phiếu. Tác giả hoặc người quản lý cuộc trò chuyện có thể đóng bình chọn sau khi xác nhận. Cuộc trò chuyện đã đóng cũng không cho bỏ phiếu. Câu hỏi và các câu trả lời không thể đổi sau phiếu đầu tiên.
+
+Tác giả cuộc thăm dò hoặc người kiểm duyệt chủ đề có thể chọn Xóa cuộc thăm dò, kể cả khi đã đóng hoặc có phiếu bầu. Xác nhận cho biết các lựa chọn và mọi phiếu bầu sẽ bị xóa; bài viết và chủ đề vẫn được giữ lại. Escape hủy mà không xóa. Sau khi xóa cuộc thăm dò chung, có thể tạo cuộc thăm dò khác nếu chủ đề còn mở và bạn có quyền. Bài viết có cuộc thăm dò được thông báo khi duyệt danh sách và khi đọc toàn bộ. Trả lời chủ đề đăng vào cuộc trò chuyện, không trả lời riêng một bài viết cụ thể.
 
 \*\*Cuộc trò chuyện riêng tư\*\*
 

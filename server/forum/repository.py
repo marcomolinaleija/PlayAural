@@ -73,6 +73,7 @@ class ForumRepository:
         data = {key: row[key] for key in Post.__dataclass_fields__}
         if data["hidden"]:
             data["body"] = ""
+        data['has_poll'] = bool(data['has_poll']) and not data['hidden']
         return Post(**data)
 
     def categories(self, viewer: str, *, language: str = 'es') -> list[Category]:
@@ -157,7 +158,8 @@ class ForumRepository:
 
     def post(self, viewer: str, post_id: int) -> Post | None:
         row = self.connection.execute(
-            f"""SELECT p.* FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
+            f"""SELECT p.*, EXISTS (SELECT 1 FROM forum_polls fp WHERE fp.post_id = p.id) AS has_poll
+                FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
                 WHERE p.id = :post_id AND {_visible('p.author_uuid')} AND {_admitted()}""",
             {"viewer": viewer, "post_id": post_id},
         ).fetchone()
@@ -165,7 +167,8 @@ class ForumRepository:
 
     def posts(self, viewer: str, topic_id: int, page: int = 1) -> PaginatedMenuPage[Post]:
         params = {"viewer": viewer, "topic_id": topic_id}
-        base = f"""SELECT p.* FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
+        base = f"""SELECT p.*, EXISTS (SELECT 1 FROM forum_polls fp WHERE fp.post_id = p.id) AS has_poll
+                   FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
                    WHERE p.topic_id = :topic_id AND {_visible('p.author_uuid')} AND {_admitted()}"""
         total = self.connection.execute(f"SELECT COUNT(*) FROM ({base})", params).fetchone()[0]
         safe_page = clamp_page(page, total, POSTS_PER_PAGE)

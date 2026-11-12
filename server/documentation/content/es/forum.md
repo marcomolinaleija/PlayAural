@@ -20,7 +20,7 @@ Escuchar un mensaje completo o abrir su texto marca como leídos ese mensaje y l
 
 \*\*Escribir\*\*
 
-Dentro de una categoría, elige Iniciar una conversación. Escribe un título de hasta 120 caracteres y un mensaje de hasta 64000. En una conversación existente, elige Escribir una respuesta. Al enviar el texto vuelves al formulario; elige Publicar para compartirlo. Los mensajes son texto plano: no se ejecutan instrucciones de HTML ni de Markdown.
+Dentro de una categoría, elige Iniciar una conversación. Escribe un título de hasta 120 caracteres y un mensaje de hasta 64000. En una conversación existente, elige Responder al hilo. Al enviar el texto vuelves al formulario; elige Publicar para compartirlo. Los mensajes son texto plano: no se ejecutan instrucciones de HTML ni de Markdown.
 
 Cada campo muestra su nombre y contenido en un único elemento editable: Título y Mensaje. Al responder solo aparece Mensaje. Los mensajes largos muestran un resumen; abre ese mismo campo para revisar y editar el texto completo. Las acciones están debajo. Atrás pide confirmación antes de descartar un borrador con texto. Los borradores pertenecen a la sesión: el texto ya enviado al formulario puede recuperarse tras una reconexión breve o un cambio de dispositivo, pero no se guarda permanentemente. Lo que aún estás escribiendo no ha llegado al servidor.
 
@@ -63,6 +63,8 @@ Abre la encuesta general para votar, ver sus resultados o administrarla. Antes d
 Al preparar un mensaje, elige Añadir y después Añadir encuesta. Escribe una pregunta de hasta 240 caracteres y entre dos y diez respuestas diferentes, una por línea, de hasta 160 caracteres cada una. Por defecto se elige una respuesta, se permite cambiar el voto, los resultados aparecen después de votar y no hay cierre automático. Puedes permitir varias respuestas, impedir cambios de voto, mostrar resultados inmediatamente o al cerrar y establecer un plazo de 1, 3, 7 o 30 días. Revisa la pregunta y las respuestas en el formulario y publica.
 
 Abre la encuesta de un mensaje, elige tus respuestas y activa Enviar voto para confirmar. Seleccionar una respuesta solo modifica tu selección pendiente. Atrás sale sin enviarla. Si se permiten cambios, envía otra selección para reemplazar tu voto. Los resultados aparecen según la configuración y cuentan votos sin listar los nombres de los votantes. El autor o quien modera la conversación puede cerrar la encuesta, previa confirmación. Una conversación cerrada tampoco permite votar. La pregunta y las respuestas no pueden cambiar después del primer voto.
+
+El autor de una encuesta o quien modera el hilo puede elegir Eliminar encuesta, incluso si ya está cerrada o tiene votos. La confirmación avisa que se eliminarán las opciones y todos los votos; el mensaje y el hilo se conservan. Escape cancela sin borrar. Al eliminar una encuesta general, se puede crear otra si el hilo está abierto y tienes permiso. Los mensajes con encuesta se anuncian como Contiene una encuesta al recorrer la lista y al leerlos completos. Responder al hilo publica en la conversación y no responde a un mensaje concreto.
 
 \*\*Conversaciones privadas\*\*
 

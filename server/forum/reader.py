@@ -31,7 +31,10 @@ class MessageReader:
             self.service.post(user.uuid, post_id, mark_read=True)
             # Keep the complete body, including line breaks and all 64,000
             # characters. Speech does not replace the visible list or focus.
-            user.speak(post.body, buffer='misc', history=False, interrupt=True)
+            # Fluent bounds individual interpolated values. Localize only the
+            # notice, keeping the full 64,000-character body outside formatting.
+            text = label(user, 'forum-post-poll-notice') + '\n' + post.body if post.has_poll else post.body
+            user.speak(text, buffer='misc', history=False, interrupt=True)
 
     def handle_keybind(self, user, packet, state):
         if state.get('menu') != nav.THREAD or packet.get('control') or packet.get('alt') or packet.get('meta'):
@@ -83,7 +86,10 @@ class MessageReader:
             state = self.server._user_states[user.username]
         state['_restore_focus_id'] = f'post:{post.id}'
         self.server.enter_input_state(user, nav.BODY_READER, forum_post=post.id)
-        user.show_editbox(nav.BODY_READER, label(user, 'forum-body-reader', author=author(user, post)),
+        prompt = label(user, 'forum-body-reader', author=author(user, post))
+        if post.has_poll:
+            prompt = label(user, 'forum-post-with-poll', text=prompt)
+        user.show_editbox(nav.BODY_READER, prompt,
                           post.body, multiline=True, read_only=True, max_length=MAX_BODY_LENGTH)
 
     def close(self, user, state: dict) -> None:
