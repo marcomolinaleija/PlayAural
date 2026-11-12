@@ -12,7 +12,9 @@ Khi mở một mục, bạn nghe thông báo ngắn về ngữ cảnh. Tiêu đ�
 
 \*\*Đọc và tiếp tục\*\*
 
-Mở thảo luận để xem các tin nhắn và các thao tác của chủ đề bên dưới. Mỗi hàng hiển thị bản tóm tắt tối đa 160 ký tự. Trên một tin nhắn, nhấn Enter hoặc mũi tên phải để nghe toàn bộ nội dung mà vẫn ở trong danh sách, không mở ô văn bản. Lượt đọc này thay thế lời đang chờ và tôn trọng thiết lập tắt tiếng.
+Mở thảo luận để xem các tin nhắn và các thao tác của chủ đề bên dưới. Mỗi hàng hiển thị bản tóm tắt tối đa 160 ký tự. Trên một tin nhắn, nhấn mũi tên phải để nghe toàn bộ nội dung mà vẫn ở trong danh sách, không mở ô văn bản. Lượt đọc này thay thế lời đang chờ và tôn trọng thiết lập tắt tiếng.
+
+Tin nhắn thông báo cuộc thăm dò hoặc số tệp đính kèm khi bạn duyệt danh sách. Enter mở trực tiếp tài nguyên duy nhất: các lựa chọn của cuộc thăm dò, trình xem ảnh hoặc trình phát âm thanh/video. Nếu có nhiều tài nguyên, một danh sách để chọn sẽ mở ra; Escape trở về cùng bài viết. Với bài chỉ có văn bản, Enter đọc toàn bộ nội dung. Mở tài nguyên không đánh dấu phần văn bản là đã đọc. Mô tả bạn thêm cho ảnh xuất hiện bên dưới ảnh trong ô chỉ đọc, có thể đến bằng Tab để chọn và sao chép. Âm thanh/video mở ở trạng thái tạm dừng; chọn Phát để bắt đầu.
 
 Phím Applications hoặc Shift + F10 mở menu ngữ cảnh của tin nhắn, với thao tác trả lời, chỉnh sửa, tệp đính kèm, bình chọn hoặc báo cáo tùy quyền của bạn. Escape trở lại danh sách và giữ tiêu điểm ở tin nhắn đó. Để xem, chọn hoặc sao chép văn bản, nhấn Shift + Enter trên tin nhắn: toàn bộ nội dung mở trong ô nhiều dòng chỉ đọc. Escape đóng ô và trở lại ngay tin nhắn đó trong danh sách. Bạn cũng có thể mở văn bản từ menu ngữ cảnh. Đăng hoặc lưu chỉnh sửa sẽ đưa tiêu điểm về tin nhắn trong danh sách.
 

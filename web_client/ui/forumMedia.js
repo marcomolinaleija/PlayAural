@@ -226,9 +226,16 @@ export class ForumMedia {
       await this.authorize(packet, surface.signal);
       if (surface.generation !== this.generation) return;
       surface.status.textContent = '';
+      let description = null;
       if (attachment.description) {
-        const description = this.element('p', attachment.description);
-        if (attachment.kind === 'image') description.setAttribute('aria-hidden', 'true');
+        description = this.element('textarea');
+        description.value = attachment.description;
+        description.readOnly = true;
+        description.rows = 3;
+        description.setAttribute('aria-label', labels.description);
+        description.addEventListener('focus', () => {
+          if (this.isSelfVoicing()) this.announce(`${labels.description}: ${attachment.description}`);
+        });
         surface.content.append(description);
       }
       if (attachment.kind === "image") {
@@ -244,7 +251,7 @@ export class ForumMedia {
         }
         image.addEventListener("error", () => { surface.status.textContent = labels.error; });
         image.addEventListener('focus', () => { if (this.isSelfVoicing()) this.announce(image.alt); });
-        if (this.document.activeElement === surface.status) image.focus();
+        if (this.document.activeElement === surface.status) (description || image).focus();
       } else if (["audio", "video"].includes(attachment.kind)) {
         const player = this.element(attachment.kind);
         player.controls = true;

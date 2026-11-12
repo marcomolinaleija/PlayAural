@@ -121,6 +121,8 @@ class PollController:
                 push(user, self.thread_editor, state['forum_topic'])
         elif menu == nav.COMPOSER and selection == 'poll':
             push(user, self.editor, Draft(**state['forum_draft']))
+        elif menu == nav.CONTENTS and selection == 'poll':
+            push(user, self.ballot, state['forum_post'])
         elif menu == nav.EXTRAS:
             if selection == 'poll':
                 push(user, self.editor, Draft(**state['forum_draft']))

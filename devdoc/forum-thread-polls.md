@@ -75,6 +75,11 @@ in its prompt while preserving the original body for copying. Reply actions use
 Reply to thread, including the message context menu. These changes use only
 shared server menus/speech, without new client code or native mobile work.
 
+Subsequent content navigation makes Enter open a message poll directly when it
+is the only resource, or list it alongside attachments in a compact chooser.
+Right always reads the full post. See `forum-post-navigation.md` for the current
+resource and description behavior.
+
 `test_forum_poll_management.py` verifies deletion/cascades and preserved content,
 authority and revocation, cancellation/return frames, stale confirmations,
 discovery and hidden-post suppression, and desktop/web WebSocket round trips.

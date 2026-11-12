@@ -12,7 +12,9 @@ Al entrar se anuncia brevemente el contexto. Los títulos y los resúmenes de p�
 
 \*\*Leer y continuar\*\*
 
-Abre una conversación para encontrar sus mensajes y, debajo, las acciones del hilo. Cada fila muestra un resumen de hasta 160 caracteres. Sobre un mensaje, pulsa Enter o flecha derecha para escuchar todo su texto sin salir de la lista ni abrir un cuadro. Esta lectura sustituye la voz que hubiera en cola y respeta los silencios configurados.
+Abre una conversación para encontrar sus mensajes y, debajo, las acciones del hilo. Cada fila muestra un resumen de hasta 160 caracteres. Sobre un mensaje, pulsa flecha derecha para escuchar todo su texto sin salir de la lista ni abrir un cuadro. Esta lectura sustituye la voz que hubiera en cola y respeta los silencios configurados.
+
+Si el mensaje contiene una encuesta o archivos, se anuncia al recorrer la lista. Enter abre directamente el único recurso: las opciones de la encuesta, el visor de imagen o el reproductor de audio o video. Si hay varios recursos, abre una lista para elegir; Escape vuelve al mismo post. Si solo tiene texto, Enter lo lee completo. Abrir recursos no marca como leído el texto del mensaje. La descripción que añadas a una imagen aparece debajo de ella en un cuadro de solo lectura, accesible con Tab, donde puedes seleccionarla y copiarla. Los audios y videos se abren pausados; elige Reproducir para comenzar.
 
 Aplicaciones o Shift + F10 abre el menú contextual del mensaje, con sus acciones de respuesta, edición, archivos, encuesta o reporte según tus permisos. Escape vuelve a la lista, conservando el foco en ese mensaje. Para revisar, seleccionar o copiar el texto, pulsa Shift + Enter sobre el mensaje: se abre completo en un cuadro multilínea de solo lectura. Escape cierra el cuadro y vuelve directamente al mismo mensaje de la lista. También puedes abrir el texto desde el menú contextual. Publicar o guardar una edición devuelve el foco al mensaje en la lista.
 

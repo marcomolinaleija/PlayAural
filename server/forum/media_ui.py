@@ -142,7 +142,7 @@ class MediaController:
                 update_draft(state, replace(draft, attachment_ids=tuple(key for key in draft.attachment_ids if key != attachment_id)))
                 self.server._nav_back(user)
             return True
-        if state['menu'] in {nav.COMPOSER, nav.POST} and selection.startswith('attachment:'):
+        if state['menu'] in {nav.COMPOSER, nav.POST, nav.CONTENTS} and selection.startswith('attachment:'):
             attachment_id = selection.removeprefix('attachment:')
             if state['menu'] == nav.COMPOSER:
                 self.server._nav_push(user, self.attachment, Draft(**state['forum_draft']), attachment_id)

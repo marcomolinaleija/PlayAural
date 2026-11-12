@@ -123,7 +123,7 @@ class NotificationController:
         if not fresh:
             return
         state = self.server._user_states.get(user.username, {})
-        reading_topic = state.get('forum_topic') if state.get('menu') in {nav.THREAD, nav.POST, nav.BODY_READER} else None
+        reading_topic = state.get('forum_topic') if state.get('menu') in {nav.THREAD, nav.POST, nav.CONTENTS, nav.BODY_READER} else None
         if state.get('menu') == nav.BODY_READER:
             reading_topic = state.get('_parent_frame', {}).get('forum_topic')
         audible = [n for n in fresh if settings['mention_alerts' if n['kind'] == 'mention' else 'private_alerts']

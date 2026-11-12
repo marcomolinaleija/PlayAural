@@ -12,7 +12,9 @@ On entering a view, a short announcement gives its context. Headings and page su
 
 \*\*Reading and Continuing\*\*
 
-Open a discussion to find its messages and the thread actions below. Each row shows an excerpt of up to 160 characters. On a message, press Enter or Right arrow to hear its complete text while staying in the list, without opening a text box. This reading replaces queued speech and respects your mute settings.
+Open a discussion to find its messages and the thread actions below. Each row shows an excerpt of up to 160 characters. On a message, press Right arrow to hear its complete text while staying in the list, without opening a text box. This reading replaces queued speech and respects your mute settings.
+
+Messages announce their attached poll or files while you browse. Enter opens the only resource directly: poll choices, the image viewer or the audio/video player. With several resources it opens a compact chooser; Escape returns to the same post. Enter reads a text-only post in full. Opening resources does not mark the message body read. An image description you provide appears below the image in a read-only text box, reachable with Tab and available for selection and copying. Audio/video open paused; choose Play to start.
 
 Applications or Shift + F10 opens the message context menu, with reply, edit, attachment, poll or report actions according to your permissions. Escape returns to the list with that message focused. To review, select or copy the text, press Shift + Enter on the message: its full text opens in a read-only multiline box. Escape closes the box and returns directly to that message in the list. You can also open the text from the context menu. Publishing or saving an edit returns focus to the message list.
 

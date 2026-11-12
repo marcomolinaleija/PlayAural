@@ -9,6 +9,29 @@ const labels = { close: 'Cerrar', error: 'Error', speed: 'Velocidad', download: 
 const packet = { type: 'forum_open_media', base_url: base, token: 'secret', expires_at: 1800000000,
   attachment: { id, name: 'test.mp3', kind: 'audio', description: '' }, url: `${base}/files/${id}`, labels };
 
+test('image descriptions are visible, focusable read-only text with full self-voicing and restored focus', async () => {
+  const document = documentFixture();
+  const returnFocus = document.activeElement;
+  const spoken = [];
+  const description = 'Primera línea\n' + 'á'.repeat(986);
+  const media = new ForumMedia({ document, announce: text => spoken.push(text), isSelfVoicing: () => true,
+    fetch: async () => ({ ok: true }) });
+  await media.open({ ...packet, attachment: { ...packet.attachment, kind: 'image', description },
+    labels: { ...labels, description: 'Descripción' } });
+  const content = media.dialog.children[1];
+  const text = content.children.find(element => element.tagName === 'textarea');
+  assert.equal(text.value, description);
+  assert.equal(text.readOnly, true);
+  assert.equal(text.attributes.get('aria-label'), 'Descripción');
+  assert.notEqual(text.attributes.get('aria-hidden'), 'true');
+  assert.equal(document.activeElement, text);
+  assert.equal(content.children[0].alt, description);
+  await text.dispatch('focus');
+  assert.deepEqual(spoken, ['Descripción: ' + description]);
+  media.close();
+  assert.equal(document.activeElement, returnFocus);
+});
+
 class Element {
   constructor(tag, document) {
     this.tagName = tag;

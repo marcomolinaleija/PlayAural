@@ -57,6 +57,8 @@ class ForumManager:
                 self.views.thread(user, frame["forum_topic"], frame.get("forum_page"))
             elif menu == nav.POST:
                 self.views.post(user, frame["forum_post"])
+            elif menu == nav.CONTENTS:
+                self.views.contents(user, frame['forum_post'])
             elif menu == nav.COMPOSER:
                 self.composer.show(user, self.composer.draft(frame))
             elif menu == nav.ATTACHMENT:
@@ -159,7 +161,7 @@ class ForumManager:
                 else:
                     refresh(user, self.views.thread, topic_id, state["forum_page"])
             elif selection.startswith("post:"):
-                self.reader.speak(user, int(selection.removeprefix("post:")))
+                self.reader.activate(user, int(selection.removeprefix("post:")))
             elif selection in {"toggle_closed", "toggle_pinned"}:
                 action = selection.removeprefix("toggle_")
                 push(user, self.confirm_moderation, topic_id, action, not getattr(topic, action))

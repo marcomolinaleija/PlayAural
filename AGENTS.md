@@ -10,8 +10,14 @@ The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
 approval/moderation/block rules, the central SQLite lifecycle (schema v12), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
-On thread post rows, Enter/Right speaks the complete body in place, without
-history storage or a menu/input transition. Explicit reading interrupts queued
+On thread post rows, Right speaks the complete body in place without history
+storage or a menu/input transition. Enter opens the only attached poll/file or
+a content-only chooser for multiple resources; text-only posts are read aloud.
+Announce poll presence and the count of published ready approved attachments in
+rows, speech and reader prompts. Recheck resource access on activation and bind
+chooser selections to their post. Resource opening alone does not mark the body
+read. Image descriptions are visible focusable read-only text in desktop/web.
+Explicit reading interrupts queued
 speech while respecting the client's mute preferences. Applications/Shift+F10
 opens the server-owned post action menu; opening actions does not mark a post
 read. Shift+Enter opens the optional read-only multiline text directly from the

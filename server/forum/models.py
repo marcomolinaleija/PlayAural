@@ -68,6 +68,7 @@ class Post:
     revision: int
     hidden: bool
     has_poll: bool = False
+    attachment_count: int = 0
 
 
 @dataclass(frozen=True)
