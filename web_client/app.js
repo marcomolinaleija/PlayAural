@@ -1328,12 +1328,16 @@ class PlayAuralWebApp {
           this.speak(text, { buffer: "misc", assertive: true, noHistory: true });
         }
       },
-      onContextAction: (item, index) => {
+      onContextAction: (item, index, trigger) => {
         if (item?.copyDirectivePresent) {
           this.activateMenuItem(item, index);
           return;
         }
-        this.sendKeybind("enter", item?.id || "", { shift: true });
+        if (this.store.state.currentMenu.menuId === 'forum_thread' && item?.id?.startsWith('post:') && trigger !== 'reader') {
+          this.sendKeybind('applications', item.id);
+        } else {
+          this.sendKeybind("enter", item?.id || "", { shift: true });
+        }
       },
       getDefaultLabel: () => Localization.get("game-menu-label"),
     });
@@ -2697,7 +2701,8 @@ class PlayAuralWebApp {
       case "speak":
         this.speak(packet.text || "", {
           buffer: normalizeHistoryBuffer(packet.buffer || "misc"),
-          assertive: packet.buffer === "system",
+          assertive: packet.buffer === "system" || packet.interrupt === true,
+          interrupt: packet.interrupt === true,
           noHistory: packet.history === false,
           muted: packet.muted === true,
           metadata: packet.history === false ? null : metadataFromSpeakPacket(packet),

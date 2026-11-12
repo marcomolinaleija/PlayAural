@@ -399,6 +399,22 @@ export function installKeybinds({
       return;
     }
 
+    if (connected && menuFocused && !editing && menu.menuId === 'forum_thread'
+        && actionableMenuItemId(menu.items[menu.selection])?.startsWith('post:')
+        && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const forumKey = event.key === 'Enter' ? 'enter'
+        : event.key === 'ArrowRight' && !event.shiftKey ? 'right'
+        : event.key === 'F10' && event.shiftKey ? 'f10'
+        : event.key === 'ContextMenu' && !event.shiftKey ? 'applications' : null;
+      if (forumKey) {
+        event.preventDefault();
+        sendKeybind({ key: forumKey, control: false, alt: false, meta: false, shift: event.shiftKey,
+          menu_id: menu.menuId, menu_index: menu.selection + 1,
+          menu_item_id: actionableMenuItemId(menu.items[menu.selection]) });
+        return;
+      }
+    }
+
     if (menuFocused) {
       // Alt+Arrow: jump to grid row/column edges
       if (event.altKey && !event.ctrlKey && !event.metaKey && menu.gridEnabled && menu.gridWidth > 1) {

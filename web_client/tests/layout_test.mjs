@@ -361,6 +361,33 @@ test('Ctrl+Shift+F opens the forum while Ctrl+F keeps opening Friends', () => {
   assert.deepEqual(calls, []);
 });
 
+test('forum post keys read in place, open optional text and request context without moving selection', () => {
+  const menu = { contains: () => false };
+  let keydown;
+  globalThis.document = { activeElement: menu, addEventListener(type, callback) {
+    if (type === 'keydown') keydown = callback;
+  } };
+  const calls = [];
+  const store = { state: { connection: { authenticated: true }, currentMenu: {
+    menuId:'forum_thread', selection:0, multiletterEnabled:true,
+    items:[{id:'post:7'},{id:'thread_poll'}], gridEnabled:false,
+  } } };
+  installKeybinds({ store, menuView: { getElement:() => menu, moveSelection:() => calls.push('move') },
+    sendKeybind:packet => calls.push(packet) });
+  const press = (key, shiftKey=false) => keydown({key,shiftKey,ctrlKey:false,altKey:false,metaKey:false,preventDefault(){}});
+  for (const [key, shift, expected] of [['ArrowRight',false,'right'],['Enter',false,'enter'],
+      ['Enter',true,'enter'],['ContextMenu',false,'applications'],['F10',true,'f10']]) {
+    calls.length = 0;
+    press(key, shift);
+    assert.deepEqual(calls, [{key:expected, shift, control:false, alt:false, meta:false,
+      menu_id:'forum_thread', menu_index:1, menu_item_id:'post:7'}]);
+  }
+  calls.length = 0;
+  store.state.currentMenu.selection = 1;
+  press('ArrowRight');
+  assert.deepEqual(calls, ['move']);
+});
+
 test("large grids retain accessible cells and pan on both axes", async () => {
   const css = await readFile(new URL("../style.css", import.meta.url), "utf8");
   const gridStart = css.indexOf(".menu-list.grid-mode {");

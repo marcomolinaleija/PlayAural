@@ -59,6 +59,7 @@ class Bot(User):
         buffer: str = "misc",
         *,
         history: bool = True,
+        interrupt: bool = False,
     ) -> None:
         pass
 

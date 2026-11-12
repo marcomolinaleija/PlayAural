@@ -12,9 +12,11 @@ Khi mở một mục, bạn nghe thông báo ngắn về ngữ cảnh. Tiêu đ�
 
 \*\*Đọc và tiếp tục\*\*
 
-Mở thảo luận để thấy tin nhắn trước và các thao tác bên dưới. Mỗi hàng hiển thị bản xem trước tối đa 160 ký tự. Khi mở tin nhắn, toàn bộ nội dung xuất hiện trong ô văn bản nhiều dòng chỉ đọc; bạn có thể di chuyển theo dòng, chọn và sao chép văn bản. Tác giả và thời gian được thông báo tự động. Enter hoặc Escape đóng ô và đưa tiêu điểm về hàng tin nhắn, với tệp đính kèm, khảo sát và các thao tác bên dưới. Mở lại hàng đó để đọc toàn bộ văn bản.
+Mở thảo luận để xem các tin nhắn và các thao tác của chủ đề bên dưới. Mỗi hàng hiển thị bản tóm tắt tối đa 160 ký tự. Trên một tin nhắn, nhấn Enter hoặc mũi tên phải để nghe toàn bộ nội dung mà vẫn ở trong danh sách, không mở ô văn bản. Lượt đọc này thay thế lời đang chờ và tôn trọng thiết lập tắt tiếng.
 
-Mở toàn bộ tin nhắn sẽ đánh dấu tin đó và các tin trước đó trong thảo luận là đã đọc. Chỉ xem bản tóm tắt không làm thay đổi vị trí đọc. Tiếp tục từ tin nhắn chưa đọc đầu tiên và Đọc tin nhắn chưa đọc tiếp theo giúp bạn theo dõi. Vị trí đọc và thảo luận đã lưu được giữ khi kết nối lại hoặc đổi thiết bị.
+Phím Applications hoặc Shift + F10 mở menu ngữ cảnh của tin nhắn, với thao tác trả lời, chỉnh sửa, tệp đính kèm, bình chọn hoặc báo cáo tùy quyền của bạn. Escape trở lại danh sách và giữ tiêu điểm ở tin nhắn đó. Để xem, chọn hoặc sao chép văn bản, nhấn Shift + Enter trên tin nhắn: toàn bộ nội dung mở trong ô nhiều dòng chỉ đọc. Escape đóng ô và trở lại ngay tin nhắn đó trong danh sách. Bạn cũng có thể mở văn bản từ menu ngữ cảnh. Đăng hoặc lưu chỉnh sửa sẽ đưa tiêu điểm về tin nhắn trong danh sách.
+
+Nghe toàn bộ tin nhắn hoặc mở văn bản sẽ đánh dấu tin đó và các tin trước đó là đã đọc. Bản xem trước và việc mở menu ngữ cảnh không làm thay đổi trạng thái đọc. Tiếp tục từ tin nhắn chưa đọc đầu tiên và Đọc tin nhắn chưa đọc tiếp theo đưa bạn đến tin tương ứng rồi đọc nội dung. Vị trí đọc và thảo luận đã lưu được giữ khi kết nối lại hoặc đổi thiết bị.
 
 \*\*Viết\*\*
 
@@ -30,7 +32,7 @@ Bạn có thể sửa tin nhắn đang hiển thị của mình trong 30 phút. 
 
 Lượt nhắc đến gửi thông báo cho người được nhắc; câu trả lời riêng gửi thông báo cho các thành viên khác đã chấp nhận lời mời. Nhắc đến không mời người mới hay cấp quyền vào cuộc trò chuyện riêng. Việc chặn được áp dụng theo cả hai chiều. Trong cuộc trò chuyện riêng, lời báo nhắc đến được ưu tiên, nên một tin nhắn không gửi hai lời báo.
 
-Mở Thông báo trong diễn đàn để xem các thông báo đang chờ. Nếu không có thông báo, bạn sẽ nghe lời báo và vẫn ở menu hiện tại. Mỗi thông báo mở toàn bộ tin nhắn tương ứng. Tin nhắn riêng đang chờ được gộp theo cuộc trò chuyện; mở nhóm sẽ đến tin nhắn đang chờ đầu tiên. Nghe lời báo không đánh dấu tin nhắn là đã đọc. Khi mở tin nhắn, thông báo của nó được xóa. Nếu không còn thông báo khi quay lại, bạn nghe lời báo và trở về diễn đàn.
+Mở Thông báo trong diễn đàn để xem các thông báo đang chờ. Nếu không có thông báo, bạn sẽ nghe lời báo và vẫn ở menu hiện tại. Mỗi thông báo đưa bạn đến tin nhắn trong chủ đề và đọc toàn bộ nội dung. Tin nhắn riêng đang chờ được gộp theo cuộc trò chuyện; mở nhóm sẽ đến tin nhắn đang chờ đầu tiên. Nghe lời báo không đánh dấu tin nhắn là đã đọc. Khi mở tin nhắn, thông báo của nó được xóa. Nếu không còn thông báo khi quay lại, bạn nghe lời báo và trở về diễn đàn.
 
 Khi đang kết nối, lời báo được đọc mà không đổi màn hình. Không có lời báo cho cuộc trò chuyện bạn đang đọc. Hoạt động riêng đang chờ chỉ phát một lời báo cho đến khi bạn xem. Khi đăng nhập, bạn nghe bản tóm tắt thông báo mới. Hộp thông báo giữ tối đa 500 thông báo đang chờ trong 90 ngày. Thông báo về nội dung bị ẩn hoặc không còn truy cập được sẽ không xuất hiện.
 
@@ -96,7 +98,7 @@ Mục Diễn đàn vẫn hiển thị trong trình đơn chính. Khi bị tắt,
 
 \*\*Báo cáo nội dung công khai\*\*
 
-Chọn Báo cáo chủ đề ở cuối chủ đề công khai, hoặc Báo cáo bài viết khi đọc bài viết công khai của người khác. Chọn lý do, thêm Chi tiết nếu cần (tối đa 500 ký tự), rồi xác nhận. Quay lại hoặc Không sẽ hủy mà không gửi. Hệ thống này không báo cáo cuộc trò chuyện riêng tư.
+Chọn Báo cáo chủ đề ở cuối chủ đề công khai, hoặc Báo cáo bài viết từ menu ngữ cảnh của bài viết công khai của người khác. Chọn lý do, thêm Chi tiết nếu cần (tối đa 500 ký tự), rồi xác nhận. Quay lại hoặc Không sẽ hủy mà không gửi. Hệ thống này không báo cáo cuộc trò chuyện riêng tư.
 
 Báo cáo lưu tiêu đề và bản sao bài viết được chọn; báo cáo chủ đề lưu bài viết đầu tiên. Nếu nội dung thay đổi, hãy mở lại và xem phiên bản hiện tại. Tác giả không nhận thông báo. Báo cáo không tự động ẩn nội dung hay áp dụng hình phạt. Cùng một phiên bản sẽ không bị báo cáo lặp lại. Trò chuyện và diễn đàn dùng chung giới hạn năm báo cáo mỗi giờ.
 

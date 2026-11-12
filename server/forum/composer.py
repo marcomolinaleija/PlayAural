@@ -110,34 +110,28 @@ class ForumComposer:
         if draft.kind == "topic":
             topic_id, post_id = self.service.create_topic(user.uuid, draft.category_id, draft.title, draft.body,
                                                          poll=poll, attachment_ids=draft.attachment_ids)
-            self.server._nav_back(user)
-            self.server._nav_push(user, self.views.thread, topic_id)
-            self.open_post(user, post_id)
         elif draft.kind == "reply":
             post_id = self.service.reply(user.uuid, draft.topic_id, draft.body, poll=poll, attachment_ids=draft.attachment_ids)
-            self.server._nav_back(user)
-            if self.server._user_states[user.username]["menu"] == nav.POST:
-                self.server._nav_back(user)
-            self.open_post(user, post_id)
         elif draft.kind == "edit":
             self.service.edit(user.uuid, draft.post_id, draft.body, draft.revision)
             post_id = draft.post_id
-            self.server._nav_back(user)
         elif draft.kind == 'private':
             topic_id, post_id = self.service.conversations.create(user.uuid, draft.title, draft.body, draft.recipients,
                                                                   poll=poll, attachment_ids=draft.attachment_ids)
-            self.server._nav_back(user)
-            self.server._nav_push(user, self.views.thread, topic_id)
-            self.open_post(user, post_id)
         else:
             raise ValueError("Unsupported forum draft")
+        # Finish directly on the message list, without briefly rendering old
+        # context menus or stacking duplicate pages of the same conversation.
+        topic_id = self.service.post(user.uuid, post_id).topic_id
+        state = self.server._user_states[user.username]
+        stack = list(state.get('_stack', []))
+        while stack and stack[-1].get('menu') in {nav.THREAD, nav.POST} and stack[-1].get('forum_topic') == topic_id:
+            stack.pop()
+        state['_stack'] = stack
+        self.open_post(user, post_id)
         user.speak_l("forum-edit-saved" if draft.kind == "edit" else "forum-published", buffer="system")
         self.server.forum_manager.notifications.deliver_post(post_id)
 
     def open_post(self, user, post_id: int) -> None:
-        # Return to the message just published rather than stacking message
-        # readers indefinitely or returning focus to a now-stale unread link.
-        self.server._remember_current_menu_focus(
-            user, nav.THREAD, {"selection_id": f"post:{post_id}"},
-        )
-        self.server._nav_push(user, self.views.post, post_id)
+        self.service.post(user.uuid, post_id, mark_read=True)
+        self.server._nav_refresh(user, self.server.forum_manager.reader.locate, post_id)

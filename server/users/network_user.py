@@ -278,8 +278,11 @@ class NetworkUser(User):
         buffer: str = "misc",
         *,
         history: bool = True,
+        interrupt: bool = False,
     ) -> None:
         packet = {"type": "speak", "text": text, "buffer": buffer}
+        if interrupt:
+            packet['interrupt'] = True
         if not history:
             packet["history"] = False
         self._queue_packet(packet)

@@ -362,9 +362,7 @@ async def test_report_flow_over_socket_reason_details_confirmation_and_staff_rev
             thread = await choose(ws, nav.TOPICS, f'topic:{topic}', nav.THREAD)
             assert thread['items'][0]['id'] == f'post:{post}'
             assert 'report_thread' in [row['id'] for row in thread['items']]
-            await choose(ws, nav.THREAD, f'post:{post}', nav.POST)
-            await receive(ws, lambda p:p.get('type') == 'request_input' and p.get('input_id') == nav.BODY_READER)
-            await ws.send(json.dumps({'type':'editbox','input_id':nav.BODY_READER,'cancelled':True}))
+            await ws.send(json.dumps({'type':'keybind','key':'applications','menu_id':nav.THREAD,'menu_item_id':f'post:{post}'}))
             await receive(ws, lambda p:p.get('menu_id') == nav.POST)
             form = await choose(ws, nav.POST, 'report_post', nav.REPORT)
             assert [row['id'] for row in form['items']] == ['report_content', 'reason', 'details', 'submit', 'back']

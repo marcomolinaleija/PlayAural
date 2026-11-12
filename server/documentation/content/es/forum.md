@@ -12,9 +12,11 @@ Al entrar se anuncia brevemente el contexto. Los títulos y los resúmenes de p�
 
 \*\*Leer y continuar\*\*
 
-Abre una conversación para encontrar primero sus mensajes y debajo sus acciones. Cada fila muestra un resumen de hasta 160 caracteres. Al abrir un mensaje, su texto completo aparece en un cuadro multilínea de solo lectura, donde puedes recorrer las líneas, seleccionar y copiar texto. Su autor y antigüedad se anuncian automáticamente. Enter o Escape cierran el cuadro y devuelven el foco a la fila del mensaje; debajo quedan sus archivos, encuesta y acciones. Puedes abrir el texto de nuevo desde esa misma fila.
+Abre una conversación para encontrar sus mensajes y, debajo, las acciones del hilo. Cada fila muestra un resumen de hasta 160 caracteres. Sobre un mensaje, pulsa Enter o flecha derecha para escuchar todo su texto sin salir de la lista ni abrir un cuadro. Esta lectura sustituye la voz que hubiera en cola y respeta los silencios configurados.
 
-Abrir un mensaje completo marca como leídos ese mensaje y los anteriores de la conversación. Las vistas previas no lo hacen. Continuar desde el primer mensaje sin leer y Leer el siguiente mensaje sin leer te ayudan a ponerte al día. Tu posición de lectura y tus conversaciones guardadas se conservan al reconectar o cambiar de dispositivo.
+Aplicaciones o Shift + F10 abre el menú contextual del mensaje, con sus acciones de respuesta, edición, archivos, encuesta o reporte según tus permisos. Escape vuelve a la lista, conservando el foco en ese mensaje. Para revisar, seleccionar o copiar el texto, pulsa Shift + Enter sobre el mensaje: se abre completo en un cuadro multilínea de solo lectura. Escape cierra el cuadro y vuelve directamente al mismo mensaje de la lista. También puedes abrir el texto desde el menú contextual. Publicar o guardar una edición devuelve el foco al mensaje en la lista.
+
+Escuchar un mensaje completo o abrir su texto marca como leídos ese mensaje y los anteriores de la conversación. Las vistas previas y abrir el menú contextual no lo hacen. Continuar desde el primer mensaje sin leer y Leer el siguiente mensaje sin leer llevan al mensaje correspondiente y lo leen en voz alta. Tu posición de lectura y tus conversaciones guardadas se conservan al reconectar o cambiar de dispositivo.
 
 \*\*Escribir\*\*
 
@@ -30,7 +32,7 @@ Para mencionar a alguien, escribe @Carlos en el mensaje. Si su nombre tiene espa
 
 Las menciones avisan a su destinatario y las respuestas privadas a los demás miembros que ya aceptaron participar. Una mención no invita a nadie ni permite entrar en un privado. Los bloqueos se respetan en ambos sentidos. En una conversación privada, una mención tiene prioridad sobre el aviso normal: no recibes dos avisos por el mismo mensaje.
 
-Abre Notificaciones en el foro para consultar los avisos pendientes. Si no tienes ninguno, se anuncia por voz y permaneces en el menú actual. Cada aviso abre el mensaje completo. Los mensajes privados pendientes se agrupan por conversación; abrir el grupo lleva al primero pendiente. Escuchar el aviso no marca el mensaje como leído. Al abrir el mensaje, su notificación desaparece. Si al volver ya no queda ninguna, se anuncia y regresas al foro.
+Abre Notificaciones en el foro para consultar los avisos pendientes. Si no tienes ninguno, se anuncia por voz y permaneces en el menú actual. Cada aviso lleva al mensaje correspondiente en su hilo y lo lee completo. Los mensajes privados pendientes se agrupan por conversación; abrir el grupo lleva al primero pendiente. Escuchar el aviso no marca el mensaje como leído. Al abrir el mensaje, su notificación desaparece. Si al volver ya no queda ninguna, se anuncia y regresas al foro.
 
 Mientras estás conectado, los avisos se anuncian sin cambiar tu vista. No se interrumpe con avisos de la conversación que ya estás leyendo; la actividad privada pendiente genera un solo aviso hasta que la consultes. Al iniciar sesión se anuncia un resumen de avisos nuevos. La bandeja conserva hasta 500 avisos pendientes durante 90 días. Los avisos de contenido oculto o al que ya no tienes acceso no se muestran.
 
@@ -96,7 +98,7 @@ La opción Foro del menú principal sigue visible. Cuando está desactivado, ele
 
 \*\*Reportar contenido público\*\*
 
-Al final de un hilo público puedes elegir Reportar hilo; al abrir un mensaje público de otra persona, Reportar mensaje. Elige el motivo y, si hace falta, añade Detalles (hasta 500 caracteres). Revisa la confirmación antes de enviar. Atrás o No cancelan sin enviar nada. Las conversaciones privadas no se pueden reportar desde este sistema.
+Al final de un hilo público puedes elegir Reportar hilo; desde el menú contextual de un mensaje público de otra persona, Reportar mensaje. Elige el motivo y, si hace falta, añade Detalles (hasta 500 caracteres). Revisa la confirmación antes de enviar. Atrás o No cancelan sin enviar nada. Las conversaciones privadas no se pueden reportar desde este sistema.
 
 El reporte guarda el título y una copia del mensaje señalado; en un reporte de hilo, guarda su primer mensaje. Si el contenido cambió mientras preparabas el reporte, tendrás que abrirlo de nuevo y revisar la versión actual. El autor no recibe un aviso y reportar no oculta contenido ni impone sanciones automáticamente. No se duplica el reporte de la misma versión; hay un límite compartido de cinco reportes por hora entre chat y foro.
 

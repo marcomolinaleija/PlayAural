@@ -66,9 +66,11 @@ public language. Opening a notice does not change that language preference.
 Empty entry is checked before navigation: one transient spoken notice, no menu
 packet and no return frame. Empty refresh/restore returns to the parent with
 spoken feedback instead of rendering an empty list. Opening an eligible post
-removes that post's pending notice inside the existing mark-read transaction;
-speech and previews never do so. Exact post IDs reuse the full read-only reader
-and preserve draft/game return context.
+removes that post's pending notice inside the existing mark-read transaction.
+Alert speech and previews never do so. Explicit full-body speech and optional
+read-only text do mark the post read. Exact post IDs now locate the message in
+its thread and read it aloud, preserving draft/game return context; see
+`forum-post-navigation.md` for the current keyboard behavior.
 
 The first delivery deliberately has no mention autocomplete, email delivery,
 OS/browser push subscription, public-thread subscriptions or new media behavior.

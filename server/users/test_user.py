@@ -97,8 +97,11 @@ class MockUser(User):
         buffer: str = "misc",
         *,
         history: bool = True,
+        interrupt: bool = False,
     ) -> None:
         data = {"text": text, "buffer": buffer}
+        if interrupt:
+            data['interrupt'] = True
         if not history:
             data["history"] = False
         self.messages.append(Message("speak", data))

@@ -82,6 +82,16 @@ class ForumManager:
             if error.key == "forum-error-missing" and state["menu"] not in {nav.COMPOSER, nav.EXTRAS, nav.POLL_EDITOR}:
                 self.server._nav_refresh(user, self.home)
 
+    def handle_keybind(self, user, packet, state):
+        try:
+            self.service.account(user.uuid)
+            if not self.server.forum_enabled:
+                user.speak_l('forum-unavailable', buffer='system')
+                return
+            self.reader.handle_keybind(user, packet, state)
+        except ForumError as error:
+            user.speak_l(error.key, buffer='system', **error.values)
+
     def _handle_menu(self, user, selection: str, state: dict) -> None:
         menu = state["menu"]
         # Existing drafts may still be edited or explicitly discarded. Closing
@@ -145,11 +155,11 @@ class ForumManager:
             elif selection == "continue":
                 post_id = self.service.repository.resume_post(user.uuid, topic_id)
                 if post_id:
-                    push(user, self.reader.open, post_id)
+                    refresh(user, self.reader.open, post_id)
                 else:
                     refresh(user, self.views.thread, topic_id, state["forum_page"])
             elif selection.startswith("post:"):
-                push(user, self.reader.open, int(selection.removeprefix("post:")))
+                self.reader.speak(user, int(selection.removeprefix("post:")))
             elif selection in {"toggle_closed", "toggle_pinned"}:
                 action = selection.removeprefix("toggle_")
                 push(user, self.confirm_moderation, topic_id, action, not getattr(topic, action))
@@ -161,6 +171,9 @@ class ForumManager:
             post = self.service.post(user.uuid, state["forum_post"])
             if selection == 'read_body':
                 self.reader.show(user, post.id)
+            elif selection == 'speak_body':
+                self.server._nav_back(user)
+                self.reader.speak(user, post.id)
             elif selection == "reply":
                 push(user, self.composer.show, Draft("reply", topic_id=post.topic_id))
             elif selection == 'poll':

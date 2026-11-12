@@ -18050,6 +18050,10 @@ PlayAural Server
             await self._handle_list_online_with_games(client)
             return
 
+        if current_menu in FORUM_MENU_IDS and user:
+            self.forum_manager.handle_keybind(user, packet, state)
+            return
+
         if current_menu not in self.GLOBAL_SYSTEM_MENUS:
             table = self._tables.find_user_table(username)
             if table and table.game and user:
