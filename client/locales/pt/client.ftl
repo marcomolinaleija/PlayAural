@@ -369,3 +369,7 @@ error-email-taken = Este e-mail já está em uso por outra conta.
 auth-error-rate-limit = Muitas tentativas de login incorretas. Por favor, tente novamente em 15 minutos.
 auth-error-rate-limit-generic = Muitas solicitações de conta foram feitas em pouco tempo. Aguarde e tente novamente.
 auth-auto-login-disabled = O login automático foi desativado para esta conta. Faça login manualmente e atualize suas credenciais, se necessário.
+
+connection-timeout-label = Tempo limite de entrada
+connection-timeout-value = { $seconds } segundos
+login-cancelled = Entrada cancelada.

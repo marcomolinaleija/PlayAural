@@ -212,6 +212,17 @@ branches or silently add pending upstream changes to a release.
 
 ## Commands
 
+Desktop sign-in uses the local `network/login_timeout_seconds` preference:
+30 seconds by default or 60, independently for opening and authorization. Keep
+both UI entry points and the network worker on `client/connection_policy.py`;
+never add a shorter UI timer or restart an in-progress attempt from retry timers.
+Transport-open alone is not authenticated. Run manual verification off the wx
+thread; cancellation/destruction invalidates callbacks before closing the task,
+and late results must never save credentials or affect a replacement session.
+Startup timeout returns to sign-in so auto-login users can adjust the wait.
+Server handshake/heartbeat deadlines accommodate 60 seconds. See
+`devdoc/login-timeouts.md` for cancellation, configuration and verification.
+
 Run server tests from the repo root through uv:
 
 ```bash

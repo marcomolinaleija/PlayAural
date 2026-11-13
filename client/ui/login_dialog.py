@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config_manager import ConfigManager, parse_server_endpoint
 from auth_error_messages import get_login_failure_message
 from client_info import client_auth_metadata
+from connection_policy import LOGIN_TIMEOUT_SECONDS, LOGIN_TIMEOUT_OPTION, LoginAttempt, authorize, login_timeout
 from localization import Localization
 from ssl_utils import make_ssl_context
 from version import VERSION
@@ -79,7 +80,12 @@ class LoginDialog(wx.Dialog):
         initial_server_name=None,
     ):
         """Initialize the login dialog."""
-        super().__init__(parent, title=Localization.get("login-title"), size=(450, 480))
+        super().__init__(parent, title=Localization.get("login-title"), size=(450, 560))
+        self._login_generation = 0
+        self._login_attempt = None
+        self._login_closed = False
+        self.Bind(wx.EVT_CLOSE, self._on_login_close)
+        self.Bind(wx.EVT_WINDOW_DESTROY, self._on_login_destroy)
 
         if disconnect_message:
             if disconnect_message != "switch_server":
@@ -175,6 +181,16 @@ class LoginDialog(wx.Dialog):
         server_box.Add(self.server_choice, 1, wx.ALIGN_CENTER_VERTICAL)
         self.sizer.Add(server_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
+        timeout_box = wx.BoxSizer(wx.HORIZONTAL)
+        timeout_box.Add(wx.StaticText(self.panel, label=Localization.get('connection-timeout-label')),
+                        0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+        self.timeout_choice = wx.Choice(self.panel, choices=[Localization.get('connection-timeout-value', seconds=value)
+                                                            for value in LOGIN_TIMEOUT_SECONDS])
+        self.timeout_choice.SetSelection(LOGIN_TIMEOUT_SECONDS.index(login_timeout(self.config_manager)))
+        self.timeout_choice.Bind(wx.EVT_CHOICE, self._on_timeout_changed)
+        timeout_box.Add(self.timeout_choice, 1)
+        self.sizer.Add(timeout_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+
         # Content Sizers (swapped based on state)
         self.action_sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.action_sizer, 1, wx.EXPAND | wx.ALL, 20)
@@ -182,6 +198,11 @@ class LoginDialog(wx.Dialog):
         # Status text
         self.status_text = wx.StaticText(self.panel, label="")
         self.sizer.Add(self.status_text, 0, wx.ALL | wx.CENTER, 10)
+        self.cancel_login_button = wx.Button(self.panel, wx.ID_CANCEL, Localization.get('common-cancel'))
+        self.cancel_login_button.Bind(wx.EVT_BUTTON, self._on_cancel_login)
+        self.SetEscapeId(wx.ID_CANCEL)
+        self.cancel_login_button.Hide()
+        self.sizer.Add(self.cancel_login_button, 0, wx.ALL | wx.CENTER, 10)
         
         # Set sizer
         self.panel.SetSizer(self.sizer)
@@ -292,6 +313,8 @@ class LoginDialog(wx.Dialog):
 
     def on_server_choice_changed(self, event):
         """Handle server dropdown selection."""
+        self._cancel_login_attempt()
+        self._set_login_busy(False)
         idx = self.server_choice.GetSelection()
         if 0 <= idx < len(self._server_ids_in_choice):
             self.server_id = self._server_ids_in_choice[idx]
@@ -722,6 +745,8 @@ class LoginDialog(wx.Dialog):
 
     def _verify_and_login(self, username, password):
         """Verify credentials by connecting to server, then save and exit."""
+        if self._login_attempt or self._login_closed:
+            return
         # CAPTURE UI STATE EARLY to prevent RuntimeError if dialog is closed during async call
         auto_login_val = self.auto_login
         if hasattr(self, 'chk_auto') and self.chk_auto:
@@ -731,15 +756,21 @@ class LoginDialog(wx.Dialog):
                 pass # Object deleted, use default
 
         self.status_text.SetLabel(Localization.get("login-info-verifying"))
-        self.panel.Layout()
-        wx.Yield() # Update UI
-        
-        # Check connection
-        result = self._test_connection(username, password)
-        
-        # NOTE: Dialog might have been destroyed here!
-        if not self or not self.panel: 
+        self._set_login_busy(True)
+        self._login_generation += 1
+        generation = self._login_generation
+        url, timeout = self.server_url, login_timeout(self.config_manager)
+        attempt = LoginAttempt(
+            lambda: self._async_test(username, password, server_url=url, timeout=timeout),
+            lambda result: wx.CallAfter(self._finish_login, generation, username, password, auto_login_val, result))
+        self._login_attempt = attempt
+        attempt.start()
+
+    def _finish_login(self, generation, username, password, auto_login_val, result):
+        if self._login_closed or generation != self._login_generation:
             return
+        self._login_attempt = None
+        self._set_login_busy(False)
 
         if isinstance(result, dict) and result.get("type") == "authorize_success":
             try:
@@ -820,40 +851,23 @@ class LoginDialog(wx.Dialog):
             except RuntimeError:
                 pass
 
-    def _test_connection(self, username, password):
-        """Test connection and auth synchronously (blocking UI briefly)."""
+    async def _async_test(self, username, password, *, server_url=None, timeout=None):
+        url = server_url or self.server_url
+        timeout = login_timeout(self.config_manager) if timeout is None else timeout
         try:
-            return asyncio.run(self._async_test(username, password))
-        except Exception as e:
-            print(f"Async Loop Error: {e}")
-            return False
-
-    async def _async_test(self, username, password):
-        try:
-             async with websockets.connect(self.server_url, ssl=make_ssl_context(self.server_url)) as ws:
+             async with websockets.connect(url, ssl=make_ssl_context(url), open_timeout=timeout,
+                                           ping_timeout=timeout, close_timeout=2) as ws:
                 # Send authorize
-                await ws.send(json.dumps({
+                return await authorize(ws, {
                     **client_auth_metadata(),
                     "type": "authorize",
                     "username": username,
                     "password": password,
                     "version": VERSION,
-                }))
-                
-                # Wait for response
-                try:
-                    response = await asyncio.wait_for(ws.recv(), timeout=5.0)
-                    data = json.loads(response)
-                    
-                    if data.get("type") == "authorize_success":
-                        return data
-                    elif data.get("type") == "login_failed":
-                        return data
-                    else:
-                        return "auth_failed"
-                except asyncio.TimeoutError:
-                    return "timeout"
-                    
+                }, timeout)
+
+        except asyncio.TimeoutError:
+            return 'timeout'
         except ConnectionRefusedError:
             return "refused"
         except OSError as e:
@@ -864,6 +878,48 @@ class LoginDialog(wx.Dialog):
         except Exception as e:
              # websockets.exceptions.InvalidURI, etc
              return f"error:{str(e)}"
+
+    def _on_timeout_changed(self, event):
+        index = self.timeout_choice.GetSelection()
+        if index != wx.NOT_FOUND:
+            self.config_manager.set_client_option(LOGIN_TIMEOUT_OPTION, LOGIN_TIMEOUT_SECONDS[index], create_mode=True)
+
+    def _set_login_busy(self, busy):
+        self.server_choice.Enable(not busy)
+        self.timeout_choice.Enable(not busy)
+        for item in self.action_sizer.GetChildren():
+            if item.IsWindow():
+                item.GetWindow().Enable(not busy)
+        self.cancel_login_button.Show(busy)
+        self.panel.Layout()
+        if busy:
+            self.cancel_login_button.SetFocus()
+
+    def _cancel_login_attempt(self):
+        self._login_generation += 1
+        attempt, self._login_attempt = self._login_attempt, None
+        if attempt:
+            attempt.cancel()
+
+    def _on_cancel_login(self, event):
+        if self._login_attempt:
+            self._cancel_login_attempt()
+            self._set_login_busy(False)
+            self.status_text.SetLabel(Localization.get('login-cancelled'))
+            self.server_choice.SetFocus()
+        else:
+            self.EndModal(wx.ID_CANCEL)
+
+    def _on_login_close(self, event):
+        self._login_closed = True
+        self._cancel_login_attempt()
+        event.Skip()
+
+    def _on_login_destroy(self, event):
+        if event.GetEventObject() is self:
+            self._login_closed = True
+            self._cancel_login_attempt()
+        event.Skip()
 
     def get_credentials(self):
         """Get the login credentials."""

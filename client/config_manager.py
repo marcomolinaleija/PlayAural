@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from unfocused_audio import default_unfocused_silence, migrate_client_audio_options
+from connection_policy import DEFAULT_LOGIN_TIMEOUT_SECONDS
 
 # Keyring service name used for all stored credentials.
 _KEYRING_SERVICE = "PlayAural"
@@ -200,6 +201,7 @@ class ConfigManager:
         """Get the canonical default client options."""
         return {
             "interface_language": "en",
+            "network": {"login_timeout_seconds": DEFAULT_LOGIN_TIMEOUT_SECONDS},
             "audio": {
                 "music_volume": 20,
                 "sound_volume": 100,

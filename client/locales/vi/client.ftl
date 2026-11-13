@@ -380,3 +380,7 @@ auth-error-rate-limit = Quá nhiều lần đăng nhập thất bại. Vui lòng
 auth-error-rate-limit-generic = Có quá nhiều yêu cầu tài khoản trong thời gian ngắn. Vui lòng đợi rồi thử lại.
 auth-error-server-maintenance = Máy chủ đang bảo trì cơ sở dữ liệu. Đăng nhập, đăng ký và thay đổi mật khẩu đang tạm thời không khả dụng. Vui lòng thử lại sau khi bảo trì hoàn tất.
 auth-auto-login-disabled = Tự động đăng nhập đã bị tắt cho tài khoản này. Vui lòng đăng nhập thủ công và cập nhật thông tin đăng nhập nếu cần.
+
+connection-timeout-label = Thời gian chờ đăng nhập
+connection-timeout-value = { $seconds } giây
+login-cancelled = Đã hủy đăng nhập.

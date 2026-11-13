@@ -37,6 +37,7 @@ from windows_typing import (
     windows_alt_graph_active,
 )
 from network_manager import NetworkManager
+from connection_policy import login_timeout
 from buffer_system import BufferSystem
 from chat_reply import (
     chat_alert_sound,
@@ -2542,18 +2543,14 @@ class MainWindow(wx.Frame):
         self.add_history(Localization.get("main-connecting-to", url=server_url))
         if self.network.connect(server_url, username, password, client_version=VERSION):
             self.add_history(Localization.get("main-connecting-as", username=username))
-            # Start timeout check
-            wx.CallLater(5000, self._check_connection_timeout)
         else:
             self._show_connection_error(Localization.get("main-connection-failed"))
 
-    def _check_connection_timeout(self):
-        """Check if connection succeeded within timeout period."""
-        # Don't timeout if we're in the middle of reconnecting (either expected or silent)
-        if not self.connected and not self.expecting_reconnect and not self.is_reconnecting:
-            self._show_connection_error(
-                Localization.get("main-connection-timeout")
-            )
+    def on_connection_timeout(self):
+        """Return to sign-in so even auto-login users can choose a longer wait."""
+        if not self.quitting and not self.connected and not self.expecting_reconnect and not self.is_reconnecting:
+            self.disconnect_reason = Localization.get('main-connection-timeout')
+            self._finish_local_exit()
 
     def on_connection_lost(self):
         """Handle connection loss."""
@@ -2599,6 +2596,7 @@ class MainWindow(wx.Frame):
             self.sound_manager.stop_all(fade_ms=0)
             self._start_connection_audio()
             self.is_reconnecting = True
+            self.max_silent_reconnect_duration = 2 * login_timeout(self.config_manager)
             self.reconnect_start_time = time.time()
             self.speaker.speak(Localization.get("main-attempting-reconnect"), interrupt=True)
             self._attempt_silent_reconnect()
@@ -2614,9 +2612,9 @@ class MainWindow(wx.Frame):
 
         # Check timeout
         elapsed = time.time() - self.reconnect_start_time
-        if elapsed > self.max_silent_reconnect_duration:
+        if elapsed > self.max_silent_reconnect_duration and not self.network.is_connecting():
              self.is_reconnecting = False
-             self._show_connection_error(Localization.get("main-connection-timeout"))
+             self.on_connection_timeout()
              return
              
         # Attempt connection
@@ -2829,13 +2827,21 @@ class MainWindow(wx.Frame):
 
     def _do_reconnect(self, server_url, username, password):
         """Actually perform the reconnection attempt."""
-        self.reconnect_attempts += 1
-
         # Check if already connected (successful)
         if self.connected:
             self.expecting_reconnect = False
             self.reconnect_attempts = 0
             return
+
+        if self.network.is_connecting():
+            wx.CallLater(3000, lambda: self._do_reconnect(server_url, username, password))
+            return
+        if self.network.connected:
+            self.network.disconnect()
+            wx.CallLater(3000, lambda: self._do_reconnect(server_url, username, password))
+            return
+
+        self.reconnect_attempts += 1
 
         # Check if exceeded max attempts
         if self.reconnect_attempts > self.max_reconnect_attempts:

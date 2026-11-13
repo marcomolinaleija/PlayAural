@@ -385,3 +385,7 @@ error-email-taken = Este correo ya está en uso por otra cuenta.
 auth-error-rate-limit = Demasiados intentos fallidos de inicio de sesión. Inténtalo de nuevo en 15 minutos.
 auth-error-rate-limit-generic = Se realizaron demasiadas solicitudes de cuenta en poco tiempo. Espera y vuelve a intentarlo.
 auth-auto-login-disabled = El inicio de sesión automático se desactivó para esta cuenta. Inicia sesión manualmente y actualiza tus credenciales si hace falta.
+
+connection-timeout-label = Tiempo de espera al iniciar sesión
+connection-timeout-value = { $seconds } segundos
+login-cancelled = Inicio de sesión cancelado.

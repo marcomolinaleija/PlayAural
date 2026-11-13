@@ -6,6 +6,7 @@ from .text_direction import apply_text_layout_direction
 from localization import Localization
 from sound_manager import SPATIAL_MODES, normalize_spatial_mode
 from unfocused_audio import UNFOCUSED_SILENCE_CATEGORIES, silence_flags
+from connection_policy import LOGIN_TIMEOUT_SECONDS, LOGIN_TIMEOUT_OPTION, login_timeout, normalize_login_timeout
 
 
 class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
@@ -225,6 +226,11 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
         )
         self.play_typing_sounds_check.SetValue(interface.get("play_typing_sounds", True))
         sizer.Add(self.play_typing_sounds_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+        sizer.Add(wx.StaticText(panel, label=Localization.get('connection-timeout-label')), 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
+        self.timeout_choice = wx.Choice(panel, choices=[Localization.get('connection-timeout-value', seconds=value)
+                                                       for value in LOGIN_TIMEOUT_SECONDS])
+        self.timeout_choice.SetSelection(LOGIN_TIMEOUT_SECONDS.index(login_timeout(self.config_manager)))
+        sizer.Add(self.timeout_choice, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
         panel.SetSizer(sizer)
         return panel
 
@@ -296,6 +302,9 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
             interface = data_source.get("interface", {})
             self.invert_multiline_enter_check.SetValue(interface.get("invert_multiline_enter_behavior", False))
             self.play_typing_sounds_check.SetValue(interface.get("play_typing_sounds", True))
+            network = data_source.get('network')
+            value = network.get('login_timeout_seconds') if isinstance(network, dict) else None
+            self.timeout_choice.SetSelection(LOGIN_TIMEOUT_SECONDS.index(normalize_login_timeout(value)))
 
     def on_reset_to_last_used(self, event):
         """Reset fields in current tab to last saved values."""
@@ -345,6 +354,8 @@ class ClientOptionsDialog(wx.Dialog, uisound.SoundBindingsMixin):
         play_typing_sounds = self.play_typing_sounds_check.GetValue()
         self.config_manager.set_client_option("interface/invert_multiline_enter_behavior", invert_multiline_enter, create_mode=True)
         self.config_manager.set_client_option("interface/play_typing_sounds", play_typing_sounds, create_mode=True)
+        self.config_manager.set_client_option(LOGIN_TIMEOUT_OPTION,
+            LOGIN_TIMEOUT_SECONDS[max(0, self.timeout_choice.GetSelection())], create_mode=True)
 
         self.EndModal(wx.ID_OK)
 

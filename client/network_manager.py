@@ -8,6 +8,7 @@ import wx
 import websockets
 from client_info import client_auth_metadata
 from ssl_utils import make_ssl_context
+from connection_policy import authorize, login_timeout
 
 
 class NetworkManager:
@@ -28,10 +29,12 @@ class NetworkManager:
         self.thread = None
         self.loop = None
         self.should_stop = False
+        self._connect_task = None
+        self._attempt_id = 0
 
     def is_connecting(self):
         """Check if a connection attempt is in progress."""
-        return self.connecting or (self.thread and self.thread.is_alive())
+        return self.connecting or bool(self.thread and self.thread.is_alive() and not self.connected)
 
     def connect(self, server_url, username, password, client_version="0.0.0"):
         """
@@ -44,28 +47,21 @@ class NetworkManager:
             client_version: Version string of the client
         """
         try:
-            # Wait for old thread to finish if it is stopping
-            if self.should_stop and self.thread and self.thread.is_alive():
-                self.thread.join(timeout=2.0)
-
-            # Prevent multiple concurrent connection attempts
-            if self.is_connecting():
-                return False
-
-            # Wait for old thread to finish if it exists
+            # Pending and closing attempts finish in the background. Never
+            # block wx or overlap transports just because a retry timer fired.
             if self.thread and self.thread.is_alive():
-                self.should_stop = True
-                # Wait up to 2 seconds for thread to finish
-                self.thread.join(timeout=2.0)
+                return False
 
             self.username = username
             self.should_stop = False
             self.connecting = True
+            self._attempt_id += 1
+            timeout = login_timeout(getattr(self.main_window, 'config_manager', None))
 
             # Start async thread
             self.thread = threading.Thread(
                 target=self._run_async_loop,
-                args=(server_url, username, password, client_version),
+                args=(server_url, username, password, client_version, self._attempt_id, timeout),
                 daemon=True,
             )
             self.thread.start()
@@ -76,7 +72,7 @@ class NetworkManager:
             self.connecting = False
             return False
 
-    def _run_async_loop(self, server_url, username, password, client_version):
+    def _run_async_loop(self, server_url, username, password, client_version, attempt_id, timeout):
         """Run the async event loop in a thread."""
         try:
             # Create new event loop for this thread
@@ -84,42 +80,53 @@ class NetworkManager:
             asyncio.set_event_loop(self.loop)
 
             # Run the connection coroutine
-            self.loop.run_until_complete(
-                self._connect_and_listen(server_url, username, password, client_version)
-            )
+            self._connect_task = self.loop.create_task(
+                self._connect_and_listen(server_url, username, password, client_version, attempt_id, timeout))
+            self.loop.run_until_complete(self._connect_task)
+        except asyncio.CancelledError:
+            pass
         except Exception:
             traceback.print_exc()
         finally:
             self.connecting = False
+            self._connect_task = None
             if self.loop and self.loop.is_running():
                  self.loop.close()
             elif self.loop:
                  self.loop.close()
 
-    async def _connect_and_listen(self, server_url, username, password, client_version):
+    async def _connect_and_listen(self, server_url, username, password, client_version, attempt_id, timeout):
         """Connect to server and listen for messages."""
+        timed_out = False
+        rejected = False
         try:
+            if self.should_stop:
+                return
             async with websockets.connect(
                 server_url,
                 ssl=make_ssl_context(server_url),
                 ping_interval=20,
-                ping_timeout=20,
+                ping_timeout=timeout,
+                open_timeout=timeout,
+                close_timeout=2,
             ) as websocket:
                 self.ws = websocket
-                self.connected = True
-
-                # Send authorization packet
-                await websocket.send(
-                    json.dumps(
-                        {
+                response = await authorize(websocket, {
                             **client_auth_metadata(),
                             "type": "authorize",
                             "username": username,
                             "password": password,
                             "version": client_version,
-                        }
-                    )
-                )
+                        }, timeout, lambda packet: wx.CallAfter(self._handle_packet, packet, attempt_id))
+                if self.should_stop:
+                    return
+                rejected = response['type'] == 'login_failed'
+                if not rejected:
+                    self.connected = True
+                    self.connecting = False
+                wx.CallAfter(self._handle_packet, response, attempt_id)
+                if rejected:
+                    return
 
                 # Listen for messages
                 while not self.should_stop:
@@ -129,7 +136,7 @@ class NetworkManager:
 
                         # Forward to main thread (skip if shutting down)
                         if not self.should_stop:
-                            wx.CallAfter(self._handle_packet, packet)
+                            wx.CallAfter(self._handle_packet, packet, attempt_id)
                     except asyncio.TimeoutError:
                         # Timeout is normal, just continue
                         continue
@@ -139,7 +146,9 @@ class NetworkManager:
                         # Malformed packet — discard and keep listening
                         continue
 
-        except (ConnectionRefusedError, OSError, asyncio.TimeoutError) as e:
+        except asyncio.TimeoutError:
+            timed_out = True
+        except (ConnectionRefusedError, OSError) as e:
             # Common connection errors - log briefly, don't spam traceback
             print(f"Connection attempt failed: {e}")
         except websockets.exceptions.InvalidStatus as e:
@@ -152,19 +161,31 @@ class NetworkManager:
             self.ws = None
             # Only call on_connection_lost if we're not in the middle of stopping
             # (to avoid race conditions during reconnection)
-            if not self.should_stop:
-                wx.CallAfter(self.main_window.on_connection_lost)
+            if not self.should_stop and not rejected:
+                wx.CallAfter(self._connection_ended, attempt_id, timed_out)
+
+    def _connection_ended(self, attempt_id, timed_out):
+        if attempt_id != self._attempt_id or self.should_stop:
+            return
+        try:
+            if not self.main_window.IsShown():
+                return
+        except RuntimeError:
+            return
+        if timed_out:
+            self.main_window.on_connection_timeout()
+        else:
+            self.main_window.on_connection_lost()
 
     def disconnect(self):
         """Disconnect from server."""
         self.should_stop = True
         self.connected = False
 
-        # Close websocket if it exists
-        if self.ws and self.loop:
+        # Cancel DNS/open/authentication/listening, including before ws exists.
+        if self._connect_task and self.loop:
             try:
-                # Schedule close in the async loop
-                asyncio.run_coroutine_threadsafe(self.ws.close(), self.loop)
+                self.loop.call_soon_threadsafe(self._connect_task.cancel)
             except Exception:
                 pass  # Ignore errors during cleanup
 
@@ -192,13 +213,15 @@ class NetworkManager:
                 wx.CallAfter(self.main_window.on_connection_lost)
             return False
 
-    def _handle_packet(self, packet):
+    def _handle_packet(self, packet, attempt_id=None):
         """
         Handle incoming packet from server (called in main thread).
 
         Args:
             packet: Dictionary received from server
         """
+        if self.should_stop or (attempt_id is not None and attempt_id != self._attempt_id):
+            return
         # Guard against delivery to a window that was destroyed between the
         # wx.CallAfter dispatch and the main-thread execution of this callback.
         try:

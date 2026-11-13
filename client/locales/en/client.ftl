@@ -386,3 +386,7 @@ auth-error-rate-limit = Too many failed login attempts. Please try again in 15 m
 auth-error-rate-limit-generic = Too many account requests were made in a short time. Please wait and try again.
 auth-error-server-maintenance = Server database maintenance is in progress. Login, registration, and password changes are temporarily unavailable. Please try again after maintenance finishes.
 auth-auto-login-disabled = Auto-login has been disabled for this account. Please log in manually and update your credentials if needed.
+
+connection-timeout-label = Sign-in timeout
+connection-timeout-value = { $seconds } seconds
+login-cancelled = Sign-in cancelled.

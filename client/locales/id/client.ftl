@@ -353,3 +353,7 @@ auth-error-server-maintenance = Basis data server sedang dalam pemeliharaan. Unt
 auth-auto-login-disabled = Masuk otomatis dinonaktifkan untuk akun ini. Silakan masuk secara manual dan perbarui nama pengguna atau kata sandi tersimpan jika diperlukan.
 voice-chat-mic-on = Mikrofon menyala.
 voice-chat-mic-off = Mikrofon mati.
+
+connection-timeout-label = Batas waktu masuk
+connection-timeout-value = { $seconds } detik
+login-cancelled = Proses masuk dibatalkan.
