@@ -276,13 +276,13 @@ async def test_language_selection_and_category_management_over_real_socket(tmp_p
                                      'username': 'Staff', 'password': 'TestPassword123'}))
             await receive(ws, lambda p: p.get('menu_id') == 'main_menu')
             home = await choose(ws, 'main_menu', 'forum', nav.HOME)
-            assert home['title'] == 'Foro: Español' and home['items'][2]['id'] == 'category:general'
+            assert home['title'] == 'Foro: Español' and home['items'][3]['id'] == 'category:general'
             await choose(ws, nav.HOME, 'language', nav.LANGUAGES)
             english = await choose(ws, nav.LANGUAGES, 'language:en', nav.HOME)
             assert english['title'] == 'Foro: Inglés'
             assert english['selection_id'] == 'language'
-            assert english['items'][2]['id'] == 'category:en:general'
-            assert english['items'][2]['text'].startswith('Community')
+            assert english['items'][3]['id'] == 'category:en:general'
+            assert english['items'][3]['text'].startswith('Community')
             topics = await choose(ws, nav.HOME, 'recent', nav.TOPICS)
             assert any('English only' in row['text'] for row in topics['items'])
             assert not any('Solo español' in row['text'] for row in topics['items'])

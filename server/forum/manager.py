@@ -121,7 +121,10 @@ class ForumManager:
                 or self.private.handle(user, selection, state)):
             return
         if menu == nav.HOME:
-            if selection in {"recent", "unread", "saved"}:
+            if selection == 'community_rules':
+                push(user, self.server._show_document_content, 'community_rules',
+                     locale=state.get('forum_language') or self.service.languages.current(user.uuid))
+            elif selection in {"recent", "unread", "saved"}:
                 push(user, self.views.topics, selection, language=state.get('forum_language'))
             elif selection.startswith("category:"):
                 push(user, self.views.topics, "category", selection.removeprefix("category:"))

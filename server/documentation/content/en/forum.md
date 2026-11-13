@@ -4,7 +4,7 @@ Choose Forum in the main menu to read and join community discussions. Use your u
 
 \*\*Finding a Discussion\*\*
 
-Private conversations and Recent activity always come first, followed by the subforums in the selected language. Open one of the subforums available in your chosen language. Their names and organization depend on the community's configuration and may change. Topics appear first, with their author, message count, activity, and unread status. Actions follow the topics. Recent activity shows discussions across subforums in the chosen language. Search looks in titles and visible message text. Saved discussions contains only the discussions you saved.
+Private conversations, Recent activity and Community Rules always come first, followed by the subforums in the selected language. Community Rules opens the same rules available in Documentation, in the forum community's language. Back or Escape returns to that entry. Open one of the subforums available in your chosen language. Their names and organization depend on the community's configuration and may change. Topics appear first, with their author, message count, activity, and unread status. Actions follow the topics. Recent activity shows discussions across subforums in the chosen language. Search looks in titles and visible message text. Saved discussions contains only the discussions you saved.
 
 Saved discussions can include public and private conversations. A private conversation is identified in the list and stays available only while you belong to it. Private conversations do not appear in category lists, Recent activity, Unread discussions, or Search.
 

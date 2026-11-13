@@ -188,7 +188,7 @@ def test_content_precedes_actions_and_entry_context_is_spoken_once(navigation_se
     server._nav_push(user, manager.home)
     packets = user.get_queued_messages()
     home = [p for p in packets if p.get("menu_id") == nav.HOME][-1]
-    assert [row["id"] for row in home["items"]][:3] == ["private", "recent", "category:general"]
+    assert [row["id"] for row in home["items"]][:4] == ["private", "recent", "community_rules", "category:general"]
     assert home["title"] == "Foro: Español"
     assert len([p for p in packets if p.get("key") == "forum-entry-home-language"]) == 1
     server._nav_push(user, manager.views.topics, "category", "general")

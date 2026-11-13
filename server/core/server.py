@@ -10861,10 +10861,10 @@ PlayAural Server
         # For now, we use menu handlers.
         pass
 
-    def _show_document_content(self, user: NetworkUser, doc_id: str) -> None:
+    def _show_document_content(self, user: NetworkUser, doc_id: str, *, locale: str | None = None) -> None:
         """Display document content as read-only browseable lines."""
         manager = DocumentationManager.get_instance()
-        content = manager.get_document(doc_id, user.locale)
+        content = manager.get_document(doc_id, locale or user.locale)
         
         if not content:
             user.speak_l("document-not-found", buffer="system")
@@ -10885,7 +10885,8 @@ PlayAural Server
         # Store metadata so we know where to go back to
         self._user_states[user.username] = {
             "menu": "doc_viewer",
-            "doc_id": doc_id
+            "doc_id": doc_id,
+            "doc_locale": locale,
         }
 
     async def _handle_documentation_selection(self, user: NetworkUser, selection_id: str) -> None:
@@ -19972,7 +19973,7 @@ PlayAural Server
         elif menu == "doc_viewer":
             doc_id = frame.get("doc_id", "")
             if doc_id:
-                self._show_document_content(user, doc_id)
+                self._show_document_content(user, doc_id, locale=frame.get('doc_locale'))
             else:
                 self._show_documentation_menu(user)
         elif menu == "email_confirm_menu":
