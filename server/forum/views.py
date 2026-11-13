@@ -84,6 +84,7 @@ class ForumViews:
         language = language or self.service.languages.current(user.uuid)
         language_name = label(user, 'forum-language-' + language)
         rows = [item(user, 'forum-private', 'private'), item(user, 'forum-recent', 'recent')]
+        rows.append(MenuItem(text=Localization.get(language, 'community-rules'), id='community_rules'))
         rows.extend(item(user, "forum-category-row", f"category:{category.id}",
                      name=category_name(user, category), count=category.topic_count)
                     for category in self.service.categories(user.uuid, language=language))

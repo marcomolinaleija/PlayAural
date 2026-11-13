@@ -1,45 +1,64 @@
 \*\*Normas de la comunidad\*\*
 
-PlayAural busca ser amigable, justo y acogedor. Estas normas explican cómo se espera que se comporte todo el mundo. Al usar PlayAural, aceptas seguirlas.
+Estas normas se aplican al foro, los chats públicos y privados, la voz, las mesas, los nombres de usuario y los archivos. Al usar PlayAural, aceptas seguirlas.
 
 \*\*1. Respeta a los demás\*\*
 
-\* Habla con los demás con cortesía, incluso en partidas competitivas.
-\* No acoses, insultes, amenaces ni humilles deliberadamente a otros usuarios.
-\* No se permite el discurso de odio, la discriminación ni los ataques personales.
+\* No dirijas insultos, amenazas, comentarios discriminatorios ni burlas personales a otros usuarios.
+\* Puedes cuestionar ideas, propuestas y decisiones de juego. Estar en desacuerdo, perder una partida o recibir una crítica no constituye por sí solo una infracción.
+\* Ten paciencia con quienes están aprendiendo la plataforma o las reglas de un juego.
 
-\*\*2. Mantén el chat razonable\*\*
+\*\*2. Respeta los rechazos y bloqueos\*\*
+
+\* Si alguien te pide que dejes de contactarlo, no insistas.
+\* No uses otras cuentas ni intermediarios para contactar a quien te haya bloqueado o pedido que dejes de contactarlo.
+
+\*\*3. Evita el spam\*\*
 
 \* Usa el idioma del canal de chat global que hayas seleccionado. Elige otro canal en Opciones cuando quieras conversar en un idioma diferente.
-\* Si el chat global te distrae, desactívalo en Opciones. Si otro usuario se comporta de forma abusiva, bloquéalo en lugar de discutir con él.
-\* Los mensajes del chat global se guardan con el identificador de la cuenta del remitente y la hora exacta para su revisión manual. Permanecen guardados hasta que un desarrollador borra el historial.
-\* No inundes el chat con mensajes repetidos, publicidad no deseada ni spam disruptivo.
-\* Los mensajes privados deben seguir los mismos estándares que el chat público.
+\* No llenes el chat con mensajes repetidos ni publicidad no solicitada. No repitas invitaciones después de un rechazo.
+\* No satures el canal de voz con sonidos repetidos.
 
-\*\*3. Juega limpio\*\*
+\*\*4. Juega limpio\*\*
 
-\* No hagas trampa.
-\* No uses herramientas externas, scripts, exploits ni mecánicas no previstas para obtener una ventaja injusta.
+\* No uses errores del programa, automatizaciones ni cuentas adicionales para obtener monedas, manipular resultados, puntuaciones, registros, votaciones o funciones sociales, ni acceder a información de juego que deba permanecer oculta.
 \* No demores el juego a propósito solo para frustrar a otros jugadores.
 \* No te desconectes repetidamente para evitar derrotas o interrumpir mesas.
-\* No uses varias cuentas para manipular puntuaciones, registros o funciones sociales.
+\* Comunica los errores al equipo en lugar de aprovecharlos.
 
-\*\*4. Respeta la privacidad\*\*
+\*\*5. Protege la privacidad\*\*
 
-\* No publiques mensajes privados ni información personal de otra persona sin su permiso.
-\* No uses mensajes privados para amenazar, presionar ni acosar a nadie.
+\* No publiques teléfonos, domicilios, contraseñas ni mensajes privados de otra persona sin su permiso.
+\* Antes de grabar una conversación de voz, pide autorización a todos los participantes. Para compartirla, necesitas también su permiso.
 
-\*\*5. Muestra buena etiqueta de mesa\*\*
+\*\*6. No suplantes identidades\*\*
 
-\* Gana y pierde con autocontrol.
-\* No te burles excesivamente de los demás después de ganar.
-\* No dirijas tu enojo hacia otros jugadores después de perder.
-\* Ten paciencia con los jugadores nuevos que todavía están aprendiendo la plataforma o las reglas de un juego.
+\* No te hagas pasar por otra persona ni por un integrante del equipo.
+\* No solicites contraseñas ni códigos de acceso de otras personas.
 
-\*\*6. Moderación y aplicación de normas\*\*
+\*\*7. Cuida los archivos y enlaces que compartes\*\*
 
-El administrador puede advertir, silenciar, suspender, expulsar o banear cuentas que violen estas normas de forma grave o repetida. Las decisiones de aplicación se toman para proteger la estabilidad y la seguridad de la comunidad.
+\* No compartas pornografía, archivos maliciosos ni enlaces diseñados para robar datos.
+\* Comparte archivos propios o cuya distribución esté permitida.
 
-\*\*7. Comentarios\*\*
+\*\*8. Publica en el lugar correspondiente\*\*
 
-PlayAural sigue creciendo. Los comentarios sobre accesibilidad, jugabilidad y problemas de la comunidad siempre son útiles. Si descubres un problema grave, repórtalo en lugar de aprovecharlo.
+\* Publica cada tema una sola vez y en el subforo correspondiente.
+\* Abre otro tema si quieres tratar un asunto distinto al de la conversación.
+
+\*\*9. No falsifiques pruebas ni reportes\*\*
+
+\* No fabriques ni alteres mensajes, capturas o grabaciones para atribuir a otra persona algo que no dijo o hizo.
+\* No presentes como hechos en un reporte acusaciones que sabes que son falsas.
+
+\*\*10. Incumplimientos y medidas\*\*
+
+Incumplir cualquiera de estas normas puede dar lugar a una advertencia, retirada de contenido, silencio, suspensión temporal o expulsión permanente de la plataforma. El equipo de moderación decidirá la medida según la gravedad del incumplimiento y la reincidencia. Una suspensión o expulsión puede aplicarse sin advertencia previa.
+
+No uses otra cuenta ni la cuenta de otra persona para evitar una restricción o suspensión.
+
+\*\*Reportes y consultas\*\*
+
+Reporta los incumplimientos al equipo. También puedes comunicar problemas de funcionamiento o enviar propuestas de mejora.
+
+Los mensajes del chat global se guardan con el identificador de la cuenta del remitente y la hora exacta para su revisión manual. Permanecen guardados hasta que un desarrollador borra el historial. Puedes desactivar el chat global en Opciones.

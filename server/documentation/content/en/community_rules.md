@@ -1,45 +1,64 @@
 \*\*Community Rules\*\*
 
-PlayAural is meant to be friendly, fair, and welcoming. These rules explain how everyone is expected to behave. By using PlayAural, you agree to follow them.
+These rules apply to the forum, public and private chats, voice, tables, usernames and files. By using PlayAural, you agree to follow them.
 
-\*\*1. Respect Other People\*\*
+\*\*1. Respect other people\*\*
 
-\* Speak to others politely, even during competitive games.
-\* Do not harass, insult, threaten, or deliberately humiliate other users.
-\* Hate speech, discrimination, and personal attacks are not allowed.
+\* Do not direct insults, threats, discriminatory comments or personal mockery at other users.
+\* You may question ideas, proposals and game decisions. Disagreeing, losing a game or receiving criticism is not in itself a violation.
+\* Be patient with people who are learning the platform or a game's rules.
 
-\*\*2. Keep Chat Reasonable\*\*
+\*\*2. Respect refusals and blocks\*\*
+
+\* If someone asks you to stop contacting them, do not insist.
+\* Do not use other accounts or intermediaries to contact someone who has blocked you or asked you to stop contacting them.
+
+\*\*3. Avoid spam\*\*
 
 \* Use the language of the global chat channel you selected. Choose another channel in Options when you want to chat in a different language.
-\* If global chat is distracting, turn it off in Options. If another user is abusive, block them instead of arguing with them.
-\* Global chat messages are saved with the sender's account ID and exact time for manual review. They remain saved until a developer clears the history.
-\* Do not flood chat with repeated messages, unwanted advertising, or disruptive spam.
-\* Private messages must follow the same standards as public chat.
+\* Do not flood chat with repeated messages or unsolicited advertising. Do not repeat invitations after a refusal.
+\* Do not flood the voice channel with repeated sounds.
 
-\*\*3. Play Fair\*\*
+\*\*4. Play fair\*\*
 
-\* Do not cheat.
-\* Do not use outside tools, scripts, exploits, or unintended mechanics to gain an unfair advantage.
-\* Do not stall on purpose just to frustrate other players.
+\* Do not use program errors, automation or additional accounts to obtain coins, manipulate results, ratings, records, votes or social features, or access game information that must remain hidden.
+\* Do not deliberately delay play just to frustrate other players.
 \* Do not repeatedly disconnect to avoid losses or disrupt tables.
-\* Do not use multiple accounts to manipulate ratings, records, or social features.
+\* Report errors to the team instead of exploiting them.
 
-\*\*4. Respect Privacy\*\*
+\*\*5. Protect privacy\*\*
 
-\* Do not publish another person's private messages or personal information without permission.
-\* Do not use private messages to threaten, pressure, or harass anyone.
+\* Do not publish another person's phone numbers, home addresses, passwords or private messages without their permission.
+\* Before recording a voice conversation, get permission from all participants. You also need their permission to share it.
 
-\*\*5. Show Good Table Etiquette\*\*
+\*\*6. Do not impersonate others\*\*
 
-\* Win and lose with self-control.
-\* Do not taunt people excessively after winning.
-\* Do not direct anger at other players after losing.
-\* Be patient with new players who are still learning the platform or a game's rules.
+\* Do not pretend to be another person or a member of the team.
+\* Do not ask for other people's passwords or access codes.
 
-\*\*6. Moderation and Enforcement\*\*
+\*\*7. Check the files and links you share\*\*
 
-The administrator may warn, mute, suspend, kick, or ban accounts that seriously or repeatedly violate these rules. Enforcement decisions are made to protect the stability and safety of the community.
+\* Do not share pornography, malicious files or links designed to steal data.
+\* Share files you own or are permitted to distribute.
 
-\*\*7. Feedback\*\*
+\*\*8. Post in the right place\*\*
 
-PlayAural continues to grow. Feedback about accessibility, gameplay, and community issues is always useful. If you discover a serious problem, report it instead of exploiting it.
+\* Post each topic only once and in the appropriate subforum.
+\* Start a new topic if you want to discuss a different subject.
+
+\*\*9. Do not falsify evidence or reports\*\*
+
+\* Do not fabricate or alter messages, screenshots or recordings to attribute something to another person that they did not say or do.
+\* Do not present accusations you know are false as facts in a report.
+
+\*\*10. Violations and measures\*\*
+
+Violating any of these rules may result in a warning, content removal, a mute, temporary suspension or permanent exclusion from the platform. The moderation team will choose the measure based on the severity of the violation and repeated violations. Suspension or permanent exclusion may be imposed without a prior warning.
+
+Do not use another account or someone else's account to evade a restriction or suspension.
+
+\*\*Reports and questions\*\*
+
+Report violations to the team. You may also report technical problems or suggest improvements.
+
+Global chat messages are saved with the sender's account ID and exact time for manual review. They remain saved until a developer clears the history. You can turn off global chat in Options.

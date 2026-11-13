@@ -99,6 +99,11 @@ Questions and help, or Ideas and feedback; start a discussion, read messages,
 reply, and edit your messages. Recent activity, unread discussions, saved
 discussions, and text search help you find and continue conversations.
 
+**Community Rules** stays on the forum home after Private conversations and
+Recent activity. It opens the official rules in the selected forum community's
+language. Back returns to that same entry. The rules also remain available in
+Documentation.
+
 Content comes first and actions follow it. Brief context is announced on entry;
 titles and page summaries do not occupy extra menu rows. Messages remain plain
 text, and publishing always follows an explicit preview. Existing accounts,

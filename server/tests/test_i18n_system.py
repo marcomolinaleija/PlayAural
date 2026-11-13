@@ -324,12 +324,12 @@ def test_language_menu_pins_defaults_and_displays_translator_metadata():
 
     assert ids[0] == "lang_es"
     assert "Official PlayAural language" in rows["lang_es"]
-    assert "Translators: UnDuende and Tadeu Junior" in rows["lang_es"]
+    assert "Translators: UnDuende, Tadeu Junior, and Codex" in rows["lang_es"]
     assert rows["lang_en"].startswith("Current: English.")
     assert "Official PlayAural language" not in rows["lang_en"]
     assert "Translators: PlayAural core team" in rows["lang_en"]
     assert rows["lang_vi"].startswith("Vietnamese (Tiếng Việt).")
-    assert "Translators: Trung and PlayAural core team" in rows["lang_vi"]
+    assert "Translators: Trung, PlayAural core team, and Codex" in rows["lang_vi"]
     assert ids[-1] == "back"
 
 

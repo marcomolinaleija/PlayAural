@@ -52,9 +52,9 @@ def test_pinned_views_always_precede_language_subforums(forum):
         server.forum_manager.views.home(user, language)
         packet = next(p for p in user.get_queued_messages() if p.get('menu_id') == nav.HOME)
         ids = [row['id'] for row in packet['items']]
-        assert ids[:2] == ['private', 'recent']
-        assert all(key.startswith('category:') for key in ids[2:5])
-        assert ids[5:8] == ['unread', 'saved', 'search']
+        assert ids[:3] == ['private', 'recent', 'community_rules']
+        assert all(key.startswith('category:') for key in ids[3:6])
+        assert ids[6:9] == ['unread', 'saved', 'search']
         assert ids.count('private') == ids.count('recent') == 1
         assert ids[-2:] == ['language', 'back']
 

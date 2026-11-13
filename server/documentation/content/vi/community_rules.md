@@ -1,45 +1,64 @@
 \*\*Nội quy cộng đồng\*\*
 
-PlayAural hướng tới một môi trường thân thiện, công bằng và dễ tiếp cận. Những quy định dưới đây cho biết mọi người cần cư xử như thế nào. Khi sử dụng PlayAural, bạn đồng ý tuân theo các quy định này.
+Nội quy này áp dụng cho diễn đàn, trò chuyện công khai và riêng tư, trò chuyện thoại, bàn chơi, tên người dùng và tệp. Khi sử dụng PlayAural, bạn đồng ý tuân theo nội quy này.
 
 \*\*1. Tôn trọng người khác\*\*
 
-\* Hãy trò chuyện với người khác bằng thái độ lịch sự, kể cả trong những ván có tính cạnh tranh cao.
-\* Không quấy rối, xúc phạm, đe dọa hoặc cố tình làm nhục người dùng khác.
-\* Không chấp nhận lời lẽ thù ghét, phân biệt đối xử hay công kích cá nhân.
+\* Không xúc phạm, đe dọa, đưa ra lời lẽ phân biệt đối xử hoặc chế giễu cá nhân người dùng khác.
+\* Bạn có thể phản biện ý tưởng, đề xuất và quyết định trong trò chơi. Bất đồng quan điểm, thua một ván chơi hoặc nhận lời phê bình không tự nó cấu thành vi phạm.
+\* Hãy kiên nhẫn với người đang học cách dùng nền tảng hoặc luật của một trò chơi.
 
-\*\*2. Giữ cho phần trò chuyện ở mức hợp lý\*\*
+\*\*2. Tôn trọng việc từ chối và chặn liên lạc\*\*
 
-\* Hãy dùng đúng ngôn ngữ của kênh trò chuyện chung bạn đã chọn. Khi muốn trò chuyện bằng ngôn ngữ khác, hãy chọn kênh khác trong mục Tùy chỉnh.
-\* Nếu trò chuyện chung làm bạn mất tập trung, hãy tắt nó trong mục Tùy chỉnh. Nếu người dùng khác có lời lẽ xúc phạm, hãy chặn họ thay vì tranh cãi.
-\* Tin nhắn trò chuyện chung được lưu cùng ID tài khoản của người gửi và thời điểm chính xác để xem xét thủ công. Tin nhắn sẽ được giữ lại cho đến khi nhà phát triển xóa lịch sử.
-\* Không làm ngập phần trò chuyện bằng tin nhắn lặp lại, quảng bá không được yêu cầu hoặc nội dung gây phiền.
-\* Tin nhắn riêng cũng phải tuân theo cùng chuẩn mực như trò chuyện công khai.
+\* Nếu ai đó yêu cầu bạn ngừng liên lạc, đừng tiếp tục làm phiền họ.
+\* Không dùng tài khoản khác hoặc nhờ người trung gian để liên lạc với người đã chặn bạn hoặc yêu cầu bạn ngừng liên lạc.
 
-\*\*3. Chơi công bằng\*\*
+\*\*3. Không gửi nội dung rác\*\*
 
-\* Không gian lận.
-\* Không dùng công cụ bên ngoài, đoạn lệnh, lỗi trò chơi hay cơ chế ngoài ý muốn để tạo lợi thế không công bằng.
-\* Không cố tình kéo dài lượt chỉ để làm người khác khó chịu.
-\* Không liên tục ngắt kết nối để né thua hoặc phá bàn.
-\* Không dùng nhiều tài khoản để thao túng xếp hạng, thành tích hoặc các tính năng giao tiếp.
+\* Hãy dùng đúng ngôn ngữ của kênh trò chuyện chung đã chọn. Nếu muốn trò chuyện bằng ngôn ngữ khác, hãy chọn kênh khác trong mục Tùy chỉnh.
+\* Không làm ngập phần trò chuyện bằng tin nhắn lặp lại hoặc quảng cáo không được yêu cầu. Không gửi lại lời mời sau khi bị từ chối.
+\* Không phát âm thanh lặp đi lặp lại làm ngập kênh thoại.
 
-\*\*4. Tôn trọng quyền riêng tư\*\*
+\*\*4. Chơi công bằng\*\*
 
-\* Không công khai tin nhắn riêng hoặc thông tin cá nhân của người khác khi chưa được cho phép.
-\* Không dùng tin nhắn riêng để đe dọa, ép buộc hoặc quấy rối bất kỳ ai.
+\* Không dùng lỗi chương trình, công cụ tự động hoặc tài khoản phụ để lấy xu, thao túng kết quả, xếp hạng, thành tích, bình chọn hay tính năng giao tiếp, hoặc truy cập thông tin trò chơi phải được giữ kín.
+\* Không cố tình kéo dài ván chơi chỉ để làm người khác khó chịu.
+\* Không liên tục ngắt kết nối để né thua hoặc phá bàn chơi.
+\* Hãy báo lỗi cho đội ngũ thay vì lợi dụng lỗi.
 
-\*\*5. Giữ phép lịch sự tại bàn\*\*
+\*\*5. Bảo vệ quyền riêng tư\*\*
 
-\* Dù thắng hay thua cũng cần giữ bình tĩnh.
-\* Không chế giễu quá mức sau khi thắng.
-\* Không trút bực dọc lên người khác sau khi thua.
-\* Hãy kiên nhẫn với người mới đang học cách dùng hệ thống hoặc đang làm quen với luật chơi.
+\* Không công khai số điện thoại, địa chỉ nhà, mật khẩu hoặc tin nhắn riêng của người khác khi chưa được họ cho phép.
+\* Trước khi ghi âm cuộc trò chuyện thoại, hãy xin phép tất cả người tham gia. Bạn cũng cần họ cho phép trước khi chia sẻ bản ghi.
 
-\*\*6. Kiểm duyệt và xử lý vi phạm\*\*
+\*\*6. Không mạo danh\*\*
 
-Quản trị viên có thể cảnh báo, tắt tiếng, tạm khóa, đuổi khỏi máy chủ hoặc cấm tài khoản nếu phát hiện vi phạm nghiêm trọng hoặc tái phạm nhiều lần. Các quyết định xử lý được đưa ra để bảo vệ sự an toàn và ổn định của cộng đồng.
+\* Không giả làm người khác hoặc thành viên đội ngũ.
+\* Không yêu cầu mật khẩu hoặc mã truy cập của người khác.
 
-\*\*7. Góp ý\*\*
+\*\*7. Chú ý đến tệp và liên kết bạn chia sẻ\*\*
 
-PlayAural vẫn tiếp tục được hoàn thiện. Mọi góp ý về khả năng tiếp cận, cách chơi và nếp sinh hoạt cộng đồng đều có ích. Nếu gặp vấn đề nghiêm trọng, hãy báo lại thay vì lợi dụng lỗi đó.
+\* Không chia sẻ nội dung khiêu dâm, tệp độc hại hoặc liên kết nhằm đánh cắp dữ liệu.
+\* Chỉ chia sẻ tệp của mình hoặc tệp mà bạn được phép phân phối.
+
+\*\*8. Đăng đúng nơi\*\*
+
+\* Mỗi chủ đề chỉ đăng một lần và trong đúng diễn đàn con.
+\* Hãy mở chủ đề mới nếu muốn bàn về vấn đề khác với cuộc trò chuyện hiện tại.
+
+\*\*9. Không làm giả bằng chứng hoặc báo cáo\*\*
+
+\* Không bịa đặt hoặc chỉnh sửa tin nhắn, ảnh chụp màn hình hay bản ghi để gán cho người khác lời nói hoặc hành động mà họ không nói hay thực hiện.
+\* Không trình bày những cáo buộc mà bạn biết là sai thành sự thật trong báo cáo.
+
+\*\*10. Vi phạm và biện pháp xử lý\*\*
+
+Vi phạm bất kỳ quy định nào ở trên có thể dẫn đến cảnh báo, gỡ nội dung, tắt tiếng, đình chỉ tạm thời hoặc cấm vĩnh viễn khỏi nền tảng. Đội ngũ kiểm duyệt quyết định biện pháp dựa trên mức độ nghiêm trọng và việc tái phạm. Việc đình chỉ hoặc cấm có thể được áp dụng mà không cần cảnh báo trước.
+
+Không dùng tài khoản khác hoặc tài khoản của người khác để né tránh hạn chế hay đình chỉ.
+
+\*\*Báo cáo và câu hỏi\*\*
+
+Hãy báo các vi phạm cho đội ngũ. Bạn cũng có thể báo sự cố hoặc gửi đề xuất cải tiến.
+
+Tin nhắn trò chuyện chung được lưu cùng ID tài khoản người gửi và thời điểm chính xác để xem xét thủ công. Tin nhắn được giữ lại cho đến khi nhà phát triển xóa lịch sử. Bạn có thể tắt trò chuyện chung trong mục Tùy chỉnh.

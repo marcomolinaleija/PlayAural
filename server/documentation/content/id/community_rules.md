@@ -1,39 +1,64 @@
 \*\*Aturan Komunitas\*\*
 
-PlayAural ingin menjadi tempat yang ramah, adil, dan terbuka bagi semua orang. Aturan ini menjelaskan perilaku yang diharapkan dari setiap pengguna. Dengan menggunakan PlayAural, Anda setuju untuk mematuhinya.
+Aturan ini berlaku untuk forum, obrolan publik dan pribadi, obrolan suara, meja, nama pengguna, dan berkas. Dengan menggunakan PlayAural, Anda setuju untuk mematuhinya.
 
-\*\*Hormati orang lain\*\*
+\*\*1. Hormati orang lain\*\*
 
-Bicaralah dengan sopan, termasuk saat bersaing dalam game. Jangan melecehkan, menghina, mengancam, atau sengaja mempermalukan pengguna lain. Ujaran kebencian, diskriminasi, dan serangan pribadi tidak diperbolehkan.
+\* Jangan menghina, mengancam, melontarkan komentar diskriminatif, atau mengejek pengguna lain secara pribadi.
+\* Anda boleh mempertanyakan gagasan, usulan, dan keputusan dalam permainan. Berbeda pendapat, kalah dalam permainan, atau menerima kritik bukanlah pelanggaran dengan sendirinya.
+\* Bersabarlah terhadap orang yang sedang mempelajari platform atau aturan permainan.
 
-\*\*Jaga kenyamanan obrolan\*\*
+\*\*2. Hormati penolakan dan pemblokiran\*\*
 
-Gunakan bahasa yang sesuai dengan saluran obrolan global pilihan Anda. Jika ingin mengobrol dalam bahasa lain, pilih saluran lain melalui Pengaturan.
+\* Jika seseorang meminta Anda berhenti menghubunginya, jangan terus mencoba.
+\* Jangan gunakan akun lain atau perantara untuk menghubungi orang yang telah memblokir Anda atau meminta Anda berhenti menghubunginya.
 
-Jika obrolan global mengganggu, nonaktifkan melalui Pengaturan. Jika pengguna lain berperilaku kasar, blokir pengguna tersebut daripada berdebat dengannya.
+\*\*3. Hindari spam\*\*
 
-Pesan obrolan global disimpan bersama ID akun pengirim dan waktu pengiriman yang tepat untuk ditinjau secara manual. Pesan tetap tersimpan sampai pengembang menghapus riwayatnya.
+\* Gunakan bahasa saluran obrolan global yang Anda pilih. Pilih saluran lain melalui Pengaturan jika ingin berbicara dalam bahasa lain.
+\* Jangan memenuhi obrolan dengan pesan berulang atau iklan yang tidak diminta. Jangan mengulangi undangan setelah ditolak.
+\* Jangan memenuhi saluran suara dengan bunyi yang diputar berulang-ulang.
 
-Jangan membanjiri obrolan dengan pesan berulang, iklan yang tidak diinginkan, atau spam yang mengganggu. Pesan pribadi harus mematuhi aturan yang sama dengan obrolan publik.
+\*\*4. Bermainlah dengan jujur\*\*
 
-\*\*Bermainlah dengan jujur\*\*
+\* Jangan gunakan kesalahan program, otomatisasi, atau akun tambahan untuk memperoleh koin, memanipulasi hasil, peringkat, rekor, pemungutan suara, atau fitur sosial, maupun mengakses informasi permainan yang seharusnya tersembunyi.
+\* Jangan sengaja memperlambat permainan hanya untuk membuat pemain lain kesal.
+\* Jangan berulang kali memutus koneksi untuk menghindari kekalahan atau mengganggu meja.
+\* Laporkan kesalahan kepada tim, bukan memanfaatkannya.
 
-Jangan berbuat curang. Jangan menggunakan alat dari luar, skrip, celah sistem, atau mekanisme yang tidak semestinya untuk memperoleh keuntungan yang tidak adil.
+\*\*5. Lindungi privasi\*\*
 
-Jangan sengaja mengulur waktu untuk membuat pemain lain kesal. Jangan berulang kali memutus koneksi untuk menghindari kekalahan atau mengganggu meja. Jangan menggunakan beberapa akun untuk memanipulasi peringkat, catatan, atau fitur sosial.
+\* Jangan membagikan nomor telepon, alamat rumah, kata sandi, atau pesan pribadi orang lain tanpa izinnya.
+\* Sebelum merekam percakapan suara, mintalah izin dari semua peserta. Anda juga memerlukan izin mereka untuk membagikan rekaman tersebut.
 
-\*\*Hormati privasi\*\*
+\*\*6. Jangan menyamar sebagai orang lain\*\*
 
-Jangan menyebarkan pesan pribadi atau informasi pribadi orang lain tanpa izin. Jangan menggunakan pesan pribadi untuk mengancam, menekan, atau melecehkan siapa pun.
+\* Jangan mengaku sebagai orang lain atau anggota tim.
+\* Jangan meminta kata sandi atau kode akses orang lain.
 
-\*\*Jaga sikap di meja\*\*
+\*\*7. Perhatikan berkas dan tautan yang Anda bagikan\*\*
 
-Sikapi kemenangan dan kekalahan dengan tenang. Jangan mengejek orang lain secara berlebihan setelah menang, atau melampiaskan kemarahan kepada pemain lain setelah kalah. Bersabarlah terhadap pemain baru yang masih mempelajari platform atau aturan game.
+\* Jangan membagikan pornografi, berkas berbahaya, atau tautan yang dirancang untuk mencuri data.
+\* Bagikan berkas milik sendiri atau yang boleh Anda distribusikan.
 
-\*\*Moderasi dan penegakan aturan\*\*
+\*\*8. Buat topik di tempat yang sesuai\*\*
 
-Administrator dapat memberi peringatan, membatasi komunikasi, menangguhkan akun, mengeluarkan pengguna, atau mencekal akun yang melanggar aturan secara serius atau berulang kali. Tindakan tersebut bertujuan menjaga kestabilan dan keamanan komunitas.
+\* Buat setiap topik hanya sekali dan di subforum yang sesuai.
+\* Buat topik baru jika ingin membicarakan hal yang berbeda dari pembahasan yang sedang berlangsung.
 
-\*\*Masukan\*\*
+\*\*9. Jangan memalsukan bukti atau laporan\*\*
 
-PlayAural terus berkembang. Masukan mengenai aksesibilitas, permainan, dan masalah komunitas selalu bermanfaat. Jika Anda menemukan masalah serius, laporkan masalah tersebut alih-alih memanfaatkannya.
+\* Jangan membuat-buat atau mengubah pesan, tangkapan layar, atau rekaman untuk menuduh seseorang mengatakan atau melakukan sesuatu yang tidak pernah ia katakan atau lakukan.
+\* Jangan menyampaikan tuduhan yang Anda ketahui palsu sebagai fakta dalam laporan.
+
+\*\*10. Pelanggaran dan tindakan\*\*
+
+Pelanggaran terhadap salah satu aturan ini dapat dikenai peringatan, penghapusan konten, pembisuan, penangguhan sementara, atau pemblokiran permanen dari platform. Tim moderasi menentukan tindakan berdasarkan beratnya pelanggaran dan pengulangan pelanggaran. Penangguhan atau pemblokiran permanen dapat diterapkan tanpa peringatan sebelumnya.
+
+Jangan gunakan akun lain atau akun orang lain untuk menghindari pembatasan atau penangguhan.
+
+\*\*Laporan dan pertanyaan\*\*
+
+Laporkan pelanggaran kepada tim. Anda juga boleh melaporkan masalah teknis atau mengirimkan usulan perbaikan.
+
+Pesan obrolan global disimpan bersama ID akun pengirim dan waktu yang tepat untuk pemeriksaan manual. Pesan tetap disimpan sampai pengembang menghapus riwayatnya. Anda dapat menonaktifkan obrolan global melalui Pengaturan.

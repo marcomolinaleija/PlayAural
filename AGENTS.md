@@ -29,8 +29,10 @@ Notifications/continuation locate and speak the exact post in its thread.
 Publishing/editing returns directly to the focused post list, preserving other
 drafts and game context. Private/member/block rules apply to every entry point.
 See `devdoc/forum-post-navigation.md` for keyboard and protocol details.
-Forum home pins Private conversations and Recent activity before the language
-subforums; other actions follow. Ctrl+Shift+F opens it through the existing
+Forum home pins Private conversations, Recent activity and Community Rules before
+the language subforums; other actions follow. Rules open the canonical help
+document in the selected forum language, independently of interface locale;
+document restore preserves that explicit language. Ctrl+Shift+F opens it through the existing
 keybind protocol, respecting availability, account gates and modal navigation.
 Other forum content precedes all actions. Menu titles are metadata; announce brief
 context on entry without adding heading/help rows or repeating it on refresh.
