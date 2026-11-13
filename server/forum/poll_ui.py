@@ -21,7 +21,8 @@ class PollController:
 
     def extras(self, user, draft: Draft) -> None:
         rows = [item(user, 'forum-poll-change' if draft.poll else 'forum-poll-add', 'poll')]
-        if self.manager.media is not None:
+        policy = self.service.files.policy()
+        if self.manager.media is not None and policy.uploads_enabled and policy.backend == self.service.files.active_backend:
             attachments = [self.service.attachments._row(key) for key in draft.attachment_ids]
             rows.insert(0, attachment_action(user, 'forum-media-add', 'attachment', attachments))
         self.views.render(user, nav.EXTRAS, rows, title=label(user, 'forum-add-more'),

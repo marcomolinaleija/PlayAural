@@ -36,8 +36,9 @@ class MediaController:
         self.service.account(user.uuid, writing=True)
         if self.transport is None:
             raise ForumError('forum-error-media-unavailable')
+        policy = self.service.files.require_uploads()
         if len(draft.attachment_ids) >= MAX_ATTACHMENTS:
-            raise ForumError('forum-error-media-quota', limit=MAX_ATTACHMENTS)
+            raise ForumError('forum-error-cuota-carga', cantidad=MAX_ATTACHMENTS, limite=policy.pending_mib)
         user.queue_protocol_packet({'type': 'forum_file_picker', 'draft_token': draft.token,
                                    'accepted_extensions': list(PICKER_EXTENSIONS),
                                    **self.transport.credentials(user), 'labels': self.labels(user)})
@@ -49,7 +50,7 @@ class MediaController:
         state = self.server._user_states.get(user.username, {})
         draft = self.find_draft(state, token=token)
         if draft.kind == 'edit' or len(draft.attachment_ids) >= MAX_ATTACHMENTS:
-            raise ForumError('forum-error-media-quota', limit=MAX_ATTACHMENTS)
+            raise ForumError('forum-error-cuota-carga', cantidad=MAX_ATTACHMENTS, limite=self.service.files.policy().pending_mib)
         row = self.service.attachments.reserve(user.uuid, payload.get('name'), payload.get('size'), payload.get('description', ''),
                                                topic_id=draft.topic_id, private=draft.kind == 'private')
         draft = replace(draft, attachment_ids=(*draft.attachment_ids, row['id']))

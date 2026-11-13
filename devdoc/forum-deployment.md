@@ -60,8 +60,47 @@ object keys. Keep the bucket private and distinct from backup storage. Downloads
 remain proxied through PlayAural so membership, blocks and hidden-post state are
 checked for every request, including seeking. The local private directory is
 still required for staging. Switching storage settings does not migrate files;
-copy and verify existing objects before changing the configured backend.
+copy and verify existing objects before changing the configured backend outside
+the application. The in-app menu blocks provider changes while any attachment
+metadata exists, including unpublished, failed and retired uploads.
 Production credentials/buckets have not been exercised in this delivery.
+
+## Files and storage administration
+
+Developers open Administration > System maintenance > Files and storage. This shared menu
+works on desktop, web and mobile through the existing menu/editbox protocol.
+It controls new uploads, approval for newly reserved attachments, maximum source
+file size (1–128 MiB), and pending bytes per account (at least the file limit,
+at most 256 MiB). The fixed limit of eight pending files is unchanged. Policies
+are persisted in the existing `server_settings` JSON store; no schema DDL changes
+or migrations are required. Invalid stored policy fails closed.
+
+Disabling new uploads leaves published downloads, ready draft attachments,
+cleanup, backups and already-started transfers/preparation working. A reservation
+whose HTTP transfer has not started cannot start while uploads are disabled.
+New limits also apply to previously reserved transfers that have not started;
+existing bytes and already assigned review decisions are not rewritten.
+
+The menu displays the active and configured providers, tests the configured
+store by writing/reading/deleting a new private opaque object, and selects local
+or remote S3/B2 storage. Credentials, buckets, endpoint and region remain server
+configuration; credentials never enter gameplay packets. Configure the remote
+profile above and install the `s3` extra before selecting it. SDK requests use
+bounded connect/read timeouts and retries. A failed probe does not save changes.
+
+Provider selection requires explicit confirmation, a successful probe and no
+attachment rows. It disables uploads and takes effect on the next server start.
+Startup loads the saved selection before media recovery and object access;
+backups use that same selection even with HTTP disabled. After restarting,
+explicitly enable uploads; enabling requires a running media listener and a
+successful probe. The menu never provisions HTTPS, DNS, proxy rules or buckets,
+restarts the server, migrates objects, edits secrets or deletes existing files.
+
+Server environment settings seed the initial policy. Once saved, the menu's
+policy takes precedence for provider, review and limits. External changes to a
+remote bucket/path still require operator migration and verification. Do not
+reuse the backup bucket for attachments. The local directory remains necessary
+for processing and temporary files with either provider.
 
 ## Approval and limits
 
@@ -78,7 +117,7 @@ keeps the post in the session draft. After approval, the author must Publish
 again. Rejected files must be removed or replaced. Neither reviewers nor other
 members can inspect unsubmitted uploads.
 
-Limits are 128 MiB per file, 15 minutes per audio/video, 40 million image pixels,
+Default limits are 128 MiB per file, 15 minutes per audio/video, 40 million image pixels,
 eight pending attachments and 256 MiB pending bytes per account. Unpublished
 files expire after 24 hours, including approved or pending-review files.
 The collector runs every minute and skips active uploads/preparation. Restart

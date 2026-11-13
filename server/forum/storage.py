@@ -7,6 +7,13 @@ import shutil
 import tempfile
 from typing import BinaryIO, Protocol
 
+try:
+    import boto3
+    from botocore.config import Config
+except ImportError:
+    boto3 = None
+    Config = None
+
 _KEY = re.compile(r'[a-f0-9]{32}/(?:content|thumbnail|captions)\Z')
 
 
@@ -69,8 +76,11 @@ class S3ObjectStorage:
         if not bucket or not re.fullmatch(r'[a-zA-Z0-9/_-]+/', prefix):
             raise ValueError('Configure a private forum bucket and a safe prefix')
         if client is None:
-            import boto3
-            client = boto3.client('s3', endpoint_url=endpoint_url, region_name=region_name)
+            if boto3 is None:
+                raise RuntimeError('Install the server s3 extra to enable remote storage')
+            client = boto3.client('s3', endpoint_url=endpoint_url, region_name=region_name,
+                                 config=Config(connect_timeout=5, read_timeout=10,
+                                               retries={'total_max_attempts': 2, 'mode': 'standard'}))
         self.client, self.bucket, self.prefix = client, bucket, prefix
 
     def put(self, key: str, source: Path, mime: str) -> None:

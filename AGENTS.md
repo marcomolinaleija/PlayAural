@@ -203,6 +203,9 @@ branches or silently add pending upstream changes to a release.
 - **Primary Checkout**: The user prefers one repository directory and switching
   branches with `git switch`. Work in the primary `PlayAural` checkout; do not
   create linked worktrees unless the user explicitly requests them.
+- **Develop Authorization**: Obtain explicit user authorization before merging
+  or pushing any new work into `develop`. Permission to implement a feature does
+  not authorize its integration.
 - **Verification Before Integration**: Always run relevant automated test suites
   via `uv run --project server --extra dev python -m pytest ...` before committing
   or concluding changes.
