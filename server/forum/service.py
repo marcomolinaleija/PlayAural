@@ -14,12 +14,14 @@ from .attachment_reviews import AttachmentReviews
 from .categories import CategoryService
 from .languages import ForumLanguages, validate_language
 from .notifications import ForumNotifications
+from .file_settings import FileSettings
 
 
 class ForumService:
     def __init__(self, repository: ForumRepository, clock: Callable[[], float] = time.time):
         self.repository = repository
         self.clock = clock
+        self.files = FileSettings(self)
         self.conversations = ConversationService(self)
         self.polls = PollService(self)
         self.thread_polls = PollService(self, scope='thread')

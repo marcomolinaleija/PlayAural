@@ -16,8 +16,8 @@ def add_media_arguments(parser) -> None:
                         help='Allowed web client origin, repeat for multiple origins')
 
 
-def configured_storage(directory):
-    backend = os.environ.get('PLAYAURAL_FORUM_STORAGE', 'local')
+def configured_storage(directory, *, backend=None):
+    backend = backend if backend is not None else os.environ.get('PLAYAURAL_FORUM_STORAGE', 'local')
     if backend == 'local':
         return LocalObjectStorage(directory)
     if backend != 's3':

@@ -46,7 +46,8 @@ def byte_range(value: str | None, size: int) -> tuple[int, int, bool]:
 
 
 class ForumMediaHTTP:
-    def __init__(self, server, *, base_url: str, directory: str | Path, origins=(), storage=None, processor=None):
+    def __init__(self, server, *, base_url: str, directory: str | Path, origins=(), storage=None, processor=None,
+                 defer_storage=False):
         parsed = urlsplit(base_url)
         if (parsed.scheme not in {'http', 'https'} or not parsed.hostname or parsed.username or parsed.password
                 or parsed.query or parsed.fragment or parsed.path.rstrip('/') not in {'', PREFIX}
@@ -69,7 +70,9 @@ class ForumMediaHTTP:
         self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.staging = self.directory / 'staging'
         self.staging.mkdir(mode=0o700, exist_ok=True)
-        self.storage = storage or configured_storage(self.directory / 'objects')
+        self._deferred_storage = defer_storage and storage is None
+        self.storage = storage or (LocalObjectStorage(self.directory / 'objects') if self._deferred_storage
+                                   else configured_storage(self.directory / 'objects'))
         self.backups = ForumObjectBackups(self.storage)
         self.sessions = MediaSessions(server, self.service)
         self.worker = MediaWorker(server, self.service, self.storage, processor or MediaProcessor())
@@ -98,7 +101,9 @@ class ForumMediaHTTP:
             except web.HTTPException as error:
                 response = web.Response(status=error.status, body=error.body, headers=error.headers, reason=error.reason)
             except ForumError as error:
-                status = 401 if error.key == 'forum-error-account' else 503 if error.key in {'forum-error-media-maintenance', 'forum-unavailable'} else 404
+                status = 401 if error.key == 'forum-error-account' else 503 if error.key in {
+                    'forum-error-media-maintenance', 'forum-unavailable', 'forum-error-cargas-desactivadas',
+                } else 404
                 user = request.get(MEDIA_USER_KEY)
                 message = Localization.get(user.locale, error.key, **error.values) if user else ''
                 response = web.json_response({'error': error.key, 'values': error.values, 'message': message}, status=status)
@@ -128,6 +133,14 @@ class ForumMediaHTTP:
 
     async def start(self, host: str, port: int, *, ssl_context=None) -> None:
         self._closing = False
+        if self._deferred_storage:
+            # Persistent selection is loaded after SQLite startup. Construct the
+            # SDK adapter off-loop before recovery, listeners or workers begin.
+            storage = await asyncio.to_thread(configured_storage, self.directory / 'objects',
+                                              backend=self.service.files.active_backend)
+            self.storage = self.worker.storage = storage
+            self.backups = ForumObjectBackups(storage)
+            self._deferred_storage = False
         self.lifecycle = MediaLifecycle(self)
         await self.lifecycle.recover()
         self.runner = web.AppRunner(self.app(), access_log=None)

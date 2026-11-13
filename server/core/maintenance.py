@@ -352,7 +352,8 @@ class ServerMaintenanceManager:
         """Verify object bytes before cleanup or compaction may alter SQLite."""
         media = self.server.forum_manager.media
         backups = media.backups if media is not None else ForumObjectBackups(
-            configured_storage(self.server._forum_media_directory / 'objects'),
+            configured_storage(self.server._forum_media_directory / 'objects',
+                               backend=self.server.forum_manager.service.files.active_backend),
         )
         archive = backups.capture(snapshot.path)
         return replace(snapshot, archive_path=archive, archive_size_bytes=archive.stat().st_size)

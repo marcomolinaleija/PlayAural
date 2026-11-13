@@ -170,6 +170,11 @@ from ..menu_pagination import (
 from ..documentation.manager import DocumentationManager
 from ..forum.manager import ForumManager
 from ..forum.media_http import ForumMediaHTTP
+from ..administration.files import (
+    MENU_IDS as FILE_ADMIN_MENU_IDS,
+    STORAGE_CONFIRM as FILE_STORAGE_CONFIRM,
+    LIMIT_INPUT as FILE_LIMIT_INPUT,
+)
 from ..forum.models import ForumError
 from ..forum.navigation import (
     MENU_IDS as FORUM_MENU_IDS,
@@ -378,6 +383,7 @@ FRIENDS_MENU_IDS = frozenset(
 )
 NON_RESUMABLE_ACTION_MENUS = frozenset(
     {
+        FILE_STORAGE_CONFIRM,
         *FORUM_CONFIRMATION_IDS,
         "broadcast_choice_menu",
         "demote_confirm_menu",
@@ -679,6 +685,7 @@ class Server:
                 self, base_url=forum_media_url,
                 directory=self._forum_media_directory,
                 origins=forum_media_origins,
+                defer_storage=True,
             )
             self.forum_manager.media_ui.connect(self.forum_manager.media)
 
@@ -788,6 +795,9 @@ class Server:
         self._account_approval_required = approval_required
 
         self._load_sound_event_mappings()
+
+        files = self.forum_manager.service.files
+        files.active_backend = files.policy().backend
 
     def _load_sound_event_mappings(self) -> None:
         """Load configured sound event mappings from the database."""
@@ -18165,6 +18175,10 @@ PlayAural Server
             self.forum_manager.handle_input(user, packet, user_state)
             return
 
+        if current_menu == FILE_LIMIT_INPUT:
+            await self.admin_manager.handle_input(user, packet, user_state)
+            return
+
         # Handle system menu input
         if user:
             if packet.get("cancelled"):
@@ -19970,6 +19984,8 @@ PlayAural Server
         elif menu == "waiting_for_approval":
             self._show_waiting_for_approval(user)
         # Admin menus — delegate to admin_manager's show functions
+        elif menu in FILE_ADMIN_MENU_IDS:
+            self.admin_manager.files.restore(user, frame)
         elif menu == "admin_menu":
             self.admin_manager._show_admin_menu(user)
         elif menu == ADMIN_USERS_MENU:

@@ -76,6 +76,7 @@ from ..menu_pagination import (
     paginate_sequence,
 )
 from ..games.infiltrado.words import InfiltradoWordManager
+from .files import FileAdministration, MENU_IDS as FILE_MENU_IDS, LIMIT_INPUT
 
 if TYPE_CHECKING:
     from ..core.server import Server
@@ -123,6 +124,7 @@ ADMIN_SUBMENU_ROOT_ITEM_MAP = {
     "manage_infiltrado_words": "admin_server_content",
     "server_power": "admin_system",
     "database_management": "admin_system",
+    "file_storage": "admin_system",
     "smtp_settings": "admin_system",
 }
 ADMIN_NICK_CHANGES_MENU = "admin_nick_changes_menu"
@@ -216,6 +218,7 @@ ADMIN_LOCALIZED_TEXT_SPECS = {
 }
 
 ADMIN_MENU_IDS = {
+    *FILE_MENU_IDS,
     "admin_menu",
     ADMIN_USERS_MENU,
     ADMIN_SANCTIONS_MENU,
@@ -320,6 +323,7 @@ class AdministrationManager:
 
     def __init__(self, server: "Server"):
         self.server = server
+        self.files = FileAdministration(self)
 
     def _localized_text_locale_groups(
         self, display_locale: str
@@ -2784,6 +2788,7 @@ class AdministrationManager:
             self.server._nav_back(user)
             return
         items = [
+            MenuItem(text=Localization.get(user.locale, 'admin-archivos-menu'), id='file_storage'),
             MenuItem(
                 text=Localization.get(user.locale, "server-power-management"),
                 id="server_power",
@@ -3255,7 +3260,9 @@ class AdministrationManager:
         self, user: NetworkUser, selection_id: str, current_menu: str, state: dict[str, Any]
     ) -> None:
         """Main entry point for handling admin-related menu selections."""
-        if current_menu == "admin_menu":
+        if current_menu in FILE_MENU_IDS:
+            await self.files.handle(user, selection_id, current_menu, state)
+        elif current_menu == "admin_menu":
             await self._handle_admin_menu_selection(user, selection_id)
         elif current_menu in (
             ADMIN_USERS_MENU,
@@ -3533,6 +3540,9 @@ class AdministrationManager:
             else:
                 user.speak_l("dev-only-action", buffer="system")
                 self.server._nav_refresh(user, self._show_admin_menu)
+        elif selection_id == 'file_storage':
+            if self.files.allowed(user):
+                self.server._nav_push(user, self.files.show)
         elif selection_id == "smtp_settings":
             if user.trust_level >= DEVELOPER_TRUST_LEVEL:
                 self.server._nav_push(user, self._show_smtp_settings_menu)
@@ -5291,6 +5301,10 @@ class AdministrationManager:
         if menu_id in ADMIN_MENU_IDS and user.trust_level < ADMIN_TRUST_LEVEL:
             user.speak_l("not-admin-anymore", buffer="system")
             self.server._show_main_menu(user)
+            return True
+
+        if menu_id == LIMIT_INPUT:
+            self.files.input(user, packet, state)
             return True
 
         if menu_id == "smtp_setting_input":

@@ -3,12 +3,12 @@
 from pathlib import PureWindowsPath
 from uuid import UUID, uuid4
 
-from .media_processing import MAX_UPLOAD_BYTES, ProcessedMedia
+from .media_processing import ProcessedMedia
 from .models import ForumError
 from .text import validate_text
+from .file_settings import MIB
 
 MAX_ATTACHMENTS = 8
-MAX_PENDING_BYTES = 256 * 1024 * 1024
 UPLOAD_LIFETIME = 24 * 60 * 60
 
 
@@ -18,13 +18,22 @@ class AttachmentService:
         self.require_approval = require_approval
 
     @property
+    def require_approval(self):
+        return self.forum.files.policy().require_approval
+
+    @require_approval.setter
+    def require_approval(self, value):
+        self.forum.files.default_approval = value
+
+    @property
     def connection(self):
         return self.repository.connection
 
     def reserve(self, viewer: str, name: str, size: int, description: str = '', *,
                 topic_id: int = 0, private: bool = False) -> dict:
-        if type(size) is not int or not 0 < size <= MAX_UPLOAD_BYTES:
-            raise ForumError('forum-error-media-size')
+        policy = self.forum.files.require_uploads()
+        if type(size) is not int or not 0 < size <= policy.max_file_mib * MIB:
+            raise ForumError('forum-error-limite-carga', limite=policy.max_file_mib)
         name = validate_text(name, title=True)
         name = PureWindowsPath(name).name
         if not name or name in {'.', '..'}:
@@ -48,8 +57,8 @@ class AttachmentService:
                 """SELECT COUNT(*), COALESCE(SUM(size), 0) FROM forum_attachments WHERE owner_uuid = ?
                    AND published = 0 AND expires_at > ? AND state IN ('uploading', 'processing', 'ready')""", (viewer, now),
             ).fetchone()
-            if count >= MAX_ATTACHMENTS or pending_bytes + size > MAX_PENDING_BYTES:
-                raise ForumError('forum-error-media-quota', limit=MAX_ATTACHMENTS)
+            if count >= MAX_ATTACHMENTS or pending_bytes + size > policy.pending_mib * MIB:
+                raise ForumError('forum-error-cuota-carga', cantidad=MAX_ATTACHMENTS, limite=policy.pending_mib)
             attachment_id = str(uuid4())
             self.connection.execute(
                 """INSERT INTO forum_attachments(id, owner_uuid, name, description, context_topic_id, private, state, approval, kind,
@@ -67,10 +76,13 @@ class AttachmentService:
         return row
 
     def upload(self, viewer: str, attachment_id: str) -> dict:
+        policy = self.forum.files.require_uploads()
         self.forum.account(viewer, writing=True)
         row = self._row(attachment_id)
         if row['owner_uuid'] != viewer or row['published'] or row['state'] != 'uploading' or row['expires_at'] <= self.forum.clock():
             raise ForumError('forum-error-missing')
+        if row['size'] > policy.max_file_mib * MIB:
+            raise ForumError('forum-error-limite-carga', limite=policy.max_file_mib)
         return dict(row)
 
     def processing(self, viewer: str, attachment_id: str) -> None:
