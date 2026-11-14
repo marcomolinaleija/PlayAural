@@ -246,6 +246,7 @@ async def test_general_options_navigation_is_shared_across_clients_and_locales(
             "friends",
             "my_stats",
             "options",
+            "collaborate",
             "back",
         ]
 

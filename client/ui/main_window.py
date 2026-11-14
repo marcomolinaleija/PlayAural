@@ -1,6 +1,7 @@
 """Main window for PlayAural client."""
 
 import wx
+from .translation_draft import TranslationDraft
 from .menu_list import MenuList
 from .forum_media import NativeForumMedia
 from .menu_focus import MenuFocusContextStore, resolve_menu_focus_index
@@ -400,6 +401,8 @@ class MainWindow(wx.Frame):
         self.edit_label = wx.StaticText(panel, label=Localization.get("main-edit-label"))
         self.edit_input = wx.TextCtrl(panel, style=wx.TE_PROCESS_ENTER)
         self.edit_input.Bind(wx.EVT_TEXT_ENTER, self.on_edit_enter)
+        self.translation_draft = TranslationDraft(self)
+        self.edit_input.Bind(wx.EVT_TEXT, self.translation_draft.change)
         self.edit_input.Bind(wx.EVT_CHAR, self.on_edit_char)
         self.edit_input.Bind(wx.EVT_KEY_DOWN, self.on_edit_key_down)
         self.edit_input.Hide()
@@ -2403,6 +2406,8 @@ class MainWindow(wx.Frame):
 
     def switch_to_list_mode(self):
         """Switch from edit mode back to list mode."""
+        if getattr(self, 'translation_draft', None):
+            self.translation_draft.close()
         if self.current_mode == "list":
             return  # Already in list mode
 
@@ -2424,7 +2429,12 @@ class MainWindow(wx.Frame):
 
     def cancel_edit_mode(self):
         """Cancel the active editbox without submitting an empty value."""
-        if self.connected and self.current_edit_input_id:
+        draft = getattr(self, 'translation_draft', None)
+        if self.connected and self.current_edit_input_id and draft and draft.context:
+            control = self.edit_input_multiline if self.current_edit_multiline else self.edit_input
+            self.network.send_packet({'type': 'editbox', 'input_id': self.current_edit_input_id,
+                                       'text': control.GetValue(), 'cancelled': True})
+        elif self.connected and self.current_edit_input_id:
             self.network.send_packet(
                 {"type": "escape", "menu_id": self.current_edit_input_id}
             )
@@ -3992,6 +4002,16 @@ class MainWindow(wx.Frame):
             max_length,
             input_id,
         )
+        draft = getattr(self, 'translation_draft', None)
+        if draft is not None:
+            draft.open(packet)
+            self.edit_input_multiline.Unbind(wx.EVT_TEXT, handler=draft.change)
+            self.edit_input_multiline.Bind(wx.EVT_TEXT, draft.change)
+
+    def on_translation_draft(self, packet):
+        draft = getattr(self, 'translation_draft', None)
+        if draft is not None:
+            draft.receive(packet)
 
     def on_server_remove_editbox(self, packet):
         """Dismiss an input which authoritative server state superseded."""

@@ -2655,6 +2655,8 @@ class AdministrationManager:
                 description_key="admin-desc-switch-server",
             )
         )
+        items.append(MenuItem(text=Localization.get(user.locale, 'translation-review-heading'), id='review_translations'))
+        items.append(MenuItem(text=Localization.get(user.locale, 'translation-team-heading'), id='translation_team'))
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
         user.show_menu(
             "admin_menu",
@@ -3449,6 +3451,10 @@ class AdministrationManager:
             self.server._nav_push(user, self._show_admin_sanctions_menu)
         elif selection_id == "admin_server_content":
             self.server._nav_push(user, self._show_admin_server_content_menu)
+        elif selection_id == 'review_translations':
+            self.server.translations.open_review(user)
+        elif selection_id == 'translation_team':
+            self.server.translations.open_team(user)
         elif selection_id == "admin_system":
             if user.trust_level >= DEVELOPER_TRUST_LEVEL:
                 self.server._nav_push(user, self._show_admin_system_menu)

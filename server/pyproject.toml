@@ -29,6 +29,7 @@ s3 = [
 
 [project.scripts]
 playaural-server = "server.__main__:main"
+playaural-export-translations = "server.translations.export_cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -58,6 +59,7 @@ only-include = [
     "core",
     "documentation",
     "forum",
+    "translations",
     "games",
     "game_utils",
     "locales",

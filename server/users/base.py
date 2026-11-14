@@ -852,6 +852,7 @@ class User(ABC):
         multiline: bool = False,
         read_only: bool = False,
         max_length: int | None = None,
+        translation_draft: dict[str, str] | None = None,
     ) -> None:
         """
         Display an editbox to the user.

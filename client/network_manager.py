@@ -253,6 +253,8 @@ class NetworkManager:
             self.main_window.on_server_menu(packet)
         elif packet_type == "request_input":
             self.main_window.on_server_request_input(packet)
+        elif packet_type == 'translation_draft':
+            self.main_window.on_translation_draft(packet)
         elif packet_type == "remove_editbox":
             self.main_window.on_server_remove_editbox(packet)
         elif packet_type == "clear_ui":

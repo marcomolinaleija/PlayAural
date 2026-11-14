@@ -272,6 +272,7 @@ class MockUser(User):
         multiline: bool = False,
         read_only: bool = False,
         max_length: int | None = None,
+        translation_draft: dict[str, str] | None = None,
     ) -> None:
         editbox_data = {
             "prompt": prompt,
@@ -281,6 +282,8 @@ class MockUser(User):
             "max_length": max_length,
         }
         self.editboxes[input_id] = editbox_data
+        if translation_draft is not None:
+            editbox_data['translation_draft'] = dict(translation_draft)
         self.messages.append(
             Message("show_editbox", {"input_id": input_id, **editbox_data})
         )

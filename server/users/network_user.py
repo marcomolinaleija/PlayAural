@@ -504,6 +504,7 @@ class NetworkUser(User):
         multiline: bool = False,
         read_only: bool = False,
         max_length: int | None = None,
+        translation_draft: dict[str, str] | None = None,
     ) -> None:
         self._current_editboxes[input_id] = {
             "prompt": prompt,
@@ -522,6 +523,9 @@ class NetworkUser(User):
         }
         if max_length is not None:
             packet["max_length"] = max_length
+        if translation_draft is not None:
+            packet['translation_draft'] = dict(translation_draft)
+            self._current_editboxes[input_id]['translation_draft'] = dict(translation_draft)
         # The editbox takes the client's screen; the next menu paint must be
         # sent in full even if its content is unchanged.
         self._last_menu_packet_id = None

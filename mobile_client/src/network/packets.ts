@@ -65,6 +65,18 @@ export type RequestInputPacket = {
   multiline?: boolean;
   read_only?: boolean;
   max_length?: number;
+  translation_draft?: { token: string; original: string };
+};
+
+export type TranslationDraftPacket = {
+  type: "translation_draft";
+  input_id: string;
+  token: string;
+  sequence: number;
+  text?: string;
+  preview?: string;
+  error?: string;
+  saved?: boolean;
 };
 
 export type RemoveMenuPacket = {
@@ -325,6 +337,7 @@ export type VoiceContextClosedPacket = {
 };
 
 export type ServerPacket =
+  | TranslationDraftPacket
   | AudioCommandPacket
   | AuthorizeSuccessPacket
   | ChatPacket
@@ -418,6 +431,7 @@ export type EditboxPacket = {
   type: "editbox";
   input_id: string;
   text: string;
+  cancelled?: boolean;
 };
 
 export type ChatSendPacket = {
@@ -478,6 +492,7 @@ export type VoicePresencePacket = {
 };
 
 export type ClientPacket =
+  | TranslationDraftPacket
   | AuthorizePacket
   | ChatSendPacket
   | EditboxPacket

@@ -934,6 +934,8 @@ def _create_unversioned_database(db_path: Path) -> str:
 
 def _remove_forum_tables_for_legacy_fixture(connection: sqlite3.Connection) -> None:
     """Historical v0-v3 databases did not contain the v4 forum schema."""
+    for table in ('translation_roles', 'translation_reservations', 'translation_events', 'translation_accepted', 'translation_proposals', 'translation_languages'):
+        connection.execute(f'DROP TABLE IF EXISTS {table}')
     for table in ('forum_thread_poll_votes', 'forum_thread_poll_options', 'forum_thread_polls',
                   'forum_mentions', 'forum_notifications', 'forum_notification_settings', 'forum_muted_topics',
                   'forum_language_preferences', 'forum_report_targets', 'forum_attachment_reviews', "forum_attachments", "forum_poll_votes", "forum_poll_options", "forum_polls",

@@ -1,5 +1,7 @@
 ﻿from pathlib import Path
 
+from types import SimpleNamespace
+
 import pytest
 
 from ..core import server as server_module
@@ -24,6 +26,8 @@ def _make_server() -> Server:
     server._tables = TableManager()
     server._user_states = {}
     server._users = {}
+    server.translations = SimpleNamespace(service=SimpleNamespace(
+        roles=SimpleNamespace(is_translator=lambda user_uuid: False)))
     return server
 
 

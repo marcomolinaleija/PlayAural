@@ -129,7 +129,7 @@ build_prod.bat
 
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v12), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v14), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 On thread post rows, Right speaks the complete body in place without history
 storage or a menu/input transition. Enter opens the only attached poll/file or
@@ -1175,6 +1175,11 @@ across automatic reconnection for the same authenticated session.
 - `2` — admin
 - `3` — dev
 
+The translator role is an additional language-scoped capability in
+`translation_roles`, granted/revoked only by current DB admins/developers. It
+never changes numeric moderation trust. Review reads, counts and decisions must
+check the assigned language again; revoked access takes effect immediately.
+
 Dev-only SMTP configuration is enforced at the menu, routing, and handler levels.
 
 #### Persistence and Data Lifecycle
@@ -1213,6 +1218,27 @@ and cleanup rules required for genuinely persistent data.
   are included in database backups. Never expose raw evidence JSON in menus.
 
 ### Localization
+
+Collaborative translations live in `server/translations/` (schema 14). Shared
+menus and existing editboxes preserve arrows/Enter/Back across all clients and
+can overlay a running table. Drafts are private, persistent UUID-owned work;
+token/sequence-bound autosave and preview never change global catalogs or speak
+on each keystroke. Validate placeholders, Fluent structure, source hashes and
+monotonic accepted revisions. Review uses current approved DB staff roles or
+scoped translator roles, and forbids self-review. Decisions survive author
+deletion anonymously; open work is deleted. Approval stages work for the next
+coordinated release. The read-only
+`playaural-export-translations` tool publishes an exclusive verified ZIP with
+metadata, contributor credit and client registries, never source/DB writes.
+See `devdoc/translation-workbench.md` and `TRANSLATING.md` for release steps.
+Review groups by language and immutable author UUID, preserving pages/focus.
+Reservations start on editing, never on reading. Draft claims expire after 24
+hours without activity; pending claims hold until review or withdrawal. Renew,
+release and submit under immediate transactions. Release keeps private drafts;
+expired claims are lazily removed in bounded batches. Backed-up migration 13→14
+preserves older duplicate pending work for human review. Roles cascade with their
+account, keep monotonic revisions on revocation, and record role changes in the
+private event audit. Exports remain restricted to administrators/developers.
 - Use "user" / "người dùng" for account-level entities (presence, profiles,
   friends, blocks, and moderation). Reserve "player" / "người chơi" for
   game-table participants; account lookups must not reuse game-player errors.

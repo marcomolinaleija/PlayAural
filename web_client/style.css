@@ -649,3 +649,9 @@ textarea:focus-visible,
 .forum-media-actions { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-top: .75rem; }
 .forum-media-actions button, .forum-media-actions select { min-height: 44px; }
 .forum-media-actions label { display: flex; gap: .5rem; align-items: center; }
+.translation-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 12rem;
+  overflow: auto;
+}

@@ -4,10 +4,80 @@ PlayAural is an audio-first game platform, so translations are part of the
 accessibility experience. A good translation should be clear when heard through
 speech, not only when read visually.
 
-English (`en`) and Vietnamese (`vi`) are PlayAural's official default
-languages. English is the source template for community translations. Partial
-community translations are allowed: if a language is missing a string, the
-clients and server must fall back to English instead of showing a raw key.
+In this fork, Spanish (`es`) is the required authoring language. The translation
+editor uses Spanish originals and identifies entries that only have an English
+original. English remains the runtime fallback for missing strings and manuals.
+
+## Contribute Inside PlayAural
+
+Open **Personal and options → Contribute → Translations**, choose a language,
+then choose missing texts or corrections. Pick a section and a text. The editor
+has a read-only original and an editable translation. It works while you remain
+at a table, using the existing arrows, Enter and Back controls. Inside a text
+box, the normal text-editing keys still apply. Plurals and gender variants are
+presented as separate fields; keep the placeholders shown in each original.
+
+Drafts save automatically after a brief typing pause and when you leave the
+field. The private preview updates without changing anybody else's interface.
+Use **Preview** to read the rendered example. **My proposals** resumes your work
+after reconnecting, shows decisions and allows submitting the editable drafts
+on the current page together. Submission validates the entire batch first.
+Withdraw a pending proposal to edit it. Returned work includes a reason and can
+be corrected and submitted again. A new proposal can reuse rejected work.
+
+Starting an edit reserves that text in that language. Reading it does not.
+Other contributors see who is working on it, without access to their draft.
+Reservations expire after 24 hours without editing activity; pending submissions
+remain reserved until a decision or withdrawal. Requested changes renew the
+author's reservation. **Release reservation and keep draft** makes the text
+available to others without deleting your work. Approval, rejection, discard and
+account deletion release the corresponding reservation. Conflicting or expired
+edits never overwrite another author's proposal.
+
+You can propose a new language using its standard language code, name and native
+name. Its first approved translation confirms the language. The first approved
+contribution adds translator credit; it does not grant an administrative role.
+
+Administrators and developers open **Administration → Review translations**.
+The queue and reviewed history are grouped by language, then contributor, with
+counts and pages. Decisions return to the next pending proposal, or to the
+contributor list when that contributor has no pending work.
+They compare the original, installed/approved translation and proposal, preview
+the result, and approve, request changes or reject. Returning or rejecting work
+requires a reason. Reviewers cannot approve their own proposals. Reviewed history
+allows reverting the current approval; it cannot overwrite a later decision.
+Authors receive a notice and can find decisions in **My proposals**.
+
+Any approved user may propose translations. Administrators/developers grant or
+revoke the **translator** role per account and language from **Administration →
+Manage translators**. Search for an account, select a language and confirm.
+Assigned translators open **Personal and options → Contribute → Review
+translations** and may review only their assigned languages. They gain no
+moderation or account-management privileges, cannot review their own work, and
+lose review access immediately on revocation. First-contribution credit remains
+separate from this appointed role. Role changes are recorded in the private audit.
+
+Approval means **approved for the next update**. All clients ship together;
+approval alone does not change live catalogs or install a new interface language.
+Source or target changes require the author to update the comparison before
+resubmitting. Conflicting edits retain the unsaved text for an explicit choice.
+
+## Prepare Approved Work for Release
+
+With the current server environment, export as an approved administrator or
+developer account:
+
+```powershell
+uv run --project server --locked playaural-export-translations --database PlayAural.db --reviewer ReviewerName --output approved-translations.zip
+```
+
+The tool reads a consistent SQLite snapshot, exports only current approved
+translations, validates formatting and dependencies, and writes a new ZIP with
+checksums, locale metadata, credits and client registries. It never overwrites an
+existing output, changes the database or edits the checkout. Extract into a
+staging checkout, inspect the diff and manifest, run locale comparisons and all
+affected client checks, then include the files in the coordinated release.
+Copied fallback dependencies remain explicitly marked as untranslated.
 
 ## Where Strings Live
 
@@ -63,8 +133,8 @@ Rules:
   when your natural translation does not need gender, but do not rename it,
   replace it with a different selector, or remove any player/game information
   along with it.
-- Keep every plural/select arm that exists in English.
-- Keep message attributes such as `.label` when English has them.
+- Keep every plural/select arm in the original.
+- Keep message attributes such as `.label` when the original has them.
 - Do not define the same Fluent key twice, even in different files. The server
   loads each locale as one namespace, so duplicate ids can silently shadow the
   string a player should hear.
