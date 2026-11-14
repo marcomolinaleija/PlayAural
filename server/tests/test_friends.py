@@ -602,6 +602,45 @@ class TestFriendsSystem:
             )
 
     @pytest.mark.asyncio
+    async def test_private_message_reply_quotes_the_focused_message(self):
+        alice, bob = self._create_friendship()
+        alice_user = self._make_network_user(alice.username, alice.uuid)
+        bob_user = self._make_network_user(bob.username, bob.uuid)
+        alice_user.connection.username = alice.username
+
+        await self.server._handle_chat(
+            alice_user.connection,
+            {
+                "convo": "local",
+                "message": "@bob Hello",
+                "reply_to": {"sender": "Rayo", "message": "hola"},
+            },
+        )
+
+        assert any(
+            packet.get("key") == "pm-sent-content-reply"
+            and packet.get("params") == {
+                "username": "Bob",
+                "target": "Rayo",
+                "message": "Hello",
+                "quote": "hola",
+            }
+            and packet.get("buffer") == "private"
+            for packet in alice_user.get_queued_messages()
+        )
+        assert any(
+            packet.get("key") == "pm-received-reply"
+            and packet.get("params") == {
+                "username": "Alice",
+                "target": "Rayo",
+                "message": "Hello",
+                "quote": "hola",
+            }
+            and packet.get("buffer") == "private"
+            for packet in bob_user.get_queued_messages()
+        )
+
+    @pytest.mark.asyncio
     async def test_friends_list_pages_large_results(self):
         self.db.create_user("Alice", "hash")
         alice = self.db.get_user("Alice")
@@ -1432,11 +1471,13 @@ class TestFriendsSystem:
             alice_user.connection,
             {"text": "x" * (MAX_CHAT_MESSAGE_LENGTH + 1)},
         )
-        assert any(
-            message.get("key") == "chat-message-too-long"
-            for message in alice_user.get_queued_messages()
-        )
+        assert [
+            m.get("params", {}).get("message")
+            for m in bob_user.get_queued_messages()
+            if m.get("key") == "pm-received"
+        ] == ["x" * MAX_CHAT_MESSAGE_LENGTH]
 
+        self.server._chat_rate_limiter._buckets.clear()
         self.server._user_states[alice.username] = {
             "menu": "send_pm_input",
             "target_username": bob.username,

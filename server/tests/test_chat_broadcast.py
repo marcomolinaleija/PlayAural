@@ -1,6 +1,7 @@
 import pytest
 
 from ..auth.chat_rate_limit import ChatRateLimiter
+from ..chat_channels import CHAT_REPLY_QUOTE_LIMIT
 from ..core.server import MAX_CHAT_MESSAGE_LENGTH, Server
 from ..messages.localization import Localization
 from ..persistence.database import GlobalChatMessageRecord
@@ -769,14 +770,6 @@ async def test_non_admin_slash_commands_do_not_broadcast_as_chat(message: str) -
             {"convo": "global", "message": {"text": "hello"}, "type": "chat"},
             "chat-invalid-message",
         ),
-        (
-            {
-                "convo": "global",
-                "message": "x" * (MAX_CHAT_MESSAGE_LENGTH + 1),
-                "type": "chat",
-            },
-            "chat-message-too-long",
-        ),
     ],
 )
 async def test_forged_or_oversized_chat_packets_are_rejected(
@@ -787,6 +780,8 @@ async def test_forged_or_oversized_chat_packets_are_rejected(
     bob_connection = RecordingConnection()
     alice = _make_user("Alice", alice_connection)
     bob = _make_user("Bob", bob_connection)
+    alice.preferences.global_chat_channel = "en"
+    bob.preferences.global_chat_channel = "en"
     server._users = {"Alice": alice, "Bob": bob}
 
     await server._handle_chat(DummyClient("Alice"), packet)
@@ -798,3 +793,162 @@ async def test_forged_or_oversized_chat_packets_are_rejected(
         expected_key,
         limit=MAX_CHAT_MESSAGE_LENGTH,
     )
+
+
+@pytest.mark.asyncio
+async def test_oversized_chat_packet_is_truncated() -> None:
+    server = _make_server()
+    alice_connection = RecordingConnection()
+    bob_connection = RecordingConnection()
+    alice = _make_user("Alice", alice_connection)
+    bob = _make_user("Bob", bob_connection)
+    alice.preferences.global_chat_channel = "en"
+    bob.preferences.global_chat_channel = "en"
+    server._users = {"Alice": alice, "Bob": bob}
+
+    packet = {
+        "convo": "global",
+        "message": "x" * (MAX_CHAT_MESSAGE_LENGTH + 100),
+        "type": "chat",
+    }
+    await server._handle_chat(DummyClient("Alice"), packet)
+
+    assert len(bob_connection.sent) == 1
+    sent_msg = bob_connection.sent[0]["message"]
+    assert len(sent_msg) == MAX_CHAT_MESSAGE_LENGTH
+    assert sent_msg == "x" * MAX_CHAT_MESSAGE_LENGTH
+
+
+def _global_pair():
+    server = _make_server()
+    alice_connection = RecordingConnection()
+    bob_connection = RecordingConnection()
+    alice = _make_user("Alice", alice_connection)
+    bob = _make_user("Bob", bob_connection)
+    alice.preferences.global_chat_channel = "en"
+    bob.preferences.global_chat_channel = "en"
+    server._users = {"Alice": alice, "Bob": bob}
+    return server, alice, alice_connection, bob_connection
+
+
+@pytest.mark.asyncio
+async def test_chat_reply_quotes_a_bounded_message_without_logging_it() -> None:
+    server, alice, alice_connection, bob_connection = _global_pair()
+    quote = "á" * (CHAT_REPLY_QUOTE_LIMIT + 40)
+
+    await server._handle_chat(
+        DummyClient("Alice"),
+        {
+            "convo": "global",
+            "message": "voy",
+            "type": "chat",
+            "reply_to": {"sender": "Rayo", "message": f"  {quote}  "},
+        },
+    )
+
+    assert len(bob_connection.sent) == 1
+    packet = bob_connection.sent[0]
+    assert packet["sender"] == "Alice"
+    assert packet["message"] == "voy"
+    assert packet["reply_to"] == {
+        "sender": "Rayo",
+        "message": "á" * CHAT_REPLY_QUOTE_LIMIT,
+    }
+    assert alice_connection.sent[0]["reply_to"] == packet["reply_to"]
+    assert server._db.global_messages[0].message == "voy"
+    assert alice.get_last_spoken() != Localization.get(alice.locale, "chat-reply-invalid")
+
+
+@pytest.mark.asyncio
+async def test_table_chat_reply_stays_inside_the_table() -> None:
+    server = _make_server()
+    alice_connection = RecordingConnection()
+    bob_connection = RecordingConnection()
+    cara_connection = RecordingConnection()
+    alice = _make_user("Alice", alice_connection)
+    bob = _make_user("Bob", bob_connection)
+    cara = _make_user("Cara", cara_connection)
+    cara.preferences.global_chat_channel = "en"
+    server._users = {"Alice": alice, "Bob": bob, "Cara": cara}
+    table = server._tables.create_table("pig", "Alice", alice)
+    assert table.add_member("Bob", bob)
+
+    await server._handle_chat(
+        DummyClient("Alice"),
+        {
+            "convo": "table",
+            "message": "voy",
+            "type": "chat",
+            "reply_to": {"sender": "Rayo", "message": "hola"},
+        },
+    )
+
+    assert bob_connection.sent[0]["convo"] == "local"
+    assert bob_connection.sent[0]["reply_to"] == {"sender": "Rayo", "message": "hola"}
+    assert alice_connection.sent[0]["convo"] == "local"
+    assert alice_connection.sent[0]["reply_to"] == {"sender": "Rayo", "message": "hola"}
+    assert cara_connection.sent == []
+    assert server._db.global_messages == []
+
+
+@pytest.mark.asyncio
+async def test_invalid_chat_reply_is_not_broadcast() -> None:
+    server, alice, alice_connection, bob_connection = _global_pair()
+
+    await server._handle_chat(
+        DummyClient("Alice"),
+        {
+            "convo": "global",
+            "message": "voy",
+            "type": "chat",
+            "reply_to": "Rayo",
+        },
+    )
+
+    assert alice_connection.sent == []
+    assert bob_connection.sent == []
+    assert server._db.global_messages == []
+    assert alice.get_last_spoken() == Localization.get(alice.locale, "chat-reply-invalid")
+    assert alice.messages[-1].data["buffer"] == "system"
+
+
+@pytest.mark.asyncio
+async def test_table_reply_outside_a_table_is_not_published_globally() -> None:
+    server, alice, alice_connection, bob_connection = _global_pair()
+
+    await server._handle_chat(
+        DummyClient("Alice"),
+        {
+            "convo": "table",
+            "message": "voy",
+            "type": "chat",
+            "reply_to": {"sender": "Rayo", "message": "hola"},
+        },
+    )
+
+    assert alice_connection.sent == []
+    assert bob_connection.sent == []
+    assert server._db.global_messages == []
+    assert alice.get_last_spoken() == Localization.get(
+        alice.locale,
+        "chat-reply-table-unavailable",
+    )
+
+
+@pytest.mark.asyncio
+async def test_slash_command_does_not_require_a_valid_reply() -> None:
+    server, alice, alice_connection, bob_connection = _global_pair()
+
+    await server._handle_chat(
+        DummyClient("Alice"),
+        {
+            "convo": "global",
+            "message": "/stop",
+            "type": "chat",
+            "reply_to": "not-a-reply",
+        },
+    )
+
+    assert alice_connection.sent == []
+    assert bob_connection.sent == []
+    assert alice.get_last_spoken() != Localization.get(alice.locale, "chat-reply-invalid")

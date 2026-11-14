@@ -124,6 +124,7 @@
           <ul id="menu-list" class="menu-list" tabindex="0" aria-label="Game menu"></ul>
           <div id="inline-input" class="inline-input" hidden>
             <label id="inline-input-prompt" for="inline-input-text"></label>
+            <p id="translation-original" class="translation-preview" hidden></p>
             <input
               id="inline-input-text"
               type="text"
@@ -143,6 +144,7 @@
               enterkeyhint="done"
               hidden
             ></textarea>
+            <p id="translation-preview" class="translation-preview" aria-live="off" hidden></p>
             <div class="row">
               <button id="inline-input-submit" type="button">Submit</button>
               <button id="inline-input-cancel" type="button" class="secondary">Cancel</button>

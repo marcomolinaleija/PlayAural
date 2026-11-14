@@ -7,15 +7,18 @@ Esta guía explica los controles que funcionan en toda la plataforma de PlayAura
 \*\*Sistema y audio\*\*
 
 \* \*\*F2:\*\* Leer usuarios en línea: escucha el total, luego los desarrolladores y administradores conectados, seguidos de hasta 20 nombres de otros usuarios y un conteo de los restantes.
-\* \*\*Shift + F2:\*\* Abrir lista de usuarios en línea: los desarrolladores aparecen primero, luego los administradores, luego los demás usuarios, en orden alfabético dentro de cada grupo. La lista incluye la actividad actual de cada usuario y se actualiza automáticamente.
+\* \*\*Shift + F2 / Ctrl + U:\*\* Abrir lista de usuarios en línea: los desarrolladores aparecen primero, luego los administradores, luego los demás usuarios, en orden alfabético dentro de cada grupo. La lista incluye la actividad actual de cada usuario y se actualiza automáticamente.
 \* \*\*F4:\*\* Silencia o reactiva el búfer de mensajes actual.
-\* \*\*F6:\*\* Silencia o reactiva el chat de mesa.
-\* \*\*Shift + F6:\*\* Silencia o reactiva el chat global.
-\* \*\*F7 / F8:\*\* Baja o sube el volumen del ambiente.
-\* \*\*F9 / F10:\*\* Baja o sube el volumen de la música.
+\* \*\*F5:\*\* Silencia o reactiva el chat de mesa.
+\* \*\*Shift + F5:\*\* Silencia o reactiva el chat global.
+\* \*\*F6:\*\* Cambia entre los canales de volumen disponibles (Efectos de sonido, Música, Sonido ambiente y Chat de voz).
+\* \*\*Shift + F6:\*\* Cambia entre los canales de volumen en orden inverso.
+\* \*\*F7 / F8:\*\* Baja o sube el volumen del canal de audio seleccionado actualmente.
+\* \*\*F9:\*\* Abre el menú de Personal y opciones (Perfil, Amigos, Estadísticas, Opciones).
+\* \*\*Ctrl + F:\*\* Abre Amigos.
+\* \*\*Ctrl + Shift + F:\*\* Abre el foro sin salir de tu mesa. Cierra primero cualquier cuadro de texto abierto.
 \* \*\*Alt + P:\*\* Comprueba la latencia de la conexión.
 \* \*\*Alt + M:\*\* Devuelve el foco al menú principal.
-\* \*\*Alt + F:\*\* Abre Amigos.
 \* \*\*Alt + O:\*\* Abre Opciones.
 
 \*\*Información de mesa y de partida\*\*
@@ -23,8 +26,7 @@ Esta guía explica los controles que funcionan en toda la plataforma de PlayAura
 \* \*\*Ctrl + M:\*\* Abre Gestión del anfitrión si eres el anfitrión de la mesa.
 \* \*\*Ctrl + I:\*\* Abre Información del juego.
 \* \*\*W:\*\* Escucha cuántas personas hay en la mesa, sus nombres y quién es el jefe de mesa, sin abrir un menú.
-\* \*\*Ctrl + W:\*\* Abre el menú de personas de la mesa (también disponible con Ctrl + U).
-\* \*\*Ctrl + U:\*\* Abre Quién está en la mesa.
+\* \*\*Ctrl + W:\*\* Abre el menú de personas de la mesa.
 \* \*\*Ctrl + F1:\*\* Abre Cómo jugar.
 \* \*\*Alt + V:\*\* Mueve el foco al área de Chat de voz en el cliente de escritorio.
 
@@ -36,6 +38,7 @@ PlayAural agrupa los mensajes en búferes separados para que puedas revisar los 
 \* \*\*Shift + `[` / Shift + `]`:\*\* Salta al primer o al último búfer.
 \* \*\*`,` / `.`:\*\* Lee el mensaje anterior o siguiente del búfer actual.
 \* \*\*Shift + `,` / Shift + `.`:\*\* Salta al mensaje más antiguo o más reciente del búfer actual.
+\* \*\*Ctrl + R:\*\* Con un mensaje de chat enfocado, abre el cuadro de texto para responder. Escape cancela la respuesta.
 
 \*\*Navegación de menús en escritorio\*\*
 
@@ -45,6 +48,7 @@ PlayAural agrupa los mensajes en búferes separados para que puedas revisar los 
 \* \*\*Inicio / Fin:\*\* Salta al primer o al último elemento de la lista actual.
 \* \*\*F1:\*\* Lee la descripción del elemento de menú enfocado, cuando haya una disponible.
 \* \*\*Letras A-Z:\*\* Salta rápidamente a los elementos que empiezan con esa letra.
+\* \*\*Ctrl + J:\*\* Sobre una persona en la lista de usuarios en línea o de amigos, unirse a su mesa si no es privada.
 
 \*\*Controles móviles\*\*
 

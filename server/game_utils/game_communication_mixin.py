@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, Callable
 
-from ..gender import Gender
+from ..gender import Gender, normalize_gender
 from .player import Player
 
 if TYPE_CHECKING:
@@ -27,6 +27,8 @@ class GameCommunicationMixin:
         for player in self.players:
             if player is exclude:
                 continue
+            if buffer == "game" and not getattr(player, "is_watching", True):
+                continue
             user = self.get_user(player)
             if user:
                 user.speak(text, buffer)
@@ -41,6 +43,8 @@ class GameCommunicationMixin:
         """Send a localized message to all players (each in their own locale)."""
         for player in self.players:
             if player is exclude:
+                continue
+            if buffer == "game" and not getattr(player, "is_watching", True):
                 continue
             user = self.get_user(player)
             if user:
@@ -72,7 +76,7 @@ class GameCommunicationMixin:
             **kwargs: Additional arguments passed to all speak_l calls.
         """
         user = self.get_user(player)
-        if user:
+        if user and (buffer != "game" or getattr(player, "is_watching", True)):
             user.speak_l(
                 personal_message_id,
                 buffer,
@@ -81,6 +85,8 @@ class GameCommunicationMixin:
 
         for p in self.players:
             if p is player:
+                continue
+            if buffer == "game" and not getattr(p, "is_watching", True):
                 continue
             u = self.get_user(p)
             if u:
@@ -133,6 +139,17 @@ class GameCommunicationMixin:
                     f"{name}_gender",
                     self.get_player_gender(matched_player).selector,
                 )
+            elif isinstance(value, str):
+                table = getattr(self, "_table", None)
+                if table is not None:
+                    table_users = getattr(table, "_users", {})
+                    if value in table_users:
+                        user_obj = table_users[value]
+                        gender_obj = getattr(user_obj, "gender", Gender.UNSPECIFIED)
+                        resolved.setdefault(
+                            f"{name}_gender",
+                            normalize_gender(gender_obj).selector,
+                        )
         return resolved
 
     def label_l(self, message_id: str) -> Callable[["Game", "Player"], str]:

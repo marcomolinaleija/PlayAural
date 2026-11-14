@@ -12,6 +12,7 @@ import sys
 import time
 import weakref
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -42,10 +43,20 @@ from .release_artifacts import (
 from .tick import TickScheduler
 from ..administration.manager import (
     ADMIN_DATABASE_BACKUP_CONFIRM_MENU,
+    ADMIN_USERS_MENU,
+    ADMIN_SANCTIONS_MENU,
+    ADMIN_SERVER_CONTENT_MENU,
+    ADMIN_SYSTEM_MENU,
     ADMIN_DATABASE_COMPACT_CONFIRM_MENU,
     ADMIN_DATABASE_MENU,
     ADMIN_DATABASE_STORAGE_ANALYSIS_MENU,
     ADMIN_DATABASE_STORAGE_CLEANUP_CONFIRM_MENU,
+    ADMIN_INFILTRADO_PAIR_DETAIL_MENU,
+    ADMIN_INFILTRADO_PAIRS_LIST_MENU,
+    ADMIN_INFILTRADO_WORDS_MENU,
+    ADMIN_INFILTRADO_CATEGORIES_MENU,
+    ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU,
+    ADMIN_INFILTRADO_SELECT_CATEGORY_MENU,
     ADMIN_LOCALIZED_TEXT_MENU,
     ADMIN_MENU_IDS,
     ADMIN_MODERATION_CLEAR_CONFIRM_MENU,
@@ -58,10 +69,25 @@ from ..administration.manager import (
     ADMIN_MODERATION_REPORT_DETAIL_MENU,
     ADMIN_MODERATION_REPORTS_MENU,
     ADMIN_MODERATION_SENDER_RESULTS_MENU,
+    ADMIN_NICK_CHANGES_MENU,
+    ADMIN_NICK_CHANGE_ACTIONS_MENU,
+    ADMIN_NICK_REJECT_REFUND_MENU,
+    ADMIN_SOUND_EVENTS_MENU,
+    ADMIN_SOUND_PICKER_MENU,
     AdministrationManager,
 )
+from ..users.nick_policy import split_remaining
+from ..users.identity import normalize_username, username_validation_error
+from ..users.system_identities import is_reserved_system_username
+from .sound_events import AVAILABLE_SOUND_ASSETS, SOUND_EVENTS
 from ..network.websocket_server import WebSocketServer, ClientConnection
-from ..persistence.database import Database, UserRecord
+from ..persistence.database import (
+    Database,
+    UserRecord,
+    UserWallet,
+    ACTIVITY_BONUS_COINS,
+    MAX_BONUS_ELIGIBLE_COINS,
+)
 from ..auth.auth import AuthManager, is_valid_email
 from ..auth.captcha import verify_captcha
 from ..auth.rate_limit import RateLimiter
@@ -93,7 +119,12 @@ from ..users.base import (
 )
 from ..ui.confirmation import ConfirmationChoice, show_confirmation_menu
 from ..users.identity import find_username_prefix, normalize_username, username_key
-from ..users.preferences import UserPreferences, DiceKeepingStyle, PREF_CATEGORIES
+from ..users.preferences import (
+    PREF_CATEGORIES,
+    UNFOCUSED_SILENCE_CATEGORIES,
+    DiceKeepingStyle,
+    UserPreferences,
+)
 from ..users.roles import (
     ADMIN_TRUST_LEVEL,
     DEVELOPER_TRUST_LEVEL,
@@ -101,6 +132,7 @@ from ..users.roles import (
 )
 from ..chat_channels import (
     MAX_CHAT_MESSAGE_LENGTH,
+    normalize_chat_reply,
     normalize_global_chat_channel,
     ordered_global_chat_channels,
     recommended_global_chat_channel,
@@ -136,6 +168,20 @@ from ..menu_pagination import (
     paginate_sequence,
 )
 from ..documentation.manager import DocumentationManager
+from ..forum.manager import ForumManager
+from ..translations.controller import TranslationController
+from ..translations.navigation import MENU_IDS as TRANSLATION_MENU_IDS
+from ..forum.media_http import ForumMediaHTTP
+from ..administration.files import (
+    MENU_IDS as FILE_ADMIN_MENU_IDS,
+    STORAGE_CONFIRM as FILE_STORAGE_CONFIRM,
+    LIMIT_INPUT as FILE_LIMIT_INPUT,
+)
+from ..forum.models import ForumError
+from ..forum.navigation import (
+    MENU_IDS as FORUM_MENU_IDS,
+    CONFIRMATION_IDS as FORUM_CONFIRMATION_IDS,
+)
 from .smtp_mailer import SmtpMailer
 from ..users.bot import Bot
 from ..game_utils.stats_extractor import StatsExtractor
@@ -156,6 +202,15 @@ from ..game_utils.client_types import (
 )
 from ..game_utils.game_result import GameResult
 from ..audio import SameTurnAudioBatcher
+
+
+@dataclass(slots=True)
+class _RestoredMember:
+    player: Any
+    serialized_name: str
+    is_bot: bool
+    replaced_human: bool
+    human_name: str | None
 
 
 VERSION = "1.0.5.3+marco.1"
@@ -248,6 +303,10 @@ GLOBAL_CHAT_ENABLED_SETTING_KEY = "global_chat_enabled"
 DEFAULT_GLOBAL_CHAT_SENDING_ENABLED = True
 GLOBAL_VOICE_CHAT_ENABLED_SETTING_KEY = "global_voice_chat_enabled"
 DEFAULT_GLOBAL_VOICE_CHAT_ENABLED = True
+FORUM_ENABLED_SETTING_KEY = "forum_enabled"
+DEFAULT_FORUM_ENABLED = True
+ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY = "account_approval_required"
+DEFAULT_ACCOUNT_APPROVAL_REQUIRED = False
 VOICE_JOIN_AUTHORIZATION_WINDOW_SECONDS = 120
 SESSION_STATE_RETENTION_SECONDS = 300
 PRESENCE_OFFLINE_GRACE_SECONDS = 2.0
@@ -295,6 +354,7 @@ USER_REPORT_CONFIRM_MENU = "user_report_confirm_menu"
 TABLE_MEMBERS_MENU = "table_members_menu"
 TABLE_MEMBER_ACTIONS_MENU = "table_member_actions_menu"
 HOST_TABLE_STATS_MENU = "host_table_stats_menu"
+HOST_TABLE_BET_MENU = "host_table_bet_menu"
 HOST_VOICE_MANAGEMENT_MENU = "host_voice_management_menu"
 HOST_VOICE_TARGET_MENU = "host_voice_target_menu"
 PERSONAL_VOICE_SETTINGS_MENU = "personal_voice_settings_menu"
@@ -325,6 +385,8 @@ FRIENDS_MENU_IDS = frozenset(
 )
 NON_RESUMABLE_ACTION_MENUS = frozenset(
     {
+        FILE_STORAGE_CONFIRM,
+        *FORUM_CONFIRMATION_IDS,
         "broadcast_choice_menu",
         "demote_confirm_menu",
         "email_confirm_menu",
@@ -453,16 +515,23 @@ class Server:
     Coordinates all components: network, auth, tables, games, and persistence.
     """
 
+    _account_approval_required: bool = False
+    _sound_event_mappings: dict[str, str] = {}
+
     # Global menus handled directly by the server, even if the user is sitting at a table.
     # This prevents active games from swallowing interactions meant for global overlays (like options or online list).
     GLOBAL_SYSTEM_MENUS = {
+        *TRANSLATION_MENU_IDS,
+        *FORUM_MENU_IDS,
         "main_menu", "personal_options_menu", "games_menu", "tables_menu",
         "game_category_filter_menu", "active_tables_menu", "active_tables_filter_menu",
         *OPTIONS_MENU_IDS,
         "saved_tables_menu", "saved_table_actions_menu",
         "leaderboards_menu", "leaderboard_types_menu", "game_leaderboard",
-        "my_stats_menu", "my_game_stats", "profile_menu", "gender_menu",
-        "bio_actions_menu", "email_confirm_menu", *FRIENDS_MENU_IDS,
+        "my_stats_menu", "my_game_stats", "profile_menu", "wallet_menu", "gender_menu",
+        "bio_actions_menu", "email_confirm_menu", "nick_change_menu",
+        "nick_reduce_confirm_menu", "nick_new_input", "nick_password_input", "profile_privacy_menu",
+        *FRIENDS_MENU_IDS,
         "online_users",
         *ADMIN_MENU_IDS, "logout_confirm_menu",
         "documentation_menu", "doc_games_menu", "doc_viewer", "email_input",
@@ -476,7 +545,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
-        HOST_TABLE_STATS_MENU, "global_voice_chat_menu",
+        HOST_TABLE_STATS_MENU, HOST_TABLE_BET_MENU, "custom_table_bet_input", "global_voice_chat_menu",
         "table_invite_prompt", "game_over",
     }
 
@@ -494,7 +563,7 @@ class Server:
         TABLE_MEMBERS_MENU, TABLE_MEMBER_ACTIONS_MENU,
         HOST_VOICE_MANAGEMENT_MENU, HOST_VOICE_TARGET_MENU,
         PERSONAL_VOICE_SETTINGS_MENU, PERSONAL_VOICE_VOLUME_MENU,
-        HOST_TABLE_STATS_MENU,
+        HOST_TABLE_STATS_MENU, HOST_TABLE_BET_MENU,
     }
 
     GAMEPLAY_CLIENT_MENU_IDS = {
@@ -514,11 +583,16 @@ class Server:
         locales_dir: str | Path | None = None,
         ssl_cert: str | Path | None = None,
         ssl_key: str | Path | None = None,
+        forum_media_url: str | None = None,
+        forum_media_port: int = 8001,
+        forum_media_dir: str | Path | None = None,
+        forum_media_origins: tuple[str, ...] = (),
     ):
         self.host = host
         self.port = port
         self._ssl_cert = ssl_cert
         self._ssl_key = ssl_key
+        self._forum_media_port = forum_media_port
 
         # Initialize components
         self._db = Database(db_path)
@@ -573,6 +647,10 @@ class Server:
         self._stopping = False
         self._serve_stop_event: asyncio.Event | None = None
         self._requested_exit_code = 0
+        self._power_command_path = os.environ.get(
+            "PLAYAURAL_POWER_COMMAND", "/data/power-command.json"
+        )
+        self._last_power_command_check = 0.0
         self._voice = VoiceService.from_env()
         self._voice_context_resolvers = {
             "table": self._resolve_table_voice_context,
@@ -594,9 +672,26 @@ class Server:
         # synchronous and avoids a settings query for every message.
         self._global_chat_sending_enabled = DEFAULT_GLOBAL_CHAT_SENDING_ENABLED
         self._global_voice_chat_enabled = DEFAULT_GLOBAL_VOICE_CHAT_ENABLED
+        self._forum_enabled = DEFAULT_FORUM_ENABLED
+        self.global_voice_quality: str = "high"
+        self.global_voice_spatial_audio: bool = True
+        self._sound_event_mappings: dict[str, str] = {}
+        self._account_approval_required = DEFAULT_ACCOUNT_APPROVAL_REQUIRED
 
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
+        self.forum_manager = ForumManager(self)
+        self.translations = TranslationController(self)
+        # Backups still need the object store when HTTP uploads are disabled.
+        self._forum_media_directory = Path(forum_media_dir or Path(db_path).with_suffix('.forum-media')).resolve()
+        if forum_media_url:
+            self.forum_manager.media = ForumMediaHTTP(
+                self, base_url=forum_media_url,
+                directory=self._forum_media_directory,
+                origins=forum_media_origins,
+                defer_storage=True,
+            )
+            self.forum_manager.media_ui.connect(self.forum_manager.media)
 
         # Initialize rate limiters
         self._rate_limiter = RateLimiter()
@@ -644,6 +739,17 @@ class Server:
             )
         )
 
+    @property
+    def forum_enabled(self) -> bool:
+        """Return whether new forum interactions are currently available."""
+        return getattr(self, '_forum_enabled', DEFAULT_FORUM_ENABLED)
+
+    def set_forum_enabled(self, enabled: bool) -> None:
+        if type(enabled) is not bool:
+            raise TypeError('Forum availability requires a bool value')
+        self._db.set_boolean_server_setting(FORUM_ENABLED_SETTING_KEY, enabled)
+        self._forum_enabled = enabled
+
     def _load_persistent_server_settings(self) -> None:
         """Load server-wide controls after the database is connected."""
         try:
@@ -669,6 +775,76 @@ class Server:
             )
             voice_enabled = False
         self._global_voice_chat_enabled = voice_enabled
+
+        try:
+            self._forum_enabled = self._db.get_boolean_server_setting(
+                FORUM_ENABLED_SETTING_KEY, default=DEFAULT_FORUM_ENABLED,
+            )
+        except ValueError:
+            logging.getLogger('playaural').exception(
+                'Invalid persisted forum availability setting; forum is disabled'
+            )
+            self._forum_enabled = False
+
+        try:
+            approval_required = self._db.get_boolean_server_setting(
+                ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY,
+                default=DEFAULT_ACCOUNT_APPROVAL_REQUIRED,
+            )
+        except ValueError:
+            logging.getLogger("playaural").exception(
+                "Invalid persisted account-approval-required setting; defaulting to false"
+            )
+            approval_required = False
+        self._account_approval_required = approval_required
+
+        self._load_sound_event_mappings()
+
+        files = self.forum_manager.service.files
+        files.active_backend = files.policy().backend
+
+    def _load_sound_event_mappings(self) -> None:
+        """Load configured sound event mappings from the database."""
+        try:
+            mappings = self._db.get_json_server_setting(
+                "sound_event_mappings", default={}
+            )
+            if isinstance(mappings, dict):
+                self._sound_event_mappings = {
+                    k: v for k, v in mappings.items()
+                    if isinstance(k, str) and isinstance(v, str) and k in SOUND_EVENTS and v in AVAILABLE_SOUND_ASSETS
+                }
+            else:
+                self._sound_event_mappings = {}
+        except Exception:
+            logging.getLogger("playaural").exception(
+                "Failed to load sound event mappings from database"
+            )
+            self._sound_event_mappings = {}
+
+    def get_sound_for_event(self, event_id: str) -> str:
+        """Return the active sound asset name for a sound event."""
+        mappings = getattr(self, "_sound_event_mappings", None)
+        custom = mappings.get(event_id) if mappings is not None else None
+        if custom and custom in AVAILABLE_SOUND_ASSETS:
+            return custom
+        event_def = SOUND_EVENTS.get(event_id)
+        if event_def:
+            return event_def.default_sound
+        return ""
+
+    def set_sound_for_event(self, event_id: str, sound_name: str) -> None:
+        """Set and persist a sound asset for a sound event."""
+        if event_id not in SOUND_EVENTS:
+            raise ValueError(f"Unknown sound event: {event_id!r}")
+        if sound_name not in AVAILABLE_SOUND_ASSETS:
+            raise ValueError(f"Unknown sound asset: {sound_name!r}")
+        if not hasattr(self, "_sound_event_mappings") or self._sound_event_mappings is None:
+            self._sound_event_mappings = {}
+        self._sound_event_mappings[event_id] = sound_name
+        self._db.set_json_server_setting(
+            "sound_event_mappings", self._sound_event_mappings
+        )
 
     def set_global_chat_sending_enabled(self, enabled: bool) -> None:
         """Persist and apply the server-wide global-chat availability state."""
@@ -701,6 +877,21 @@ class Server:
             for username, auth in list(self._voice_join_authorizations_by_user.items()):
                 if auth.get("scope") == "global":
                     self._clear_voice_join_authorization(username, scope="global")
+
+    @property
+    def account_approval_required(self) -> bool:
+        """Return whether newly registered accounts require manual admin approval."""
+        return bool(getattr(self, "_account_approval_required", False))
+
+    def set_account_approval_required(self, required: bool) -> None:
+        """Persist and update the account approval requirement state."""
+        if type(required) is not bool:
+            raise TypeError("Account approval requirement requires a bool value")
+        self._db.set_boolean_server_setting(
+            ACCOUNT_APPROVAL_REQUIRED_SETTING_KEY,
+            required,
+        )
+        self._account_approval_required = required
 
     def _prune_obsolete_game_data(self) -> None:
         """Remove data outside the current registered game/stat schema."""
@@ -739,6 +930,7 @@ PlayAural Server
         )
         try:
             self._prune_obsolete_game_data()
+            await asyncio.to_thread(lambda: self.translations.service.catalog)
             self._load_persistent_server_settings()
             self._auth = AuthManager(self._db)
 
@@ -766,6 +958,14 @@ PlayAural Server
             )
             await self._ws_server.start()
 
+            if self.forum_manager.media:
+                import ssl
+                media_ssl = None
+                if self._ssl_cert and self._ssl_key:
+                    media_ssl = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                    media_ssl.load_cert_chain(self._ssl_cert, self._ssl_key)
+                await self.forum_manager.media.start(self.host, self._forum_media_port, ssl_context=media_ssl)
+
             # Start tick scheduler
             self._tick_scheduler = TickScheduler(self._on_tick)
             await self._tick_scheduler.start()
@@ -774,6 +974,8 @@ PlayAural Server
             # after SQLite, deserialization, networking, and ticking are ready.
             self._db.delete_all_tables()
         except BaseException:
+            if self.forum_manager.media:
+                await self.forum_manager.media.stop()
             if self._tick_scheduler is not None:
                 try:
                     await self._tick_scheduler.stop()
@@ -822,6 +1024,9 @@ PlayAural Server
         # its SQLite handle to close before shutdown touches the live database.
         await self.maintenance_manager.wait_until_storage_idle()
         self.maintenance_manager.wake_blocked_work_for_shutdown()
+
+        if self.forum_manager.media:
+            await self.forum_manager.media.stop()
 
         # Stop tick scheduler first so no more game ticks fire during shutdown.
         if self._tick_scheduler:
@@ -1051,8 +1256,62 @@ PlayAural Server
                 version=VERSION,
             )
 
+        # Check for external power control requests
+        self._check_power_command()
+
         # Flush queued messages for all users
         self._flush_user_messages()
+
+    def _check_power_command(self) -> None:
+        """Check for external power command files (e.g. from automated updates)."""
+        now = time.monotonic()
+        if now - self._last_power_command_check < 1.0:
+            return
+        self._last_power_command_check = now
+        if not self._power_command_path:
+            return
+        path = Path(self._power_command_path)
+        if not path.is_file():
+            return
+        try:
+            raw_text = path.read_text(encoding="utf-8")
+            path.unlink(missing_ok=True)
+            if not raw_text.strip():
+                return
+            data = json.loads(raw_text)
+            action_str = str(data.get("action", "reboot")).lower()
+            action = (
+                PowerAction.REBOOT
+                if action_str == "reboot"
+                else PowerAction.SHUTDOWN
+            )
+            delay_seconds = int(data.get("delay_seconds", 60))
+            requested_by = str(data.get("requested_by", "autoupdate"))
+            reason_id = str(data.get("reason_id", "update"))
+            custom_reasons = dict(data.get("custom_reasons") or {})
+
+            if not self.power_manager.is_scheduled:
+                logging.getLogger("playaural").info(
+                    "Scheduling %s in %d seconds requested by %s via control file",
+                    action.value,
+                    delay_seconds,
+                    requested_by,
+                )
+                self.power_manager.schedule(
+                    action=action,
+                    delay_seconds=delay_seconds,
+                    requested_by=requested_by,
+                    reason_id=reason_id,
+                    custom_reasons=custom_reasons,
+                )
+            else:
+                logging.getLogger("playaural").warning(
+                    "Ignoring power command file: a power operation is already scheduled"
+                )
+        except Exception:
+            logging.getLogger("playaural").exception(
+                "Failed to process external power command from %s", path
+            )
 
     async def _pause_ticks_for_database_maintenance(self) -> None:
         """Pause authoritative game time before an exclusive SQLite operation."""
@@ -1500,6 +1759,12 @@ PlayAural Server
         spec = PRESENCE_EVENT_SPECS[is_online]
         friend_uuids = set(self._db.get_friends(player_uuid))
         socially_blocked_uuids = self._db.get_socially_blocked_ids(player_uuid)
+        player_gender = (
+            self._users[player_name].gender
+            if player_name in self._users
+            else self._db.get_user_gender_by_uuid(player_uuid)
+        )
+        player_gender_kwargs = gender_localization_kwargs(player_gender, "player")
 
         for user in tuple(self._users.values()):
             if (
@@ -1528,6 +1793,7 @@ PlayAural Server
                 str(message_id),
                 buffer="system",
                 player=player_name,
+                **player_gender_kwargs,
             )
             user.play_sound(spec["sounds"][sound_role])
         return True
@@ -1741,6 +2007,13 @@ PlayAural Server
 
         if packet_type == "menu":
             await self._handle_menu(client, packet)
+        elif packet_type == 'translation_draft':
+            self.translations.save_live_draft(user, packet)
+        elif packet_type == 'forum_media_session' and self.forum_manager.media:
+            try:
+                user.queue_protocol_packet({'type': 'forum_media_session', **self.forum_manager.media.credentials(user)})
+            except ForumError as error:
+                user.speak_l(error.key, buffer='system', **error.values)
         elif packet_type == "escape":
             await self._handle_menu(
                 client,
@@ -1766,6 +2039,8 @@ PlayAural Server
             await self._handle_open_admin_menu(client)
         elif packet_type == "open_options":
             await self._handle_open_options(client)
+        elif packet_type == "open_personal_options":
+            await self._handle_open_personal_options(client)
         elif packet_type == "broadcast_cmd":
             await self._handle_broadcast_cmd(client, packet)
         elif packet_type == "set_preference":
@@ -2391,6 +2666,8 @@ PlayAural Server
 
         # Process Offline Notifications exactly once when they enter active state
         self._process_offline_notifications(user)
+        self.forum_manager.notifications.deliver(user)
+        self.translations.notify(user)
 
         if not restored_game:
             # Not in an active game (or was a spectator); restore the user's
@@ -2437,6 +2714,36 @@ PlayAural Server
 
     def _process_offline_notifications(self, user: NetworkUser) -> None:
         """Fetch, group, and announce offline notifications for a user."""
+        nick_resolutions = self._db.pop_unnotified_nick_change_resolutions(user.uuid)
+        for req in nick_resolutions:
+            if req.status == "approved":
+                user.play_sound("accountapprove.ogg")
+                user.speak_l(
+                    "nick-change-approved-user",
+                    buffer="system",
+                    new_nick=req.requested_username,
+                )
+            elif req.status == "rejected":
+                user.play_sound("accountdeni.ogg")
+                if req.refunded and req.coins_paid > 0:
+                    wallet = self._db.get_wallet(user.uuid)
+                    user.play_sound("game_citadels/coins_small.ogg")
+                    user.speak_l(
+                        "nick-change-rejected-refunded-user",
+                        buffer="system",
+                        new_nick=req.requested_username,
+                        reason=req.reject_reason,
+                        coins=req.coins_paid,
+                        balance=wallet.balance,
+                    )
+                else:
+                    user.speak_l(
+                        "nick-change-rejected-user",
+                        buffer="system",
+                        new_nick=req.requested_username,
+                        reason=req.reject_reason,
+                    )
+
         notifications = self._db.get_and_clear_notifications(user.uuid)
         if not notifications:
             return
@@ -2462,7 +2769,7 @@ PlayAural Server
 
             if etype == "friend_request_received":
                 user.speak_l("friends-grouped-requests", buffer="system", usernames=formatted_names)
-                user.play_sound("friend_request_received.ogg")
+                user.play_sound(self.get_sound_for_event("friend_request"))
             elif etype == "friend_accepted":
                 user.speak_l("friends-grouped-accepted", buffer="system", usernames=formatted_names)
                 user.play_sound("friend_accepted.ogg")
@@ -2776,14 +3083,34 @@ PlayAural Server
             return
 
         # Try to register the user
-        reg_result = self._auth.register(username, password, locale=locale, email=email, bio=bio)
+        approved = not self._account_approval_required
+        reg_result = self._auth.register(
+            username,
+            password,
+            locale=locale,
+            email=email,
+            bio=bio,
+            approved=approved,
+        )
         if reg_result == "ok":
             self._rate_limiter.record_registration(client.ip_address)
+            if not approved:
+                self._notify_admins(
+                    "admin-new-account-request",
+                    "accountrequest.ogg",
+                    username=username,
+                )
+                self.admin_manager.refresh_account_approval_menus()
             await client.send({
                 "type": "register_response",
                 "status": "success",
-                "text": Localization.get(locale, "auth-registration-success"), # Fallback text
-                "locale": locale
+                "text": Localization.get(
+                    locale,
+                    "auth-registration-pending-approval"
+                    if not approved
+                    else "auth-registration-success",
+                ),
+                "locale": locale,
             })
         elif reg_result == "username_taken":
             await client.send({
@@ -2877,6 +3204,8 @@ PlayAural Server
             )
         items = [
             MenuItem(text=Localization.get(user.locale, "play"), id="play"),
+            MenuItem(text=Localization.get(user.locale, "forum-heading"), id="forum",
+                     description_key="forum-description"),
             MenuItem(
                 text=Localization.get(user.locale, "create-free-table"),
                 id="create_free_table",
@@ -3184,8 +3513,8 @@ PlayAural Server
                 categories["human_players"].append(row["name"])
         return categories
 
-    @staticmethod
     def _format_active_table_spectators(
+        self,
         locale: str,
         table: "Table",
         names: list[str],
@@ -3200,6 +3529,9 @@ PlayAural Server
                     locale,
                     "table-composition-spectator-host",
                     host=table.host,
+                    **self._account_gender_localization_kwargs(
+                        table.host, "host"
+                    ),
                 ),
             )
 
@@ -3264,7 +3596,11 @@ PlayAural Server
             if status in {"waiting", "playing", "finished"}
             else "table-status-waiting"
         )
-        return Localization.get(
+        if getattr(table.game, "is_social_activity", False) and getattr(table.game, "topic", ""):
+            topic = getattr(table.game, "topic", "").strip()
+            if topic:
+                game_name = f"{game_name} ({topic})"
+        desc = Localization.get(
             locale,
             "table-listing-game-composition-status",
             game=game_name,
@@ -3272,6 +3608,9 @@ PlayAural Server
             host=table.host,
             composition=self._format_table_composition(locale, segments),
         )
+        if getattr(table, "bet", 0) > 0:
+            desc = f"{desc} {Localization.get(locale, 'table-listing-bet', coins=table.bet)}"
+        return desc
 
     def _get_tables_menu_items(
         self, user: NetworkUser, game_type: str, page: int = 1
@@ -3837,6 +4176,64 @@ PlayAural Server
                     ),
                     id="play_typing_sounds",
                     description_key="general-desc-play-typing-sounds",
+                )
+            )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-noise-suppression-option",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if prefs.voice_noise_suppression else "option-off",
+                    ),
+                ),
+                id="toggle_voice_noise_suppression",
+                description_key="general-desc-voice-noise-suppression",
+            )
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-spatial-audio-option",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if prefs.voice_spatial_audio else "option-off",
+                    ),
+                ),
+                id="toggle_voice_spatial_audio",
+                description_key="general-desc-voice-spatial-audio",
+            )
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-auto-gain-option",
+                    status=Localization.get(
+                        user.locale,
+                        "option-on" if prefs.voice_auto_gain else "option-off",
+                    ),
+                ),
+                id="toggle_voice_auto_gain",
+                description_key="general-desc-voice-auto-gain",
+            )
+        )
+        for category in UNFOCUSED_SILENCE_CATEGORIES:
+            enabled = bool(getattr(prefs, f"unfocused_silence_{category}"))
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        f"options-unfocused-silence-{category}-toggle",
+                        status=Localization.get(
+                            user.locale,
+                            "option-on" if enabled else "option-off",
+                        ),
+                    ),
+                    id=f"toggle_unfocused_silence_{category}",
+                    description_key=f"general-desc-unfocused-silence-{category}",
                 )
             )
         items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
@@ -4930,6 +5327,12 @@ PlayAural Server
             prefs.desktop_audio_input_device_id = str(value or "").strip()
         elif key == "audio/input_device_name":
             prefs.desktop_audio_input_device_name = str(value or "").strip()
+        elif key.startswith("audio/unfocused_silence/"):
+            category = key.removeprefix("audio/unfocused_silence/")
+            if category not in UNFOCUSED_SILENCE_CATEGORIES:
+                return
+            value = bool(value)
+            setattr(prefs, f"unfocused_silence_{category}", value)
         elif key == "interface/invert_multiline_enter_behavior":
             prefs.invert_multiline_enter_behavior = bool(value)
         elif key == "interface/play_typing_sounds":
@@ -5073,8 +5476,34 @@ PlayAural Server
         queue_packet = getattr(user, "queue_protocol_packet", None)
         if callable(queue_packet):
             queue_packet(packet)
-            return
-        await user.connection.send(packet)
+        else:
+            await user.connection.send(packet)
+
+    async def _send_voice_pans(
+        self,
+        user: NetworkUser,
+        table: "Table",
+    ) -> None:
+        """Send relative voice pans and quality settings to a client."""
+        pans_packet = {
+            "type": "voice_pans",
+            "context_id": table.table_id,
+            "spatial_enabled": getattr(table, "voice_spatial_audio", True),
+            "quality": getattr(table, "voice_quality", "high"),
+            "pans": table.calculate_voice_pans(user.uuid),
+        }
+        queue_packet = getattr(user, "queue_protocol_packet", None)
+        if callable(queue_packet):
+            queue_packet(pans_packet)
+        else:
+            await user.connection.send(pans_packet)
+
+    async def _broadcast_table_voice_settings(self, table: "Table") -> None:
+        """Send updated voice spatial pans and quality to all table members."""
+        for member in table.members:
+            user = self._users.get(member.username)
+            if user:
+                await self._send_voice_pans(user, table)
 
     def _record_voice_join_authorization(
         self,
@@ -6486,7 +6915,11 @@ PlayAural Server
             return
 
         # Handle menu selections based on current menu
-        if current_menu == "main_menu":
+        if current_menu in TRANSLATION_MENU_IDS:
+            self.translations.handle(user, selection_id, state)
+        elif current_menu in FORUM_MENU_IDS:
+            self.forum_manager.handle_menu(user, selection_id, state)
+        elif current_menu == "main_menu":
             await self._handle_main_menu_selection(user, selection_id)
         elif current_menu == "personal_options_menu":
             await self._handle_personal_options_selection(user, selection_id)
@@ -6552,6 +6985,14 @@ PlayAural Server
             await self._handle_my_game_stats_selection(user, selection_id, state)
         elif current_menu == "profile_menu":
             await self._handle_profile_selection(user, selection_id)
+        elif current_menu == "profile_privacy_menu":
+            await self._handle_profile_privacy_selection(user, selection_id)
+        elif current_menu == "nick_change_menu":
+            await self._handle_nick_change_menu_selection(user, selection_id, state)
+        elif current_menu == "nick_reduce_confirm_menu":
+            await self._handle_nick_reduce_confirm_selection(user, selection_id, state)
+        elif current_menu == "wallet_menu":
+            await self._handle_wallet_selection(user, selection_id)
         elif current_menu == "gender_menu":
             await self._handle_gender_selection(user, selection_id)
         elif current_menu == "bio_actions_menu":
@@ -6620,6 +7061,8 @@ PlayAural Server
             await self._handle_host_management_selection(user, selection_id, state)
         elif current_menu == HOST_TABLE_STATS_MENU:
             await self._handle_table_stats_selection(user, selection_id, state)
+        elif current_menu == HOST_TABLE_BET_MENU:
+            await self._handle_table_bet_selection(user, selection_id, state)
         elif current_menu == HOST_VOICE_MANAGEMENT_MENU:
             await self._handle_host_voice_management_selection(
                 user, selection_id, state
@@ -6717,6 +7160,11 @@ PlayAural Server
         """Handle main menu selection."""
         if selection_id == "play":
             self._nav_push(user, self._show_games_list_menu)
+        elif selection_id == "forum":
+            if self.forum_enabled:
+                self._nav_push(user, self.forum_manager.home)
+            else:
+                user.speak_l('forum-unavailable', buffer='system')
         elif selection_id == "create_free_table":
             if self._tables.find_user_table(user.username):
                 return
@@ -6781,6 +7229,18 @@ PlayAural Server
                     read_only=True,
                 )
             )
+            if user.trust_level >= ADMIN_TRUST_LEVEL:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "global-voice-chat-toggle-enabled",
+                            status=Localization.get(user.locale, "option-off"),
+                        ),
+                        id="toggle_global_voice_enabled",
+                        description_key="global-voice-chat-desc-toggle-enabled",
+                    )
+                )
         else:
             if in_voice:
                 items.append(
@@ -6796,6 +7256,35 @@ PlayAural Server
                         text=Localization.get(user.locale, "global-voice-chat-connect"),
                         id="connect_voice",
                         description_key="global-voice-chat-connect-description",
+                    )
+                )
+
+            if user.trust_level >= ADMIN_TRUST_LEVEL:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "global-voice-chat-toggle-enabled",
+                            status=Localization.get(user.locale, "option-on"),
+                        ),
+                        id="toggle_global_voice_enabled",
+                        description_key="global-voice-chat-desc-toggle-enabled",
+                    )
+                )
+                quality_val = getattr(self, "global_voice_quality", "high")
+                quality_label = Localization.get(
+                    user.locale,
+                    "voice-quality-high" if quality_val == "high" else "voice-quality-standard",
+                )
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "global-voice-chat-quality-option",
+                            quality=quality_label,
+                        ),
+                        id="toggle_global_voice_quality",
+                        description_key="global-voice-chat-desc-quality",
                     )
                 )
 
@@ -6883,6 +7372,20 @@ PlayAural Server
                 context_id="lobby",
             )
             self._nav_refresh(user, self._show_global_voice_chat_menu)
+        elif selection_id == "toggle_global_voice_enabled" and user.trust_level >= ADMIN_TRUST_LEVEL:
+            new_state = not self.global_voice_chat_enabled
+            self.set_global_voice_chat_enabled(new_state)
+            status_str = Localization.get(user.locale, "option-on" if new_state else "option-off")
+            user.speak_l("global-voice-chat-status-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_global_voice_chat_menu)
+            return
+        elif selection_id == "toggle_global_voice_quality" and user.trust_level >= ADMIN_TRUST_LEVEL:
+            current_q = getattr(self, "global_voice_quality", "high")
+            self.global_voice_quality = "standard" if current_q == "high" else "high"
+            quality_str = Localization.get(user.locale, f"voice-quality-{self.global_voice_quality}")
+            user.speak_l("global-voice-chat-quality-changed", buffer="system", quality=quality_str)
+            self._nav_refresh(user, self._show_global_voice_chat_menu)
+            return
         elif selection_id == "back":
             self._nav_back(user)
 
@@ -6909,6 +7412,7 @@ PlayAural Server
                 id="options",
                 description_key="general-desc-general-options",
             ),
+            MenuItem(text=Localization.get(user.locale, 'translation-collaborate'), id='collaborate'),
             MenuItem(text=Localization.get(user.locale, "back"), id="back")
         ]
         user.show_menu(
@@ -6932,6 +7436,8 @@ PlayAural Server
             self._nav_push(user, self._show_my_stats_menu)
         elif selection_id == "options":
             self._nav_push(user, self._show_options_menu)
+        elif selection_id == 'collaborate':
+            self._nav_push(user, self.translations.collaborate)
         elif selection_id == "back":
             self._nav_back(user)
 
@@ -7355,14 +7861,22 @@ PlayAural Server
                         f_data["last_seen"],
                         now=now,
                     )
+                    gender_kwargs = self._account_gender_localization_kwargs(
+                        f_name, "player"
+                    )
                     status = (
                         Localization.get(
                             user.locale,
                             "friend-status-offline-last-online",
                             relative_time=relative_time,
+                            **gender_kwargs,
                         )
                         if relative_time
-                        else Localization.get(user.locale, "friend-status-offline")
+                        else Localization.get(
+                            user.locale,
+                            "friend-status-offline",
+                            **gender_kwargs,
+                        )
                     )
                 else:
                     status = self._format_presence_status(user.locale, f_name)
@@ -7514,8 +8028,30 @@ PlayAural Server
                 ):
                     items.append(MenuItem(text=Localization.get(user.locale, "join-table"), id="join_table"))
 
+        # Check if current user is table host and can invite target friend
+        user_table = self._tables.find_user_table(user.username)
+        target_user = self._users.get(target_username)
+        if (
+            user_table
+            and self._can_manage_table(user, user_table)
+            and target_user
+            and not self._table_invite_eligibility_error(user, user_table, target_user)
+        ):
+            items.append(MenuItem(text=Localization.get(user.locale, "invite-to-table"), id="invite_to_table"))
+
         if self._find_current_friend_record(user, target_username):
-            items.append(MenuItem(text=Localization.get(user.locale, "remove-friend"), id="remove_friend"))
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "remove-friend",
+                        **self._account_gender_localization_kwargs(
+                            target_username, "friend"
+                        ),
+                    ),
+                    id="remove_friend",
+                )
+            )
         report_item = self._get_report_action_item(user, target_username)
         if report_item:
             items.append(report_item)
@@ -7532,13 +8068,16 @@ PlayAural Server
         target_record = self._db.get_user(target_username)
         if not target_record or target_record.uuid == user.uuid:
             return None
+        target_kwargs = self._account_gender_localization_kwargs(
+            target_username, "target"
+        )
         if self._db.has_blocked(user.uuid, target_record.uuid):
             return MenuItem(
-                text=Localization.get(user.locale, "unblock-user"),
+                text=Localization.get(user.locale, "unblock-user", **target_kwargs),
                 id="unblock",
             )
         return MenuItem(
-            text=Localization.get(user.locale, "block-user"),
+            text=Localization.get(user.locale, "block-user", **target_kwargs),
             id="block",
         )
 
@@ -7550,7 +8089,13 @@ PlayAural Server
         if not target_record or target_record.uuid == user.uuid:
             return None
         return MenuItem(
-            text=Localization.get(user.locale, "report-user"),
+            text=Localization.get(
+                user.locale,
+                "report-user",
+                **self._account_gender_localization_kwargs(
+                    target_username, "target"
+                ),
+            ),
             id="report",
         )
 
@@ -7695,9 +8240,56 @@ PlayAural Server
             return
 
         if selection_id == "view_profile":
+            can_view, error_key = self._can_view_profile(user, target_record)
+            if not can_view:
+                user.speak_l(
+                    error_key,
+                    buffer="system",
+                    **self._account_gender_localization_kwargs(
+                        target_username, "target"
+                    ),
+                )
+                self._nav_refresh(
+                    user,
+                    self._show_friend_actions_menu,
+                    target_username,
+                    expected_uuid=target_record.uuid,
+                )
+                return
             self._nav_push(
                 user,
                 self._show_public_profile,
+                target_username,
+                expected_uuid=target_record.uuid,
+            )
+
+        elif selection_id == "invite_to_table":
+            table = self._tables.find_user_table(user.username)
+            if not table or not self._can_manage_table(user, table):
+                user.speak_l("table-not-exists", buffer="system")
+                self._nav_refresh(
+                    user,
+                    self._show_friend_actions_menu,
+                    target_username,
+                    expected_uuid=target_record.uuid,
+                )
+                return
+            target_user = self._users.get(target_username)
+            if not target_user:
+                user.speak_l("user-not-online-anymore", buffer="system")
+                self._nav_refresh(
+                    user,
+                    self._show_friend_actions_menu,
+                    target_username,
+                    expected_uuid=target_record.uuid,
+                )
+                return
+            sent = await self._send_table_invite(user, table, target_user)
+            if sent:
+                user.speak_l("host-invite-sent", buffer="system", player=target_username)
+            self._nav_refresh(
+                user,
+                self._show_friend_actions_menu,
                 target_username,
                 expected_uuid=target_record.uuid,
             )
@@ -7748,14 +8340,6 @@ PlayAural Server
             )
 
         elif selection_id == "join_table":
-            if not self._get_current_friend_record(user, target_username):
-                self._nav_refresh(
-                    user,
-                    self._show_friend_actions_menu,
-                    target_username,
-                    expected_uuid=target_record.uuid,
-                )
-                return
             table = self._tables.find_user_table(target_username)
             if table:
                 # Check if we are already in a table
@@ -7910,6 +8494,9 @@ PlayAural Server
                 "friend-accepted-success",
                 buffer="system",
                 username=target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
             )
             user.play_sound("friend_accepted.ogg")
             target_user = self._users.get(target_record.username)
@@ -7918,6 +8505,9 @@ PlayAural Server
                     "friend-accepted-notify",
                     buffer="system",
                     username=user.username,
+                    **self._account_gender_localization_kwargs(
+                        user.username, "username"
+                    ),
                 )
                 target_user.play_sound("friend_accepted.ogg")
             else:
@@ -7935,6 +8525,9 @@ PlayAural Server
                 "friend-request-sent",
                 buffer="system",
                 username=target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
             )
             user.play_sound("friend_request_sent.ogg")
             target_user = self._users.get(target_record.username)
@@ -7943,8 +8536,11 @@ PlayAural Server
                     "friend-request-received",
                     buffer="system",
                     username=user.username,
+                    **self._account_gender_localization_kwargs(
+                        user.username, "username"
+                    ),
                 )
-                target_user.play_sound("friend_request_received.ogg")
+                target_user.play_sound(self.get_sound_for_event("friend_request"))
             else:
                 self._db.add_notification(
                     target_record.uuid,
@@ -7979,7 +8575,12 @@ PlayAural Server
             user,
             FRIEND_REMOVE_CONFIRM_MENU,
             prompt_key="friend-remove-confirm",
-            prompt_kwargs={"username": target_record.username},
+            prompt_kwargs={
+                "username": target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
+            },
             buffer="system",
         )
         self._user_states[user.username] = {
@@ -8036,6 +8637,9 @@ PlayAural Server
             "friend-removed-success",
             buffer="system",
             username=target_record.username,
+            **self._account_gender_localization_kwargs(
+                target_record.username, "username"
+            ),
         )
         user.play_sound("friend_removed.ogg")
 
@@ -8118,7 +8722,12 @@ PlayAural Server
             user,
             USER_BLOCK_CONFIRM_MENU,
             prompt_key="block-confirm",
-            prompt_kwargs={"username": target_record.username},
+            prompt_kwargs={
+                "username": target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
+            },
             buffer="system",
         )
         self._user_states[user.username] = {
@@ -8848,13 +9457,27 @@ PlayAural Server
             # Attempt to accept
             success = self._db.accept_friend_request(target_record.uuid, user.uuid)
             if success:
-                user.speak_l("friend-accepted-success", buffer="system", username=target_record.username)
+                user.speak_l(
+                    "friend-accepted-success",
+                    buffer="system",
+                    username=target_record.username,
+                    **self._account_gender_localization_kwargs(
+                        target_record.username, "username"
+                    ),
+                )
                 user.play_sound("friend_accepted.ogg")
 
                 # Notify target
                 target_user = self._users.get(target_record.username)
                 if target_user:
-                    target_user.speak_l("friend-accepted-notify", buffer="system", username=user.username)
+                    target_user.speak_l(
+                        "friend-accepted-notify",
+                        buffer="system",
+                        username=user.username,
+                        **self._account_gender_localization_kwargs(
+                            user.username, "username"
+                        ),
+                    )
                     target_user.play_sound("friend_accepted.ogg")
                 else:
                     self._db.add_notification(target_record.uuid, user.username, "friend_accepted")
@@ -8883,6 +9506,9 @@ PlayAural Server
                     "friend-declined-notify",
                     buffer="system",
                     username=user.username,
+                    **self._account_gender_localization_kwargs(
+                        user.username, "username"
+                    ),
                 )
                 target_user.play_sound("friend_declined.ogg")
             else:
@@ -9164,7 +9790,12 @@ PlayAural Server
             user,
             FRIEND_REQUEST_CANCEL_CONFIRM_MENU,
             prompt_key="friend-request-cancel-confirm",
-            prompt_kwargs={"username": target_record.username},
+            prompt_kwargs={
+                "username": target_record.username,
+                **self._account_gender_localization_kwargs(
+                    target_record.username, "username"
+                ),
+            },
             buffer="system",
         )
         self._user_states[user.username] = {
@@ -9247,6 +9878,18 @@ PlayAural Server
             )
             return
 
+        can_view, error_key = self._can_view_profile(requesting_user, target_record)
+        if not can_view:
+            requesting_user.speak_l(
+                error_key,
+                buffer="system",
+                **self._account_gender_localization_kwargs(
+                    target_username, "target"
+                ),
+            )
+            self._nav_back(requesting_user)
+            return
+
         date_str = (
             target_record.registration_date[:10]
             if target_record.registration_date
@@ -9259,9 +9902,11 @@ PlayAural Server
             gender.localization_key,
         )
 
+        wallet = self._db.get_wallet(target_record.uuid)
         items = [
             MenuItem(text=Localization.get(requesting_user.locale, "profile-registration-date", date=date_str), id=""),
             MenuItem(text=Localization.get(requesting_user.locale, "profile-username", username=target_record.username), id=""),
+            MenuItem(text=Localization.get(requesting_user.locale, "profile-coins", coins=wallet.balance), id=""),
             MenuItem(text=Localization.get(requesting_user.locale, "profile-gender", gender=gender_str), id=""),
             MenuItem(text=Localization.get(requesting_user.locale, "profile-bio", bio=bio_str), id=""),
         ]
@@ -9339,12 +9984,26 @@ PlayAural Server
         gender = normalize_gender(user_record.gender)
         gender_str = Localization.get(user.locale, gender.localization_key)
 
+        wallet = self._db.get_wallet(user_record.uuid)
         items = [
             MenuItem(text=Localization.get(user.locale, "profile-registration-date", date=date_str), id=""),
-            MenuItem(text=Localization.get(user.locale, "profile-username", username=user_record.username), id=""),
+            MenuItem(text=Localization.get(user.locale, "profile-username", username=user_record.username), id="edit_nick"),
+            MenuItem(text=Localization.get(user.locale, "profile-wallet-entry", coins=wallet.balance), id="wallet"),
             MenuItem(text=Localization.get(user.locale, "profile-email", email=email_str), id="edit_email"),
             MenuItem(text=Localization.get(user.locale, "profile-gender", gender=gender_str), id="edit_gender"),
             MenuItem(text=Localization.get(user.locale, "profile-bio", bio=bio_str), id="edit_bio"),
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "profile-privacy-setting",
+                    status=Localization.get(
+                        user.locale,
+                        f"profile-privacy-{user.preferences.profile_privacy}",
+                    ),
+                ),
+                id="edit_profile_privacy",
+                description_key="general-desc-profile-privacy",
+            ),
             MenuItem(text=Localization.get(user.locale, "back"), id="back")
         ]
 
@@ -9358,7 +10017,11 @@ PlayAural Server
 
     async def _handle_profile_selection(self, user: NetworkUser, selection_id: str) -> None:
         """Handle profile menu selection."""
-        if selection_id == "edit_email":
+        if selection_id == "edit_nick":
+            self._nav_push(user, self._show_nick_change_menu)
+        elif selection_id == "wallet":
+            self._nav_push(user, self._show_wallet_menu)
+        elif selection_id == "edit_email":
             user_record = self._db.get_user(user.username)
             user.show_editbox(
                 "email_input",
@@ -9370,6 +10033,552 @@ PlayAural Server
             self._nav_push(user, self._show_gender_menu)
         elif selection_id == "edit_bio":
             self._nav_push(user, self._show_bio_actions_menu)
+        elif selection_id == "edit_profile_privacy":
+            self._nav_push(user, self._show_profile_privacy_menu)
+        elif selection_id == "back":
+            self._nav_back(user)
+
+    def _get_target_preferences(self, target_record: UserRecord) -> UserPreferences:
+        """Get preferences for a user, using live object if online or deserializing from record."""
+        if target_record.username in self._users:
+            return self._users[target_record.username].preferences
+        if target_record.preferences_json:
+            try:
+                return UserPreferences.from_dict(json.loads(target_record.preferences_json))
+            except Exception:
+                pass
+        return UserPreferences()
+
+    def _can_view_profile(
+        self, requesting_user: NetworkUser, target_record: UserRecord
+    ) -> tuple[bool, str]:
+        """Check if requesting_user has permission to view target_record's profile."""
+        if requesting_user.uuid == target_record.uuid:
+            return True, ""
+        if requesting_user.trust_level >= ADMIN_TRUST_LEVEL:
+            return True, ""
+
+        target_prefs = self._get_target_preferences(target_record)
+        privacy = getattr(target_prefs, "profile_privacy", "everyone")
+
+        if privacy == "private":
+            return False, "profile-view-private"
+        elif privacy == "friends":
+            if not self._find_current_friend_record(requesting_user, target_record.username):
+                return False, "profile-view-friends-only"
+
+        return True, ""
+
+    def _show_profile_privacy_menu(self, user: NetworkUser) -> None:
+        """Show menu to configure profile visibility."""
+        current_privacy = user.preferences.profile_privacy
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "profile-privacy-everyone")
+                + (" *" if current_privacy == "everyone" else ""),
+                id="privacy_everyone",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "profile-privacy-friends")
+                + (" *" if current_privacy == "friends" else ""),
+                id="privacy_friends",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "profile-privacy-private")
+                + (" *" if current_privacy == "private" else ""),
+                id="privacy_private",
+            ),
+            MenuItem(text=Localization.get(user.locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            "profile_privacy_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "profile_privacy_menu"}
+
+    async def _handle_profile_privacy_selection(
+        self, user: NetworkUser, selection_id: str
+    ) -> None:
+        """Handle profile privacy menu selection."""
+        if selection_id == "back":
+            self._nav_back(user)
+            return
+
+        choice_map = {
+            "privacy_everyone": "everyone",
+            "privacy_friends": "friends",
+            "privacy_private": "private",
+        }
+        if selection_id in choice_map:
+            user.preferences.profile_privacy = choice_map[selection_id]
+            self._save_user_preferences(user)
+            status_str = Localization.get(
+                user.locale, f"profile-privacy-{user.preferences.profile_privacy}"
+            )
+            user.speak_l("profile-privacy-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_profile_menu)
+
+    def _verify_user_password(self, user_record: UserRecord, password: str) -> bool:
+        """Verify a user's password against their stored Argon2 hash."""
+        if not password:
+            return False
+        auth = self._auth if self._auth is not None else AuthManager(self._db)
+        return auth.verify_password(password, user_record.password_hash)
+
+    def _show_nick_change_menu(
+        self,
+        user: NetworkUser,
+        snapshot: dict[str, Any] | None = None,
+    ) -> None:
+        """Show the nick change submenu from the user's profile.
+
+        If the 90-day (or reduced 30-day) cooldown has not elapsed since the
+        previous nick change, displays the remaining cooldown counter at the top
+        (snapshot captured at the moment the section is opened, without live-ticking
+        until reopened) and options to eliminate (30,000 coins) or reduce to
+        30 days (15,000 coins) the cooldown limit.
+        """
+        user_record = self._db.get_user_by_uuid(user.uuid) or self._db.get_user(user.username)
+        if not user_record:
+            self._nav_back(user)
+            return
+
+        policy = self._db.get_nick_change_policy()
+        state = self._db.get_nick_change_state(user_record.uuid)
+        pending = self._db.get_user_pending_nick_request(user_record.uuid)
+        wallet = self._db.get_wallet(user_record.uuid)
+
+        if snapshot is None:
+            remaining = self._db.get_nick_cooldown_remaining(user_record.uuid)
+            days, hours, minutes = split_remaining(remaining)
+            snap = {
+                "active": remaining.total_seconds() > 0,
+                "days": days,
+                "hours": hours,
+                "minutes": minutes,
+                "reduced": state.cooldown_reduced,
+            }
+        else:
+            snap = dict(snapshot)
+
+        items: list[MenuItem] = []
+        if pending is not None:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "nick-change-pending-status",
+                        requested=pending.requested_username,
+                    ),
+                    id="nick_pending_status",
+                    read_only=True,
+                )
+            )
+        elif not snap.get("active"):
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "profile-username",
+                        username=user_record.username,
+                    ),
+                    id="nick_current",
+                    read_only=True,
+                )
+            )
+            items.append(
+                MenuItem(
+                    text=Localization.get(user.locale, "nick-change-action"),
+                    id="change_nick",
+                )
+            )
+        else:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "nick-cooldown-counter",
+                        days=int(snap.get("days", 0)),
+                        hours=int(snap.get("hours", 0)),
+                        minutes=int(snap.get("minutes", 0)),
+                    ),
+                    id="nick_cooldown_counter",
+                    read_only=True,
+                )
+            )
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "nick-bypass-cooldown-option",
+                        price=policy.bypass_price,
+                        balance=wallet.balance,
+                    ),
+                    id="bypass_cooldown",
+                )
+            )
+            if not state.cooldown_reduced:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "nick-reduce-cooldown-option",
+                            price=policy.reduction_price,
+                            days=policy.reduced_cooldown_days,
+                            balance=wallet.balance,
+                        ),
+                        id="reduce_cooldown",
+                    )
+                )
+            else:
+                items.append(
+                    MenuItem(
+                        text=Localization.get(
+                            user.locale,
+                            "nick-cooldown-already-reduced",
+                            days=policy.reduced_cooldown_days,
+                        ),
+                        id="nick_cooldown_reduced_info",
+                        read_only=True,
+                    )
+                )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+        user.show_menu(
+            "nick_change_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {
+            "menu": "nick_change_menu",
+            "cooldown_snapshot": snap,
+        }
+
+    async def _handle_nick_change_menu_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle selections inside the user's nick change submenu."""
+        if selection_id == "back":
+            self._nav_back(user)
+            return
+
+        policy = self._db.get_nick_change_policy()
+        wallet = self._db.get_wallet(user.uuid)
+
+        if selection_id == "change_nick":
+            user.show_editbox(
+                "nick_new_input",
+                Localization.get(user.locale, "enter-new-nick"),
+                default_value="",
+                max_length=20,
+            )
+            self._enter_input_state(user, "nick_new_input", use_paid_bypass=False)
+        elif selection_id == "bypass_cooldown":
+            if wallet.balance < policy.bypass_price:
+                user.speak_l(
+                    "nick-error-insufficient-coins",
+                    buffer="system",
+                    required=policy.bypass_price,
+                    balance=wallet.balance,
+                )
+                return
+            user.show_editbox(
+                "nick_new_input",
+                Localization.get(user.locale, "enter-new-nick"),
+                default_value="",
+                max_length=20,
+            )
+            self._enter_input_state(user, "nick_new_input", use_paid_bypass=True)
+        elif selection_id == "reduce_cooldown":
+            if wallet.balance < policy.reduction_price:
+                user.speak_l(
+                    "nick-error-insufficient-coins",
+                    buffer="system",
+                    required=policy.reduction_price,
+                    balance=wallet.balance,
+                )
+                return
+            self._nav_push(user, self._show_nick_reduce_confirm_menu)
+
+    def _show_nick_reduce_confirm_menu(self, user: NetworkUser) -> None:
+        """Show confirmation menu to spend 15,000 coins to shorten cooldown from 90 to 30 days."""
+        policy = self._db.get_nick_change_policy()
+        show_confirmation_menu(
+            user,
+            "nick_reduce_confirm_menu",
+            prompt_key="confirm-nick-reduce-cooldown",
+            prompt_kwargs={
+                "price": policy.reduction_price,
+                "days": policy.reduced_cooldown_days,
+            },
+            buffer="system",
+        )
+        self._user_states[user.username] = {"menu": "nick_reduce_confirm_menu"}
+
+    async def _handle_nick_reduce_confirm_selection(
+        self, user: NetworkUser, selection_id: str, state: dict[str, Any]
+    ) -> None:
+        """Handle confirmation for reducing nick cooldown from 90 days to 30 days."""
+        if selection_id == "yes":
+            policy = self._db.get_nick_change_policy()
+            outcome = self._db.reduce_nick_change_cooldown(user.uuid)
+            if outcome.ok:
+                user.play_sound("game_citadels/coins_small.ogg")
+                user.speak_l(
+                    "nick-cooldown-reduced-success",
+                    buffer="system",
+                    price=policy.reduction_price,
+                    days=policy.reduced_cooldown_days,
+                    balance=outcome.balance,
+                )
+            elif outcome.code == "insufficient_coins":
+                user.speak_l(
+                    "nick-error-insufficient-coins",
+                    buffer="system",
+                    required=policy.reduction_price,
+                    balance=outcome.balance,
+                )
+            elif outcome.code == "already_reduced":
+                user.speak_l(
+                    "nick-cooldown-already-reduced",
+                    buffer="system",
+                    days=policy.reduced_cooldown_days,
+                )
+            # Pop the confirmation frame and re-evaluate the cooldown snapshot fresh
+            current = self._user_states.get(user.username, {})
+            stack = list(current.get("_stack", []))
+            if stack and stack[-1].get("menu") == "nick_change_menu":
+                stack[-1] = {"menu": "nick_change_menu", "cooldown_snapshot": None}
+                current["_stack"] = stack
+            self._nav_back(user)
+        elif selection_id == "no":
+            self._nav_back(user)
+
+    def refresh_user_nick_menu_if_open(self, user: NetworkUser) -> None:
+        """Refresh the user's profile or nick change menu if currently open."""
+        state = self._user_states.get(user.username, {})
+        current_menu = state.get("menu")
+        if current_menu == "nick_change_menu":
+            self._nav_refresh(user, self._show_nick_change_menu, None)
+        elif current_menu == "profile_menu":
+            self._nav_refresh(user, self._show_profile_menu)
+
+    def apply_runtime_username_change(
+        self, user_uuid: str, old_username: str, new_username: str
+    ) -> NetworkUser | None:
+        """Propagate an approved username rename across live Server and Table state."""
+        target_user = self._users.pop(old_username, None)
+        if target_user is None:
+            for key, candidate in list(self._users.items()):
+                if candidate.uuid == user_uuid:
+                    target_user = self._users.pop(key, None)
+                    old_username = key
+                    break
+
+        if target_user is not None:
+            target_user.set_username(new_username)
+            if getattr(target_user, "connection", None) is not None:
+                target_user.connection.username = new_username
+                if self._ws_server is not None:
+                    self._ws_server.unregister_client_username(
+                        old_username, target_user.connection
+                    )
+                    self._ws_server.register_client_username(
+                        target_user.connection.address, new_username
+                    )
+            self._users[new_username] = target_user
+
+        if old_username in self._user_states:
+            self._user_states[new_username] = self._user_states.pop(old_username)
+
+        if old_username in self._audio_input_devices_by_user:
+            self._audio_input_devices_by_user[new_username] = (
+                self._audio_input_devices_by_user.pop(old_username)
+            )
+
+        if old_username in self._voice_presence_by_user:
+            presence = self._voice_presence_by_user.pop(old_username)
+            presence.username = new_username
+            self._voice_presence_by_user[new_username] = presence
+
+        if old_username in self._voice_join_authorizations_by_user:
+            auth = self._voice_join_authorizations_by_user.pop(old_username)
+            auth.username = new_username
+            self._voice_join_authorizations_by_user[new_username] = auth
+
+        if old_username in self._tables._username_to_table:
+            self._tables._username_to_table[new_username] = (
+                self._tables._username_to_table.pop(old_username)
+            )
+
+        for table in self._tables.get_all_tables():
+            changed = False
+            if table.host == old_username:
+                table.host = new_username
+                changed = True
+            for member in table.members:
+                if member.username == old_username:
+                    member.username = new_username
+                    changed = True
+            if old_username in table._users:
+                table._users[new_username] = table._users.pop(old_username)
+                changed = True
+            if old_username in table._member_joined_at:
+                table._member_joined_at[new_username] = table._member_joined_at.pop(
+                    old_username
+                )
+            if old_username in table._member_offline_since:
+                table._member_offline_since[new_username] = (
+                    table._member_offline_since.pop(old_username)
+                )
+            if table.game is not None:
+                player = table.game.get_player_by_id(user_uuid)
+                if player is not None and not player.is_bot:
+                    player.name = new_username
+                    changed = True
+                if changed:
+                    if hasattr(table.game, "reconcile_bot_names"):
+                        table.game.reconcile_bot_names()
+                    table.game.refresh_menus()
+
+        if target_user is not None:
+            self.refresh_user_nick_menu_if_open(target_user)
+            self.on_user_presence_changed()
+
+        return target_user
+
+    def schedule_nick_change_reconnect(
+        self,
+        user: NetworkUser,
+        new_username: str,
+        *,
+        delay_seconds: float = 5.0,
+    ) -> None:
+        """Immediately update client credentials and reconnect after ``delay_seconds``."""
+        user._queue_packet({"type": "username_updated", "username": new_username})
+        client = getattr(user, "connection", None)
+        if self._ws_server is not None and client is not None:
+            asyncio.create_task(
+                self._delayed_nick_reconnect(
+                    client,
+                    user.uuid,
+                    new_username,
+                    delay_seconds,
+                )
+            )
+
+    async def _delayed_nick_reconnect(
+        self,
+        client: ClientConnection,
+        user_uuid: str,
+        new_username: str,
+        delay_seconds: float,
+    ) -> None:
+        """Wait for the approval speech to finish, then trigger client reconnection."""
+        try:
+            await asyncio.sleep(max(0.0, float(delay_seconds)))
+        except asyncio.CancelledError:
+            return
+        if self._stopping or getattr(client, "retired", False):
+            return
+        current_name = self._db.get_user_name_by_uuid(user_uuid) or new_username
+        client.retired = True
+        await client.send_control(
+            {
+                "type": "disconnect",
+                "reason": "",
+                "reconnect": True,
+                "reconnect_immediate": True,
+                "reconnect_after_ms": 200,
+                "username": current_name,
+            }
+        )
+        await client.close()
+
+    def _show_wallet_menu(self, user: NetworkUser) -> None:
+        """Show the user's wallet and coin status menu."""
+        wallet = self._db.get_wallet(user.uuid)
+        can_claim, reason, seconds_left = self._db.can_claim_activity_bonus(user.uuid)
+
+        items = [
+            MenuItem(
+                text=Localization.get(user.locale, "wallet-balance", coins=wallet.balance),
+                id="",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "wallet-total-won", coins=wallet.total_won),
+                id="",
+            ),
+            MenuItem(
+                text=Localization.get(user.locale, "wallet-total-bet", coins=wallet.total_bet),
+                id="",
+            ),
+        ]
+
+        if can_claim:
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "wallet-claim-bonus",
+                        amount=ACTIVITY_BONUS_COINS,
+                    ),
+                    id="claim_bonus",
+                )
+            )
+        elif reason == "cap_reached":
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "wallet-bonus-cap-reached",
+                        max_coins=MAX_BONUS_ELIGIBLE_COINS,
+                    ),
+                    id="",
+                )
+            )
+        else:
+            minutes_left = max(1, (seconds_left + 59) // 60)
+            items.append(
+                MenuItem(
+                    text=Localization.get(
+                        user.locale,
+                        "wallet-bonus-cooldown",
+                        minutes=minutes_left,
+                    ),
+                    id="",
+                )
+            )
+
+        items.append(MenuItem(text=Localization.get(user.locale, "back"), id="back"))
+
+        user.show_menu(
+            "wallet_menu",
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {"menu": "wallet_menu"}
+
+    async def _handle_wallet_selection(self, user: NetworkUser, selection_id: str) -> None:
+        """Handle wallet menu selection."""
+        if selection_id == "claim_bonus":
+            success, new_balance, reason = self._db.claim_activity_bonus(user.uuid)
+            if success:
+                user.play_sound("game_citadels/coins_small.ogg")
+                user.speak_l(
+                    "wallet-claimed-success",
+                    buffer="misc",
+                    amount=ACTIVITY_BONUS_COINS,
+                    balance=new_balance,
+                )
+                self._show_wallet_menu(user)
+            else:
+                user.speak_l("wallet-claim-failed", buffer="misc", reason=reason)
+                self._show_wallet_menu(user)
         elif selection_id == "back":
             self._nav_back(user)
 
@@ -9578,6 +10787,36 @@ PlayAural Server
             self.on_user_presence_changed()
         return True
 
+    async def _complete_switch_server(
+        self,
+        user: NetworkUser,
+        *,
+        leave_activities: bool = True,
+    ) -> bool:
+        """Gracefully leave runtime activities, retire session, and instruct client to switch server."""
+        if self._users.get(user.username) is not user:
+            return False
+
+        if leave_activities:
+            await self._leave_session_activities(user)
+
+        retired_user, client = await self._retire_account_session_locked(
+            user.username
+        )
+        if retired_user is not user:
+            return False
+
+        await self._close_retired_session(client, {"type": "switch_server"})
+        if not self.power_manager.is_finalizing:
+            self._broadcast_presence(
+                user.username,
+                user.uuid,
+                trust_level=user.trust_level,
+                is_online=False,
+            )
+            self.on_user_presence_changed()
+        return True
+
     async def _failsafe_close(self, user):
         """Close connection after delay if client hasn't already."""
         await asyncio.sleep(5.0)
@@ -9635,10 +10874,10 @@ PlayAural Server
         # For now, we use menu handlers.
         pass
 
-    def _show_document_content(self, user: NetworkUser, doc_id: str) -> None:
+    def _show_document_content(self, user: NetworkUser, doc_id: str, *, locale: str | None = None) -> None:
         """Display document content as read-only browseable lines."""
         manager = DocumentationManager.get_instance()
-        content = manager.get_document(doc_id, user.locale)
+        content = manager.get_document(doc_id, locale or user.locale)
         
         if not content:
             user.speak_l("document-not-found", buffer="system")
@@ -9659,7 +10898,8 @@ PlayAural Server
         # Store metadata so we know where to go back to
         self._user_states[user.username] = {
             "menu": "doc_viewer",
-            "doc_id": doc_id
+            "doc_id": doc_id,
+            "doc_locale": locale,
         }
 
     async def _handle_documentation_selection(self, user: NetworkUser, selection_id: str) -> None:
@@ -9723,6 +10963,46 @@ PlayAural Server
             self._nav_refresh(user, self._show_audio_submenu)
         elif selection_id == "audio_input_device":
             self._nav_push(user, self._show_audio_input_device_menu)
+        elif selection_id == "toggle_voice_noise_suppression":
+            prefs.voice_noise_suppression = not prefs.voice_noise_suppression
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(user, "audio/voice_noise_suppression", prefs.voice_noise_suppression)
+            status_str = Localization.get(user.locale, "option-on" if prefs.voice_noise_suppression else "option-off")
+            user.speak_l("voice-noise-suppression-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_audio_submenu)
+        elif selection_id == "toggle_voice_spatial_audio":
+            prefs.voice_spatial_audio = not prefs.voice_spatial_audio
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(user, "audio/voice_spatial_audio", prefs.voice_spatial_audio)
+            status_str = Localization.get(user.locale, "option-on" if prefs.voice_spatial_audio else "option-off")
+            user.speak_l("voice-spatial-audio-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_audio_submenu)
+        elif selection_id == "toggle_voice_auto_gain":
+            prefs.voice_auto_gain = not prefs.voice_auto_gain
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(user, "audio/voice_auto_gain", prefs.voice_auto_gain)
+            status_str = Localization.get(user.locale, "option-on" if prefs.voice_auto_gain else "option-off")
+            user.speak_l("voice-auto-gain-changed", buffer="system", status=status_str)
+            self._nav_refresh(user, self._show_audio_submenu)
+        elif selection_id.startswith("toggle_unfocused_silence_"):
+            category = selection_id.removeprefix("toggle_unfocused_silence_")
+            if category not in UNFOCUSED_SILENCE_CATEGORIES:
+                return
+            enabled = not bool(getattr(prefs, f"unfocused_silence_{category}"))
+            setattr(prefs, f"unfocused_silence_{category}", enabled)
+            self._save_user_preferences(user)
+            self._sync_pref_to_client(
+                user, f"audio/unfocused_silence/{category}", enabled
+            )
+            status_str = Localization.get(
+                user.locale, "option-on" if enabled else "option-off"
+            )
+            user.speak_l(
+                f"options-unfocused-silence-{category}-changed",
+                buffer="system",
+                status=status_str,
+            )
+            self._nav_refresh(user, self._show_audio_submenu)
 
     async def _handle_volume_selection(
         self, user: NetworkUser, selection_id: str, state: dict
@@ -10238,7 +11518,7 @@ PlayAural Server
                         and u.preferences.notify_table_created
                     ):
                         local_game_name = Localization.get(u.locale, name_key)
-                        u.play_sound(TABLE_CREATED_NOTIFICATION_SOUND)
+                        u.play_sound(self.get_sound_for_event("table_created"))
                         u.speak_l(
                             "table-created-broadcast", 
                             buffer="system",
@@ -10538,6 +11818,17 @@ PlayAural Server
                 and active_players_count < game.get_max_players()
             )
 
+            if can_join_as_player and getattr(table, "bet", 0) > 0:
+                wallet = self._db.get_wallet(user.uuid)
+                if wallet.balance < table.bet:
+                    can_join_as_player = False
+                    user.speak_l(
+                        "table-insufficient-coins-spectating",
+                        buffer="system",
+                        coins=wallet.balance,
+                        required=table.bet,
+                    )
+
             if can_join_as_player:
                 # Join as player
                 if not table.add_member(user.username, user, as_spectator=False):
@@ -10548,6 +11839,8 @@ PlayAural Server
                 self._set_in_game_state(user, table_id)
                 game.broadcast_l("table-joined", buffer="system", player=user.username)
                 game.play_table_join_sound(joined_player, is_spectator=False)
+                if getattr(game, "is_social_activity", False) and getattr(game, "topic", ""):
+                    user.speak_l("free-table-current-topic", buffer="game", topic=game.topic)
                 game.refresh_menus()
                 self._flush_game_menus_now(game)
             else:
@@ -10556,11 +11849,19 @@ PlayAural Server
                     user.speak_l("table-name-already-used", buffer="system")
                     return
                 self._prepare_user_for_table_audio(user)
-                joined_player = game.add_spectator(user.username, user)
+                is_midgame = (game.status == "playing")
+                joined_player = game.add_spectator(
+                    user.username, user, is_watching=not is_midgame
+                )
                 self._set_in_game_state(user, table_id)
-                user.speak_l("spectator-joined", buffer="system", host=table.host)
-                game.broadcast_l("now-spectating", buffer="system", player=user.username)
-                game.play_table_join_sound(joined_player, is_spectator=True)
+                if is_midgame:
+                    user.speak_l("table-game-in-progress", buffer="system")
+                else:
+                    user.speak_l("spectator-joined", buffer="system", host=table.host)
+                    game.broadcast_l("now-spectating", buffer="system", player=user.username)
+                    game.play_table_join_sound(joined_player, is_spectator=True)
+                if getattr(game, "is_social_activity", False) and getattr(game, "topic", ""):
+                    user.speak_l("free-table-current-topic", buffer="game", topic=game.topic)
                 game.refresh_menus()
                 self._flush_game_menus_now(game)
 
@@ -10781,7 +12082,15 @@ PlayAural Server
         """Build items for the host management menu."""
         locale = user.locale
         privacy_key = "host-management-set-public" if table.is_private else "host-management-set-private"
-        items = [
+        items = []
+        if table.status == "waiting":
+            current_bet = getattr(table, "bet", 0)
+            if current_bet > 0:
+                bet_text = Localization.get(locale, "host-management-table-bet", coins=current_bet)
+            else:
+                bet_text = Localization.get(locale, "host-management-table-bet-friendly")
+            items.append(MenuItem(text=bet_text, id="table_bet"))
+        items.extend([
             MenuItem(text=Localization.get(locale, privacy_key), id="toggle_privacy"),
             MenuItem(text=Localization.get(locale, "host-management-invite"), id="invite_friend"),
             MenuItem(
@@ -10800,7 +12109,7 @@ PlayAural Server
                 text=Localization.get(locale, "host-management-table-stats"),
                 id="table_stats",
             ),
-        ]
+        ])
         if table.game and table.game.status == "playing":
             items.append(
                 MenuItem(
@@ -10875,7 +12184,10 @@ PlayAural Server
             self._return_to_game(user, table)
             return
 
-        if selection_id == "toggle_privacy":
+        if selection_id == "table_bet":
+            self._nav_push(user, self._show_table_bet_menu, table)
+
+        elif selection_id == "toggle_privacy":
             table.is_private = not table.is_private
             key = "host-management-table-now-private" if table.is_private else "host-management-table-now-public"
             if table.game:
@@ -11020,6 +12332,52 @@ PlayAural Server
         table: "Table",
     ) -> list[MenuItem]:
         items: list[MenuItem] = []
+
+        spatial_status = Localization.get(
+            user.locale,
+            "option-on" if getattr(table, "voice_spatial_audio", True) else "option-off",
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-host-spatial-audio-option",
+                    status=spatial_status,
+                ),
+                id="toggle_table_spatial_audio",
+                description_key="voice-host-desc-spatial-audio",
+            )
+        )
+
+        quality_val = getattr(table, "voice_quality", "high")
+        quality_label = Localization.get(
+            user.locale,
+            "voice-quality-high" if quality_val == "high" else "voice-quality-standard",
+        )
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-host-quality-option",
+                    quality=quality_label,
+                ),
+                id="toggle_table_voice_quality",
+                description_key="voice-host-desc-quality",
+            )
+        )
+
+        items.append(
+            MenuItem(
+                text=Localization.get(
+                    user.locale,
+                    "voice-host-members-heading",
+                ),
+                id="members_heading",
+                read_only=True,
+            )
+        )
+
+        has_members = False
         for row in self._table_member_rows(table):
             account_id = str(row.get("account_id") or "")
             if row.get("kind") != "user" or not account_id:
@@ -11027,6 +12385,7 @@ PlayAural Server
             host_muted = table.is_voice_host_muted(account_id)
             if row.get("name") == user.username and not host_muted:
                 continue
+            has_members = True
             status_parts = [
                 Localization.get(
                     user.locale,
@@ -11055,7 +12414,7 @@ PlayAural Server
                     id=f"host_voice_member_{account_id}",
                 )
             )
-        if not items:
+        if not has_members:
             items.append(
                 MenuItem(
                     text=Localization.get(
@@ -11103,6 +12462,47 @@ PlayAural Server
             return
         if selection_id == "back":
             self._nav_back(user)
+            return
+        if selection_id == "toggle_table_spatial_audio":
+            table.set_voice_spatial_audio(not getattr(table, "voice_spatial_audio", True))
+            status_str = Localization.get(
+                user.locale,
+                "option-on" if table.voice_spatial_audio else "option-off",
+            )
+            user.speak_l(
+                "voice-host-spatial-audio-changed",
+                buffer="system",
+                status=status_str,
+            )
+            if table.game:
+                table.game.broadcast_l(
+                    "voice-host-spatial-audio-broadcast",
+                    buffer="system",
+                    status=status_str,
+                )
+            await self._broadcast_table_voice_settings(table)
+            self._nav_refresh(user, self._show_host_voice_management_menu, table)
+            return
+        if selection_id == "toggle_table_voice_quality":
+            current_q = getattr(table, "voice_quality", "high")
+            table.set_voice_quality("standard" if current_q == "high" else "high")
+            quality_str = Localization.get(
+                user.locale,
+                f"voice-quality-{table.voice_quality}",
+            )
+            user.speak_l(
+                "voice-host-quality-changed",
+                buffer="system",
+                quality=quality_str,
+            )
+            if table.game:
+                table.game.broadcast_l(
+                    "voice-host-quality-broadcast",
+                    buffer="system",
+                    quality=quality_str,
+                )
+            await self._broadcast_table_voice_settings(table)
+            self._nav_refresh(user, self._show_host_voice_management_menu, table)
             return
         prefix = "host_voice_member_"
         if not selection_id.startswith(prefix):
@@ -11470,7 +12870,14 @@ PlayAural Server
                 read_only=True,
             ),
             MenuItem(
-                text=Localization.get(locale, "table-stats-host", host=table.host),
+                text=Localization.get(
+                    locale,
+                    "table-stats-host",
+                    host=table.host,
+                    **self._account_gender_localization_kwargs(
+                        table.host, "host"
+                    ),
+                ),
                 id="stat_host",
                 read_only=True,
             ),
@@ -13093,7 +14500,6 @@ PlayAural Server
             or not invitee_record
             or host_record.uuid != host_user.uuid
             or invitee_record.uuid != invitee_user.uuid
-            or not self._db.are_friends(host_record.uuid, invitee_record.uuid)
             or self._db.has_block_between(host_record.uuid, invitee_record.uuid)
             or table.is_banned(invitee_record.uuid)
         ):
@@ -13150,22 +14556,20 @@ PlayAural Server
         return f"{prefix}{invite_id}"
 
     def _get_invitable_friends(self, user: NetworkUser, table: "Table") -> list[str]:
-        """Return friends who are online, idle (not in any table), and not already invited."""
-        friend_uuids = self._db.get_friends(user.uuid)
+        """Return users who are online, idle (not in any table), and not already invited."""
         result = []
-        for f_uuid in friend_uuids:
-            if self._db.has_block_between(user.uuid, f_uuid):
+        for target_name, target_user in self._users.items():
+            if target_name == user.username:
                 continue
-            f_name = self._db.get_user_name_by_uuid(f_uuid)
-            if not f_name:
+            if self._tables.find_user_table(target_name):
                 continue
-            if f_name not in self._users:
-                continue  # offline
-            if self._tables.find_user_table(f_name):
-                continue  # already in a table
-            if f_name in self._pending_invites:
-                continue  # already has a pending invite
-            result.append(f_name)
+            if target_name in self._pending_invites:
+                continue
+            if self._db.has_block_between(user.uuid, target_user.uuid):
+                continue
+            if table.is_banned(target_user.uuid):
+                continue
+            result.append(target_name)
         return sorted(result, key=username_key)
 
     def _get_host_invite_menu_items(self, user: NetworkUser, table: "Table") -> list[MenuItem]:
@@ -13180,6 +14584,116 @@ PlayAural Server
                 items.append(MenuItem(text=f_name, id=f"invite_{f_name}"))
         items.append(MenuItem(text=Localization.get(locale, "back"), id="back"))
         return items
+
+    def _show_table_bet_menu(self, user: NetworkUser, table: "Table") -> None:
+        """Show menu to select the table buy-in/bet amount."""
+        active_table = self._tables.get_table(table.table_id)
+        if active_table is not table:
+            self._return_to_game(user, active_table)
+            return
+        if not self._can_manage_table(user, table):
+            self._return_to_game(user, table)
+            return
+        if table.status != "waiting":
+            self._return_to_game(user, table)
+            return
+
+        locale = user.locale
+        current_bet = getattr(table, "bet", 0)
+        items = [
+            MenuItem(
+                text=Localization.get(locale, "table-bet-friendly") + (" *" if current_bet == 0 else ""),
+                id="bet_0",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=10) + (" *" if current_bet == 10 else ""),
+                id="bet_10",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=25) + (" *" if current_bet == 25 else ""),
+                id="bet_25",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=50) + (" *" if current_bet == 50 else ""),
+                id="bet_50",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=100) + (" *" if current_bet == 100 else ""),
+                id="bet_100",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=250) + (" *" if current_bet == 250 else ""),
+                id="bet_250",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-coins", coins=500) + (" *" if current_bet == 500 else ""),
+                id="bet_500",
+            ),
+            MenuItem(
+                text=Localization.get(locale, "table-bet-custom") + (f" ({current_bet} *)" if current_bet not in (0, 10, 25, 50, 100, 250, 500) else ""),
+                id="custom_bet",
+            ),
+            MenuItem(text=Localization.get(locale, "back"), id="back"),
+        ]
+        user.show_menu(
+            HOST_TABLE_BET_MENU,
+            items,
+            multiletter=True,
+            escape_behavior=EscapeBehavior.SELECT_LAST,
+        )
+        self._user_states[user.username] = {
+            "menu": HOST_TABLE_BET_MENU,
+            "table_id": table.table_id,
+        }
+
+    async def _handle_table_bet_selection(
+        self, user: NetworkUser, selection_id: str, state: dict
+    ) -> None:
+        """Handle selection in the table bet menu."""
+        table_id = state.get("table_id")
+        table = self._tables.get_table(table_id)
+        if not table or not self._can_manage_table(user, table) or table.status != "waiting":
+            self._return_to_game(user, table)
+            return
+
+        if selection_id == "back":
+            self._nav_back(user)
+            return
+
+        if selection_id == "custom_bet":
+            user.show_editbox(
+                "custom_table_bet_input",
+                Localization.get(user.locale, "table-enter-custom-bet"),
+                default_value=str(table.bet) if table.bet > 0 else "",
+            )
+            self._enter_input_state(user, "custom_table_bet_input", table_id=table.table_id)
+            return
+
+        if selection_id.startswith("bet_"):
+            try:
+                amount = int(selection_id.split("_")[1])
+            except ValueError:
+                return
+
+            if amount > 0:
+                wallet = self._db.get_wallet(user.uuid)
+                if wallet.balance < amount:
+                    user.speak_l(
+                        "table-error-host-cannot-afford-bet",
+                        buffer="system",
+                        coins=wallet.balance,
+                        required=amount,
+                    )
+                    return
+
+            if table.set_bet(amount):
+                if table.game:
+                    if amount > 0:
+                        table.game.broadcast_l("table-bet-changed", buffer="system", coins=amount)
+                    else:
+                        table.game.broadcast_l("table-bet-changed-friendly", buffer="system")
+                self.on_tables_changed()
+            self._nav_back(user)
 
     def _show_host_invite_menu(self, user: NetworkUser, table: "Table") -> None:
         """Show the invite friends menu."""
@@ -13220,7 +14734,11 @@ PlayAural Server
         invitee_user = self._users.get(invitee_name)
 
         if not invitee_user:
-            user.speak_l("host-invite-friend-unavailable", buffer="system")
+            user.speak_l(
+                "host-invite-friend-unavailable",
+                buffer="system",
+                **self._account_gender_localization_kwargs(invitee_name, "friend"),
+            )
             self._nav_refresh(user, self._show_host_invite_menu, table)
             return
         sent = await self._send_table_invite(user, table, invitee_user)
@@ -13243,7 +14761,13 @@ PlayAural Server
                     pending_invite,
                 )
             ):
-                host_user.speak_l("host-invite-already-pending", buffer="system")
+                host_user.speak_l(
+                    "host-invite-already-pending",
+                    buffer="system",
+                    **self._account_gender_localization_kwargs(
+                        invitee_name, "friend"
+                    ),
+                )
                 return False
             stale_invite_id = str(pending_invite.get("invite_id", ""))
             self._cancel_matching_social_invites(
@@ -13258,7 +14782,11 @@ PlayAural Server
             invitee_user,
         )
         if eligibility_error:
-            host_user.speak_l(eligibility_error, buffer="system")
+            host_user.speak_l(
+                eligibility_error,
+                buffer="system",
+                **self._account_gender_localization_kwargs(invitee_name, "friend"),
+            )
             return False
 
         rate_limit_rejection = self._table_interaction_rate_limiter.try_consume(
@@ -13277,6 +14805,7 @@ PlayAural Server
                 message_key,
                 buffer="system",
                 seconds=rate_limit_rejection.seconds,
+                **self._account_gender_localization_kwargs(invitee_name, "friend"),
             )
             return False
 
@@ -13303,7 +14832,7 @@ PlayAural Server
         }
         if self._user_has_blocking_modal_state(invitee_name):
             self._pending_invites[invitee_name]["deferred"] = True
-            invitee_user.play_sound(TABLE_INVITE_NOTIFICATION_SOUND)
+            invitee_user.play_sound(self.get_sound_for_event("table_invite"))
             invitee_user.speak_l(
                 "table-invite-queued",
                 buffer="system",
@@ -13348,7 +14877,7 @@ PlayAural Server
             "prev_state": prev_state,
         }
 
-        invitee_user.play_sound(TABLE_INVITE_NOTIFICATION_SOUND)
+        invitee_user.play_sound(self.get_sound_for_event("table_invite"))
         show_confirmation_menu(
             invitee_user,
             "table_invite_prompt",
@@ -13638,7 +15167,14 @@ PlayAural Server
                         status=self._table_member_status_text(locale, row),
                     )
                 elif row["is_spectator"]:
-                    label = f"{row['name']} {spectator_suffix}"
+                    spec_suffix = Localization.get(
+                        locale,
+                        "table-spectator-suffix",
+                        **self._account_gender_localization_kwargs(
+                            row["name"], "player"
+                        ),
+                    )
+                    label = f"{row['name']} {spec_suffix}"
                 else:
                     label = row["name"]
                 candidates.append((row["name"], label))
@@ -14015,14 +15551,37 @@ PlayAural Server
     def _table_member_status_text(self, locale: str, row: dict[str, Any]) -> str:
         """Return all concurrent table statuses for one roster row."""
         statuses: list[str] = []
+        player_kwargs = (
+            self._account_gender_localization_kwargs(row["name"], "player")
+            if row.get("name")
+            else {}
+        )
         if row.get("is_host"):
-            statuses.append(Localization.get(locale, "table-member-status-host"))
+            statuses.append(
+                Localization.get(
+                    locale,
+                    "table-member-status-host",
+                    **player_kwargs,
+                )
+            )
         if row.get("is_bot"):
             statuses.append(Localization.get(locale, "table-member-status-bot"))
         elif row.get("is_spectator"):
-            statuses.append(Localization.get(locale, "table-member-status-spectator"))
+            statuses.append(
+                Localization.get(
+                    locale,
+                    "table-member-status-spectator",
+                    **player_kwargs,
+                )
+            )
         else:
-            statuses.append(Localization.get(locale, "table-member-status-player"))
+            statuses.append(
+                Localization.get(
+                    locale,
+                    "table-member-status-player",
+                    **player_kwargs,
+                )
+            )
         if row["kind"] == "user":
             if row.get("in_voice_chat"):
                 statuses.append(
@@ -15078,7 +16637,7 @@ PlayAural Server
                 game._users.pop(spectator_id, None)
             game.rebuild_runtime_state()
 
-            resolved_members: list[tuple[Any, str, bool]] = []
+            resolved_members: list[_RestoredMember] = []
             resolved_player_ids: set[str] = set()
             for member in members_data:
                 if not isinstance(member, dict):
@@ -15111,7 +16670,13 @@ PlayAural Server
                     raise ValueError("saved table contains a duplicate player")
                 resolved_player_ids.add(normalized_player_id)
                 resolved_members.append(
-                    (player, human_name or serialized_name, human_name is None)
+                    _RestoredMember(
+                        player=player,
+                        serialized_name=serialized_name,
+                        is_bot=is_bot,
+                        replaced_human=replaced_human,
+                        human_name=human_name,
+                    )
                 )
 
             active_player_ids = {str(player.id) for player in game.players}
@@ -15129,30 +16694,40 @@ PlayAural Server
             return
 
         # Resolve persistent account identities before checking live
-        # availability. This makes an actionable block error take precedence
-        # even when the affected participant is currently offline.
-        human_accounts: list[tuple[Any, Any]] = []
+        # availability. Mandatory human participants (who were active human seats
+        # at save time) must be validated strictly: an actionable block error or
+        # missing account aborts restoration. Replaced humans (whose seats were
+        # already played by bots at save time) are validated opportunistically:
+        # if online, free, and socially permitted, they reclaim the seat;
+        # otherwise the seat continues with the bot without failing restore.
+        mandatory_human_accounts: list[tuple[Any, Any]] = []
+        reclaimable_human_accounts: list[tuple[Any, Any]] = []
         missing_accounts: list[str] = []
-        for player, participant_name, is_bot in resolved_members:
-            if is_bot:
+        for member in resolved_members:
+            if member.human_name is None:
                 continue
-            participant_record = self._db.get_user(participant_name)
+            participant_record = self._db.get_user(member.human_name)
             if not participant_record:
-                missing_accounts.append(participant_name)
+                if not member.is_bot:
+                    missing_accounts.append(member.human_name)
                 continue
-            if str(player.id) != participant_record.uuid:
+            if str(member.player.id) != participant_record.uuid:
                 user.speak_l("saved-table-invalid", buffer="system")
                 self._nav_back(user)
                 return
-            human_accounts.append((player, participant_record))
+            if not member.is_bot:
+                mandatory_human_accounts.append((member.player, participant_record))
+            else:
+                reclaimable_human_accounts.append((member.player, participant_record))
 
-        if not any(account.uuid == user.uuid for _, account in human_accounts):
+        all_human_accounts = mandatory_human_accounts + reclaimable_human_accounts
+        if not any(account.uuid == user.uuid for _, account in all_human_accounts):
             user.speak_l("saved-table-invalid", buffer="system")
             self._nav_back(user)
             return
 
         banned_uuids = table_state.get("_banned_uuids", set())
-        if any(account.uuid in banned_uuids for _, account in human_accounts):
+        if any(account.uuid in banned_uuids for _, account in mandatory_human_accounts):
             user.speak_l("saved-table-invalid", buffer="system")
             self._nav_back(user)
             return
@@ -15165,13 +16740,13 @@ PlayAural Server
         blocked_by_user_ids = set(self._db.get_blocked_users(user.uuid))
         blocked_by_user = [
             account.username
-            for _, account in human_accounts
+            for _, account in mandatory_human_accounts
             if account.uuid != user.uuid
             and account.uuid in blocked_by_user_ids
         ]
         otherwise_unavailable = [
             account.username
-            for _, account in human_accounts
+            for _, account in mandatory_human_accounts
             if account.uuid != user.uuid
             and account.uuid in socially_blocked_ids
             and account.uuid not in blocked_by_user_ids
@@ -15210,7 +16785,7 @@ PlayAural Server
 
         human_entries: list[tuple[Any, NetworkUser]] = []
         missing_players = list(missing_accounts)
-        for player, account in human_accounts:
+        for player, account in mandatory_human_accounts:
             participant = self._users.get(account.username)
             if (
                 not participant
@@ -15229,6 +16804,20 @@ PlayAural Server
             )
             self._nav_back(user)
             return
+
+        # Attempt to reclaim eligible replacement bot seats whose former human is online,
+        # available, and socially permitted.
+        for player, account in reclaimable_human_accounts:
+            if account.uuid in banned_uuids or account.uuid in socially_blocked_ids:
+                continue
+            participant = self._users.get(account.username)
+            if (
+                not participant
+                or participant.uuid != account.uuid
+                or self._tables.find_user_table(account.username)
+            ):
+                continue
+            human_entries.append((player, participant))
 
         try:
             # Every risky persisted-data operation has succeeded. Only now
@@ -15249,15 +16838,20 @@ PlayAural Server
                 for player, participant in human_entries
             }
             reclaimed_slots: list[tuple[str, str]] = []
-            for player, _participant_name, is_bot in resolved_members:
-                if is_bot:
+            for member in resolved_members:
+                player = member.player
+                participant = human_users_by_id.get(str(player.id))
+                if not participant:
+                    if member.replaced_human:
+                        player.is_bot = True
+                        player.replaced_human = True
+                        player.replaced_human_name = member.human_name or ""
                     game.attach_user(
                         player.id,
                         Bot(player.name, uuid=player.id),
                     )
                     continue
 
-                participant = human_users_by_id[str(player.id)]
                 replacement_bot_name = (
                     player.name
                     if getattr(player, "is_bot", False)
@@ -15294,6 +16888,9 @@ PlayAural Server
             game.setup_keybinds()
             for _, participant in human_entries:
                 self._set_in_game_state(participant, table.table_id)
+                seat_player = game.get_player_by_id(participant.uuid)
+                if seat_player:
+                    game.on_player_locale_changed(seat_player)
             for bot_name, human_name in reclaimed_slots:
                 game._on_replacement_slot_reclaimed(bot_name, human_name)
             game.ensure_bot_display_names(user.locale)
@@ -16301,6 +17898,11 @@ PlayAural Server
         if game_name == game_name_key:
              game_name = game.get_name()
 
+        if getattr(game, "is_social_activity", False) and getattr(game, "topic", ""):
+            topic = getattr(game, "topic", "").strip()
+            if topic:
+                game_name = f"{game_name} ({topic})"
+
         date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         save_name = Localization.get(locale, "default-save-name", game=game_name, date=date_str)
 
@@ -16339,6 +17941,97 @@ PlayAural Server
         game.broadcast_l("table-saved-destroying", buffer="system")
         game.destroy()
 
+    async def _handle_ctrl_j_join_table(
+        self,
+        user: NetworkUser,
+        packet: dict,
+        current_menu: str,
+        state: dict,
+    ) -> bool:
+        """Handle Ctrl+J shortcut to join the table of the focused user."""
+        target_username = ""
+
+        if current_menu == "online_users":
+            item_id = packet.get("menu_item_id")
+            if not item_id and packet.get("menu_index"):
+                menu_data = user.menus.get("online_users", {})
+                items = menu_data.get("items", [])
+                idx = int(packet["menu_index"]) - 1
+                if 0 <= idx < len(items):
+                    item_id = items[idx].id
+            if item_id:
+                if item_id.startswith("online_"):
+                    target_username = item_id[7:]
+                elif item_id.startswith("readonly_online_"):
+                    target_username = item_id[16:]
+
+        elif current_menu == "friends_list_menu":
+            item_id = packet.get("menu_item_id")
+            if not item_id and packet.get("menu_index"):
+                menu_data = user.menus.get("friends_list_menu", {})
+                items = menu_data.get("items", [])
+                idx = int(packet["menu_index"]) - 1
+                if 0 <= idx < len(items):
+                    item_id = items[idx].id
+            if item_id and item_id.startswith("friend_"):
+                target_username = item_id[7:]
+
+        elif current_menu == "friend_actions_menu":
+            target_username = state.get("target_username", "")
+
+        if not target_username:
+            return False
+
+        if target_username == user.username:
+            user.speak_l("already-in-table", buffer="system")
+            return True
+
+        target_record = self._db.get_user(target_username)
+        if not target_record:
+            user.speak_l("user-account-unavailable", buffer="system")
+            return True
+
+        if target_username not in self._users:
+            user.speak_l("user-not-online-anymore", buffer="system")
+            return True
+
+        table = self._tables.find_user_table(target_username)
+        if not table:
+            user.speak_l(
+                "user-not-in-table",
+                buffer="system",
+                **self._account_gender_localization_kwargs(target_username, "target"),
+            )
+            return True
+
+        # Check if already in a table
+        current_table = self._tables.find_user_table(user.username)
+        if current_table:
+            if current_table == table:
+                user.speak_l("already-in-table", buffer="system")
+                return True
+
+        # Check block between users
+        if self._db.has_block_between(user.uuid, target_record.uuid):
+            user.speak_l("table-not-exists", buffer="system")
+            return True
+
+        # Check if table is banned for this user
+        if table.is_banned(user.uuid):
+            user.speak_l("table-banned-message", buffer="system")
+            return True
+
+        # Check if table is private and user does not have private access
+        if table.is_private and not self._has_private_table_access(user, table):
+            user.speak_l("table-private-invite-only", buffer="system")
+            return True
+
+        if self._is_new_table_admission_blocked(user, table):
+            return True
+
+        self._auto_join_table(user, table, table.game_type)
+        return True
+
     async def _handle_keybind(self, client: ClientConnection, packet: dict) -> None:
         """Handle keybind press."""
         username = client.username
@@ -16356,6 +18049,34 @@ PlayAural Server
                 packet,
             )
             state = self._user_states.get(username, {})
+
+        if (packet.get('key') == 'f' and packet.get('control') and packet.get('shift')
+                and not packet.get('alt') and not packet.get('meta')):
+            if user and user.approved and current_menu not in {'banned_menu', 'motd_menu', 'mandatory_email_menu'}:
+                try:
+                    self.forum_manager.service.account(user.uuid)
+                except ForumError as error:
+                    user.speak_l(error.key, buffer='system', **error.values)
+                    return
+                if not self.forum_enabled:
+                    user.speak_l('forum-unavailable', buffer='system')
+                elif current_menu != 'forum_home':
+                    # Keep the standard modal guard and return stack, including
+                    # game return context and local forum drafts.
+                    self._nav_push(user, self.forum_manager.home)
+            return
+
+        if packet.get("key") == "j" and packet.get("control") and not packet.get("alt") and user:
+            if await self._handle_ctrl_j_join_table(user, packet, current_menu, state):
+                return
+
+        if packet.get("key") == "u" and packet.get("control") and not packet.get("alt"):
+            await self._handle_list_online_with_games(client)
+            return
+
+        if current_menu in FORUM_MENU_IDS and user:
+            self.forum_manager.handle_keybind(user, packet, state)
+            return
 
         if current_menu not in self.GLOBAL_SYSTEM_MENUS:
             table = self._tables.find_user_table(username)
@@ -16463,6 +18184,17 @@ PlayAural Server
                         table.remove_member(username)
                         self._show_main_menu(user)
                 return
+
+        if current_menu in TRANSLATION_MENU_IDS:
+            self.translations.handle_input(user, packet, user_state)
+            return
+        if current_menu in FORUM_MENU_IDS:
+            self.forum_manager.handle_input(user, packet, user_state)
+            return
+
+        if current_menu == FILE_LIMIT_INPUT:
+            await self.admin_manager.handle_input(user, packet, user_state)
+            return
 
         # Handle system menu input
         if user:
@@ -16579,6 +18311,121 @@ PlayAural Server
                 self._nav_back(user)
                 return
 
+            elif menu_id == "nick_new_input":
+                new_nick = normalize_username(str(value or ""))
+                use_paid_bypass = bool(user_state.get("use_paid_bypass"))
+                if not new_nick:
+                    self._restore_input_parent(user, user_state)
+                    return
+                val_err = username_validation_error(new_nick)
+                if val_err is not None:
+                    user.speak_l("nick-error-invalid", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+                if is_reserved_system_username(new_nick):
+                    user.speak_l("nick-error-reserved", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+                if new_nick == user.username:
+                    user.speak_l("no-changes-made", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                # Transition to password confirmation editbox
+                policy = self._db.get_nick_change_policy()
+                prompt_key = (
+                    "nick-confirm-password-paid-prompt"
+                    if use_paid_bypass
+                    else "nick-confirm-password-prompt"
+                )
+                prompt_text = Localization.get(
+                    user.locale,
+                    prompt_key,
+                    new_nick=new_nick,
+                    price=policy.bypass_price,
+                )
+                user.speak_l(
+                    prompt_key,
+                    buffer="system",
+                    history=False,
+                    new_nick=new_nick,
+                    price=policy.bypass_price,
+                )
+                user.show_editbox(
+                    "nick_password_input",
+                    prompt_text,
+                    default_value="",
+                )
+                self._user_states[user.username] = {
+                    **user_state,
+                    "menu": "nick_password_input",
+                    "pending_new_nick": new_nick,
+                    "use_paid_bypass": use_paid_bypass,
+                }
+                return
+
+            elif menu_id == "nick_password_input":
+                password = str(value or "")
+                new_nick = str(user_state.get("pending_new_nick") or "").strip()
+                use_paid_bypass = bool(user_state.get("use_paid_bypass"))
+                user_record = self._db.get_user_by_uuid(user.uuid) or self._db.get_user(
+                    user.username
+                )
+                if not user_record or not new_nick:
+                    self._restore_input_parent(user, user_state)
+                    return
+                if not self._verify_user_password(user_record, password):
+                    user.speak_l("nick-error-wrong-password", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                outcome = self._db.submit_nick_change_request(
+                    user_record.uuid,
+                    new_nick,
+                    use_paid_bypass=use_paid_bypass,
+                )
+                if outcome.ok and outcome.request is not None:
+                    user.play_sound("accountrequest.ogg")
+                    if outcome.request.coins_paid > 0:
+                        user.play_sound("game_citadels/coins_small.ogg")
+                        user.speak_l(
+                            "nick-request-submitted-paid",
+                            buffer="system",
+                            new_nick=outcome.request.requested_username,
+                            price=outcome.request.coins_paid,
+                            balance=outcome.balance,
+                        )
+                    else:
+                        user.speak_l(
+                            "nick-request-submitted",
+                            buffer="system",
+                            new_nick=outcome.request.requested_username,
+                        )
+                    self._notify_admins(
+                        "admin-nick-change-requested-notify",
+                        "accountrequest.ogg",
+                        player=outcome.request.old_username,
+                        new_nick=outcome.request.requested_username,
+                    )
+                    self.admin_manager.refresh_pending_nick_changes_menus()
+                elif outcome.code == "insufficient_coins":
+                    policy = self._db.get_nick_change_policy()
+                    user.speak_l(
+                        "nick-error-insufficient-coins",
+                        buffer="system",
+                        required=policy.bypass_price,
+                        balance=outcome.balance,
+                    )
+                elif outcome.code == "already_pending":
+                    user.speak_l("nick-error-already-pending", buffer="system")
+                elif outcome.code == "cooldown_active":
+                    user.speak_l("nick-error-cooldown-active", buffer="system")
+                else:
+                    user.speak_l("nick-error-invalid", buffer="system")
+
+                self._restore_input_parent(user, user_state)
+                return
+
             elif menu_id == "send_friend_request_input":
                 value = str(value or "").strip()
                 if not value:
@@ -16682,12 +18529,8 @@ PlayAural Server
                 target_uuid = str(user_state.get("target_uuid") or "")
                 value = str(value or "").strip()
                 if len(value) > MAX_CHAT_MESSAGE_LENGTH:
-                    user.speak_l(
-                        "chat-message-too-long",
-                        buffer="system",
-                        limit=MAX_CHAT_MESSAGE_LENGTH,
-                    )
-                elif not value:
+                    value = value[:MAX_CHAT_MESSAGE_LENGTH]
+                if not value:
                     user.speak_l("pm-error-message-required", buffer="system")
                 elif not normalize_chat_content(value):
                     user.speak_l("chat-invalid-message", buffer="system")
@@ -16709,6 +18552,47 @@ PlayAural Server
                 self._restore_input_parent(user, user_state)
                 return
 
+            elif menu_id == "custom_table_bet_input":
+                table_id = user_state.get("table_id")
+                table = self._tables.get_table(table_id) if table_id else None
+                if not table or not self._can_manage_table(user, table) or table.status != "waiting":
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                val_str = str(value or "").strip()
+                if not val_str.isdigit():
+                    user.speak_l("table-error-invalid-bet-amount", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                amount = int(val_str)
+                if amount < 0 or amount > 50000:
+                    user.speak_l("table-error-invalid-bet-amount", buffer="system")
+                    self._restore_input_parent(user, user_state)
+                    return
+
+                if amount > 0:
+                    wallet = self._db.get_wallet(user.uuid)
+                    if wallet.balance < amount:
+                        user.speak_l(
+                            "table-error-host-cannot-afford-bet",
+                            buffer="system",
+                            coins=wallet.balance,
+                            required=amount,
+                        )
+                        self._restore_input_parent(user, user_state)
+                        return
+
+                if table.set_bet(amount):
+                    if table.game:
+                        if amount > 0:
+                            table.game.broadcast_l("table-bet-changed", buffer="system", coins=amount)
+                        else:
+                            table.game.broadcast_l("table-bet-changed-friendly", buffer="system")
+                    self.on_tables_changed()
+                self._restore_input_parent(user, user_state)
+                return
+
     async def _deliver_private_message(
         self,
         sender: NetworkUser,
@@ -16716,6 +18600,7 @@ PlayAural Server
         message: str,
         *,
         expected_uuid: str = "",
+        reply: dict[str, str] | None = None,
     ) -> None:
         """Deliver a bounded private message across an allowed social relationship."""
         if not isinstance(message, str):
@@ -16726,12 +18611,7 @@ PlayAural Server
             sender.speak_l("pm-error-message-required", buffer="system")
             return
         if len(message) > MAX_CHAT_MESSAGE_LENGTH:
-            sender.speak_l(
-                "chat-message-too-long",
-                buffer="system",
-                limit=MAX_CHAT_MESSAGE_LENGTH,
-            )
-            return
+            message = message[:MAX_CHAT_MESSAGE_LENGTH]
         if not normalize_chat_content(message):
             sender.speak_l("chat-invalid-message", buffer="system")
             return
@@ -16798,21 +18678,42 @@ PlayAural Server
             sender.play_sound("accounterror.ogg")
             return
 
-        target_user.speak_l(
-            "pm-received",
-            buffer="private",
-            username=sender.username,
-            message=message,
+        if reply:
+            target_user.speak_l(
+                "pm-received-reply",
+                buffer="private",
+                username=sender.username,
+                target=reply["sender"],
+                message=message,
+                quote=reply["message"],
+            )
+            sender.speak_l(
+                "pm-sent-content-reply",
+                buffer="private",
+                username=target_user.username,
+                target=reply["sender"],
+                message=message,
+                quote=reply["message"],
+            )
+        else:
+            target_user.speak_l(
+                "pm-received",
+                buffer="private",
+                username=sender.username,
+                message=message,
+            )
+            sender.speak_l(
+                "pm-sent-content",
+                buffer="private",
+                username=target_user.username,
+                message=message,
+            )
+        target_user.play_sound(
+            self.get_sound_for_event("private_message"), buffer="private"
         )
-        target_user.play_sound("pm.ogg", buffer="private")
-
-        sender.speak_l(
-            "pm-sent-content",
-            buffer="private",
-            username=target_user.username,
-            message=message,
+        sender.play_sound(
+            self.get_sound_for_event("private_message"), buffer="private"
         )
-        sender.play_sound("pm.ogg", buffer="private")
 
     def _submit_automated_spam_report(
         self,
@@ -16945,15 +18846,17 @@ PlayAural Server
         if not message:
             return
         if len(message) > MAX_CHAT_MESSAGE_LENGTH:
-            user.speak_l(
-                "chat-message-too-long",
-                buffer="system",
-                limit=MAX_CHAT_MESSAGE_LENGTH,
-            )
-            return
+            message = message[:MAX_CHAT_MESSAGE_LENGTH]
         if not normalize_chat_content(message):
             user.speak_l("chat-invalid-message", buffer="system")
             return
+
+        reply = None
+        if "reply_to" in packet and not message.startswith("/"):
+            reply, reply_error = normalize_chat_reply(packet.get("reply_to"))
+            if reply_error:
+                user.speak_l(reply_error, buffer="system")
+                return
 
         if message.startswith("/reboot") or message.startswith("/stop"):
             if user and user.trust_level >= DEVELOPER_TRUST_LEVEL:
@@ -17018,7 +18921,12 @@ PlayAural Server
                 scope="direct",
             ):
                 return
-            await self._deliver_private_message(user, target_username, pm_content)
+            await self._deliver_private_message(
+                user,
+                target_username,
+                pm_content,
+                reply=reply,
+            )
 
             # Never allow a private-message command to fall through into chat.
             return
@@ -17030,6 +18938,14 @@ PlayAural Server
         # meaning in either state.
         if convo == "local" and sender_table is None:
             convo = "global"
+        if convo in TABLE_CHAT_CONVERSATIONS and sender_table is None:
+            user.speak_l("chat-reply-table-unavailable", buffer="system")
+            return
+        # Explicit table delivery stays inside the table above. Publish it as
+        # local chat so every client uses the table earcon and table silence,
+        # instead of the global chat sound.
+        if convo in {"table", "game"}:
+            convo = "local"
 
         if not explicit_global:
             if not self._check_chat_channel_send_permission(
@@ -17075,6 +18991,8 @@ PlayAural Server
             "buffer": "chat",
             # "language": language,
         }
+        if reply:
+            chat_packet["reply_to"] = reply
         if global_message is not None:
             chat_packet.update(
                 {
@@ -17195,7 +19113,10 @@ PlayAural Server
 
     def _get_user_role_and_client_text(self, locale: str, user: NetworkUser) -> tuple[str, str]:
         """Get localized role and client type text for a user."""
-        role_key = f"user-role-{self._get_user_role(user.trust_level)}"
+        role = self._get_user_role(user.trust_level)
+        if role == 'user' and self.translations.service.roles.is_translator(user.uuid):
+            role = 'translator'
+        role_key = f"user-role-{role}"
         role_text = Localization.get(locale, role_key)
 
         # Client
@@ -17450,6 +19371,10 @@ PlayAural Server
     def _navigation_frame_identity(self, frame: dict) -> tuple[Any, ...] | None:
         """Return the logical identity for stack frames that must not duplicate."""
         menu = frame.get("menu")
+        if menu in FORUM_MENU_IDS:
+            return (menu, frame.get("forum_topic"), frame.get("forum_post"),
+                    frame.get("forum_view"), frame.get("forum_category"), frame.get("forum_query"),
+                    frame.get('forum_invitation'), frame.get('forum_attachment'), frame.get('forum_language'))
         if menu not in self.IN_GAME_OVERLAY_MENUS:
             return None
         table_id = frame.get("table_id")
@@ -17870,6 +19795,8 @@ PlayAural Server
                 )
             elif menu == HOST_TABLE_STATS_MENU:
                 self._show_table_stats_menu(user, table)
+            elif menu == HOST_TABLE_BET_MENU:
+                self._show_table_bet_menu(user, table)
             else:
                 self._return_to_game(user, table)
             if username in self._user_states:
@@ -17881,7 +19808,11 @@ PlayAural Server
                 self._restore_menu_focus(user, frame)
             return  # IN_GAME_OVERLAY_MENUS manage their own state
         # For all other menus: call show function then re-inject stack
-        if menu == "main_menu":
+        if menu in TRANSLATION_MENU_IDS:
+            self.translations.restore(user, frame)
+        elif menu in FORUM_MENU_IDS:
+            self.forum_manager.restore(user, frame)
+        elif menu == "main_menu":
             self._show_main_menu(user)
         elif menu == "personal_options_menu":
             self._show_personal_options_menu(user)
@@ -18042,6 +19973,14 @@ PlayAural Server
             self._show_my_game_stats(user, frame.get("game_type", ""))
         elif menu == "profile_menu":
             self._show_profile_menu(user)
+        elif menu == "profile_privacy_menu":
+            self._show_profile_privacy_menu(user)
+        elif menu == "nick_change_menu":
+            self._show_nick_change_menu(user, snapshot=frame.get("cooldown_snapshot"))
+        elif menu == "nick_reduce_confirm_menu":
+            self._show_nick_reduce_confirm_menu(user)
+        elif menu == "wallet_menu":
+            self._show_wallet_menu(user)
         elif menu == "gender_menu":
             self._show_gender_menu(user)
         elif menu == "bio_actions_menu":
@@ -18055,7 +19994,7 @@ PlayAural Server
         elif menu == "doc_viewer":
             doc_id = frame.get("doc_id", "")
             if doc_id:
-                self._show_document_content(user, doc_id)
+                self._show_document_content(user, doc_id, locale=frame.get('doc_locale'))
             else:
                 self._show_documentation_menu(user)
         elif menu == "email_confirm_menu":
@@ -18067,8 +20006,18 @@ PlayAural Server
         elif menu == "waiting_for_approval":
             self._show_waiting_for_approval(user)
         # Admin menus — delegate to admin_manager's show functions
+        elif menu in FILE_ADMIN_MENU_IDS:
+            self.admin_manager.files.restore(user, frame)
         elif menu == "admin_menu":
             self.admin_manager._show_admin_menu(user)
+        elif menu == ADMIN_USERS_MENU:
+            self.admin_manager._show_admin_users_menu(user)
+        elif menu == ADMIN_SANCTIONS_MENU:
+            self.admin_manager._show_admin_sanctions_menu(user)
+        elif menu == ADMIN_SERVER_CONTENT_MENU:
+            self.admin_manager._show_admin_server_content_menu(user)
+        elif menu == ADMIN_SYSTEM_MENU:
+            self.admin_manager._show_admin_system_menu(user)
         elif menu == ADMIN_MODERATION_MENU:
             self.admin_manager._show_moderation_menu(user)
         elif menu == ADMIN_MODERATION_REPORTS_MENU:
@@ -18161,6 +20110,29 @@ PlayAural Server
                     user,
                     frame.get("account_approval_page", 1),
                 )
+        elif menu == ADMIN_NICK_CHANGES_MENU:
+            self.admin_manager._show_pending_nick_changes_menu(
+                user,
+                frame.get("nick_changes_page", 1),
+            )
+        elif menu == ADMIN_NICK_CHANGE_ACTIONS_MENU:
+            req_id = int(frame.get("nick_request_id", 0) or 0)
+            if req_id > 0:
+                self.admin_manager._show_pending_nick_change_actions_menu(user, req_id)
+            else:
+                self.admin_manager._show_pending_nick_changes_menu(
+                    user,
+                    frame.get("nick_changes_page", 1),
+                )
+        elif menu == ADMIN_NICK_REJECT_REFUND_MENU:
+            req_id = int(frame.get("nick_request_id", 0) or 0)
+            reason = str(frame.get("reject_reason") or "")
+            if req_id > 0 and reason:
+                self.admin_manager._show_pending_nick_reject_refund_menu(
+                    user, req_id, reason
+                )
+            else:
+                self.admin_manager._show_pending_nick_changes_menu(user, 1)
         elif menu == "promote_admin_menu":
             self.admin_manager._show_promote_admin_menu(
                 user,
@@ -18258,6 +20230,18 @@ PlayAural Server
                 frame.get("search_query", ""),
                 frame.get("target_page", 1),
             )
+        elif menu == "grant_coins_menu":
+            self.admin_manager._show_grant_coins_menu(
+                user,
+                frame.get("search_query", ""),
+                frame.get("target_page", 1),
+            )
+        elif menu == "grant_coins_amount_menu":
+            target_username = frame.get("target_username", "")
+            if target_username:
+                self.admin_manager._show_grant_coins_amount_menu(user, target_username)
+            else:
+                self.admin_manager._show_grant_coins_menu(user)
         elif menu == "manage_motd_menu":
             self.admin_manager._show_manage_motd_menu(user)
         elif menu == "view_motd_menu":
@@ -18308,6 +20292,34 @@ PlayAural Server
             self.admin_manager._show_smtp_settings_menu(user)
         elif menu == "smtp_encryption_menu":
             self.admin_manager._show_smtp_encryption_menu(user)
+        elif menu == ADMIN_SOUND_EVENTS_MENU:
+            self.admin_manager._show_sound_events_menu(user)
+        elif menu == ADMIN_SOUND_PICKER_MENU:
+            self.admin_manager._show_sound_picker_menu(
+                user, str(frame.get("sound_event_id", "") or "")
+            )
+        elif menu == ADMIN_INFILTRADO_WORDS_MENU:
+            self.admin_manager._show_infiltrado_words_menu(user)
+        elif menu == ADMIN_INFILTRADO_PAIRS_LIST_MENU:
+            self.admin_manager._show_infiltrado_pairs_list_menu(
+                user, int(frame.get("page", 1) or 1)
+            )
+        elif menu == ADMIN_INFILTRADO_PAIR_DETAIL_MENU:
+            pair_id = int(frame.get("pair_id", 0) or 0)
+            if pair_id:
+                self.admin_manager._show_infiltrado_pair_detail_menu(user, pair_id)
+            else:
+                self.admin_manager._show_infiltrado_words_menu(user)
+        elif menu == ADMIN_INFILTRADO_CATEGORIES_MENU:
+            self.admin_manager._show_infiltrado_categories_menu(user)
+        elif menu == ADMIN_INFILTRADO_CATEGORY_DETAIL_MENU:
+            cat = str(frame.get("category", "") or "")
+            if cat:
+                self.admin_manager._show_infiltrado_category_detail_menu(user, cat)
+            else:
+                self.admin_manager._show_infiltrado_categories_menu(user)
+        elif menu == ADMIN_INFILTRADO_SELECT_CATEGORY_MENU:
+            self.admin_manager._show_infiltrado_categories_menu(user)
         else:
             table = self._tables.find_user_table(username)
             if table:
@@ -18475,6 +20487,7 @@ PlayAural Server
         user.show_menu(
             menu_id,
             self._restoreable_menu_items(menu_state.get("items", [])),
+            title=menu_state.get("title"),
             multiletter=menu_state.get(
                 "multiletter_enabled",
                 menu_state.get("multiletter", True),
@@ -18663,6 +20676,18 @@ PlayAural Server
             return
         self._nav_push(user, self._show_options_menu)
 
+    async def _handle_open_personal_options(self, client: ClientConnection) -> None:
+        """Handle F9 global hotkey: open the personal and options menu from any context."""
+        username = client.username
+        if not username:
+            return
+        user = self._users.get(username)
+        if not user:
+            return
+        if self._user_states.get(username, {}).get("menu") == "personal_options_menu":
+            return
+        self._nav_push(user, self._show_personal_options_menu)
+
     async def _handle_ping(self, client: ClientConnection) -> None:
         """Handle ping request - respond immediately with pong."""
         await client.send({"type": "pong"})
@@ -18689,6 +20714,10 @@ async def run_server(
     ssl_cert: str | Path | None = None,
     ssl_key: str | Path | None = None,
     database_backup_dir: str | Path | None = None,
+    forum_media_url: str | None = None,
+    forum_media_port: int = 8001,
+    forum_media_dir: str | Path | None = None,
+    forum_media_origins: tuple[str, ...] = (),
 ) -> None:
     """Run the server.
 
@@ -18736,12 +20765,33 @@ async def run_server(
         ssl_cert=ssl_cert,
         ssl_key=ssl_key,
         database_backup_dir=database_backup_dir,
+        forum_media_url=forum_media_url, forum_media_port=forum_media_port,
+        forum_media_dir=forum_media_dir, forum_media_origins=forum_media_origins,
     )
     await server.start()
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         try:
             loop.add_signal_handler(sig, server.request_process_exit, 0)
+        except (NotImplementedError, RuntimeError, ValueError):
+            pass
+
+    if hasattr(signal, "SIGUSR1"):
+        def _on_sigusr1():
+            if server.power_manager.is_scheduled:
+                return
+            try:
+                server.power_manager.schedule(
+                    action=PowerAction.REBOOT,
+                    delay_seconds=60,
+                    requested_by="autoupdate",
+                    reason_id="update",
+                )
+            except Exception:
+                logging.getLogger("playaural").exception("Failed to schedule reboot from SIGUSR1")
+
+        try:
+            loop.add_signal_handler(signal.SIGUSR1, _on_sigusr1)
         except (NotImplementedError, RuntimeError, ValueError):
             pass
 

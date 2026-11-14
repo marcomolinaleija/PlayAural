@@ -12,6 +12,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 
 from ..game_utils.bot_names import bot_name_key, normalize_bot_name
 from ..games.registry import get_game_class
+from ..gender import Gender, normalize_gender
 from ..users.bot import Bot
 from ..voice.settings import (
     MAX_VOICE_SETTINGS_IDENTITIES,
@@ -200,6 +201,14 @@ class Table(DataClassJSONMixin):
         default_factory=set,
         metadata={SAVED_TABLE_PROPERTY: "total_unique_visitors"},
     )
+    bet: int = field(
+        default=0,
+        metadata={CHECKPOINT_TABLE_PROPERTY: "bet"},
+    )
+    pot: int = field(
+        default=0,
+        metadata={CHECKPOINT_TABLE_PROPERTY: "pot"},
+    )
 
     # These properties follow this table through manual saves and transient
     # server checkpoints. They are not account-global: final table/save
@@ -209,6 +218,12 @@ class Table(DataClassJSONMixin):
         init=False,
         repr=False,
         metadata={SAVED_TABLE_PROPERTY: "banned_uuids"},
+    )
+    _pot_contributors: set[str] = field(
+        default_factory=set,
+        init=False,
+        repr=False,
+        metadata={CHECKPOINT_TABLE_PROPERTY: "pot_contributors"},
     )
 
     # Voice preferences are part of one live table, not a manually saved game.
@@ -231,6 +246,14 @@ class Table(DataClassJSONMixin):
         init=False,
         repr=False,
         metadata={CHECKPOINT_TABLE_PROPERTY: "voice_personal_volumes"},
+    )
+    voice_spatial_audio: bool = field(
+        default=True,
+        metadata={CHECKPOINT_TABLE_PROPERTY: "voice_spatial_audio"},
+    )
+    voice_quality: str = field(
+        default="high",
+        metadata={CHECKPOINT_TABLE_PROPERTY: "voice_quality"},
     )
 
     # Not serialized
@@ -255,6 +278,8 @@ class Table(DataClassJSONMixin):
         self._member_offline_since = {}
         self._offline_since = None
         self._destroyed = False
+        self._banned_uuids = set()
+        self._pot_contributors = set()
         self._power_restore_started_at: float | None = None
         self._power_restore_grace_seconds: int = 0
         self._power_restore_processed: bool = False
@@ -416,6 +441,10 @@ class Table(DataClassJSONMixin):
                     or volume == VOICE_PERSONAL_VOLUME_DEFAULT
                 ):
                     raise ValueError("voice_personal_volumes contains an invalid value")
+        if "voice_spatial_audio" in state and type(state["voice_spatial_audio"]) is not bool:
+            raise ValueError("voice_spatial_audio contains an invalid value")
+        if "voice_quality" in state and state["voice_quality"] not in ("high", "standard"):
+            raise ValueError("voice_quality contains an invalid value")
         if len(all_identities) > MAX_VOICE_SETTINGS_IDENTITIES:
             raise ValueError("table voice settings contain too many identities")
 
@@ -460,6 +489,57 @@ class Table(DataClassJSONMixin):
         else:
             self._voice_host_muted_account_ids.discard(account_id)
         return True
+
+    def set_voice_spatial_audio(self, enabled: bool) -> bool:
+        """Update table voice spatial audio policy."""
+        if type(enabled) is not bool:
+            return False
+        self.voice_spatial_audio = enabled
+        return True
+
+    def set_voice_quality(self, quality: str) -> bool:
+        """Update table voice quality profile ('high' or 'standard')."""
+        if quality not in ("high", "standard"):
+            return False
+        self.voice_quality = quality
+        return True
+
+    def calculate_voice_pans(self, listener_uuid: str) -> dict[str, float]:
+        """Calculate relative stereo pans (-0.85 to +0.85) for table members."""
+        if not getattr(self, "voice_spatial_audio", True):
+            return {}
+        seated_uuids: list[str] = []
+        if self._game and hasattr(self._game, "players"):
+            for player in self._game.players:
+                if not getattr(player, "is_bot", False) and getattr(player, "id", None):
+                    pid = str(player.id)
+                    if pid not in seated_uuids:
+                        seated_uuids.append(pid)
+        else:
+            for member in self.members:
+                if not member.is_spectator:
+                    user = self._users.get(member.username)
+                    if not user and self._server:
+                        user = self._server._users.get(member.username)
+                    if user and getattr(user, "uuid", None):
+                        uid = str(user.uuid)
+                        if uid not in seated_uuids:
+                            seated_uuids.append(uid)
+
+        total_seats = len(seated_uuids)
+        if total_seats < 3 or listener_uuid not in seated_uuids:
+            return {uid: 0.0 for uid in seated_uuids}
+
+        listener_idx = seated_uuids.index(listener_uuid)
+        pans: dict[str, float] = {}
+        for idx, uid in enumerate(seated_uuids):
+            if uid == listener_uuid:
+                continue
+            relative_idx = (idx - listener_idx) % total_seats
+            angle = 2.0 * math.pi * relative_idx / total_seats
+            pan = round(0.85 * math.sin(angle), 2)
+            pans[uid] = pan
+        return pans
 
     def get_personal_voice_settings(
         self,
@@ -1313,7 +1393,20 @@ class Table(DataClassJSONMixin):
         self.host = new_host
         if self._game:
             self._game.host = new_host
-            self._game.broadcast_l(message_key, buffer="system", player=new_host)
+            new_host_user = self._users.get(new_host)
+            if new_host_user is not None:
+                new_host_gender = normalize_gender(getattr(new_host_user, "gender", None))
+            elif self._db and hasattr(self._db, "get_user"):
+                user_rec = self._db.get_user(new_host)
+                new_host_gender = normalize_gender(user_rec.gender if user_rec else None)
+            else:
+                new_host_gender = Gender.UNSPECIFIED
+            self._game.broadcast_l(
+                message_key,
+                buffer="system",
+                player=new_host,
+                player_gender=new_host_gender.selector,
+            )
             if hasattr(self._game, "refresh_menus"):
                 self._game.refresh_menus()
         if self._server and hasattr(self._server, "on_tables_changed"):
@@ -1419,6 +1512,9 @@ class Table(DataClassJSONMixin):
         if self._destroyed:
             return
         self._destroyed = True
+
+        if self.pot > 0:
+            self._refund_pot("cancelled")
 
         # Ensure Game is also destroyed (e.g. if table is destroyed by timeout)
         # We need to avoid infinite recursion since Game.destroy calls Table.destroy
@@ -1768,6 +1864,9 @@ class Table(DataClassJSONMixin):
         self._offline_since = None
         self.clear_power_restore_grace()
 
+        if self.pot > 0:
+            self._refund_pot("cancelled")
+
         # A game change is a hard activity boundary. Retirement flushes any
         # final batched table cue, then stops every source (including one-shots)
         # so nothing from the old activity overlaps the fresh waiting lobby.
@@ -1811,6 +1910,9 @@ class Table(DataClassJSONMixin):
 
         if self._server and hasattr(self._server, "on_table_game_reset"):
             self._server.on_table_game_reset(self)
+
+        if self.pot > 0:
+            self._refund_pot("cancelled")
 
         # 1. Store old game state we need
         old_game = self._game
@@ -1958,7 +2060,18 @@ class Table(DataClassJSONMixin):
 
         # 10. Announce new host if changed
         if old_host != self.host:
-             new_game.broadcast_l("table-new-host-promoted", buffer="system", player=self.host)
+             host_user = self._users.get(self.host)
+             host_gender = (
+                 normalize_gender(getattr(host_user, "gender", None))
+                 if host_user is not None
+                 else Gender.UNSPECIFIED
+             )
+             new_game.broadcast_l(
+                 "table-new-host-promoted",
+                 buffer="system",
+                 player=self.host,
+                 player_gender=host_gender.selector,
+             )
 
         # 11. Transfer scheduled sounds only for the normal game-over flow.
         # Manual host restarts must discard every delayed gameplay artifact.
@@ -1983,6 +2096,143 @@ class Table(DataClassJSONMixin):
             self._server.on_tables_changed()
         return True
 
+    def set_bet(self, amount: int) -> bool:
+        """Set the table buy-in/bet amount in virtual coins."""
+        if not isinstance(amount, int) or amount < 0:
+            return False
+        if self.status != "playing":
+            self.bet = amount
+            return True
+        return False
+
+    def _broadcast_table_l(self, key: str, buffer: str = "game", **kwargs) -> None:
+        """Broadcast a localized message to all connected members."""
+        if self._game and hasattr(self._game, "broadcast_l"):
+            try:
+                self._game.broadcast_l(key, buffer=buffer, **kwargs)
+                return
+            except Exception:
+                pass
+        for user in self._users.values():
+            try:
+                msg = Localization.get(user.locale, key, **kwargs)
+                user.speak(msg, buffer=buffer)
+            except Exception:
+                pass
+
+    def _refund_pot(self, reason: str = "cancelled") -> None:
+        """Refund all contributed bets from escrow back to human players."""
+        if self.pot <= 0:
+            self.pot = 0
+            self._pot_contributors.clear()
+            return
+
+        db = self._db
+        if not db and self._server:
+            db = getattr(self._server, "_db", None)
+
+        if not self._pot_contributors:
+            for member in self.members:
+                user = self._users.get(member.username)
+                if user and not getattr(user, "is_bot", False) and getattr(user, "uuid", None):
+                    self._pot_contributors.add(user.uuid)
+
+        contributors_count = len(self._pot_contributors)
+        refund_amount = self.pot // contributors_count if contributors_count > 0 else self.bet
+        if db and refund_amount > 0:
+            for contributor_uuid in list(self._pot_contributors):
+                try:
+                    db.adjust_wallet_balance(contributor_uuid, refund_amount, is_bet=False)
+                except Exception as exc:
+                    logging.getLogger("playaural.table").exception(
+                        "Failed to refund pot of %s to %s: %s", refund_amount, contributor_uuid, exc
+                    )
+
+        self.broadcast_sound("game_citadels/coins_small.ogg")
+        if reason == "no_winner":
+            self._broadcast_table_l("table-pot-refunded-no-winner", buffer="game", bet=refund_amount)
+        else:
+            self._broadcast_table_l("table-pot-refunded", buffer="game", bet=refund_amount)
+
+        self.pot = 0
+        self._pot_contributors.clear()
+
+    def _settle_pot(self, result: Any) -> None:
+        """Distribute the table pot to winners or refund if no human won."""
+        if self.pot <= 0:
+            self._pot_contributors.clear()
+            return
+
+        db = self._db
+        if not db and self._server:
+            db = getattr(self._server, "_db", None)
+
+        if not db:
+            self.pot = 0
+            self._pot_contributors.clear()
+            return
+
+        # Extract winners from GameResult
+        winner_ids: list[str] = []
+        if hasattr(result, "custom_data") and isinstance(result.custom_data, dict):
+            w_ids = result.custom_data.get("winner_ids")
+            if w_ids and isinstance(w_ids, (list, tuple, set)):
+                winner_ids = [str(w) for w in w_ids if w]
+            elif result.custom_data.get("winner_id"):
+                winner_ids = [str(result.custom_data["winner_id"])]
+            elif result.custom_data.get("winner"):
+                winner_ids = [str(result.custom_data["winner"])]
+
+        # Find human winners who were part of this table/pot
+        human_winners: list[str] = []
+        for winner_id in winner_ids:
+            if winner_id in self._pot_contributors:
+                human_winners.append(winner_id)
+            else:
+                for member in self.members:
+                    user = self._users.get(member.username)
+                    if user and (str(getattr(user, "uuid", "")) == winner_id or member.username == winner_id):
+                        human_winners.append(user.uuid)
+                        break
+
+        # Deduplicate preserving order
+        seen = set()
+        unique_human_winners = []
+        for hw in human_winners:
+            if hw not in seen:
+                seen.add(hw)
+                unique_human_winners.append(hw)
+
+        if unique_human_winners:
+            total_pot = self.pot
+            share = total_pot // len(unique_human_winners)
+            for winner_uuid in unique_human_winners:
+                db.adjust_wallet_balance(winner_uuid, share, is_win=True)
+
+            self.broadcast_sound("game_citadels/coins_large.ogg")
+            winner_names = []
+            for winner_uuid in unique_human_winners:
+                name = None
+                for member in self.members:
+                    user = self._users.get(member.username)
+                    if user and str(getattr(user, "uuid", "")) == winner_uuid:
+                        name = member.username
+                        break
+                if not name:
+                    acc = db.get_user(winner_uuid)
+                    name = acc.username if acc else "Jugador"
+                winner_names.append(name)
+
+            if len(unique_human_winners) == 1:
+                self._broadcast_table_l("table-winner-won-pot", buffer="game", winner=winner_names[0], pot=total_pot)
+            else:
+                self._broadcast_table_l("table-pot-split", buffer="game", winners=", ".join(winner_names), share=share)
+        else:
+            self._refund_pot(reason="no_winner")
+
+        self.pot = 0
+        self._pot_contributors.clear()
+
     def save_and_close(self, username: str) -> None:
         """Save game state and close table. Called by game save action."""
         if self._server:
@@ -1995,5 +2245,6 @@ class Table(DataClassJSONMixin):
         rating_updates: dict[str, tuple[float, float]] | None = None,
     ) -> None:
         """Save a game result to the database. Called by game when it finishes."""
+        self._settle_pot(result)
         if self._server:
             self._server.on_game_result(result, rating_updates=rating_updates)

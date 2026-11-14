@@ -4,6 +4,7 @@ import argparse
 import asyncio
 
 from .core.server import VERSION, run_server
+from .forum.config import add_media_arguments
 
 
 def main():
@@ -57,6 +58,7 @@ Examples:
         ),
     )
 
+    add_media_arguments(parser)
     args = parser.parse_args()
 
     # Validate SSL arguments
@@ -64,7 +66,7 @@ Examples:
         parser.error("Both --ssl-cert and --ssl-key must be provided together")
 
     protocol = "wss" if args.ssl_cert else "ws"
-    print(f"Starting PlayAural v{VERSION} server on {protocol}://{args.host}:{args.port}")
+    print(f"Starting PlayAural server v{VERSION} on {protocol}://{args.host}:{args.port}")
 
     asyncio.run(
         run_server(
@@ -73,6 +75,8 @@ Examples:
             ssl_cert=args.ssl_cert,
             ssl_key=args.ssl_key,
             database_backup_dir=args.database_backup_dir,
+            forum_media_url=args.forum_media_url, forum_media_port=args.forum_media_port,
+            forum_media_dir=args.forum_media_dir, forum_media_origins=tuple(args.forum_media_origin),
         )
     )
 

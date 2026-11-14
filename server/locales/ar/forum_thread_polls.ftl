@@ -1,0 +1,9 @@
+forum-poll-question-value = السؤال: { $value }
+forum-poll-options-value = الخيارات: { $value }
+forum-thread-poll-create = إنشاء استطلاع للموضوع
+forum-thread-poll-save = حفظ استطلاع الموضوع
+forum-thread-poll-edit = تعديل استطلاع الموضوع
+forum-thread-poll-saved = تم حفظ استطلاع الموضوع.
+forum-thread-poll-row = استطلاع الموضوع: { $question }. { $status }
+forum-thread-poll-open = مفتوح
+forum-error-thread-poll-exists = يحتوي هذا الموضوع بالفعل على استطلاع عام.

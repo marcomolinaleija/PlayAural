@@ -6,6 +6,113 @@ conflict, follow `CLAUDE.md` and update `AGENTS.md`.
 
 ## Project
 
+Collaborative translations live in `server/translations/`, with shared server
+menus and existing editboxes on all clients. Keep drafts private, authorize
+review against current DB roles, prohibit self-review, and bind every mutation
+to proposal/source/accepted revisions. Live draft previews are input-token bound
+and must never alter global catalogs, speech queues, focus, games or table voice.
+Approval stages work for a coordinated release; the read-only exporter creates a
+checked ZIP with metadata/registries. Schema 14 uses backed-up central migration
+and UUID relations; account deletion removes open work and anonymizes decisions.
+Translator roles are language-scoped capabilities, granted/revoked by current
+DB administrators/developers; never raise moderation trust for a translator.
+Recheck scope on lists, reads and decisions, and reject self-review. Review
+groups by language and author UUID. Reserve only on editing; claims expire after
+24 hours without activity, pending submissions hold until a decision/withdrawal.
+Release preserves drafts. Claim/save/submit and lease checks share one immediate
+transaction. Never expose another author's unsubmitted work through reservations.
+See `devdoc/translation-workbench.md` and `TRANSLATING.md`.
+
+The native forum lives in `server/forum/`: keep schema, repository, service,
+navigation, composing, and presentation separate. It shares account UUIDs,
+approval/moderation/block rules, the central SQLite lifecycle (schema v14), and
+the existing menu/input/speech protocol across desktop, web, and mobile.
+On thread post rows, Right speaks the complete body in place without history
+storage or a menu/input transition. Enter opens the only attached poll/file or
+a content-only chooser for multiple resources; text-only posts are read aloud.
+Announce poll presence and the count of published ready approved attachments in
+rows, speech and reader prompts. Recheck resource access on activation and bind
+chooser selections to their post. Resource opening alone does not mark the body
+read. Image descriptions are visible focusable read-only text in desktop/web.
+Explicit reading interrupts queued
+speech while respecting the client's mute preferences. Applications/Shift+F10
+opens the server-owned post action menu; opening actions does not mark a post
+read. Shift+Enter opens the optional read-only multiline text directly from the
+thread. Escape restores that same thread/page/post focus, never a detail page.
+Recheck visibility and bind keybinds to the exact visible menu/row; reject stale
+ids, mismatched positions and cross-thread targets. Never accept reader text as
+an edit. Read-only text starts at the top without full-text selection.
+Notifications/continuation locate and speak the exact post in its thread.
+Publishing/editing returns directly to the focused post list, preserving other
+drafts and game context. Private/member/block rules apply to every entry point.
+See `devdoc/forum-post-navigation.md` for keyboard and protocol details.
+Forum home pins Private conversations, Recent activity and Community Rules before
+the language subforums; other actions follow. Rules open the canonical help
+document in the selected forum language, independently of interface locale;
+document restore preserves that explicit language. Ctrl+Shift+F opens it through the existing
+keybind protocol, respecting availability, account gates and modal navigation.
+Other forum content precedes all actions. Menu titles are metadata; announce brief
+context on entry without adding heading/help rows or repeating it on refresh.
+Message composers use one editable row per field (label: current value),
+with a bounded body excerpt and the complete text retained in the editbox.
+Do not duplicate message text as preview rows plus separate edit actions.
+Forum message bodies allow 64,000 characters; previews stay bounded and reports
+retain the full body. Schema-10 post rebuilding runs only in the central startup
+migration, with FK checks before commit and enforcement restored on every exit.
+Drafts are bounded session data, never account preferences. See
+`devdoc/forum-foundation.md` for the feature scope and data lifecycle.
+Forum mentions resolve explicit @name / @{spaced name} tokens to account UUIDs.
+Queue notices in the post transaction; speak only after commit. Private activity
+requires accepted membership, and mentions never grant access. Recheck access,
+hidden posts and bilateral blocks on inbox display, alert delivery and opening.
+Keep mention history per post/recipient to prevent edit/re-add spam; moderator
+edits must not send mentions under the author's identity. Read notices only when
+their message is opened or read in full; alert speech alone never marks it read.
+Alert settings and per-topic
+mutes affect speech, not the inbox or unread counters. Empty Notifications only
+speaks feedback and preserves the current menu/stack; empty restored inboxes
+return to their parent. See `devdoc/forum-notifications.md` for retention/limits.
+Forum availability is a persistent server setting controlled by admins/developers.
+The main entry stays visible and only speaks a notice while disabled. Gate all
+new shared-menu actions and media grants/HTTP access; preserve local drafts and
+allow cancellation, cleanup and already-started background preparation.
+Public subforums have a fixed language; topics inherit it through their category.
+Scope public lists/search/counts/saved topics and category administration to the
+selected language. Keep private memberships and saved private chats independent.
+Store explicit forum language by account UUID, independently of interface locale.
+Preserve category/topic ids and freeze draft/category destinations to their own
+language. Never move a populated category across languages through deletion.
+Reports cover public threads/posts only, never private conversations. Recheck
+access and revision inside the central report transaction. Preserve immutable
+text/title/identity evidence in the existing moderation queue; share report
+quotas and notify staff only on creation. Reports never auto-hide or sanction.
+Subforum management is restricted to approved administrators/developers in the
+service layer. Deleting a populated subforum requires an explicit destination
+and atomically preserves topics, posts, attachments, polls and personal state.
+Private discussions use a protected internal category, never a public subforum.
+Private conversations require accepted UUID membership, including for admins;
+never leak them into public lists/search/counts. Poll ballots are atomic and
+question/options freeze after the first vote, including after withdrawal.
+Poll editors use one editable label/value row per field, without duplicate
+preview rows. Each thread may also own one independent general poll, shown
+before messages on every page; message polls retain their own placement and
+ballots. Both scopes share vote rules, but have separate storage/identity.
+General-poll creation requires the public author/staff or private owner; editing
+rechecks rights, first-vote freeze and revision. Never create a dummy post for
+a general poll. See `devdoc/forum-thread-polls.md` for schema and navigation.
+Published polls in either scope can be deleted by their author or the current
+thread moderator, even after voting/closure. Confirm explicitly, recheck access
+inside the transaction, and bind confirmation to the server-owned option ids so
+an edited/recreated poll is never deleted by stale approval. Cascade only poll
+options/votes; retain posts, threads and unrelated drafts. Message rows and full
+reading announce attached polls without exposing hidden-post metadata. Reply
+actions explicitly say they reply to the thread, not an individual post.
+Uploaded files use authenticated HTTP, never WebSocket binaries or public
+object URLs. CPU/media/storage work runs off-loop; SQLite remains on its
+central owner loop behind maintenance barriers. Only explicit playback starts
+an attachment, and closing its player restores focus and temporary mixing.
+See `devdoc/forum-enhancements.md` for rollout status and remaining checks.
+
 PlayAural is an audio-first multiplayer gaming platform for screen reader users.
 It is licensed under GPL-3.0-or-later and has four first-party components:
 
@@ -104,7 +211,39 @@ before integration. Automated upstream integration advances `develop` only;
 publication uses exact human-approved `main` commits. Never publish development
 branches or silently add pending upstream changes to a release.
 
+### Agent Workflow & Conventions
+
+- **Commit Messages**: All git commit messages must be written in Spanish
+  following Conventional Commits formatting: `<tipo>(<ámbito>): <descripción>`
+  (e.g., `feat(voice): agregar soporte de audio espacial`, `fix(ui): corregir foco en menú`).
+- **Feature Branch Isolation**: Never develop or experiment directly on `develop`
+  or `main`. Create isolated `feature/<name>` branches for spikes, prototypes, or
+  new capabilities. Only integrate into `develop` when verified and explicitly requested.
+- **Primary Checkout**: The user prefers one repository directory and switching
+  branches with `git switch`. Work in the primary `PlayAural` checkout; do not
+  create linked worktrees unless the user explicitly requests them.
+- **Develop Authorization**: Obtain explicit user authorization before merging
+  or pushing any new work into `develop`. Permission to implement a feature does
+  not authorize its integration.
+- **Verification Before Integration**: Always run relevant automated test suites
+  via `uv run --project server --extra dev python -m pytest ...` before committing
+  or concluding changes.
+- **Clean Environment Teardown**: Terminate all background daemons (LiveKit, test
+  servers, sidecars) and remove temporary spike scripts, wave recordings, and
+  scratch artifacts before switching branches or completing a task.
+
 ## Commands
+
+Desktop sign-in uses the local `network/login_timeout_seconds` preference:
+30 seconds by default or 60, independently for opening and authorization. Keep
+both UI entry points and the network worker on `client/connection_policy.py`;
+never add a shorter UI timer or restart an in-progress attempt from retry timers.
+Transport-open alone is not authenticated. Run manual verification off the wx
+thread; cancellation/destruction invalidates callbacks before closing the task,
+and late results must never save credentials or affect a replacement session.
+Startup timeout returns to sign-in so auto-login users can adjust the wait.
+Server handshake/heartbeat deadlines accommodate 60 seconds. See
+`devdoc/login-timeouts.md` for cancellation, configuration and verification.
 
 Run server tests from the repo root through uv:
 
@@ -131,7 +270,7 @@ cd mobile_client && cmd /c npm run typecheck && npx expo start
 
 ## Core Architecture
 
-- `server/games/` currently registers 51 games. Categories are `cards`, `dice`,
+- `server/games/` currently registers 52 games. Categories are `cards`, `dice`,
   `board`, `poker`, `arcade`, and `misc`; user-facing category labels must be
   localized. The Play menu uses dynamic counts, not hardcoded category counts.
 - Games are `@dataclass` classes registered with `@register_game`, inherit from
@@ -321,7 +460,7 @@ keep the scope explicit and add coverage for the intended separation.
 Use declarative `GameOptions` with `option_field()`.
 
 - Every option must have working logic; no dead options.
-- Every option needs a localized `change_msg` in EN and VI.
+- Every option needs a localized `change_msg` in ES (Spanish is the sole mandatory language; EN, VI, and other locales are optional).
 - `MenuOption` needs `choice_labels` for every raw value.
 - `TeamModeOption` uses shared team-mode helpers.
 - The framework keeps `start_game` visible throughout the waiting lobby.
@@ -352,7 +491,32 @@ Use declarative `GameOptions` with `option_field()`.
 
 ## Audio and Accessibility
 
-Audio-first is mandatory. Every important state change needs TTS and/or sound.
+### Screen Reader & Accessibility Doctrine
+
+PlayAural is designed from the ground up as an audio-first platform for blind
+and low-vision users utilizing screen readers (NVDA, JAWS, VoiceOver, TalkBack).
+Visual presentation is strictly secondary chrome; no feature or interaction may
+require sight, mouse hovering, or visual-only cues.
+
+Core Accessibility Mandates:
+- **Complete Keyboard & Gesture Parity**: Every action, menu, and state query
+  must be operable entirely via keyboard (desktop/web) or screen-reader-compatible
+  touch gestures (mobile/web touch). Mouse coordinates or drag-and-drop are forbidden.
+- **Dual Auditory Modality**: Every important state change (turn changes, rolls,
+  deals, plays, reveals, captures, errors, leaves, joins) must be conveyed through
+  clear localized TTS speech and/or unambiguous earcons/SFX. Never leave a player
+  in silence wondering what happened or whose turn it is.
+- **Predictable Focus Anchoring**: Screen readers rely on stable focus. Never steal
+  or reset focus without deliberate action intent. Preserve item focus across
+  dynamic menu updates using stable semantic IDs, and ensure Escape / Back reliably
+  returns to the parent context without trapping focus.
+- **Informative, Actionable Feedback**: Reject generic error messages (e.g., "Cannot do that").
+  Always explain what was attempted, why it failed, and what valid actions remain.
+- **TTS Buffer Categorization & Non-Interference**: Spoken messages must use explicit
+  buffers (`chat`, `private`, `game`, `system`, `misc`) so players can tune volumes,
+  mute non-essential channels, or review history without speech collisons.
+
+### Audio Protocol & Implementation Details
 
 - Every `speak_l()` and `broadcast_l()` call must pass explicit `buffer=`.
 - Buffers: `chat` for shared chat, `private` for private messages, `game` for
@@ -513,18 +677,24 @@ participants; do not reuse game-player error strings for account lookups.
   vocabulary, an allowlisted context backed by
   `<context>-gender-term-<form>`. Unspecified and non-binary values use the
   locale's neutral fallback.
-- Maintain EN/VI parity: same keys, data-bearing variables, and plural/select
-  arms. A locale may omit a variable used only as a `GENDER_TERM(...)`
-  selector when its natural sentence does not need gender; if used, the
-  selector name must still match the source key.
-- Agents author both EN and VI strings in this repo, but Vietnamese is
-  provisional and should be flagged for native review when quality matters.
-- Prefer writing locale keys before feature code so every announcement path is
+- **Gender variants rule (mandatory)**: When authoring or updating strings that vary
+  by gender in Spanish (`es`) or other gendered languages, always include explicit
+  arms for at least `[male]` and `[female]`, with `*[other]` as neutral/unspecified
+  fallback. Never omit `[male]` or collapse it implicitly into `*[other]`.
+- Spanish (ES) is the sole mandatory language for all new strings, options,
+  features, and documentation. English (EN), Vietnamese (VI), and other community
+  locales are optional.
+- Agents author strings in Spanish (ES). Adding translations in EN, VI, or other
+  languages is optional. When translating, maintain parity: same keys, data-bearing
+  variables, and plural/select arms. A locale may omit a variable used only as a
+  `GENDER_TERM(...)` selector when its natural sentence does not need gender; if
+  used, the selector name must still match the source key.
+- Prefer writing ES locale keys before feature code so every announcement path is
   planned.
 - Locale discovery and fallback must stay dynamic. Do not hardcode language
   branches in feature code; new languages should be added through locale files
   and metadata/registry layers. Missing translated strings or documentation
-  must fall back to English rather than exposing raw keys to players.
+  must fall back gracefully rather than exposing raw keys to players.
 - A live language change updates client-owned chrome before later localized
   packets, rebuilds that player's locale-bound action sets, and restores the
   semantic parent menu/focus. Browser clients must serialize their asynchronous
@@ -553,7 +723,7 @@ string changes, perform a complete string and broadcast-context audit.
   resulting condition, and the state values needed to understand what happened
   and what the player can do next. Avoid generic messages such as "You cannot
   do that" when a contextual explanation is available.
-- Keep EN/VI keys and variables structurally synchronized, localize
+- Keep ES keys and variables properly localized, localize
   listener-dependent values per recipient, and add tests for both actor and
   observer wording plus important contextual and error branches.
 
@@ -571,9 +741,11 @@ player-facing tone.
   that do not help a player understand the game.
 - Keep vocabulary plain and concrete. Explain game terms before relying on
   them, especially for custom games or mechanics that may be unfamiliar.
-- Keep EN/VI documentation synchronized in structure, meaning, terminology, and
-  attribution. Vietnamese docs should be natural and friendly, with terminology
-  aligned to the matching `.ftl` strings.
+- Spanish (ES) documentation is mandatory for all new features and games.
+  English and Vietnamese documentation are optional. Keep documentation synchronized
+  in structure, meaning, terminology, and attribution when providing translations.
+  Vietnamese docs should be natural and friendly, with terminology aligned to the
+  matching `.ftl` strings.
 - Community translation work must follow `TRANSLATING.md`, including variable
   preservation, perspective-key parity, documentation fallback, and contributor
   credit metadata.
@@ -694,6 +866,15 @@ manager, never ad-hoc database calls from an admin handler.
   pre-migration backup before any existing schema is changed. Reject databases
   created by newer server versions. Opening SQLite must never run retention or
   compatibility cleanup; destructive cleanup is an explicit operation.
+- **Mandatory Schema Version Bump & Migration Rule**: Never add tables, columns,
+  or indexes only to `_create_tables_in_transaction()` and `_validate_schema()`
+  without incrementing `CURRENT_SCHEMA_VERSION`. `_create_tables_in_transaction()`
+  runs ONLY on brand-new empty databases. Existing production databases skip
+  creation and go straight to `_validate_schema()`. If `CURRENT_SCHEMA_VERSION`
+  is not bumped with an explicit migration step, existing databases fail startup
+  validation. Always increment `CURRENT_SCHEMA_VERSION`, add the previous version
+  to the supported migration set, and apply the migration DDL in the backed-up
+  migration transaction.
 - Schema version 2 rebuilds legacy `users.username_key` storage so the canonical
   non-null identity contract is enforced; version-zero and version-one upgrades
   must remain atomic, backed up, and row-preserving.
@@ -908,4 +1089,4 @@ keybind collisions, sound/TTS paths, transitions, and game completion.
 - Update `CLAUDE.md` and `README.md` when catalog counts or user-facing catalog
   data changes.
 
-Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W and Ctrl+U open the interactive roster, and displaced game-specific W bindings use Alt+W.
+Free tables (`freetable`) are a registered social activity alongside the 51 games, not a playable game or leaderboard category. They reuse durable table membership, privacy, bans, recovery, and voice. Game switching works in both directions; entering a free table removes bots. W reads people and the host, Ctrl+W opens the table roster and Ctrl+U opens the global online list, and displaced game-specific W bindings use Alt+W.

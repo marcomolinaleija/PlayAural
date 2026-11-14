@@ -23,9 +23,13 @@ There are no points or target score. When only one non-bankrupt player remains, 
 
 \*\*Boards\*\*
 
-The host chooses a board before the game. The available boards are United States, London, Paris, Germany, Italy, Madrid, Tokyo, Australia, New Zealand, and Hanoi, Vietnam. The selected board supplies all space names, deed values, cards, currency, transit spaces, development terms, and other board-specific amounts. The turn structure stays the same.
+The host chooses a board before the game. The available boards are United States, London, Paris, Germany, Italy, Madrid, Tokyo, Australia, New Zealand, Mexico, and Hanoi, Vietnam. The selected board supplies all space names, deed values, cards, currency, transit spaces, development terms, and other board-specific amounts. The turn structure stays the same.
 
 Most boards use houses and hotels. The Hanoi, Vietnam board uses Vietnamese đồng, begins at Hồ Hoàn Kiếm, calls its buildable properties businesses, and uses five business-upgrade levels. Board-specific names and amounts are always shown in the menus.
+
+The Mexico board has 22 cities grouped by nearby regions, from Baja California and the northern interior through the central plateau, western and central Mexico, the east and south, and the Yucatán Peninsula. These groups are a game layout, not a road or rail route; prices are game values, not real property valuations. Choose Mexico in the Board option before starting.
+
+Four metro stations replace railroads: Cuauhtémoc in Monterrey, Juárez on Guadalajara's SITEUR light rail, and Tacubaya and Pantitlán in Mexico City. Their rents are 25, 50, 100, or 200 pesos according to how many the owner holds. Monterrey International Airport in Apodaca and Benito Juárez International Airport in Mexico City replace utilities: each costs 150 pesos, with rent of 4 times a fresh dice total for one airport or 10 times for both. The usual nearest-transit and nearest-utility cards also apply to these properties. You begin with 1,500 Mexican pesos and collect 200 at Go. Houses, hotels, taxes, jail, and both card decks otherwise work as described below.
 
 \*\*Starting the game\*\*
 

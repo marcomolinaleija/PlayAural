@@ -2,6 +2,6 @@
   "code": "vi",
   "name": "Vietnamese",
   "native_name": "Tiếng Việt",
-  "translators": ["Trung", "PlayAural core team"],
-  "official": true
+  "translators": ["Trung", "PlayAural core team", "Codex"],
+  "official": false
 }

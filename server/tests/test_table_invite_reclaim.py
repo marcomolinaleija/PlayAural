@@ -26,7 +26,6 @@ from server.games.pig.game import PigGame, PigOptions
 from server.games.uno.game import UnoGame
 from server.games.yahtzee.game import YahtzeeGame
 from server.messages.localization import Localization
-from server.persistence.database import Database
 from server.tables.table import (
     ABANDONED_ACTIVE_TABLE_TIMEOUT_SECONDS,
     TABLE_STATE_SCHEMA_VERSION,
@@ -48,10 +47,9 @@ class TestTableInviteReclaim:
     def setup_method(self):
         self.temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.temp_file.close()
-        self.db = Database(self.temp_file.name)
-        self.db.connect()
         self.server = Server(db_path=self.temp_file.name)
-        self.server._db = self.db
+        self.db = self.server.db
+        self.db.connect()
         self.server._auth = AuthManager(self.db)
 
     def teardown_method(self):
@@ -323,20 +321,21 @@ class TestTableInviteReclaim:
         assert "decline" not in action_ids
 
     @pytest.mark.asyncio
-    async def test_direct_invite_rejects_non_friend_without_notifying_target(self):
+    async def test_direct_invite_allows_non_friend_without_automatic_admission(self):
         host = self._create_online_user("Host")
         guest = self._create_online_user("Guest")
         seated = self._create_online_user("Seated")
         table, _ = self._create_started_table(host, seated)
 
-        assert not await self.server._send_table_invite(host, table, guest)
+        assert await self.server._send_table_invite(host, table, guest)
 
-        assert guest.username not in self.server._pending_invites
-        assert guest.messages == []
-        assert host.get_last_spoken() == Localization.get(
-            host.locale,
-            "host-invite-friend-unavailable",
-        )
+        assert guest.username in self.server._pending_invites
+        assert self.server._tables.find_user_table(guest.username) is None
+        assert self.server._pending_invites[guest.username]["invitee_uuid"] == guest.uuid
+        assert "table_invite.ogg" in self._sound_names(guest)
+        actions = self._get_menu_action_ids(guest, "table_invite_prompt")
+        assert self._invite_decision_id(guest, "accept") in actions
+        assert self._invite_decision_id(guest, "decline") in actions
 
     @pytest.mark.asyncio
     async def test_direct_invite_allows_human_to_share_bot_base_name(
@@ -1098,6 +1097,41 @@ class TestTableInviteReclaim:
         assert restored.name == guest.username
         assert table.is_private is False
         assert self.db.get_saved_table(record.id) is None
+
+    @pytest.mark.asyncio
+    async def test_saved_table_restore_with_offline_replaced_human_continues_with_bot(self):
+        restorer = self._create_online_user("Restorer")
+        guest = self._create_online_user("Guest")
+        record = self._save_pig_game(restorer, guest, replace=guest)
+
+        # Guest goes offline before restore
+        self.server._users.pop(guest.username)
+
+        restorer.clear_messages()
+        await self.server._restore_saved_table(restorer, record.id)
+
+        table = self.server._tables.find_user_table(restorer.username)
+        assert table is not None
+        assert self.server._tables.find_user_table(guest.username) is None
+        restored = table.game.get_player_by_id(guest.uuid)
+        assert restored is not None
+        assert restored.is_bot is True
+        assert restored.replaced_human is True
+        assert restored.replaced_human_name == guest.username
+        assert self.db.get_saved_table(record.id) is None
+        assert restorer.get_last_spoken() == Localization.get(
+            restorer.locale,
+            "table-restored",
+        )
+
+        # When guest returns and rejoins later, they can reclaim the seat
+        self.server._users[guest.username] = guest
+        self.server._auto_join_table(guest, table, table.game_type)
+        assert self.server._tables.find_user_table(guest.username) is table
+        reclaimed = table.game.get_player_by_id(guest.uuid)
+        assert reclaimed.is_bot is False
+        assert reclaimed.replaced_human is False
+        assert reclaimed.name == guest.username
 
     @pytest.mark.asyncio
     async def test_saved_humanity_table_restore_replays_music_after_menu_stop(self):
@@ -1869,6 +1903,25 @@ class TestTableInviteReclaim:
 
         item_ids = self._get_menu_action_ids(host, "host_pass_menu")
         assert f"pass_{newcomer.username}" in item_ids
+
+    def test_friend_actions_list_invite_once_for_the_table_host(self):
+        host = self._create_online_user("Host")
+        friend = self._create_online_user("Friend")
+        self._make_friends(host, friend)
+        table = self.server._tables.create_table("pig", host.username, host)
+        game = PigGame(options=PigOptions(target_score=25))
+        table.game = game
+        game._table = table
+        game.initialize_lobby(host.username, host)
+
+        self.server._show_friend_actions_menu(
+            host, friend.username, expected_uuid=friend.uuid
+        )
+
+        item_ids = self._get_menu_action_ids(host, "friend_actions_menu")
+        assert item_ids.count("invite_to_table") == 1
+        assert item_ids.count("join_table") == 0
+        assert item_ids.count("send_pm") == 1
 
     @pytest.mark.asyncio
     async def test_online_friend_selection_opens_friend_actions_and_back_returns_online_list(self):

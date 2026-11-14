@@ -13,6 +13,11 @@ for name in ('PlayAural.db', 'PlayAural.db-wal', 'PlayAural.db-shm', 'PlayAural.
         path.chmod(0o600)
 for directory in (root / 'data', root / 'backups'):
     directory.chmod(0o700)
+media_dir = root / 'data' / 'forum-media'
+media_dir.mkdir(parents=True, exist_ok=True)
+os.chown(media_dir, 1000, 1000)
+media_dir.chmod(0o700)
+for directory in (root / 'data', root / 'backups', media_dir):
     with tempfile.NamedTemporaryFile(prefix='.playaural-fsync-', dir=directory) as probe:
         probe.write(b'PlayAural storage preflight\n')
         probe.flush()

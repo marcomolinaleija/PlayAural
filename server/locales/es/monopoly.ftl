@@ -129,7 +129,7 @@ monopoly-prompt-request-jail-card = Elige una carta de Salir de la Cárcel Grati
 
 # Etiquetas y descripciones dinámicas
 monopoly-buy-property-label = Comprar { $property }, { $group }, por { $price }
-monopoly-buy-property-description = { $property } está en { $group } junto con { $group_members }. Precio: { $price }; hipoteca: { $mortgage }; alquiler: { $rents }; tu efectivo: { $cash }. Rechazarla inicia una subasta.
+monopoly-buy-property-description = { $property } está en el { $group } junto con { $group_members }. Precio: { $price }; hipoteca: { $mortgage }; alquiler: { $rents }; tu efectivo: { $cash }. Rechazarla inicia una subasta.
 monopoly-claim-rent-label = Cobrar { $amount } de alquiler
 monopoly-jail-pay-label = Pagar { $amount } y salir de la cárcel
 monopoly-minimum-bid-label = Pujar el mínimo: { $minimum }
@@ -141,18 +141,18 @@ monopoly-unmortgage-received-now-label = Levantar la hipoteca de { $property } a
 monopoly-mortgage-transfer-description = Recibiste { $property } hipotecada. Paga { $interest } para mantenerla hipotecada, o { $unmortgage } para levantar la hipoteca ahora.
 monopoly-build-label = Comprar { $building } por { $cost }
 monopoly-sell-building-label = Vender { $building } por { $value }
-monopoly-sell-group-buildings-label = Vender todas las { $development } de { $group } por { $value }
+monopoly-sell-group-buildings-label = Vender todas las { $development } del { $group } por { $value }
 monopoly-mortgage-label = Hipotecar por { $value }
 monopoly-unmortgage-label = Levantar hipoteca por { $cost }
 monopoly-managing-property = Administrando { $property }, { $group }; { $state }; efectivo: { $cash }.
 monopoly-property-option = { $property }; { $group }; { $status }
 monopoly-build-property-option = { $property }; { $group }; comprar { $building } por { $cost }; actualmente { $current }; efectivo { $cash }
 monopoly-sell-property-option = { $property }; { $group }; vender { $building } por { $value }; actualmente { $current }
-monopoly-sell-group-option = Vender todas las { $development } de { $group } por { $value }
+monopoly-sell-group-option = Vender todas las { $development } del { $group } por { $value }
 monopoly-mortgage-property-option = { $property }; { $group }; hipotecar por { $value }; efectivo { $cash }
 monopoly-unmortgage-property-option = { $property }; { $group }; levantar hipoteca por { $cost }; efectivo { $cash }
 monopoly-group-building-member = { $property }: { $buildings }
-monopoly-sell-group-option-description = El Banco solo tiene { $bank_houses } casas, así que ningún hotel de { $group } puede descomponerse por separado. Vende todas las { $development } del grupo por { $value }. Desarrollo actual: { $properties }.
+monopoly-sell-group-option-description = El Banco solo tiene { $bank_houses } casas, así que ningún hotel del { $group } puede descomponerse por separado. Vende todas las { $development } del grupo por { $value }. Desarrollo actual: { $properties }.
 monopoly-property-description = { $property }; tipo: { $kind }; { $group }: { $group_members }; propietario: { $owner }; precio: { $price }; hipoteca: { $mortgage }; desarrollo: { $buildings }; alquiler: { $rents }.
 monopoly-trade-property-option = { $selected ->
     [yes] Seleccionada: { $property }; { $group }; { $status }
@@ -351,10 +351,10 @@ monopoly-you-buy-property = Compras { $property }, { $group }, por { $price }. T
 monopoly-player-buy-property = { $player } compra { $property }, { $group }, por { $price }. { GENDER_TERM($player_gender, "subject-have-capitalized") } { $cash } restantes.
 monopoly-you-buy-property-brief = Compraste { $property } por { $price }.
 monopoly-player-buy-property-brief = { $player } compró { $property } por { $price }.
-monopoly-you-complete-property-group = Ahora eres dueño de { $group } completo: { $properties }.
-monopoly-player-completes-property-group = { $player } ahora es dueño de { $group } completo: { $properties }.
-monopoly-you-complete-property-group-brief = Completas { $group }.
-monopoly-player-completes-property-group-brief = { $player } completa { $group }.
+monopoly-you-complete-property-group = Ahora eres dueño de todo el { $group }: { $properties }.
+monopoly-player-completes-property-group = { $player } ahora es dueño de todo el { $group }: { $properties }.
+monopoly-you-complete-property-group-brief = Completas el { $group }.
+monopoly-player-completes-property-group-brief = { $player } completa el { $group }.
 monopoly-you-decline-property = Rechazas { $property }, así que el Banco abre una subasta.
 monopoly-player-decline-property = { $player } rechaza { $property }, así que el Banco abre una subasta.
 monopoly-you-decline-property-brief = Subastando { $property }.
@@ -422,7 +422,7 @@ monopoly-card-chance-go = Avanza a { $go } y cobra su salario.
 monopoly-card-chance-red-property = Avanza a { $destination }; cobra el salario de la casilla de salida si pasas por { $go }.
 monopoly-card-chance-pink-property = Avanza a { $destination }; cobra el salario de la casilla de salida si pasas por { $go }.
 monopoly-card-chance-nearest-transit = Avanza al { $transit } más cercano. Si tiene dueño, paga el doble del alquiler normal.
-monopoly-card-chance-nearest-utility = Avanza a la { $utility } más cercana. Si tiene dueño, haz una nueva tirada de alquiler y paga { $rate } por cada punto de los dados.
+monopoly-card-chance-nearest-utility = Avanza a la casilla de { $utility } más cercana. Si tiene dueño, haz una nueva tirada de alquiler y paga { $rate } por cada punto de los dados.
 monopoly-card-chance-dividend = Cobra { $amount } del Banco.
 monopoly-card-chance-jail-free = Guarda esta carta de Salir de la Cárcel Gratis hasta necesitarla o intercambiarla.
 monopoly-card-chance-back-three = Retrocede tres casillas.
@@ -498,29 +498,29 @@ monopoly-debt-card-player = un pago a otro jugador
 monopoly-debt-repairs = reparaciones de propiedad
 monopoly-debt-jail = la multa de cárcel obligatoria tras la tercera tirada fallida
 monopoly-debt-transfer-interest = interés por propiedad hipotecada recién recibida
-monopoly-you-owe = Debes { $amount } a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-you-owe = Debes { $amount } { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 } por { $reason }. Actualmente tienes { $cash }.
-monopoly-player-owes = { $player } debe { $amount } a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-player-owes = { $player } debe { $amount } { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 } por { $reason }. Actualmente tiene { $cash }.
-monopoly-you-owe-brief = Debes { $amount } a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-you-owe-brief = Debes { $amount } { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 } por { $reason }.
-monopoly-player-owes-brief = { $player } debe { $amount } a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-player-owes-brief = { $player } debe { $amount } { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 } por { $reason }.
-monopoly-you-pay-debt = Pagas { $amount } a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-you-pay-debt = Pagas { $amount } { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 } por { $reason }. Te quedan { $cash }.
-monopoly-player-pays-debt = { $player } paga { $amount } a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-player-pays-debt = { $player } paga { $amount } { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 } por { $reason }. Le quedan { $cash }.
 monopoly-you-pay-debt-brief = Pagaste { $amount } por { $reason }.
 monopoly-player-pays-debt-brief = { $player } paga { $amount } por { $reason }.
@@ -560,13 +560,13 @@ monopoly-you-raise-cash = Recaudas { $amount } vendiendo { $development } de for
 monopoly-player-raises-cash = { $player } recauda { $amount } vendiendo { $development } de forma pareja y luego hipotecando propiedades permitidas. { GENDER_TERM($player_gender, "subject-have-capitalized") } { $cash } frente a una deuda de { $debt }.
 monopoly-you-raise-cash-brief = Recaudaste { $amount }.
 monopoly-player-raises-cash-brief = { $player } recauda { $amount }.
-monopoly-you-bankrupt = No puedes recaudar los { $amount } que debes y quedas en bancarrota. Tus activos pasan a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-you-bankrupt = No puedes recaudar los { $amount } que debes y quedas en bancarrota. Tus activos pasan { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 }.
-monopoly-player-bankrupt = { $player } no puede recaudar los { $amount } que debe y queda en bancarrota. Sus activos pasan a { $destination ->
-    [player] { $creditor }
-   *[bank] el Banco
+monopoly-player-bankrupt = { $player } no puede recaudar los { $amount } que debe y queda en bancarrota. Sus activos pasan { $destination ->
+    [player] a { $creditor }
+   *[bank] al Banco
 }.
 monopoly-you-bankrupt-brief = Estás en bancarrota.
 monopoly-player-bankrupt-brief = { $player } está en bancarrota.
@@ -578,10 +578,10 @@ monopoly-you-sell-building = Vendes { $building } de { $property } por { $value 
 monopoly-player-sells-building = { $player } vende { $building } de { $property } por { $value }. { GENDER_TERM($player_gender, "subject-have-capitalized") } { $cash } ahora.
 monopoly-you-sell-building-brief = Vendiste { $building } de { $property }.
 monopoly-player-sells-building-brief = { $player } vende { $building } de { $property }.
-monopoly-you-sell-group-buildings = Vendes todas las { $development } de { $group } por { $value }. Ahora tienes { $cash }.
-monopoly-player-sells-group-buildings = { $player } vende todas las { $development } de { $group } por { $value }. { GENDER_TERM($player_gender, "subject-have-capitalized") } { $cash } ahora.
-monopoly-you-sell-group-buildings-brief = Vendiste todas las { $development } de { $group } por { $value }.
-monopoly-player-sells-group-buildings-brief = { $player } vende todas las { $development } de { $group } por { $value }.
+monopoly-you-sell-group-buildings = Vendes todas las { $development } del { $group } por { $value }. Ahora tienes { $cash }.
+monopoly-player-sells-group-buildings = { $player } vende todas las { $development } del { $group } por { $value }. { GENDER_TERM($player_gender, "subject-have-capitalized") } { $cash } ahora.
+monopoly-you-sell-group-buildings-brief = Vendiste todas las { $development } del { $group } por { $value }.
+monopoly-player-sells-group-buildings-brief = { $player } vende todas las { $development } del { $group } por { $value }.
 monopoly-you-mortgage = Hipotecas { $property } por { $value }. Ahora tienes { $cash }.
 monopoly-player-mortgages = { $player } hipoteca { $property } por { $value }. { GENDER_TERM($player_gender, "subject-have-capitalized") } { $cash } ahora.
 monopoly-you-mortgage-brief = Hipotecaste { $property } por { $value }.
@@ -682,12 +682,12 @@ monopoly-status-required-player = La acción requerida es de { $player }: { $pha
 monopoly-status-required-you = La acción requerida es tuya: { $phase }.
 monopoly-status-last-roll = Última tirada: { $die1 } y { $die2 }, total { $total }.
 monopoly-status-auction = Subasta: { $property }; puja más alta { $bid }; a cargo de { $leader }.
-monopoly-status-debt = Deuda: { $debtor } le debe { $amount } a { $creditor }.
+monopoly-status-debt = Deuda: { $debtor } debe { $amount }; acreedor: { $creditor }.
 monopoly-status-trade-preparing = { $proposer } está preparando un intercambio con { $target }; sus términos aún no son públicos.
 monopoly-whose-turn-your-action = Es tu turno; debes { $phase }.
 monopoly-whose-turn-your-turn-pending = Es tu turno, pero { $decision_player } debe { $phase }.
 monopoly-whose-turn-other-turn-your-action = Es el turno de { $turn_player }, pero tú debes { $phase }.
-monopoly-whose-turn-player-action = Es el turno de { $turn_player }; { GENDER_TERM($turn_player_gender, "subject") }debe { $phase }.
+monopoly-whose-turn-player-action = Es el turno de { $turn_player }; { GENDER_TERM($turn_player_gender, "subject") } debe { $phase }.
 monopoly-whose-turn-pending = Es el turno de { $turn_player }, pero { $decision_player } actualmente debe { $phase }.
 monopoly-results-winner = Ganador: { $player }.
 monopoly-results-place = { $rank }. { $player }; efectivo { $cash }; patrimonio neto estimado { $net_worth }; { $bankrupt ->
@@ -1120,3 +1120,49 @@ monopoly-space-hanoi-gia-lam-bus-station = Estación de Autobuses Gia Lâm
 monopoly-space-hanoi-nha-chung = Nhà Chung
 monopoly-space-hanoi-excise-tax = Impuesto Especial
 monopoly-space-hanoi-lo-duc = Lò Đúc
+
+# Edición de ciudades mexicanas
+monopoly-board-mexico = México
+monopoly-board-mexico-description = 40 casillas con ciudades mexicanas agrupadas por región, pesos mexicanos, estaciones de metro y aeropuertos. Las estaciones conservan el alquiler de tránsito; los aeropuertos, el de servicios.
+monopoly-currency-mxn = MX${ $amount }
+monopoly-space-kind-mexico-city = Ciudad
+monopoly-space-kind-mexico-metro = Estación de metro
+monopoly-space-kind-mexico-airport = Aeropuerto
+monopoly-group-mexico-brown = Marrón: Baja California
+monopoly-group-mexico-light-blue = Azul claro: Noroeste y norte interior
+monopoly-group-mexico-pink = Rosa: Noreste
+monopoly-group-mexico-orange = Naranja: Altiplano central
+monopoly-group-mexico-red = Rojo: Occidente y Bajío
+monopoly-group-mexico-yellow = Amarillo: Centro de México
+monopoly-group-mexico-green = Verde: Oriente y sur
+monopoly-group-mexico-dark-blue = Azul oscuro: Península de Yucatán
+monopoly-group-mexico-transit = Estaciones de metro
+monopoly-group-mexico-utility = Aeropuertos
+monopoly-space-mexico-cuauhtemoc-metrorrey = Estación Cuauhtémoc, Metrorrey, Monterrey
+monopoly-space-mexico-juarez-siteur = Estación Juárez, Tren Ligero SITEUR, Guadalajara
+monopoly-space-mexico-tacubaya-metro = Estación Tacubaya, Metro de la Ciudad de México
+monopoly-space-mexico-pantitlan-metro = Estación Pantitlán, Metro de la Ciudad de México
+monopoly-space-mexico-monterrey-airport = Aeropuerto Internacional de Monterrey, Apodaca, Nuevo León
+monopoly-space-mexico-benito-juarez-airport = Aeropuerto Internacional Benito Juárez, Ciudad de México
+monopoly-space-mexico-tijuana = Tijuana, Baja California
+monopoly-space-mexico-mexicali = Mexicali, Baja California
+monopoly-space-mexico-hermosillo = Hermosillo, Sonora
+monopoly-space-mexico-chihuahua = Chihuahua, Chihuahua
+monopoly-space-mexico-ciudad-juarez = Ciudad Juárez, Chihuahua
+monopoly-space-mexico-saltillo = Saltillo, Coahuila
+monopoly-space-mexico-monterrey = Monterrey, Nuevo León
+monopoly-space-mexico-tampico = Tampico, Tamaulipas
+monopoly-space-mexico-aguascalientes = Aguascalientes, Aguascalientes
+monopoly-space-mexico-zacatecas = Zacatecas, Zacatecas
+monopoly-space-mexico-san-luis-potosi = San Luis Potosí, San Luis Potosí
+monopoly-space-mexico-guadalajara = Guadalajara, Jalisco
+monopoly-space-mexico-leon = León, Guanajuato
+monopoly-space-mexico-morelia = Morelia, Michoacán
+monopoly-space-mexico-queretaro = Querétaro, Querétaro
+monopoly-space-mexico-toluca = Toluca, Estado de México
+monopoly-space-mexico-mexico-city = Ciudad de México
+monopoly-space-mexico-puebla = Puebla, Puebla
+monopoly-space-mexico-veracruz = Veracruz, Veracruz
+monopoly-space-mexico-oaxaca = Oaxaca de Juárez, Oaxaca
+monopoly-space-mexico-merida = Mérida, Yucatán
+monopoly-space-mexico-cancun = Cancún, Quintana Roo

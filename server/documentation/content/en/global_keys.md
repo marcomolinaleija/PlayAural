@@ -13,15 +13,18 @@ When Menu Hints are off, focus any described menu item and press \*\*F1\*\* in t
 \*\*System and Audio\*\*
 
 \* \*\*F2:\*\* Read online users: hear the total count, then online developers and administrators, followed by up to 20 other usernames and a count of any remaining users.
-\* \*\*Shift + F2:\*\* Open online users list: developers appear first, then administrators, then other users, alphabetically within each group. The list includes each user's current activity and refreshes automatically.
+\* \*\*Shift + F2 / Ctrl + U:\*\* Open online users list: developers appear first, then administrators, then other users, alphabetically within each group. The list includes each user's current activity and refreshes automatically.
 \* \*\*F4:\*\* Mute or unmute the current message buffer.
-\* \*\*F6:\*\* Mute or unmute table chat.
-\* \*\*Shift + F6:\*\* Mute or unmute global chat.
-\* \*\*F7 / F8:\*\* Decrease or increase ambience volume.
-\* \*\*F9 / F10:\*\* Decrease or increase music volume.
+\* \*\*F5:\*\* Mute or unmute table chat.
+\* \*\*Shift + F5:\*\* Mute or unmute global chat.
+\* \*\*F6:\*\* Cycle available volume channels (Sound effects, Music, Ambience, and Voice chat).
+\* \*\*Shift + F6:\*\* Cycle available volume channels in reverse order.
+\* \*\*F7 / F8:\*\* Decrease or increase volume for the currently selected audio channel.
+\* \*\*F9:\*\* Open Personal and Options menu (Profile, Friends, Stats, Options).
+\* \*\*Ctrl + F:\*\* Open Friends.
+\* \*\*Ctrl + Shift + F:\*\* Open the forum without leaving your table. Close any open text box first.
 \* \*\*Alt + P:\*\* Check connection latency.
 \* \*\*Alt + M:\*\* Return focus to the main menu.
-\* \*\*Alt + F:\*\* Open Friends.
 \* \*\*Alt + O:\*\* Open Options.
 
 \*\*Table and Game Information\*\*
@@ -29,8 +32,7 @@ When Menu Hints are off, focus any described menu item and press \*\*F1\*\* in t
 \* \*\*Ctrl + M:\*\* Open Host Management if you are the table host.
 \* \*\*Ctrl + I:\*\* Open Game Info.
 \* \*\*W:\*\* Read the number and names of people at the table and its host without opening a menu.
-\* \*\*Ctrl + W:\*\* Open the table participants menu (also available with Ctrl + U).
-\* \*\*Ctrl + U:\*\* Open Who's at the table.
+\* \*\*Ctrl + W:\*\* Open the table participants menu.
 \* \*\*Ctrl + F1:\*\* Open How to Play.
 \* \*\*Alt + V:\*\* Move focus to the Voice Chat area on the desktop client.
 
@@ -42,6 +44,7 @@ PlayAural groups messages into separate buffers so you can review game messages,
 \* \*\*Shift + `[` / Shift + `]`:\*\* Jump to the first or last buffer.
 \* \*\*`,` / `.`:\*\* Read the previous or next message in the current buffer.
 \* \*\*Shift + `,` / Shift + `.`:\*\* Jump to the oldest or newest message in the current buffer.
+\* \*\*Ctrl + R:\*\* With a chat message focused, open the text box to reply. Escape cancels the reply.
 
 \*\*Menu Navigation on Desktop\*\*
 
@@ -51,6 +54,7 @@ PlayAural groups messages into separate buffers so you can review game messages,
 \* \*\*Home / End:\*\* Jump to the first or last item in the current list.
 \* \*\*F1:\*\* Hear the focused menu item's description, when one is available.
 \* \*\*Letter keys A-Z:\*\* Jump quickly to items that begin with that letter.
+\* \*\*Ctrl + J:\*\* On a user in the online users or friends list, join their table if it is not private.
 
 \*\*Mobile Controls\*\*
 

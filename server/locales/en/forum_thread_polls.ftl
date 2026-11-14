@@ -1,0 +1,9 @@
+forum-poll-question-value = Question: { $value }
+forum-poll-options-value = Options: { $value }
+forum-thread-poll-create = Create thread poll
+forum-thread-poll-save = Save thread poll
+forum-thread-poll-edit = Edit thread poll
+forum-thread-poll-saved = Thread poll saved.
+forum-thread-poll-row = Thread poll: { $question }. { $status }
+forum-thread-poll-open = Open
+forum-error-thread-poll-exists = This thread already has a general poll.

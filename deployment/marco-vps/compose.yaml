@@ -9,6 +9,10 @@ services:
     environment:
       PLAYAURAL_RELEASE_MANIFEST: /config/releases.json
       PLAYAURAL_MAINTENANCE_STATUS: /data/maintenance-status.json
+      PLAYAURAL_POWER_COMMAND: /data/power-command.json
+      PLAYAURAL_FORUM_MEDIA_URL: https://playaural.app/forum-media
+      PLAYAURAL_FORUM_MEDIA_PORT: 8001
+      PLAYAURAL_FORUM_MEDIA_DIR: /data/forum-media
     ports:
       - "127.0.0.1:3047:8000"
     volumes:

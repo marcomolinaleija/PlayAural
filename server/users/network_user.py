@@ -81,6 +81,10 @@ class NetworkUser(User):
     def username(self) -> str:
         return self._username
 
+    def set_username(self, username: str) -> None:
+        """Update the user's canonical username after an approved nick change."""
+        self._username = str(username)
+
     @property
     def locale(self) -> str:
         return self._locale
@@ -274,8 +278,11 @@ class NetworkUser(User):
         buffer: str = "misc",
         *,
         history: bool = True,
+        interrupt: bool = False,
     ) -> None:
         packet = {"type": "speak", "text": text, "buffer": buffer}
+        if interrupt:
+            packet['interrupt'] = True
         if not history:
             packet["history"] = False
         self._queue_packet(packet)
@@ -294,8 +301,10 @@ class NetworkUser(User):
         to allow client-side translation/overrides.
         """
         # Try to format on server
-        text = Localization.get(self.locale, message_id, **kwargs)
-        
+        localized_kwargs = dict(kwargs)
+        localized_kwargs.setdefault("user_gender", self.gender.selector)
+        text = Localization.get(self.locale, message_id, **localized_kwargs)
+
         packet = {
             "type": "speak",
             "text": text,        # Result of server translation (or key if missing)
@@ -346,7 +355,10 @@ class NetworkUser(User):
         grid_height: int = 0,
         grid_width: int = 1,
         capture_focus_context_id: str | None = None,
+        title: str | None = None,
     ) -> None:
+        if title is not None and (not isinstance(title, str) or len(title) > 1024):
+            raise ValueError("Menu titles must be bounded plain text")
         if capture_focus_context_id is not None:
             capture_focus_context_id = validate_menu_focus_context_id(
                 capture_focus_context_id
@@ -365,6 +377,8 @@ class NetworkUser(User):
             "grid_height": grid_height,
             "grid_width": grid_width,
         }
+        if title:
+            state["title"] = title
 
         # Content-diff skip: a repaint of the menu the client is already
         # displaying, with identical content and no explicit focus directive,
@@ -400,6 +414,8 @@ class NetworkUser(User):
         if position is not None:
             # Convert 1-based to 0-based for client
             packet["position"] = position - 1
+        if title:
+            packet["title"] = title
         if selection_id is not None:
             packet["selection_id"] = selection_id
         if capture_focus_context_id:
@@ -453,6 +469,8 @@ class NetworkUser(User):
             "grid_height": grid_height,
             "grid_width": grid_width,
         }
+        if previous and previous.get("title"):
+            packet["title"] = previous["title"]
         if position is not None:
             packet["position"] = position - 1
         if selection_id is not None:
@@ -486,6 +504,7 @@ class NetworkUser(User):
         multiline: bool = False,
         read_only: bool = False,
         max_length: int | None = None,
+        translation_draft: dict[str, str] | None = None,
     ) -> None:
         self._current_editboxes[input_id] = {
             "prompt": prompt,
@@ -504,6 +523,9 @@ class NetworkUser(User):
         }
         if max_length is not None:
             packet["max_length"] = max_length
+        if translation_draft is not None:
+            packet['translation_draft'] = dict(translation_draft)
+            self._current_editboxes[input_id]['translation_draft'] = dict(translation_draft)
         # The editbox takes the client's screen; the next menu paint must be
         # sent in full even if its content is unchanged.
         self._last_menu_packet_id = None

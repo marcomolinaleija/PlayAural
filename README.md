@@ -44,14 +44,14 @@ PlayAural is designed so the full state of the platform can be followed without 
 
 ## Game Catalog
 
-PlayAural includes **free tables** for text and voice conversation, with switching to and from games while keeping the same table and voice channel. Choose **Create a free table** in the main menu. **W** announces people and the host; **Ctrl+W** or **Ctrl+U** opens the participants menu. Game actions previously bound to W use **Alt+W**.
+PlayAural includes **free tables** for text and voice conversation, with switching to and from games while keeping the same table and voice channel. Choose **Create a free table** in the main menu. **W** announces people and the host; **Ctrl+W** opens the participants menu; **Ctrl+U** opens the global online list. Game actions previously bound to W use **Alt+W**.
 
-PlayAural currently includes **51 games** across backend categories:
+PlayAural currently includes **52 games** across backend categories:
 
 - Card games such as BANG! The Bullet, Blackjack, Crazy Eights, UNO, Skip-Bo, Flip 7, Exploding Kittens, Pusoy Dos, Tien Len, Scopa, Ninety Nine, Mile by Mile, Citadels, Coup, Dead Man's Deck, Dominos, Nine, 21, Cards Against Humanity, and Age of Heroes
 - Poker games such as Texas Hold'em, Five Card Draw, and Dead Man's Poker
 - Dice games such as Zombie Dice, Dead Man's Dice, Farkle, Bunko, Yahtzee, Pig, Left Center Right, Color Game, Toss Up, Tradeoff, Threes, and 1-4-24
-- Board games such as Breach Point, Monopoly, Chess, Battleship, Backgammon, Senet, Sorry!, Ludo, and Snakes and Ladders
+- Board games such as Breach Point, Monopoly, Mexican Monopoly (50 spaces), Chess, Battleship, Backgammon, Senet, Sorry!, Ludo, and Snakes and Ladders
 - Original arcade-style titles such as Battle, Chaos Bear, Light Turret, and Pirates of the Lost Seas
 - Miscellaneous games such as Rolling Balls, Metal Pipe, and Bingo
 
@@ -83,6 +83,20 @@ PlayAural currently supports the following languages:
 Community translators should follow [TRANSLATING.md](TRANSLATING.md). Partial
 translations are supported safely: missing strings and missing translated
 documentation fall back to English rather than displaying raw translation keys.
+Spanish is the required source language for new work in this fork.
+
+Contribute from **Personal and options → Contribute → Translations**, including
+while seated at a table. The shared editor offers original/translation fields,
+automatic private drafts, live examples, missing texts, language proposals and
+submission for review. Administrators and developers review from
+**Administration → Review translations**, grouped by language and contributor.
+Admins grant language-scoped translator roles in **Administration → Manage
+translators**; assigned translators review from **Personal and options →
+Contribute → Review translations**, without moderation permissions. Temporary
+reservations prevent duplicate work while preserving private drafts.
+Approval credits the contributor and
+stages the work for the next coordinated update. See **Documentation →
+Translations** and [the workflow guide](TRANSLATING.md).
 
 ## Repository Layout
 
@@ -91,6 +105,25 @@ documentation fall back to English rather than displaying raw translation keys.
 - `web_client/` - modular browser client source, service worker, split locale bundles, static assets, Web Audio/Web Speech handling, and table voice integration
 - `mobile_client/` - Expo application, mobile locales, sounds, build configuration, and voice integration
 - `deployment/` - deployment-specific configuration examples
+
+## Community Forum
+
+Choose **Forum** in the main menu on desktop, web, or mobile. Browse Community,
+Questions and help, or Ideas and feedback; start a discussion, read messages,
+reply, and edit your messages. Recent activity, unread discussions, saved
+discussions, and text search help you find and continue conversations.
+
+**Community Rules** stays on the forum home after Private conversations and
+Recent activity. It opens the official rules in the selected forum community's
+language. Back returns to that same entry. The rules also remain available in
+Documentation.
+
+Content comes first and actions follow it. Brief context is announced on entry;
+titles and page summaries do not occupy extra menu rows. Messages remain plain
+text, and publishing always follows an explicit preview. Existing accounts,
+approval, bans, mutes, blocks, and administrator roles apply across the forum.
+See **Documentation > Forum** for the user guide and
+[the foundation notes](devdoc/forum-foundation.md) for architecture and a local demo.
 
 ## Web Client
 

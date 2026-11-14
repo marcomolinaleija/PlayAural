@@ -11,6 +11,10 @@ dependencies = [
     "openskill>=6.1.3",
     "argon2-cffi>=23.1",
     "livekit-api>=1.2.1,<2",
+    "aiohttp>=3.14,<4",
+    "pillow>=11.3,<14",
+    "elevenlabs>=2.77.0",
+    "python-dotenv>=1.2.4",
 ]
 
 [project.optional-dependencies]
@@ -19,9 +23,13 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-xdist>=3.5",
 ]
+s3 = [
+    "boto3>=1.35,<2",
+]
 
 [project.scripts]
 playaural-server = "server.__main__:main"
+playaural-export-translations = "server.translations.export_cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -50,6 +58,8 @@ only-include = [
     "auth",
     "core",
     "documentation",
+    "forum",
+    "translations",
     "games",
     "game_utils",
     "locales",

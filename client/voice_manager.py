@@ -175,14 +175,25 @@ def resolve_audio_input_device(device_id: str) -> tuple[int | None, str, str, bo
     return None, "", "", False
 
 
-def _apply_pcm_gain(data: bytearray, gain: float) -> None:
-    """Apply gain to int16 PCM without stalling the receive event loop."""
-    if gain == 1.0:
+def _apply_pcm_gain(data: bytearray, gain: float, pan: float = 0.0) -> None:
+    """Apply gain and stereo pan to int16 PCM without stalling the receive event loop."""
+    if gain == 1.0 and pan == 0.0:
         return
     samples = np.frombuffer(data, dtype="<i2")
-    scaled = samples.astype(np.float32) * gain
-    np.clip(scaled, -32_768, 32_767, out=scaled)
-    samples[:] = scaled
+    if pan != 0.0 and len(samples) >= 2 and len(samples) % 2 == 0:
+        clamped_pan = max(-1.0, min(1.0, float(pan)))
+        left_gain = gain * min(1.0, 1.0 - clamped_pan)
+        right_gain = gain * min(1.0, 1.0 + clamped_pan)
+        left = samples[0::2].astype(np.float32) * left_gain
+        right = samples[1::2].astype(np.float32) * right_gain
+        np.clip(left, -32_768, 32_767, out=left)
+        np.clip(right, -32_768, 32_767, out=right)
+        samples[0::2] = left
+        samples[1::2] = right
+    else:
+        scaled = samples.astype(np.float32) * gain
+        np.clip(scaled, -32_768, 32_767, out=scaled)
+        samples[:] = scaled
 
 
 @dataclass(slots=True)
@@ -318,6 +329,8 @@ async def _open_input_capture(
     *,
     loop: asyncio.AbstractEventLoop,
     input_device: int | None,
+    noise_suppression: bool = True,
+    auto_gain_control: bool = True,
 ) -> _RealtimeInputCapture:
     """Open microphone capture without scheduling fallible Queue.put callbacks."""
     if rtc is None or sd is None:
@@ -330,9 +343,9 @@ async def _open_input_capture(
     )
     apm = rtc.AudioProcessingModule(
         echo_cancellation=True,
-        noise_suppression=True,
+        noise_suppression=noise_suppression,
         high_pass_filter=True,
-        auto_gain_control=True,
+        auto_gain_control=auto_gain_control,
     )
     delay_estimator = _AudioDelayEstimator()
     processing_lock = threading.Lock()
@@ -452,11 +465,13 @@ class _RealtimeOutputPlayer:
         loop: asyncio.AbstractEventLoop,
         get_volume: Callable[[], float],
         get_participant_volume: Callable[[str], float] | None = None,
+        get_participant_pan: Callable[[str], float] | None = None,
         output_device: int | None = None,
     ) -> None:
         self.loop = loop
         self.get_volume = get_volume
         self.get_participant_volume = get_participant_volume
+        self.get_participant_pan = get_participant_pan
         self.output_device = output_device
         self.num_channels = VOICE_PREFERRED_OUTPUT_CHANNELS
         self.output_stream = None
@@ -746,6 +761,13 @@ class _RealtimeOutputPlayer:
                     if self.get_participant_volume
                     else self.get_volume()
                 ),
+                get_pan=(
+                    lambda participant_id=participant_id: self.get_participant_pan(
+                        participant_id
+                    )
+                    if self.get_participant_pan
+                    else 0.0
+                ),
                 max_bytes=self._buffer_size(self.num_channels),
                 frame_bytes=self.num_channels * VOICE_SAMPLE_WIDTH_BYTES,
                 startup_bytes=(
@@ -848,6 +870,12 @@ class _RealtimeOutputPlayer:
 class VoiceManager:
     """Runs LiveKit voice chat on a dedicated asyncio loop."""
 
+    noise_suppression: bool = True
+    auto_gain_control: bool = True
+    spatial_audio_enabled: bool = True
+    table_spatial_audio: bool = True
+    voice_quality: str = "high"
+
     def __init__(
         self,
         *,
@@ -882,6 +910,12 @@ class VoiceManager:
         self._volume_lock = threading.Lock()
         self._participant_voice_settings: dict[str, tuple[float, bool]] = {}
         self._host_muted = False
+        self.noise_suppression: bool = True
+        self.auto_gain_control: bool = True
+        self.spatial_audio_enabled: bool = True
+        self.table_spatial_audio: bool = True
+        self.voice_quality: str = "high"
+        self._participant_pans: dict[str, float] = {}
         self._start_loop()
 
     @property
@@ -932,11 +966,38 @@ class VoiceManager:
             return
         intent = self._next_intent()
         voice_packet = dict(packet)
+        with self._volume_lock:
+            if "quality" in voice_packet:
+                self.voice_quality = str(voice_packet["quality"])
+            if "spatial_audio" in voice_packet:
+                self.table_spatial_audio = bool(voice_packet["spatial_audio"])
         self._submit_operation(lambda: self._join(voice_packet, intent))
 
     def leave(self, *, notify: bool = True) -> None:
         self._next_intent()
         self._submit_operation(lambda: self._leave(notify=notify))
+
+    def set_noise_suppression(self, enabled: bool) -> None:
+        self.noise_suppression = bool(enabled)
+
+    def set_auto_gain_control(self, enabled: bool) -> None:
+        self.auto_gain_control = bool(enabled)
+
+    def set_spatial_audio_enabled(self, enabled: bool) -> None:
+        with self._volume_lock:
+            self.spatial_audio_enabled = bool(enabled)
+
+    def apply_voice_pans(self, packet: dict[str, Any]) -> None:
+        """Apply spatial pans and quality profile from server."""
+        pans = packet.get("pans", {})
+        spatial_enabled = packet.get("spatial_enabled", True)
+        quality = packet.get("quality", "high")
+        with self._volume_lock:
+            self._participant_pans = {
+                str(k): float(v) for k, v in pans.items() if isinstance(v, (int, float))
+            }
+            self.table_spatial_audio = bool(spatial_enabled)
+            self.voice_quality = str(quality)
 
     def set_microphone_enabled(
         self, enabled: bool, *, input_device: int | None = None
@@ -962,6 +1023,7 @@ class VoiceManager:
         with self._volume_lock:
             self._host_muted = False
             self._participant_voice_settings = {}
+            self._participant_pans = {}
 
     def _get_participant_voice_volume(self, participant_id: str) -> float:
         with self._volume_lock:
@@ -970,6 +1032,12 @@ class VoiceManager:
                 (1.0, False),
             )
             return 0.0 if muted else self._voice_volume * personal_volume
+
+    def _get_participant_pan(self, participant_id: str) -> float:
+        with self._volume_lock:
+            if not self.spatial_audio_enabled or not self.table_spatial_audio:
+                return 0.0
+            return self._participant_pans.get(participant_id, 0.0)
 
     def set_voice_volume(self, volume: float) -> None:
         """Set remote voice playback gain (0.1–1.0).
@@ -1023,6 +1091,7 @@ class VoiceManager:
                 loop=self.loop,
                 get_volume=self._get_voice_volume,
                 get_participant_volume=self._get_participant_voice_volume,
+                get_participant_pan=self._get_participant_pan,
             )
             await self.output_player.start()
             self.room = rtc.Room(loop=self.loop)
@@ -1162,16 +1231,30 @@ class VoiceManager:
         self._mic_busy = True
         try:
             if enabled:
-                self.input_capture = await _open_input_capture(
-                    loop=self.loop,
-                    input_device=input_device,
-                )
+                capture_kwargs: dict[str, Any] = {
+                    "loop": self.loop,
+                    "input_device": input_device,
+                }
+                if not getattr(self, "noise_suppression", True):
+                    capture_kwargs["noise_suppression"] = False
+                if not getattr(self, "auto_gain_control", True):
+                    capture_kwargs["auto_gain_control"] = False
+                self.input_capture = await _open_input_capture(**capture_kwargs)
                 self._link_input_processing_to_output(self.input_capture)
                 self.local_track = rtc.LocalAudioTrack.create_audio_track(
                     "microphone", self.input_capture.source
                 )
                 options = rtc.TrackPublishOptions()
                 options.source = rtc.TrackSource.SOURCE_MICROPHONE
+                if hasattr(options, "audio_encoding") and hasattr(options.audio_encoding, "max_bitrate"):
+                    if getattr(self, "voice_quality", "high") == "high":
+                        options.audio_encoding.max_bitrate = 64_000
+                    else:
+                        options.audio_encoding.max_bitrate = 24_000
+                if hasattr(options, "red"):
+                    options.red = True
+                if hasattr(options, "dtx"):
+                    options.dtx = True
                 self.local_publication = await self.room.local_participant.publish_track(
                     self.local_track, options
                 )
@@ -1323,6 +1406,7 @@ class _BoundedPcmBuffer:
         self,
         get_volume: Callable[[], float],
         *,
+        get_pan: Callable[[], float] | None = None,
         max_bytes: int,
         frame_bytes: int,
         startup_bytes: int = 0,
@@ -1346,6 +1430,7 @@ class _BoundedPcmBuffer:
         self._playout_started = self._startup_bytes == 0
         self._inner = bytearray()
         self._get_volume = get_volume
+        self._get_pan = get_pan
         self._lock = threading.Lock()
 
     def extend(self, data: bytes) -> None:
@@ -1357,9 +1442,10 @@ class _BoundedPcmBuffer:
         if len(data) > self._max_bytes:
             data = data[-self._max_bytes :]
         gain = self._get_volume()
-        if gain != 1.0:
+        pan = self._get_pan() if self._get_pan else 0.0
+        if gain != 1.0 or pan != 0.0:
             chunk: bytes | bytearray = bytearray(data)
-            _apply_pcm_gain(chunk, gain)
+            _apply_pcm_gain(chunk, gain, pan)
         else:
             chunk = data
         with self._lock:

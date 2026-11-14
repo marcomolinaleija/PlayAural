@@ -23,6 +23,7 @@ class SequenceOperation(DataClassJSONMixin):
     volume: int = 100
     pan: int = 0
     pitch: int = 100
+    position: tuple[float, float, float] | None = None
     callback_id: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
 
@@ -34,6 +35,7 @@ class SequenceOperation(DataClassJSONMixin):
         volume: int = 100,
         pan: int = 0,
         pitch: int = 100,
+        position: tuple[float, float, float] | None = None,
     ) -> "SequenceOperation":
         return cls(
             kind="sound",
@@ -41,6 +43,7 @@ class SequenceOperation(DataClassJSONMixin):
             volume=volume,
             pan=pan,
             pitch=pitch,
+            position=position,
         )
 
     @classmethod
@@ -303,12 +306,21 @@ class SequenceRunnerMixin:
     ) -> None:
         if operation.kind == "sound":
             if operation.sound:
-                self.play_sound(
-                    operation.sound,
-                    volume=operation.volume,
-                    pan=operation.pan,
-                    pitch=operation.pitch,
-                )
+                if operation.position is not None:
+                    self.play_sound(
+                        operation.sound,
+                        volume=operation.volume,
+                        pan=None,
+                        pitch=operation.pitch,
+                        position=operation.position,
+                    )
+                else:
+                    self.play_sound(
+                        operation.sound,
+                        volume=operation.volume,
+                        pan=operation.pan,
+                        pitch=operation.pitch,
+                    )
             return
 
         if operation.kind == "localized_sound":

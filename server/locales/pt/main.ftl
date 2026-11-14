@@ -120,6 +120,9 @@ player-replaced-by-bot = { $bot } está jogando no lugar de { $player }.
 player-reclaimed-from-bot = { $player } retornou e reassumiu o lugar { GENDER_TERM($player_gender, "possessive-determiner") } que estava com { $bot }.
 player-reclaimed-from-bot-you = Você retornou e retomou seu lugar que era ocupado por { $bot }.
 spectator-joined = Entrou na mesa de { $host } como espectador.
+table-game-in-progress = Partida em andamento.
+spectator-watching-game = Assistindo à partida.
+spectator-stopped-watching = Parou de assistir à partida.
 
 spectate = Assistir
 now-playing = { $player } agora está jogando.
@@ -797,6 +800,8 @@ admin-broadcast-prompt = Insira a mensagem para transmitir a todos os usuários 
 admin-broadcast-sent = Transmissão enviada para { $count } usuários.
 
 manage-motd = Gerenciar AVISO (MOTD)
+admin-switch-server = Trocar de servidor
+admin-desc-switch-server = Desconectar e retornar ao seletor de servidores do cliente.
 create-update-motd = Criar/Atualizar AVISO
 view-motd = Ver AVISO Ativo
 delete-motd = Excluir AVISO
@@ -1392,3 +1397,34 @@ global-voice-chat-availability-enabled = O desenvolvedor ativou o chat de voz gl
 global-voice-chat-availability-disabled = O desenvolvedor desativou temporariamente o chat de voz global.
 voice-room-global-label = Chat de voz global
 voice-global-chat-disabled = O chat de voz global está desativado.
+# Configurações de voz da mesa para o anfitrião
+voice-host-spatial-audio-option = Áudio espacial de voz: { $status }
+voice-host-desc-spatial-audio = Ativa ou desativa a distribuição espacial de voz para todos os jogadores nesta mesa
+voice-host-spatial-audio-changed = Áudio espacial de voz da mesa definido como { $status }.
+voice-host-spatial-audio-broadcast = O anfitrião definiu o áudio espacial de voz da mesa como { $status }.
+voice-host-quality-option = Qualidade de voz: { $quality }
+voice-host-desc-quality = Altera o perfil de qualidade do chat de voz entre Alta Fidelidade (64 kbps) e Padrão (24 kbps)
+voice-host-quality-changed = Qualidade de voz da mesa definida como { $quality }.
+voice-host-quality-broadcast = O anfitrião definiu a qualidade de voz da mesa como { $quality }.
+voice-quality-high = Alta Fidelidade (64 kbps)
+voice-quality-standard = Padrão (24 kbps)
+voice-host-members-heading = Participantes do chat de voz da mesa:
+
+# Preferências de voz pessoais
+voice-noise-suppression-option = Supressão de ruído do microfone: { $status }
+general-desc-voice-noise-suppression = Ativa ou desativa a redução de ruído de fundo no seu microfone
+voice-noise-suppression-changed = Supressão de ruído do microfone definida como { $status }.
+voice-spatial-audio-option = Áudio espacial de voz: { $status }
+general-desc-voice-spatial-audio = Posiciona as vozes em estéreo de acordo com os assentos na mesa
+voice-spatial-audio-changed = Áudio espacial de voz definido como { $status }.
+voice-auto-gain-option = Controle automático de ganho do microfone: { $status }
+general-desc-voice-auto-gain = Ajusta automaticamente o volume de entrada do microfone
+voice-auto-gain-changed = Controle automático de ganho do microfone definido como { $status }.
+
+# Gerenciamento de chat de voz global
+global-voice-chat-toggle-enabled = Chat de voz global: { $status }
+global-voice-chat-desc-toggle-enabled = Ativa ou desativa o chat de voz global em todo o servidor
+global-voice-chat-status-changed = O chat de voz global agora está { $status }.
+global-voice-chat-quality-option = Qualidade de voz global: { $quality }
+global-voice-chat-desc-quality = Altera o perfil de qualidade de áudio do chat de voz global
+global-voice-chat-quality-changed = Qualidade de voz global definida como { $quality }.

@@ -49,7 +49,7 @@ def test_table_shortcuts_dispatch_from_the_real_desktop_key_handler():
         current_menu_id="turn_menu", current_menu_item_ids=["whos_at_table"],
         current_menu_item_read_only=[False], network=SimpleNamespace(send_packet=sent.append),
     )
-    for key, control, alt in (("W", False, False), ("W", True, False), ("U", True, False), ("W", False, True)):
+    for key, control, alt in (("W", False, False), ("W", True, False), ("J", True, False), ("W", False, True)):
         event = SimpleNamespace(
             GetKeyCode=lambda: ord(key),
             GetModifiers=lambda: (wx.MOD_CONTROL if control else 0) | (wx.MOD_ALT if alt else 0),
@@ -66,3 +66,34 @@ def test_table_shortcuts_dispatch_from_the_real_desktop_key_handler():
     window.current_mode = "edit"
     scope["on_char_hook"](window, event)
     assert len(sent) == 4
+
+    # Ctrl+F and Ctrl+U skip so they reach the AcceleratorTable.
+    window.current_mode = "list"
+    skipped = []
+    for skip_key, shift in (("F", False), ("U", False), ("F", True)):
+        skip_event = SimpleNamespace(
+            GetKeyCode=lambda k=skip_key: ord(k),
+            GetModifiers=lambda: wx.MOD_CONTROL | (wx.MOD_SHIFT if shift else 0),
+            ControlDown=lambda: True, AltDown=lambda: False, ShiftDown=lambda: shift,
+            Skip=lambda: skipped.append(True),
+        )
+        scope["on_char_hook"](window, skip_event)
+    assert len(skipped) == 3
+    assert len(sent) == 4
+
+
+def test_desktop_hotkeys_layout_in_source() -> None:
+    source = _source()
+    # Check accelerator entries for updated layout
+    assert 'wx.AcceleratorEntry(wx.ACCEL_CTRL, ord("F"), self.ID_OPEN_FRIENDS_HUB)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord("F"), self.ID_OPEN_FORUM)' in source
+    assert 'ord("U"), self.ID_LIST_ONLINE_WITH_GAMES' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F5, self.ID_TOGGLE_TABLE_CHAT)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F5, self.ID_TOGGLE_GLOBAL_CHAT)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F6, self.ID_CYCLE_VOLUME)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_SHIFT, wx.WXK_F6, self.ID_CYCLE_VOLUME_PREV)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F7, self.ID_ACTIVE_VOLUME_DOWN)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F8, self.ID_ACTIVE_VOLUME_UP)' in source
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F9, self.ID_OPEN_PERSONAL_OPTIONS)' in source
+    # F10 should not be bound to volume
+    assert 'wx.AcceleratorEntry(wx.ACCEL_NORMAL, wx.WXK_F10' not in source

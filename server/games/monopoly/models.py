@@ -47,6 +47,7 @@ class BoardSpaceDefinition:
     rents: tuple[int, ...] = ()
     building_cost: int = 0
     tax_amount: int = 0
+    max_hotels: int = 1
 
 
 @dataclass(frozen=True)
@@ -116,6 +117,7 @@ class DevelopmentDefinition:
     group_sale_description_key: str = "monopoly-sell-group-option-description"
     finite_supply: bool = True
     error_key_overrides: tuple[tuple[str, str], ...] = ()
+    houses_per_hotel: int = 4
 
     @cached_property
     def _error_key_lookup(self) -> Mapping[str, str]:

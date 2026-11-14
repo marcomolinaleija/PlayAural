@@ -21,6 +21,7 @@ export type MenuItemData = {
 
 export type MenuPacket = {
   type: "menu" | "update_menu";
+  title?: string;
   menu_id?: string;
   items: Array<string | MenuItemData>;
   position?: number;
@@ -50,6 +51,10 @@ export type ChatPacket = {
   sender?: string;
   message?: string;
   silent?: boolean;
+  reply_to?: {
+    sender?: string;
+    message?: string;
+  };
 };
 
 export type RequestInputPacket = {
@@ -60,6 +65,18 @@ export type RequestInputPacket = {
   multiline?: boolean;
   read_only?: boolean;
   max_length?: number;
+  translation_draft?: { token: string; original: string };
+};
+
+export type TranslationDraftPacket = {
+  type: "translation_draft";
+  input_id: string;
+  token: string;
+  sequence: number;
+  text?: string;
+  preview?: string;
+  error?: string;
+  saved?: boolean;
 };
 
 export type RemoveMenuPacket = {
@@ -135,10 +152,18 @@ export type DisconnectPacket = {
   type: "disconnect";
   reason?: string;
   reconnect?: boolean;
+  reconnect_immediate?: boolean;
+  reconnect_after_ms?: number;
+  username?: string;
+};
+
+export type UsernameUpdatedPacket = {
+  type: "username_updated";
+  username?: string;
 };
 
 export type ForceExitPacket = {
-  type: "force_exit";
+  type: "force_exit" | "switch_server";
   reason?: string;
 };
 
@@ -284,6 +309,14 @@ export type VoiceSettingsPacket = {
   version: number;
 };
 
+export type VoicePansPacket = {
+  type: "voice_pans";
+  context_id: string;
+  spatial_enabled?: boolean;
+  quality?: string;
+  pans?: Record<string, number>;
+};
+
 export type VoiceJoinErrorPacket = {
   type: "voice_join_error";
   context_id?: string;
@@ -304,11 +337,13 @@ export type VoiceContextClosedPacket = {
 };
 
 export type ServerPacket =
+  | TranslationDraftPacket
   | AudioCommandPacket
   | AuthorizeSuccessPacket
   | ChatPacket
   | ClearUiPacket
   | DisconnectPacket
+  | UsernameUpdatedPacket
   | ForceExitPacket
   | LoginFailedPacket
   | MenuPacket
@@ -328,6 +363,7 @@ export type ServerPacket =
   | VoiceJoinInfoPacket
   | VoiceLeaveAckPacket
   | VoiceSettingsPacket
+  | VoicePansPacket
   | { type: string; [key: string]: unknown };
 
 export type AuthorizePacket = {
@@ -395,6 +431,7 @@ export type EditboxPacket = {
   type: "editbox";
   input_id: string;
   text: string;
+  cancelled?: boolean;
 };
 
 export type ChatSendPacket = {
@@ -455,6 +492,7 @@ export type VoicePresencePacket = {
 };
 
 export type ClientPacket =
+  | TranslationDraftPacket
   | AuthorizePacket
   | ChatSendPacket
   | EditboxPacket

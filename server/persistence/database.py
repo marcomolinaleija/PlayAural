@@ -18,17 +18,18 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
+from typing import Any, TYPE_CHECKING
 
 from ..chat_channels import MAX_CHAT_MESSAGE_LENGTH, normalize_global_chat_channel
 from ..messages.localization import DEFAULT_LOCALE, Localization
 from ..moderation.chat_history import GLOBAL_CHAT_HISTORY_SORT_ORDERS
+from ..moderation.report_schema import CURRENT_CHECKS, LEGACY_CHECKS, create_reports_table, migrate_reports_table
 from ..moderation.reports import (
     AUTOMATED_SPAM_REPORT_COOLDOWN_SECONDS,
     CLOSED_REPORT_STATUSES,
     MAX_MODERATION_QUERY_PAGE_SIZE,
     MAX_REPORT_DETAILS_LENGTH,
     MAX_REPORTS_PER_WINDOW,
-    REPORT_CONTEXT_CODES,
     REPORT_CONTEXT_GLOBAL,
     REPORT_LIMIT_WINDOW_SECONDS,
     REPORT_ORIGIN_AUTOMATED_SPAM,
@@ -46,9 +47,24 @@ from ..users.identity import (
     legacy_username_key_v2,
     normalize_username,
     username_key,
+    username_validation_error,
+)
+from ..users.nick_policy import (
+    NickChangePolicy,
+    cooldown_remaining,
 )
 from ..users.system_identities import is_reserved_system_username
 from ..gender import Gender, normalize_gender, require_gender
+from ..forum.schema import (
+    CHECK_CONSTRAINTS as FORUM_CHECK_CONSTRAINTS,
+    create_schema as create_forum_schema,
+    erase_account as erase_forum_account,
+)
+from ..translations.schema import (
+    CHECK_CONSTRAINTS as TRANSLATION_CHECK_CONSTRAINTS,
+    create_schema as create_translation_schema,
+    erase_account as erase_translation_account,
+)
 from ..users.roles import (
     ADMIN_TRUST_LEVEL,
     DEVELOPER_TRUST_LEVEL,
@@ -62,6 +78,10 @@ from .retention import (
     TRANSIENT_TABLE_CHECKPOINT_RETENTION_DAYS,
     USER_NOTIFICATION_RETENTION_DAYS,
 )
+
+if TYPE_CHECKING:
+    from ..forum.reporting import ReportTarget
+
 
 _USER_RECORD_COLUMNS = (
     "id, username, password_hash, uuid, locale, preferences_json, "
@@ -126,12 +146,88 @@ class UserRecord:
     last_login_date: str = ""
 
 
+INITIAL_WALLET_COINS: int = 250
+ACTIVITY_BONUS_COINS: int = 150
+ACTIVITY_BONUS_COOLDOWN_SECONDS: int = 3600
+MAX_BONUS_ELIGIBLE_COINS: int = 3000
+
+
+@dataclass(frozen=True)
+class UserWallet:
+    """Authoritative virtual currency wallet for one account UUID."""
+
+    user_uuid: str
+    balance: int = INITIAL_WALLET_COINS
+    last_activity_bonus_utc: str = ""
+    total_won: int = 0
+    total_bet: int = 0
+    created_at_utc: str = ""
+
+
 @dataclass(frozen=True)
 class UsernameResolution:
     """Result of resolving one user-supplied username spelling."""
 
     user: UserRecord | None = None
     ambiguous: bool = False
+
+
+NICK_REQUEST_PENDING = "pending"
+NICK_REQUEST_APPROVED = "approved"
+NICK_REQUEST_REJECTED = "rejected"
+MAX_NICK_REJECT_REASON_LENGTH = 200
+
+
+@dataclass(frozen=True)
+class NickChangeState:
+    """Cooldown bookkeeping for one account UUID."""
+
+    user_uuid: str
+    last_changed_at_utc: str = ""
+    cooldown_reduced: bool = False
+
+
+@dataclass(frozen=True)
+class NickChangeRequest:
+    """One nick-change request awaiting, or retaining, administrator review."""
+
+    id: int
+    user_uuid: str
+    old_username: str
+    requested_username: str
+    status: str
+    coins_paid: int
+    created_at_utc: str
+    reviewed_at_utc: str = ""
+    reviewed_by_uuid: str = ""
+    reviewed_by_username: str = ""
+    reject_reason: str = ""
+    refunded: bool = False
+    applied_at_utc: str = ""
+    user_notified: bool = False
+
+    @property
+    def is_open(self) -> bool:
+        """Return whether the request still reserves its requested nick."""
+        return self.status == NICK_REQUEST_PENDING or (
+            self.status == NICK_REQUEST_APPROVED and not self.applied_at_utc
+        )
+
+
+@dataclass(frozen=True)
+class NickChangeOutcome:
+    """Result code plus the affected request/balance for a nick operation."""
+
+    code: str
+    request: NickChangeRequest | None = None
+    balance: int = 0
+    refunded_coins: int = 0
+    old_username: str = ""
+    new_username: str = ""
+
+    @property
+    def ok(self) -> bool:
+        return self.code == "ok"
 
 
 @dataclass(frozen=True)
@@ -238,6 +334,8 @@ class DatabaseBackupResult:
     created_at_utc: str
     incomplete_files_removed: int = 0
     incomplete_file_bytes_removed: int = 0
+    archive_path: Path | None = None
+    archive_size_bytes: int = 0
 
 
 @dataclass(frozen=True)
@@ -386,7 +484,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 3
+    CURRENT_SCHEMA_VERSION = 14
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -417,10 +515,13 @@ class Database:
             "tables",
             "user_blocks",
             "user_notifications",
+            "user_wallets",
             "users",
         }
     )
     SCHEMA_REQUIRED_TABLE_SQL_FRAGMENTS = {
+        **FORUM_CHECK_CONSTRAINTS,
+        **TRANSLATION_CHECK_CONSTRAINTS,
         "user_blocks": ("CHECK (blocker_id != blocked_id)",),
         "global_chat_messages": (
             "CHECK (sender_uuid != '')",
@@ -428,38 +529,7 @@ class Database:
             "CHECK (channel_code != '')",
             "CHECK (message != '')",
         ),
-        "moderation_reports": (
-            "CHECK (reporter_uuid != '')",
-            "CHECK (reported_uuid != '')",
-            "CHECK (reporter_uuid != reported_uuid)",
-            "CHECK (status IN ('open', 'reviewed', 'dismissed', 'actioned'))",
-            "CHECK (origin_code IN ('manual', 'automated_spam'))",
-            "CHECK (context_code IN ('global', 'table'))",
-            """
-                CHECK (
-                    (origin_code = 'manual'
-                        AND context_code = 'global'
-                        AND evidence_json IS NULL)
-                    OR
-                    (origin_code = 'automated_spam'
-                        AND evidence_json IS NOT NULL
-                        AND evidence_json != '')
-                )
-            """,
-            """
-                CHECK (
-                    context_code != 'table'
-                    OR (channel_code IS NULL AND context_anchor_message_id IS NULL)
-                )
-            """,
-            """
-                CHECK (
-                    origin_code != 'automated_spam'
-                    OR context_code != 'global'
-                    OR channel_code IS NOT NULL
-                )
-            """,
-        ),
+        "moderation_reports": CURRENT_CHECKS,
         "server_settings": ("CHECK (setting_key != '')",),
         "smtp_config": ("CHECK (id = 1)",),
     }
@@ -1537,40 +1607,56 @@ class Database:
         # introduced identity/version headers, but its compatibility migration
         # could leave users.username_key nullable. Version two made that lookup
         # key non-null, but did not enforce immutable account-id uniqueness and
-        # used canonical rather than compatibility normalization. All supported
+        # used canonical rather than compatibility normalization. Version three
+        # protects that identity. Version six combines wallets and forums. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2}:
+        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
-        if schema_version in {1, 2} and application_id != self.APPLICATION_ID:
+        if schema_version and application_id != self.APPLICATION_ID:
             raise sqlite3.DatabaseError(
                 f"version-{schema_version} database is missing the PlayAural "
                 "identifier"
             )
+        allowed_migration_triggers = (
+            {"protect_users_immutable_identity"} if schema_version >= 3 else set()
+        )
         unexpected_migration_objects = sorted(
             f"{row['type']} {row['name']}"
             for row in schema_rows
-            if str(row["type"]) in {"trigger", "view"}
+            if str(row["type"]) == "view"
+            or (
+                str(row["type"]) == "trigger"
+                and str(row["name"]) not in allowed_migration_triggers
+            )
         )
         if unexpected_migration_objects:
             raise sqlite3.DatabaseError(
                 "legacy database schema contains unexpected objects: "
                 + ", ".join(unexpected_migration_objects)
             )
-        unknown_tables = table_names - self.LEGACY_V0_TABLE_NAMES
-        if has_application_schema and (not table_names or unknown_tables):
-            detail = (
-                ": " + ", ".join(sorted(unknown_tables))
-                if unknown_tables
-                else ""
-            )
-            raise sqlite3.DatabaseError(
-                "unversioned SQLite database is not a recognizable PlayAural "
-                f"database; refusing to modify it{detail}"
-            )
-        if schema_version in {1, 2}:
+        if schema_version == 0:
+            unknown_tables = table_names - self.LEGACY_V0_TABLE_NAMES
+            if has_application_schema and (not table_names or unknown_tables):
+                detail = (
+                    ": " + ", ".join(sorted(unknown_tables))
+                    if unknown_tables
+                    else ""
+                )
+                raise sqlite3.DatabaseError(
+                    "unversioned SQLite database is not a recognizable PlayAural "
+                    f"database; refusing to modify it{detail}"
+                )
+        # Develop v4 introduced wallets; the isolated forum branch used v4/v5
+        # for public/private forums before those histories were combined.
+        # Choose the historical contract, then validate it in full before backup
+        # or mutation. Missing pieces of either contract are never repaired here.
+        legacy_forum = schema_version >= 5 or (
+            schema_version == 4 and any(name.startswith("forum_") for name in table_names)
+        )
+        if schema_version:
             self._validate_schema(
                 expected_schema_version=schema_version,
                 allowed_column_attributes=(
@@ -1582,7 +1668,9 @@ class Database:
                     if schema_version == 1
                     else None
                 ),
-                legacy_identity_contract=True,
+                legacy_identity_contract=schema_version in {1, 2},
+                legacy_wallets_contract=schema_version < 4 or (legacy_forum and schema_version < 6),
+                include_forum=legacy_forum,
             )
 
         migration_backup: DatabaseBackupResult | None = None
@@ -1826,6 +1914,9 @@ class Database:
 
     def _canonical_schema_contract(
         self,
+        *,
+        include_forum: bool = True,
+        forum_version: int = 14,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -1847,7 +1938,7 @@ class Database:
         try:
             connection.execute("PRAGMA foreign_keys = ON")
             cursor.execute("BEGIN IMMEDIATE")
-            self._create_tables_in_transaction(cursor)
+            self._create_tables_in_transaction(cursor, include_forum=include_forum, forum_version=forum_version)
             connection.commit()
             canonical_table_names = frozenset(
                 str(row[0])
@@ -1900,6 +1991,8 @@ class Database:
         ]
         | None = None,
         legacy_identity_contract: bool = False,
+        legacy_wallets_contract: bool = False,
+        include_forum: bool | None = None,
     ) -> None:
         """Require the canonical schema contract without repairing drift."""
         executor = cursor if cursor is not None else self._conn
@@ -1926,7 +2019,10 @@ class Database:
             canonical_unique_keys,
             canonical_foreign_keys,
             canonical_triggers,
-        ) = self._canonical_schema_contract()
+        ) = self._canonical_schema_contract(
+            include_forum=(required_schema_version >= 5 if include_forum is None else include_forum),
+            forum_version=required_schema_version,
+        )
         if legacy_identity_contract:
             # Schema versions one and two used the same named UUID index but
             # did not declare it unique. Derive the legacy exception from the
@@ -1958,8 +2054,6 @@ class Database:
                 history_index[3],
                 history_index[4].replace("username_key_v3(", "username_key("),
             )
-        canonical_table_names = frozenset(canonical_columns)
-
         actual_table_sql = {
             str(row[0]): str(row[1] or "")
             for row in executor.execute(
@@ -1971,6 +2065,16 @@ class Database:
             ).fetchall()
         }
         actual_tables = set(actual_table_sql)
+        if legacy_wallets_contract and "user_wallets" not in actual_tables:
+            canonical_columns = dict(canonical_columns)
+            canonical_columns.pop("user_wallets", None)
+            canonical_indexes = dict(canonical_indexes)
+            canonical_indexes.pop("idx_user_wallets_balance", None)
+            canonical_unique_keys = dict(canonical_unique_keys)
+            canonical_unique_keys.pop("user_wallets", None)
+            canonical_foreign_keys = dict(canonical_foreign_keys)
+            canonical_foreign_keys.pop("user_wallets", None)
+        canonical_table_names = frozenset(canonical_columns)
         missing_tables = sorted(canonical_table_names - actual_tables)
         unexpected_tables = sorted(actual_tables - canonical_table_names)
         if missing_tables or unexpected_tables:
@@ -1984,6 +2088,10 @@ class Database:
                 + "; ".join(details)
                 + ")"
             )
+
+        if required_schema_version >= 7 and 'forum_categories' in actual_tables:
+            if executor.execute("SELECT 1 FROM forum_categories WHERE id = '__private__'").fetchone() is None:
+                raise sqlite3.DatabaseError('database is missing the internal private forum category')
 
         unexpected_views = executor.execute(
             """
@@ -2059,6 +2167,14 @@ class Database:
                 table_name,
                 (),
             )
+            if table_name == 'forum_posts' and required_schema_version < 10:
+                required_fragments = ('CHECK (length(body) BETWEEN 1 AND 8000)', *required_fragments[1:])
+            if table_name == "moderation_reports" and required_schema_version < 8:
+                required_fragments = LEGACY_CHECKS
+            if table_name == 'forum_categories' and required_schema_version in (7, 8):
+                required_fragments = required_fragments[:-1]
+            if table_name == "forum_categories" and required_schema_version < 7:
+                required_fragments = ()
             normalized_sql = self._normalize_schema_sql(
                 actual_table_sql[table_name]
             )
@@ -2184,13 +2300,29 @@ class Database:
                 )
 
     def _create_tables(self) -> None:
-        """Create or migrate the schema in one atomic transaction."""
-        self._conn.execute("PRAGMA foreign_keys = ON;")
-        with self._transaction(immediate=True) as cursor:
-            self._create_tables_in_transaction(cursor)
-            cursor.execute(f"PRAGMA application_id = {self.APPLICATION_ID}")
-            cursor.execute(f"PRAGMA user_version = {self.CURRENT_SCHEMA_VERSION}")
-            self._validate_schema(cursor)
+        """Create or migrate the schema in one atomic startup transaction."""
+        if self._conn.in_transaction:
+            raise RuntimeError("Nested database transactions are not supported")
+        source_version = self._conn.execute('PRAGMA user_version').fetchone()[0]
+        rebuild_posts = source_version < 10 and self._conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'forum_posts'"
+        ).fetchone() is not None
+        # SQLite requires FK enforcement off before BEGIN for a table rebuild.
+        # Startup has no admitted sessions; the backup and source validation
+        # have already completed. Check all retained relationships before commit.
+        self._conn.execute('PRAGMA foreign_keys = OFF' if rebuild_posts else 'PRAGMA foreign_keys = ON')
+        self._require_pragma_value(self._conn, 'foreign_keys', 0 if rebuild_posts else 1)
+        try:
+            with self._transaction(immediate=True) as cursor:
+                self._create_tables_in_transaction(cursor)
+                cursor.execute(f"PRAGMA application_id = {self.APPLICATION_ID}")
+                cursor.execute(f"PRAGMA user_version = {self.CURRENT_SCHEMA_VERSION}")
+                self._validate_schema(cursor)
+                if rebuild_posts:
+                    self._verify_connection_integrity(self._conn, full=False)
+        finally:
+            self._conn.execute('PRAGMA foreign_keys = ON')
+            self._require_pragma_value(self._conn, 'foreign_keys', 1)
 
     @classmethod
     def _create_users_table(
@@ -2291,7 +2423,8 @@ class Database:
         )
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
-    def _create_tables_in_transaction(self, cursor: sqlite3.Cursor) -> None:
+    def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
+                                      forum_version: int = 14) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(
@@ -2550,52 +2683,13 @@ class Database:
         # Reports are immutable identity/evidence snapshots with no user-table
         # foreign keys. Manual cleanup owns their retention, so deleting an
         # account cannot erase a pending review or orphan a constrained row.
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS moderation_reports (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                reporter_uuid TEXT NOT NULL,
-                reporter_username TEXT NOT NULL,
-                reported_uuid TEXT NOT NULL,
-                reported_username TEXT NOT NULL,
-                reported_at_utc TEXT NOT NULL,
-                reason_code TEXT NOT NULL,
-                details TEXT NOT NULL DEFAULT '',
-                channel_code TEXT,
-                context_anchor_message_id INTEGER
-                    REFERENCES global_chat_messages(id) ON DELETE SET NULL,
-                status TEXT NOT NULL DEFAULT 'open',
-                reviewed_by_uuid TEXT,
-                reviewed_by_username TEXT,
-                reviewed_at_utc TEXT,
-                origin_code TEXT NOT NULL,
-                context_code TEXT NOT NULL,
-                evidence_json TEXT,
-                CHECK (reporter_uuid != ''),
-                CHECK (reported_uuid != ''),
-                CHECK (reporter_uuid != reported_uuid),
-                CHECK (status IN ('open', 'reviewed', 'dismissed', 'actioned')),
-                CHECK (origin_code IN ('manual', 'automated_spam')),
-                CHECK (context_code IN ('global', 'table')),
-                CHECK (
-                    (origin_code = 'manual'
-                        AND context_code = 'global'
-                        AND evidence_json IS NULL)
-                    OR
-                    (origin_code = 'automated_spam'
-                        AND evidence_json IS NOT NULL
-                        AND evidence_json != '')
-                ),
-                CHECK (
-                    context_code != 'table'
-                    OR (channel_code IS NULL AND context_anchor_message_id IS NULL)
-                ),
-                CHECK (
-                    origin_code != 'automated_spam'
-                    OR context_code != 'global'
-                    OR channel_code IS NOT NULL
-                )
-            )
-        """)
+        reports_existed = cursor.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'moderation_reports'"
+        ).fetchone() is not None
+        if reports_existed and source_schema_version < 8 and forum_version >= 8:
+            migrate_reports_table(cursor)
+        else:
+            create_reports_table(cursor, forum=forum_version >= 8)
 
         # Small server-wide feature settings persist independently of any
         # account. Rows live until explicitly changed or the database itself
@@ -2637,6 +2731,22 @@ class Database:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_reset_tokens_user_uuid
             ON password_reset_tokens(user_uuid)
+        """)
+
+        # Virtual currency wallets table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_wallets (
+                user_uuid TEXT PRIMARY KEY,
+                balance INTEGER NOT NULL DEFAULT 250,
+                last_activity_bonus_utc TEXT NOT NULL DEFAULT '',
+                total_won INTEGER NOT NULL DEFAULT 0,
+                total_bet INTEGER NOT NULL DEFAULT 0,
+                created_at_utc TEXT NOT NULL DEFAULT ''
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_user_wallets_balance
+            ON user_wallets(balance DESC)
         """)
 
         # Additional indexes for fast lookups
@@ -2729,6 +2839,11 @@ class Database:
                 SELECT RAISE(ABORT, 'account username and id are immutable');
             END
         """)
+
+        if include_forum:
+            create_forum_schema(cursor, version=forum_version)
+        if forum_version >= 13:
+            create_translation_schema(cursor, version=forum_version)
 
     def _ensure_column(
         self,
@@ -3844,18 +3959,19 @@ class Database:
         *,
         reporter_uuid: str,
         reporter_username: str,
-        reported_uuid: str,
-        reported_username: str,
+        reported_uuid: str = "",
+        reported_username: str = "",
         reason_code: str,
         details: str = "",
         channel_code: str | None = None,
+        forum_target: "ReportTarget | None" = None,
     ) -> ModerationReportSubmission:
         """Atomically enforce report limits and retain one manual-review case."""
         reporter_id = str(reporter_uuid or "").strip()
         reporter_name = str(reporter_username or "").strip()
         reported_id = str(reported_uuid or "").strip()
         reported_name = str(reported_username or "").strip()
-        if not reporter_id or not reporter_name or not reported_id or not reported_name:
+        if not reporter_id or not reporter_name or (forum_target is None and (not reported_id or not reported_name)):
             raise ValueError("Moderation reports require both account identities")
         if reporter_id == reported_id:
             raise ValueError("An account cannot report itself")
@@ -3866,6 +3982,9 @@ class Database:
         normalized_details = details.strip()
         if len(normalized_details) > MAX_REPORT_DETAILS_LENGTH:
             raise ValueError("Moderation report details exceed the limit")
+        if forum_target is not None and channel_code is not None:
+            raise ValueError("Forum reports cannot have a chat channel")
+        evidence = None
         normalized_channel = None
         if channel_code is not None:
             normalized_channel = normalize_global_chat_channel(channel_code)
@@ -3882,6 +4001,18 @@ class Database:
         ).isoformat(timespec="microseconds")
 
         with self._transaction(immediate=True) as cursor:
+            if forum_target is not None:
+                from ..forum.reporting import ReportTarget, capture_public_report
+                from ..forum.repository import ForumRepository
+                from ..forum.service import ForumService
+                from ..forum.models import ForumError
+                if not isinstance(forum_target, ReportTarget):
+                    raise ValueError("Unsupported forum report target")
+                evidence = capture_public_report(ForumService(ForumRepository(self)), reporter_id,
+                                                 forum_target.kind, forum_target.id)
+                if evidence.target != forum_target:
+                    raise ForumError('forum-report-changed')
+                reported_id, reported_name = evidence.author_uuid or '', evidence.author_name
             cursor.execute(
                 "SELECT uuid, username FROM users WHERE uuid IN (?, ?)",
                 (reporter_id, reported_id),
@@ -3892,12 +4023,20 @@ class Database:
             }
             if (
                 current_accounts.get(reporter_id) != reporter_name
-                or current_accounts.get(reported_id) != reported_name
+                or (reported_id and current_accounts.get(reported_id) != reported_name)
             ):
                 raise ValueError(
                     "Moderation report identities must match current accounts"
                 )
 
+            if forum_target is not None:
+                duplicate = cursor.execute(
+                    """SELECT 1 FROM forum_report_targets WHERE reporter_uuid = ?
+                       AND target_kind = ? AND target_id = ? AND revision = ?""",
+                    (reporter_id, forum_target.kind, forum_target.id, forum_target.revision),
+                ).fetchone()
+                if duplicate:
+                    return ModerationReportSubmission(outcome='duplicate')
             cursor.execute(
                 """
                 SELECT COUNT(*) AS count
@@ -3945,13 +4084,14 @@ class Database:
                 WHERE reporter_uuid = ?
                   AND reported_uuid = ?
                   AND reported_at_utc >= ?
+                  AND context_code != 'forum'
                 ORDER BY reported_at_utc DESC, id DESC
                 LIMIT 1
                 """,
                 (reporter_id, reported_id, target_cooldown_start),
             )
             latest_same_target = cursor.fetchone()
-            if latest_same_target:
+            if latest_same_target and evidence is None:
                 latest_at = datetime.fromisoformat(
                     latest_same_target["reported_at_utc"]
                 )
@@ -3970,18 +4110,20 @@ class Database:
                     retry_after_seconds=retry_after,
                 )
 
-            anchor_query = (
-                "SELECT id FROM global_chat_messages "
-                "WHERE sender_uuid = ? AND sent_at_utc <= ?"
-            )
-            anchor_params: list[object] = [reported_id, reported_at_utc]
-            if normalized_channel is not None:
-                anchor_query += " AND channel_code = ?"
-                anchor_params.append(normalized_channel)
-            anchor_query += " ORDER BY sent_at_utc DESC, id DESC LIMIT 1"
-            cursor.execute(anchor_query, anchor_params)
-            anchor_row = cursor.fetchone()
-            anchor_id = int(anchor_row["id"]) if anchor_row else None
+            anchor_id = None
+            if evidence is None:
+                anchor_query = (
+                    "SELECT id FROM global_chat_messages "
+                    "WHERE sender_uuid = ? AND sent_at_utc <= ?"
+                )
+                anchor_params: list[object] = [reported_id, reported_at_utc]
+                if normalized_channel is not None:
+                    anchor_query += " AND channel_code = ?"
+                    anchor_params.append(normalized_channel)
+                anchor_query += " ORDER BY sent_at_utc DESC, id DESC LIMIT 1"
+                cursor.execute(anchor_query, anchor_params)
+                anchor_row = cursor.fetchone()
+                anchor_id = int(anchor_row["id"]) if anchor_row else None
 
             cursor.execute(
                 """
@@ -3997,8 +4139,9 @@ class Database:
                     context_anchor_message_id,
                     status,
                     origin_code,
-                    context_code
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
+                    context_code,
+                    evidence_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
                 """,
                 (
                     reporter_id,
@@ -4011,13 +4154,18 @@ class Database:
                     normalized_channel,
                     anchor_id,
                     REPORT_ORIGIN_MANUAL,
-                    REPORT_CONTEXT_GLOBAL,
+                    'forum' if evidence else REPORT_CONTEXT_GLOBAL,
+                    evidence.to_json() if evidence else None,
                 ),
             )
-            return ModerationReportSubmission(
-                outcome="created",
-                report_id=int(cursor.lastrowid),
-            )
+            report_id = int(cursor.lastrowid)
+            if forum_target is not None:
+                cursor.execute(
+                    """INSERT INTO forum_report_targets(report_id, reporter_uuid, target_kind, target_id, revision)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (report_id, reporter_id, forum_target.kind, forum_target.id, forum_target.revision),
+                )
+            return ModerationReportSubmission(outcome="created", report_id=report_id)
 
     def submit_automated_spam_report(
         self,
@@ -4032,7 +4180,7 @@ class Database:
         reported_name = str(reported_username or "").strip()
         if not reported_id or not reported_name:
             raise ValueError("Automated reports require a target identity")
-        if evidence.scope not in REPORT_CONTEXT_CODES:
+        if evidence.scope not in ("global", "table"):
             raise ValueError("Unsupported automated-report context")
         normalized_channel = None
         if evidence.scope == REPORT_CONTEXT_GLOBAL:
@@ -4839,6 +4987,8 @@ class Database:
 
         with self._transaction(immediate=True) as cursor:
             # Delete dependent data using explicit soft keys (username/uuid).
+            erase_forum_account(cursor, user.uuid)
+            erase_translation_account(cursor, user.uuid)
             cursor.execute(
                 "DELETE FROM player_game_stats WHERE player_id = ?",
                 (user.uuid,),
@@ -4879,6 +5029,11 @@ class Database:
                 "DELETE FROM password_reset_tokens WHERE user_uuid = ?",
                 (user.uuid,),
             )
+            cursor.execute(
+                "DELETE FROM user_wallets WHERE user_uuid = ?",
+                (user.uuid,),
+            )
+            self._delete_nick_change_data_for_user(cursor, user.uuid)
 
             # Global-chat messages and reports deliberately retain immutable
             # UUID and username snapshots until a developer explicitly clears
@@ -5150,7 +5305,7 @@ class Database:
             Localization.normalize_locale_code(language) or DEFAULT_LOCALE
         )
         candidates = dict.fromkeys(
-            (requested, requested.split("-", 1)[0], DEFAULT_LOCALE)
+            (requested, requested.split("-", 1)[0], "es", DEFAULT_LOCALE)
         )
         for candidate in candidates:
             cursor.execute(
@@ -6436,6 +6591,47 @@ class Database:
             (key, json.dumps(value), updated_at_utc),
         )
 
+    def get_json_server_setting(
+        self,
+        setting_key: str,
+        *,
+        default: Any = None,
+    ) -> Any:
+        """Read one persistent JSON setting with a fallback default."""
+        key = self._validate_server_setting_key(setting_key)
+        row = self._conn.execute(
+            "SELECT value_json FROM server_settings WHERE setting_key = ?",
+            (key,),
+        ).fetchone()
+        if row is None:
+            return default
+        try:
+            return json.loads(str(row["value_json"]))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return default
+
+    def set_json_server_setting(
+        self,
+        setting_key: str,
+        value: Any,
+    ) -> None:
+        """Atomically insert or replace one persistent JSON setting."""
+        key = self._validate_server_setting_key(setting_key)
+        updated_at_utc = datetime.now(timezone.utc).isoformat(
+            timespec="microseconds"
+        )
+        self._conn.execute(
+            """
+            INSERT INTO server_settings (
+                setting_key, value_json, updated_at_utc
+            ) VALUES (?, ?, ?)
+            ON CONFLICT(setting_key) DO UPDATE SET
+                value_json = excluded.value_json,
+                updated_at_utc = excluded.updated_at_utc
+            """,
+            (key, json.dumps(value), updated_at_utc),
+        )
+
     # SMTP Config Operations
 
     def get_smtp_config(self) -> SmtpConfig | None:
@@ -6977,6 +7173,15 @@ class Database:
                 """,
                 (blocker_id, blocked_id, now),
             )
+            for recipient, source in ((blocker_id, blocked_id), (blocked_id, blocker_id)):
+                # Restrict work to this recipient's bounded pending queue,
+                # looking up each referenced post by its primary key.
+                cursor.execute('''DELETE FROM forum_notifications WHERE user_uuid = ? AND EXISTS (
+                    SELECT 1 FROM forum_posts p JOIN forum_topics t ON t.id = p.topic_id
+                    WHERE p.id = forum_notifications.post_id AND (
+                        p.author_uuid = ? OR (t.author_uuid = ? AND NOT EXISTS (
+                            SELECT 1 FROM forum_private_topics ft WHERE ft.topic_id = t.id))))''',
+                    (recipient, source, source))
         return "blocked"
 
     def unblock_user(self, blocker_id: str, blocked_id: str) -> bool:
@@ -7246,3 +7451,1018 @@ class Database:
                 break
 
         return entries
+
+    # ------------------------------------------------------------------ #
+    # Virtual Currency Wallets                                           #
+    # ------------------------------------------------------------------ #
+
+    def get_wallet(self, user_uuid: str, cursor: sqlite3.Cursor | None = None) -> UserWallet:
+        """Get or initialize the virtual wallet for one account UUID."""
+        if not user_uuid:
+            return UserWallet(user_uuid="")
+        cur = cursor if cursor is not None else self._conn.cursor()
+        cur.execute(
+            """
+            SELECT user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+            FROM user_wallets
+            WHERE user_uuid = ?
+            """,
+            (user_uuid,),
+        )
+        row = cur.fetchone()
+        if row:
+            return UserWallet(
+                user_uuid=str(row[0]),
+                balance=int(row[1]),
+                last_activity_bonus_utc=str(row[2]),
+                total_won=int(row[3]),
+                total_bet=int(row[4]),
+                created_at_utc=str(row[5]),
+            )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        if cursor is not None:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO user_wallets (
+                    user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+                ) VALUES (?, ?, ?, 0, 0, ?)
+                """,
+                (user_uuid, INITIAL_WALLET_COINS, now_iso, now_iso),
+            )
+            return UserWallet(
+                user_uuid=user_uuid,
+                balance=INITIAL_WALLET_COINS,
+                last_activity_bonus_utc=now_iso,
+                created_at_utc=now_iso,
+            )
+
+        try:
+            with self._transaction(immediate=True) as tx_cursor:
+                tx_cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO user_wallets (
+                        user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+                    ) VALUES (?, ?, ?, 0, 0, ?)
+                    """,
+                    (user_uuid, INITIAL_WALLET_COINS, now_iso, now_iso),
+                )
+                tx_cursor.execute(
+                    """
+                    SELECT user_uuid, balance, last_activity_bonus_utc, total_won, total_bet, created_at_utc
+                    FROM user_wallets
+                    WHERE user_uuid = ?
+                    """,
+                    (user_uuid,),
+                )
+                row = tx_cursor.fetchone()
+                if row:
+                    return UserWallet(
+                        user_uuid=str(row[0]),
+                        balance=int(row[1]),
+                        last_activity_bonus_utc=str(row[2]),
+                        total_won=int(row[3]),
+                        total_bet=int(row[4]),
+                        created_at_utc=str(row[5]),
+                    )
+        except Exception:
+            pass
+        return UserWallet(user_uuid=user_uuid, balance=INITIAL_WALLET_COINS)
+
+    def adjust_wallet_balance(
+        self,
+        user_uuid: str,
+        delta: int,
+        *,
+        is_win: bool = False,
+        is_bet: bool = False,
+        cursor: sqlite3.Cursor | None = None,
+    ) -> tuple[bool, int]:
+        """Atomically adjust an account's wallet balance.
+
+        Returns (success, new_balance). If delta < 0 and balance would drop below 0,
+        returns (False, current_balance) without mutating the balance.
+        """
+        if not user_uuid:
+            return False, 0
+
+        if cursor is not None:
+            wallet = self.get_wallet(user_uuid, cursor=cursor)
+            current_balance = wallet.balance
+            if delta < 0 and current_balance + delta < 0:
+                return False, current_balance
+
+            new_balance = current_balance + delta
+            new_won = wallet.total_won + (delta if is_win and delta > 0 else 0)
+            new_bet = wallet.total_bet + (abs(delta) if is_bet and delta < 0 else 0)
+
+            cursor.execute(
+                """
+                UPDATE user_wallets
+                SET balance = ?, total_won = ?, total_bet = ?
+                WHERE user_uuid = ?
+                """,
+                (new_balance, new_won, new_bet, user_uuid),
+            )
+            return True, new_balance
+
+        with self._transaction(immediate=True) as tx_cursor:
+            wallet = self.get_wallet(user_uuid, cursor=tx_cursor)
+            current_balance = wallet.balance
+            if delta < 0 and current_balance + delta < 0:
+                return False, current_balance
+
+            new_balance = current_balance + delta
+            new_won = wallet.total_won + (delta if is_win and delta > 0 else 0)
+            new_bet = wallet.total_bet + (abs(delta) if is_bet and delta < 0 else 0)
+
+            tx_cursor.execute(
+                """
+                UPDATE user_wallets
+                SET balance = ?, total_won = ?, total_bet = ?
+                WHERE user_uuid = ?
+                """,
+                (new_balance, new_won, new_bet, user_uuid),
+            )
+            return True, new_balance
+
+    def can_claim_activity_bonus(self, user_uuid: str) -> tuple[bool, str, int]:
+        """Check if an account can claim the periodic activity bonus.
+
+        Returns (can_claim, reason_code, seconds_remaining).
+        Reason codes: 'available', 'cap_reached', 'cooldown'.
+        """
+        wallet = self.get_wallet(user_uuid)
+        if wallet.balance >= MAX_BONUS_ELIGIBLE_COINS:
+            return False, "cap_reached", 0
+        if not wallet.last_activity_bonus_utc:
+            return True, "available", 0
+        try:
+            last_dt = datetime.fromisoformat(wallet.last_activity_bonus_utc)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+            elapsed = (now - last_dt).total_seconds()
+            if elapsed < ACTIVITY_BONUS_COOLDOWN_SECONDS:
+                remaining = int(ACTIVITY_BONUS_COOLDOWN_SECONDS - elapsed)
+                return False, "cooldown", max(1, remaining)
+        except Exception:
+            pass
+        return True, "available", 0
+
+    def claim_activity_bonus(self, user_uuid: str) -> tuple[bool, int, str]:
+        """Atomically claim the 150-coin activity bonus.
+
+        Returns (success, new_balance, reason_if_failed).
+        """
+        if not user_uuid:
+            return False, 0, "invalid_user"
+        with self._transaction(immediate=True) as cursor:
+            can_claim, reason, _ = self.can_claim_activity_bonus(user_uuid)
+            if not can_claim:
+                wallet = self.get_wallet(user_uuid)
+                return False, wallet.balance, reason
+
+            wallet = self.get_wallet(user_uuid)
+            new_balance = wallet.balance + ACTIVITY_BONUS_COINS
+            now_iso = datetime.now(timezone.utc).isoformat()
+            cursor.execute(
+                """
+                UPDATE user_wallets
+                SET balance = ?, last_activity_bonus_utc = ?
+                WHERE user_uuid = ?
+                """,
+                (new_balance, now_iso, user_uuid),
+            )
+            return True, new_balance, ""
+
+    # ------------------------------------------------------------------ #
+    # User Nickname Change Operations                                    #
+    # ------------------------------------------------------------------ #
+
+    NICK_CHANGE_POLICY_SETTING_KEY = "nick_change_policy"
+    NICK_CHANGE_STATES_SETTING_KEY = "nick_change_states"
+    NICK_CHANGE_REQUESTS_SETTING_KEY = "nick_change_requests"
+
+    def _read_setting_json_in_tx(
+        self,
+        cursor: sqlite3.Cursor,
+        setting_key: str,
+        default: Any,
+    ) -> Any:
+        cursor.execute(
+            "SELECT value_json FROM server_settings WHERE setting_key = ?",
+            (setting_key,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return default
+        try:
+            return json.loads(str(row[0]))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return default
+
+    def _write_setting_json_in_tx(
+        self,
+        cursor: sqlite3.Cursor,
+        setting_key: str,
+        value: Any,
+    ) -> None:
+        updated_at_utc = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+        cursor.execute(
+            """
+            INSERT INTO server_settings (
+                setting_key, value_json, updated_at_utc
+            ) VALUES (?, ?, ?)
+            ON CONFLICT(setting_key) DO UPDATE SET
+                value_json = excluded.value_json,
+                updated_at_utc = excluded.updated_at_utc
+            """,
+            (setting_key, json.dumps(value), updated_at_utc),
+        )
+
+    def _delete_nick_change_data_for_user(
+        self,
+        cursor: sqlite3.Cursor,
+        user_uuid: str,
+    ) -> None:
+        states = self._read_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_STATES_SETTING_KEY, {}
+        )
+        if isinstance(states, dict) and user_uuid in states:
+            states.pop(user_uuid, None)
+            self._write_setting_json_in_tx(
+                cursor, self.NICK_CHANGE_STATES_SETTING_KEY, states
+            )
+        req_store = self._read_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_REQUESTS_SETTING_KEY, {"next_id": 1, "items": []}
+        )
+        if isinstance(req_store, dict) and isinstance(req_store.get("items"), list):
+            old_items = req_store["items"]
+            new_items = [
+                item
+                for item in old_items
+                if isinstance(item, dict) and str(item.get("user_uuid", "")) != user_uuid
+            ]
+            if len(new_items) != len(old_items):
+                req_store["items"] = new_items
+                self._write_setting_json_in_tx(
+                    cursor, self.NICK_CHANGE_REQUESTS_SETTING_KEY, req_store
+                )
+
+    def get_nick_change_policy(
+        self, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangePolicy:
+        """Return the server-authoritative nick change policy."""
+        cur = cursor if cursor is not None else self._conn.cursor()
+        raw = self._read_setting_json_in_tx(
+            cur, self.NICK_CHANGE_POLICY_SETTING_KEY, None
+        )
+        if not isinstance(raw, dict):
+            return NickChangePolicy()
+        try:
+            return NickChangePolicy(
+                cooldown_days=max(
+                    1, int(raw.get("cooldown_days", NickChangePolicy.cooldown_days))
+                ),
+                reduced_cooldown_days=max(
+                    1,
+                    int(
+                        raw.get(
+                            "reduced_cooldown_days",
+                            NickChangePolicy.reduced_cooldown_days,
+                        )
+                    ),
+                ),
+                bypass_price=max(
+                    0, int(raw.get("bypass_price", NickChangePolicy.bypass_price))
+                ),
+                reduction_price=max(
+                    0,
+                    int(
+                        raw.get(
+                            "reduction_price",
+                            NickChangePolicy.reduction_price,
+                        )
+                    ),
+                ),
+            )
+        except (TypeError, ValueError):
+            return NickChangePolicy()
+
+    def set_nick_change_policy(self, policy: NickChangePolicy) -> None:
+        """Persist custom server nick change policy parameters."""
+        with self._transaction(immediate=True) as cursor:
+            self._write_setting_json_in_tx(
+                cursor,
+                self.NICK_CHANGE_POLICY_SETTING_KEY,
+                {
+                    "cooldown_days": int(policy.cooldown_days),
+                    "reduced_cooldown_days": int(policy.reduced_cooldown_days),
+                    "bypass_price": int(policy.bypass_price),
+                    "reduction_price": int(policy.reduction_price),
+                },
+            )
+
+    def get_nick_change_state(
+        self, user_uuid: str, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangeState:
+        """Return the cooldown state for one account UUID."""
+        if not user_uuid:
+            return NickChangeState(user_uuid="")
+        cur = cursor if cursor is not None else self._conn.cursor()
+        states = self._read_setting_json_in_tx(
+            cur, self.NICK_CHANGE_STATES_SETTING_KEY, {}
+        )
+        if not isinstance(states, dict):
+            return NickChangeState(user_uuid=user_uuid)
+        entry = states.get(user_uuid)
+        if not isinstance(entry, dict):
+            return NickChangeState(user_uuid=user_uuid)
+        return NickChangeState(
+            user_uuid=user_uuid,
+            last_changed_at_utc=str(entry.get("last_changed_at_utc", "") or ""),
+            cooldown_reduced=bool(entry.get("cooldown_reduced", False)),
+        )
+
+    def _set_nick_change_state_in_tx(
+        self, cursor: sqlite3.Cursor, state: NickChangeState
+    ) -> None:
+        states = self._read_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_STATES_SETTING_KEY, {}
+        )
+        if not isinstance(states, dict):
+            states = {}
+        states[state.user_uuid] = {
+            "last_changed_at_utc": state.last_changed_at_utc,
+            "cooldown_reduced": bool(state.cooldown_reduced),
+        }
+        self._write_setting_json_in_tx(
+            cursor, self.NICK_CHANGE_STATES_SETTING_KEY, states
+        )
+
+    @staticmethod
+    def _nick_request_from_dict(data: dict[str, Any]) -> NickChangeRequest:
+        return NickChangeRequest(
+            id=int(data.get("id", 0)),
+            user_uuid=str(data.get("user_uuid", "")),
+            old_username=str(data.get("old_username", "")),
+            requested_username=str(data.get("requested_username", "")),
+            status=str(data.get("status", NICK_REQUEST_PENDING)),
+            coins_paid=int(data.get("coins_paid", 0)),
+            created_at_utc=str(data.get("created_at_utc", "")),
+            reviewed_at_utc=str(data.get("reviewed_at_utc", "") or ""),
+            reviewed_by_uuid=str(data.get("reviewed_by_uuid", "") or ""),
+            reviewed_by_username=str(data.get("reviewed_by_username", "") or ""),
+            reject_reason=str(data.get("reject_reason", "") or ""),
+            refunded=bool(data.get("refunded", False)),
+            applied_at_utc=str(data.get("applied_at_utc", "") or ""),
+            user_notified=bool(data.get("user_notified", False)),
+        )
+
+    @staticmethod
+    def _nick_request_to_dict(req: NickChangeRequest) -> dict[str, Any]:
+        return {
+            "id": int(req.id),
+            "user_uuid": req.user_uuid,
+            "old_username": req.old_username,
+            "requested_username": req.requested_username,
+            "status": req.status,
+            "coins_paid": int(req.coins_paid),
+            "created_at_utc": req.created_at_utc,
+            "reviewed_at_utc": req.reviewed_at_utc,
+            "reviewed_by_uuid": req.reviewed_by_uuid,
+            "reviewed_by_username": req.reviewed_by_username,
+            "reject_reason": req.reject_reason,
+            "refunded": bool(req.refunded),
+            "applied_at_utc": req.applied_at_utc,
+            "user_notified": bool(req.user_notified),
+        }
+
+    def _load_nick_requests_store(
+        self, cursor: sqlite3.Cursor | None = None
+    ) -> tuple[int, list[NickChangeRequest]]:
+        cur = cursor if cursor is not None else self._conn.cursor()
+        raw = self._read_setting_json_in_tx(
+            cur, self.NICK_CHANGE_REQUESTS_SETTING_KEY, {"next_id": 1, "items": []}
+        )
+        if not isinstance(raw, dict):
+            return 1, []
+        next_id = max(1, int(raw.get("next_id", 1) or 1))
+        items_raw = raw.get("items", [])
+        if not isinstance(items_raw, list):
+            return next_id, []
+        requests: list[NickChangeRequest] = []
+        for item in items_raw:
+            if isinstance(item, dict):
+                try:
+                    req = self._nick_request_from_dict(item)
+                    if req.id > 0 and req.user_uuid:
+                        requests.append(req)
+                except (TypeError, ValueError):
+                    continue
+        if requests:
+            next_id = max(next_id, max(r.id for r in requests) + 1)
+        return next_id, requests
+
+    def _save_nick_requests_store_in_tx(
+        self,
+        cursor: sqlite3.Cursor,
+        next_id: int,
+        requests: list[NickChangeRequest],
+    ) -> None:
+        self._write_setting_json_in_tx(
+            cursor,
+            self.NICK_CHANGE_REQUESTS_SETTING_KEY,
+            {
+                "next_id": int(next_id),
+                "items": [self._nick_request_to_dict(r) for r in requests],
+            },
+        )
+
+    def get_nick_change_request(
+        self, request_id: int, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangeRequest | None:
+        """Return one nick change request by ID."""
+        _, requests = self._load_nick_requests_store(cursor)
+        for req in requests:
+            if req.id == int(request_id):
+                return req
+        return None
+
+    def get_user_pending_nick_request(
+        self, user_uuid: str, cursor: sqlite3.Cursor | None = None
+    ) -> NickChangeRequest | None:
+        """Return the active pending nick change request for one user, if any."""
+        if not user_uuid:
+            return None
+        _, requests = self._load_nick_requests_store(cursor)
+        for req in requests:
+            if req.user_uuid == user_uuid and req.status == NICK_REQUEST_PENDING:
+                return req
+        return None
+
+    def count_pending_nick_requests(self) -> int:
+        """Return the number of pending nick change requests."""
+        _, requests = self._load_nick_requests_store()
+        return sum(1 for req in requests if req.status == NICK_REQUEST_PENDING)
+
+    def list_pending_nick_requests(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[NickChangeRequest]:
+        """Return pending nick change requests ordered oldest-first."""
+        _, requests = self._load_nick_requests_store()
+        pending = [req for req in requests if req.status == NICK_REQUEST_PENDING]
+        pending.sort(key=lambda r: (r.created_at_utc, r.id))
+        safe_offset = max(0, int(offset))
+        if limit is None:
+            return pending[safe_offset:]
+        safe_limit = max(1, int(limit))
+        return pending[safe_offset : safe_offset + safe_limit]
+
+    def find_nick_collision_usernames(
+        self,
+        requested_username: str,
+        *,
+        exclude_uuid: str = "",
+        cursor: sqlite3.Cursor | None = None,
+    ) -> list[str]:
+        """Return existing usernames that collide (exact, case-insensitive, or folded) with requested_username."""
+        normalized = normalize_username(requested_username)
+        lookup_key = username_key(normalized)
+        if not normalized:
+            return []
+        cur = cursor if cursor is not None else self._conn.cursor()
+        cur.execute(
+            """
+            SELECT username FROM users
+            WHERE (username_key = ? OR LOWER(username) = LOWER(?))
+              AND uuid != ?
+            ORDER BY username COLLATE BINARY ASC
+            """,
+            (lookup_key, normalized, str(exclude_uuid or "")),
+        )
+        return [str(row[0]) for row in cur.fetchall()]
+
+    def get_nick_cooldown_remaining(
+        self,
+        user_uuid: str,
+        *,
+        now: datetime | None = None,
+    ) -> timedelta:
+        """Return the remaining cooldown timedelta for one user."""
+        policy = self.get_nick_change_policy()
+        state = self.get_nick_change_state(user_uuid)
+        return cooldown_remaining(
+            state.last_changed_at_utc,
+            policy=policy,
+            reduced=state.cooldown_reduced,
+            now=now,
+        )
+
+    def reduce_nick_change_cooldown(
+        self,
+        user_uuid: str,
+        *,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically charge 15,000 coins to shorten a 90-day nick cooldown to 30 days."""
+        if not user_uuid:
+            return NickChangeOutcome(code="unknown_user")
+        with self._transaction(immediate=True) as cursor:
+            cursor.execute(
+                "SELECT username FROM users WHERE uuid = ?",
+                (user_uuid,),
+            )
+            user_row = cursor.fetchone()
+            if not user_row:
+                return NickChangeOutcome(code="unknown_user")
+
+            pending = self.get_user_pending_nick_request(user_uuid, cursor=cursor)
+            if pending is not None:
+                return NickChangeOutcome(code="already_pending", request=pending)
+
+            policy = self.get_nick_change_policy(cursor=cursor)
+            state = self.get_nick_change_state(user_uuid, cursor=cursor)
+            remaining = cooldown_remaining(
+                state.last_changed_at_utc,
+                policy=policy,
+                reduced=state.cooldown_reduced,
+                now=now,
+            )
+            if remaining.total_seconds() <= 0:
+                wallet = self.get_wallet(user_uuid, cursor=cursor)
+                return NickChangeOutcome(code="no_cooldown", balance=wallet.balance)
+            if state.cooldown_reduced:
+                wallet = self.get_wallet(user_uuid, cursor=cursor)
+                return NickChangeOutcome(code="already_reduced", balance=wallet.balance)
+
+            ok, new_balance = self.adjust_wallet_balance(
+                user_uuid,
+                -policy.reduction_price,
+                cursor=cursor,
+            )
+            if not ok:
+                return NickChangeOutcome(
+                    code="insufficient_coins",
+                    balance=new_balance,
+                )
+
+            new_state = NickChangeState(
+                user_uuid=user_uuid,
+                last_changed_at_utc=state.last_changed_at_utc,
+                cooldown_reduced=True,
+            )
+            self._set_nick_change_state_in_tx(cursor, new_state)
+            return NickChangeOutcome(
+                code="ok",
+                balance=new_balance,
+            )
+
+    def submit_nick_change_request(
+        self,
+        user_uuid: str,
+        requested_username: str,
+        *,
+        use_paid_bypass: bool = False,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically validate and submit a nick change request for admin approval."""
+        if not user_uuid:
+            return NickChangeOutcome(code="unknown_user")
+        normalized = normalize_username(requested_username)
+        val_err = username_validation_error(normalized)
+        if val_err is not None:
+            return NickChangeOutcome(code=f"invalid_{val_err}")
+        if is_reserved_system_username(normalized):
+            return NickChangeOutcome(code="reserved_username")
+
+        now_dt = now if now is not None else datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+        now_iso = now_dt.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+        with self._transaction(immediate=True) as cursor:
+            cursor.execute(
+                "SELECT username FROM users WHERE uuid = ?",
+                (user_uuid,),
+            )
+            user_row = cursor.fetchone()
+            if not user_row:
+                return NickChangeOutcome(code="unknown_user")
+            current_username = str(user_row[0])
+            if normalized == current_username:
+                return NickChangeOutcome(code="same_username")
+
+            pending = self.get_user_pending_nick_request(user_uuid, cursor=cursor)
+            if pending is not None:
+                return NickChangeOutcome(code="already_pending", request=pending)
+
+            policy = self.get_nick_change_policy(cursor=cursor)
+            state = self.get_nick_change_state(user_uuid, cursor=cursor)
+            remaining = cooldown_remaining(
+                state.last_changed_at_utc,
+                policy=policy,
+                reduced=state.cooldown_reduced,
+                now=now_dt,
+            )
+            if remaining.total_seconds() > 0 and not use_paid_bypass:
+                wallet = self.get_wallet(user_uuid, cursor=cursor)
+                return NickChangeOutcome(
+                    code="cooldown_active",
+                    balance=wallet.balance,
+                )
+
+            coins_paid = 0
+            wallet = self.get_wallet(user_uuid, cursor=cursor)
+            new_balance = wallet.balance
+            if use_paid_bypass:
+                ok, new_balance = self.adjust_wallet_balance(
+                    user_uuid,
+                    -policy.bypass_price,
+                    cursor=cursor,
+                )
+                if not ok:
+                    return NickChangeOutcome(
+                        code="insufficient_coins",
+                        balance=new_balance,
+                    )
+                coins_paid = policy.bypass_price
+
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            new_req = NickChangeRequest(
+                id=next_id,
+                user_uuid=user_uuid,
+                old_username=current_username,
+                requested_username=normalized,
+                status=NICK_REQUEST_PENDING,
+                coins_paid=coins_paid,
+                created_at_utc=now_iso,
+            )
+            requests.append(new_req)
+            self._save_nick_requests_store_in_tx(cursor, next_id + 1, requests)
+            return NickChangeOutcome(
+                code="ok",
+                request=new_req,
+                balance=new_balance,
+                old_username=current_username,
+                new_username=normalized,
+            )
+
+    def _rename_account_username_in_transaction(
+        self,
+        cursor: sqlite3.Cursor,
+        user_uuid: str,
+        old_username: str,
+        new_username: str,
+    ) -> None:
+        """Atomically rename users.username and update dependent username-keyed rows."""
+        new_key = username_key(new_username)
+        cursor.execute("DROP TRIGGER IF EXISTS protect_users_immutable_identity")
+        try:
+            cursor.execute(
+                """
+                UPDATE users
+                SET username = ?, username_key = ?
+                WHERE uuid = ?
+                """,
+                (new_username, new_key, user_uuid),
+            )
+        finally:
+            cursor.execute(
+                """
+                CREATE TRIGGER IF NOT EXISTS protect_users_immutable_identity
+                BEFORE UPDATE OF username, uuid ON users
+                FOR EACH ROW
+                WHEN NEW.username IS NOT OLD.username OR NEW.uuid IS NOT OLD.uuid
+                BEGIN
+                    SELECT RAISE(ABORT, 'account username and id are immutable');
+                END
+                """
+            )
+
+        cursor.execute(
+            "UPDATE saved_tables SET username = ? WHERE username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "SELECT id, members_json, game_json FROM saved_tables"
+        )
+        for row in cursor.fetchall():
+            save_id = int(row[0])
+            members_json = str(row[1] or "[]")
+            game_json = str(row[2] or "{}")
+            updated_members = self._replace_username_in_members_json(
+                members_json, old_username, new_username
+            )
+            updated_game = self._replace_username_in_game_json(
+                game_json, user_uuid, old_username, new_username
+            )
+            if updated_members != members_json or updated_game != game_json:
+                cursor.execute(
+                    "UPDATE saved_tables SET members_json = ?, game_json = ? WHERE id = ?",
+                    (updated_members, updated_game, save_id),
+                )
+
+        cursor.execute(
+            "UPDATE tables SET host = ? WHERE host = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "SELECT table_id, members_json, game_json FROM tables"
+        )
+        for row in cursor.fetchall():
+            table_id = str(row[0])
+            members_json = str(row[1] or "[]")
+            game_json = str(row[2] or "")
+            updated_members = self._replace_username_in_members_json(
+                members_json, old_username, new_username
+            )
+            updated_game = (
+                self._replace_username_in_game_json(
+                    game_json, user_uuid, old_username, new_username
+                )
+                if game_json
+                else game_json
+            )
+            if updated_members != members_json or updated_game != game_json:
+                cursor.execute(
+                    "UPDATE tables SET members_json = ?, game_json = ? WHERE table_id = ?",
+                    (updated_members, updated_game, table_id),
+                )
+
+        cursor.execute(
+            "UPDATE bans SET username = ? WHERE username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE bans SET admin_username = ? WHERE admin_username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE mutes SET username = ? WHERE username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE mutes SET admin_username = ? WHERE admin_username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE user_notifications SET source_username = ? WHERE source_username = ? COLLATE BINARY",
+            (new_username, old_username),
+        )
+        cursor.execute(
+            "UPDATE game_result_players SET player_name = ? WHERE player_id = ?",
+            (new_username, user_uuid),
+        )
+
+    @staticmethod
+    def _replace_username_in_members_json(
+        members_json: str, old_username: str, new_username: str
+    ) -> str:
+        try:
+            members = json.loads(members_json)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return members_json
+        if not isinstance(members, list):
+            return members_json
+        changed = False
+        for member in members:
+            if isinstance(member, dict) and member.get("username") == old_username:
+                member["username"] = new_username
+                changed = True
+        return json.dumps(members) if changed else members_json
+
+    @staticmethod
+    def _replace_username_in_game_json(
+        game_json: str, user_uuid: str, old_username: str, new_username: str
+    ) -> str:
+        try:
+            game_data = json.loads(game_json)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return game_json
+        if not isinstance(game_data, dict):
+            return game_json
+        changed = False
+        players = game_data.get("players")
+        if isinstance(players, list):
+            for player in players:
+                if not isinstance(player, dict):
+                    continue
+                if player.get("id") == user_uuid or (
+                    not player.get("is_bot") and player.get("name") == old_username
+                ):
+                    if not player.get("is_bot") and player.get("name") != new_username:
+                        player["name"] = new_username
+                        changed = True
+        return json.dumps(game_data) if changed else game_json
+
+    def approve_nick_change_request(
+        self,
+        request_id: int,
+        *,
+        reviewer_uuid: str,
+        reviewer_username: str,
+        mark_notified: bool = False,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically approve a pending nick change request and rename the user."""
+        now_dt = now if now is not None else datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+        now_iso = now_dt.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+        with self._transaction(immediate=True) as cursor:
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            target_idx = -1
+            target_req: NickChangeRequest | None = None
+            for idx, req in enumerate(requests):
+                if req.id == int(request_id):
+                    target_idx = idx
+                    target_req = req
+                    break
+            if target_req is None or target_req.status != NICK_REQUEST_PENDING:
+                return NickChangeOutcome(code="not_pending", request=target_req)
+
+            cursor.execute(
+                "SELECT username FROM users WHERE uuid = ?",
+                (target_req.user_uuid,),
+            )
+            user_row = cursor.fetchone()
+            if not user_row:
+                return NickChangeOutcome(code="unknown_user", request=target_req)
+            current_username = str(user_row[0])
+            new_username = target_req.requested_username
+
+            # Check if another account currently holds the exact case-insensitive
+            # username in SQLite `users` (which has UNIQUE COLLATE NOCASE).
+            cursor.execute(
+                """
+                SELECT username FROM users
+                WHERE LOWER(username) = LOWER(?) AND uuid != ?
+                LIMIT 1
+                """,
+                (new_username, target_req.user_uuid),
+            )
+            if cursor.fetchone() is not None:
+                return NickChangeOutcome(
+                    code="username_taken",
+                    request=target_req,
+                    old_username=current_username,
+                    new_username=new_username,
+                )
+
+            self._rename_account_username_in_transaction(
+                cursor,
+                target_req.user_uuid,
+                current_username,
+                new_username,
+            )
+
+            # Reset the 90-day cooldown starting now.
+            self._set_nick_change_state_in_tx(
+                cursor,
+                NickChangeState(
+                    user_uuid=target_req.user_uuid,
+                    last_changed_at_utc=now_iso,
+                    cooldown_reduced=False,
+                ),
+            )
+
+            approved_req = NickChangeRequest(
+                id=target_req.id,
+                user_uuid=target_req.user_uuid,
+                old_username=current_username,
+                requested_username=new_username,
+                status=NICK_REQUEST_APPROVED,
+                coins_paid=target_req.coins_paid,
+                created_at_utc=target_req.created_at_utc,
+                reviewed_at_utc=now_iso,
+                reviewed_by_uuid=str(reviewer_uuid or ""),
+                reviewed_by_username=str(reviewer_username or ""),
+                applied_at_utc=now_iso,
+                user_notified=bool(mark_notified),
+            )
+            requests[target_idx] = approved_req
+            self._save_nick_requests_store_in_tx(cursor, next_id, requests)
+            wallet = self.get_wallet(target_req.user_uuid, cursor=cursor)
+            return NickChangeOutcome(
+                code="ok",
+                request=approved_req,
+                balance=wallet.balance,
+                old_username=current_username,
+                new_username=new_username,
+            )
+
+    def reject_nick_change_request(
+        self,
+        request_id: int,
+        *,
+        reviewer_uuid: str,
+        reviewer_username: str,
+        reason: str,
+        refund_coins: bool = False,
+        mark_notified: bool = False,
+        now: datetime | None = None,
+    ) -> NickChangeOutcome:
+        """Atomically reject a pending nick change request with a reason and optional coin refund."""
+        clean_reason = " ".join(str(reason or "").split()).strip()
+        if not clean_reason:
+            return NickChangeOutcome(code="invalid_reason")
+        clean_reason = clean_reason[:MAX_NICK_REJECT_REASON_LENGTH]
+
+        now_dt = now if now is not None else datetime.now(timezone.utc)
+        if now_dt.tzinfo is None:
+            now_dt = now_dt.replace(tzinfo=timezone.utc)
+        now_iso = now_dt.astimezone(timezone.utc).isoformat(timespec="microseconds")
+
+        with self._transaction(immediate=True) as cursor:
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            target_idx = -1
+            target_req: NickChangeRequest | None = None
+            for idx, req in enumerate(requests):
+                if req.id == int(request_id):
+                    target_idx = idx
+                    target_req = req
+                    break
+            if target_req is None or target_req.status != NICK_REQUEST_PENDING:
+                return NickChangeOutcome(code="not_pending", request=target_req)
+
+            refunded_coins = 0
+            wallet = self.get_wallet(target_req.user_uuid, cursor=cursor)
+            new_balance = wallet.balance
+            if refund_coins and target_req.coins_paid > 0:
+                ok, new_balance = self.adjust_wallet_balance(
+                    target_req.user_uuid,
+                    target_req.coins_paid,
+                    cursor=cursor,
+                )
+                if ok:
+                    refunded_coins = target_req.coins_paid
+
+            rejected_req = NickChangeRequest(
+                id=target_req.id,
+                user_uuid=target_req.user_uuid,
+                old_username=target_req.old_username,
+                requested_username=target_req.requested_username,
+                status=NICK_REQUEST_REJECTED,
+                coins_paid=target_req.coins_paid,
+                created_at_utc=target_req.created_at_utc,
+                reviewed_at_utc=now_iso,
+                reviewed_by_uuid=str(reviewer_uuid or ""),
+                reviewed_by_username=str(reviewer_username or ""),
+                reject_reason=clean_reason,
+                refunded=bool(refunded_coins > 0),
+                user_notified=bool(mark_notified),
+            )
+            requests[target_idx] = rejected_req
+            self._save_nick_requests_store_in_tx(cursor, next_id, requests)
+            return NickChangeOutcome(
+                code="ok",
+                request=rejected_req,
+                balance=new_balance,
+                refunded_coins=refunded_coins,
+                old_username=target_req.old_username,
+                new_username=target_req.requested_username,
+            )
+
+    def pop_unnotified_nick_change_resolutions(
+        self, user_uuid: str
+    ) -> list[NickChangeRequest]:
+        """Return and mark as notified any approved/rejected nick change requests for user_uuid."""
+        if not user_uuid:
+            return []
+        with self._transaction(immediate=True) as cursor:
+            next_id, requests = self._load_nick_requests_store(cursor=cursor)
+            resolved: list[NickChangeRequest] = []
+            changed = False
+            for idx, req in enumerate(requests):
+                if (
+                    req.user_uuid == user_uuid
+                    and req.status in (NICK_REQUEST_APPROVED, NICK_REQUEST_REJECTED)
+                    and not req.user_notified
+                ):
+                    resolved.append(req)
+                    requests[idx] = NickChangeRequest(
+                        id=req.id,
+                        user_uuid=req.user_uuid,
+                        old_username=req.old_username,
+                        requested_username=req.requested_username,
+                        status=req.status,
+                        coins_paid=req.coins_paid,
+                        created_at_utc=req.created_at_utc,
+                        reviewed_at_utc=req.reviewed_at_utc,
+                        reviewed_by_uuid=req.reviewed_by_uuid,
+                        reviewed_by_username=req.reviewed_by_username,
+                        reject_reason=req.reject_reason,
+                        refunded=req.refunded,
+                        applied_at_utc=req.applied_at_utc,
+                        user_notified=True,
+                    )
+                    changed = True
+            if changed:
+                self._save_nick_requests_store_in_tx(cursor, next_id, requests)
+            return resolved

@@ -1,5 +1,5 @@
 export const HISTORY_BUFFER_ORDER = Object.freeze(["all", "chat", "private", "game", "system", "misc"]);
-export const HISTORY_BUFFER_LIMIT = 500;
+export const HISTORY_BUFFER_LIMIT = 8000;
 
 function createHistoryBuffers() {
   return Object.fromEntries(HISTORY_BUFFER_ORDER.map((name) => [name, []]));
@@ -95,6 +95,9 @@ export function createStore() {
         sequence,
         text,
       };
+      if (options.metadata && typeof options.metadata === "object") {
+        item.metadata = { ...options.metadata };
+      }
       pushCapped(state.historyBuffers[normalized], item);
       state.historyRevisions[normalized] += 1;
       if (normalized !== "all" && options.includeAll !== false) {

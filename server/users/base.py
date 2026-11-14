@@ -302,6 +302,7 @@ class User(ABC):
         buffer: str = "misc",
         *,
         history: bool = True,
+        interrupt: bool = False,
     ) -> None:
         """
         Send a text message to be displayed and spoken via TTS.
@@ -310,6 +311,7 @@ class User(ABC):
             text: The message text.
             buffer: Which buffer to route the message to (chat, private, game, system, misc).
             history: Whether clients should retain the message in their history buffer.
+            interrupt: Whether this explicit reading should replace queued speech.
         """
         ...
 
@@ -330,7 +332,9 @@ class User(ABC):
             history: Whether clients should retain the message in their history buffer.
             **kwargs: Variables to substitute into the message.
         """
-        text = Localization.get(self.locale, message_id, **kwargs)
+        localized_kwargs = dict(kwargs)
+        localized_kwargs.setdefault("user_gender", self.gender.selector)
+        text = Localization.get(self.locale, message_id, **localized_kwargs)
         self.speak(text, buffer=buffer, history=history)
 
     @abstractmethod
@@ -768,6 +772,7 @@ class User(ABC):
         grid_height: int = 0,
         grid_width: int = 1,
         capture_focus_context_id: str | None = None,
+        title: str | None = None,
     ) -> None:
         """
         Display a menu to the user.
@@ -779,6 +784,7 @@ class User(ABC):
             escape_behavior: How escape key behaves (see EscapeBehavior enum).
             position: 1-based position to select (None for first item).
             selection_id: Optional item ID to focus on (overrides position).
+            title: Localized plain-text name for the existing menu heading.
             grid_enabled: Enable grid navigation mode.
             grid_height: Number of rows in grid mode.
             grid_width: Number of columns in grid mode.
@@ -846,6 +852,7 @@ class User(ABC):
         multiline: bool = False,
         read_only: bool = False,
         max_length: int | None = None,
+        translation_draft: dict[str, str] | None = None,
     ) -> None:
         """
         Display an editbox to the user.

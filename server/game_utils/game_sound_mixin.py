@@ -173,6 +173,11 @@ class GameSoundMixin:
                 candidate_id = str(getattr(candidate, "uuid", ""))
                 if any(player.id == candidate_id for player in self.players):
                     player_id = candidate_id
+            player = (
+                self.get_player_by_id(player_id)
+                if player_id and hasattr(self, "get_player_by_id")
+                else (candidate if isinstance(candidate, Player) else None)
+            )
             if (
                 not public_audience
                 and player_id
@@ -181,6 +186,13 @@ class GameSoundMixin:
                 normalized_player_id = str(player_id)
                 seen_players.add(normalized_player_id)
                 player_ids.append(normalized_player_id)
+
+            if (
+                player
+                and getattr(self, "status", "") == "playing"
+                and not getattr(player, "is_watching", True)
+            ):
+                continue
 
             user = (
                 candidate
@@ -853,6 +865,13 @@ class GameSoundMixin:
         spec = TABLE_PRESENCE_SOUND_SPECS.get(event)
         if spec is None:
             raise ValueError(f"Unknown table presence event: {event!r}")
+        table = getattr(self, "_table", None)
+        server = getattr(table, "_server", None) if table else None
+        if server and hasattr(server, "get_sound_for_event") and not is_spectator:
+            if event == "join":
+                return server.get_sound_for_event("table_joined")
+            if event == "leave":
+                return server.get_sound_for_event("table_left")
         role = "spectator" if is_spectator else "player"
         return spec[role]
 

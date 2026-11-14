@@ -35,6 +35,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { PoliteAnnouncementQueue } from "../accessibility/PoliteAnnouncementQueue";
 import { executeCopyDirective } from "../actions/copyDirective";
 import { MobileAudioManager } from "../audio/MobileAudioManager";
+import { ForumMediaModal } from '../forum/ForumMediaModal';
+import { ForumMediaTransport, ForumMediaUserError } from '../forum/transport';
+import type { ForumFilePickerPacket, ForumOpenMediaPacket } from '../forum/protocol';
 import { requestAndroidBatteryOptimizationExemptionOnce } from "../background/AndroidBatteryOptimization";
 import { androidForegroundService } from "../background/AndroidForegroundService";
 import { useSelfVoicingGestures } from "../gestures/useSelfVoicingGestures";
@@ -207,6 +210,7 @@ type FocusableMenuItem = {
 };
 
 type MenuState = {
+  title?: string;
   escapeBehavior: string;
   focusIndex: number;
   gridEnabled: boolean;
@@ -228,6 +232,7 @@ type InputState = {
   multiline: boolean;
   prompt: string;
   readOnly: boolean;
+  translationDraft?: { token: string; original: string };
 };
 
 type InputOverlayFocus = 0 | 1;
@@ -326,6 +331,7 @@ type StoredClientConfig = {
 };
 
 const defaultMenuState: MenuState = {
+  title: "",
   escapeBehavior: "keybind",
   focusIndex: 0,
   gridEnabled: false,
@@ -407,6 +413,21 @@ function getDefaultAuthFocusId(mode: AuthMode): string {
 function formatChatMessage(localization: MobileLocalization, packet: ChatPacket): string {
   const sender = packet.sender?.trim() || localization.t("chat-unknown-sender");
   const message = packet.message || "";
+  const replySender = typeof packet.reply_to?.sender === "string" ? packet.reply_to.sender : "";
+  const replyMessage = typeof packet.reply_to?.message === "string" ? packet.reply_to.message : "";
+  if (packet.convo !== "announcement" && replySender && replyMessage) {
+    const key = packet.convo === "global"
+      ? "chat-global-reply"
+      : packet.convo === "private"
+        ? "chat-private-reply"
+        : "chat-local-reply";
+    return localization.t(key, {
+      player: sender,
+      target: replySender,
+      message,
+      quote: replyMessage,
+    });
+  }
   if (packet.convo === "global") {
     return localization.t("chat-global", { message, player: sender });
   }
@@ -586,6 +607,11 @@ export function PlayAuralApp() {
     return instance;
   }, [initialLocale]);
   const audio = useMemo(() => new MobileAudioManager(), []);
+  const forumMediaTransport = useMemo(() => new ForumMediaTransport(), []);
+  const [forumMediaPacket, setForumMediaPacket] = useState<ForumOpenMediaPacket | null>(null);
+  const forumMediaPacketRef = useRef<ForumOpenMediaPacket | null>(null);
+  const forumMediaReturnFocusRef = useRef<string | null>(null);
+  const forumMediaOpenRevisionRef = useRef(0);
   const voice = useMemo(() => new MobileVoiceManager(), []);
 
   const [appLocale, setAppLocale] = useState<MobileLocale>(initialLocale);
@@ -605,6 +631,9 @@ export function PlayAuralApp() {
     setDialogValue(nextState);
   }, []);
   const [inputValue, setInputValue] = useState("");
+  const inputValueRef = useRef("");
+  const [translationPreview, setTranslationPreview] = useState("");
+  const translationSequenceRef = useRef({ token: "", sequence: 0, lastValue: "" });
   const [inputOverlayFocus, setInputOverlayFocus] = useState<InputOverlayFocus>(0);
   const [appState, setAppState] = useState(AppState.currentState);
   const [chatDraft, setChatDraft] = useState("");
@@ -774,6 +803,10 @@ export function PlayAuralApp() {
   }, [inputState]);
 
   useEffect(() => {
+    inputValueRef.current = inputValue;
+  }, [inputValue]);
+
+  useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
 
@@ -932,6 +965,30 @@ export function PlayAuralApp() {
     pendingNativeAccessibilityFocusKeyRef.current = key;
     pendingNativeAccessibilityFocusQueuedAtRef.current = Date.now();
   }, []);
+
+  const closeForumMedia = useCallback(() => {
+    forumMediaOpenRevisionRef.current += 1;
+    forumMediaTransport.closePlayer();
+    forumMediaPacketRef.current = null;
+    setForumMediaPacket(null);
+    audio.setExternalDucking('forum-media');
+    queueNativeAccessibilityFocus(forumMediaReturnFocusRef.current);
+    forumMediaReturnFocusRef.current = null;
+  }, [audio, forumMediaTransport, queueNativeAccessibilityFocus]);
+
+  const resetForumMedia = useCallback(() => {
+    forumMediaOpenRevisionRef.current += 1;
+    forumMediaTransport.reset();
+    forumMediaPacketRef.current = null;
+    forumMediaReturnFocusRef.current = null;
+    setForumMediaPacket(null);
+    audio.setExternalDucking('forum-media');
+  }, [audio, forumMediaTransport]);
+  const prepareForumPlayback = useCallback(() => audio.handleUserInteraction(), [audio]);
+  const stopForumSpeech = useCallback(() => tts.stop(), [tts]);
+  const onForumPlayback = useCallback((playing: boolean) => {
+    audio.setExternalDucking('forum-media', playing ? { music: 0.3, ambience: 0.3 } : null);
+  }, [audio]);
 
   const requestNativeMenuFocusOnNextPacket = useCallback(() => {
     nativeMenuFocusOnNextPacketRef.current = true;
@@ -1217,6 +1274,10 @@ export function PlayAuralApp() {
     [addHistoryMessage, deliverInterfaceFeedback],
   );
 
+  const forumAnnouncementRef = useRef(deliverInterfaceFeedback);
+  forumAnnouncementRef.current = deliverInterfaceFeedback;
+  const announceForumMedia = useCallback((text: string) => forumAnnouncementRef.current(text), []);
+
   const announce = (text: string, buffer: BufferName = "system", speak = true) => {
     buffers.add(buffer, text);
     setHistoryRevision((value) => value + 1);
@@ -1454,6 +1515,7 @@ export function PlayAuralApp() {
       longPressResetTimerRef.current = null;
     }
     void androidForegroundService.stop();
+    forumMediaTransport.reset();
     voice.shutdown();
     audio.shutdown();
     tts.stop();
@@ -1993,6 +2055,7 @@ export function PlayAuralApp() {
     );
 
     const nextMenuState: MenuState = {
+      title: typeof packet.title === "string" ? packet.title : isSameMenuId ? previous.title : "",
       escapeBehavior:
         packet.escape_behavior !== undefined || !isSameMenuId
           ? packet.escape_behavior ?? "keybind"
@@ -2169,6 +2232,7 @@ export function PlayAuralApp() {
   }, [clearScheduledNativeFocus]);
 
   const resetRuntimeUiForSession = useCallback((sendVoiceLeave: boolean) => {
+    resetForumMedia();
     leaveVoiceChat({
       announce: false,
       clearContext: true,
@@ -2178,7 +2242,7 @@ export function PlayAuralApp() {
     connectionAudioActiveRef.current = false;
     audio.stopAll(800);
     clearRuntimeUi();
-  }, [audio, clearRuntimeUi, leaveVoiceChat]);
+  }, [audio, clearRuntimeUi, leaveVoiceChat, resetForumMedia]);
 
   const queueReconnectAttempt = useCallback((delayMs: number, statusMessage: string, speakMessage = false) => {
     const { password: reconnectPassword, serverUrl: reconnectServerUrl, username: reconnectUsername } = credentialsRef.current;
@@ -2549,6 +2613,7 @@ export function PlayAuralApp() {
   if (!connectionRef.current) {
     connectionRef.current = new PlayAuralConnection({
       onClose: (reason) => {
+        resetForumMedia();
         leaveVoiceChat({
           announce: false,
           clearContext: true,
@@ -2595,6 +2660,31 @@ export function PlayAuralApp() {
       onPacket: (packet: ServerPacket) => {
         if (ENABLE_CLIENT_DEBUG_LOGS) {
           console.info("PLAYAURAL_DEBUG Packet", packet.type);
+        }
+        if (packet.type === 'forum_file_picker') {
+          const picker = packet as ForumFilePickerPacket;
+          void forumMediaTransport.choose(picker, announceForumMedia).catch((error) => {
+            announceForumMedia(error instanceof ForumMediaUserError ? error.message : picker.labels.error);
+          });
+          return;
+        }
+        if (packet.type === 'forum_open_media') {
+          const mediaPacket = packet as ForumOpenMediaPacket;
+          forumMediaTransport.closePlayer();
+          const revision = ++forumMediaOpenRevisionRef.current;
+          forumMediaPacketRef.current = mediaPacket;
+          setForumMediaPacket(null);
+          const currentMenu = menuStateRef.current;
+          forumMediaReturnFocusRef.current = menuItemAccessibilityKey(currentMenu.menuId, currentMenu.items[currentMenu.focusIndex], currentMenu.focusIndex);
+          void forumMediaTransport.prepare(mediaPacket).then((current) => {
+            if (current && revision === forumMediaOpenRevisionRef.current) setForumMediaPacket(mediaPacket);
+          }).catch((error) => {
+            if (revision === forumMediaOpenRevisionRef.current) {
+              forumMediaPacketRef.current = null;
+              announceForumMedia(error instanceof ForumMediaUserError ? error.message : mediaPacket.labels.error);
+            }
+          });
+          return;
         }
         if (packet.type === "authorize_success") {
           const authPacket = packet as AuthorizeSuccessPacket;
@@ -2645,8 +2735,22 @@ export function PlayAuralApp() {
           return;
         }
 
+        if (packet.type === "username_updated") {
+          const nextName = String((packet as { username?: string }).username || "");
+          if (nextName) {
+            credentialsRef.current.username = nextName;
+            setUsername(nextName);
+          }
+          return;
+        }
+
         if (packet.type === "disconnect") {
+          resetForumMedia();
           const disconnectPacket = packet as DisconnectPacket;
+          if (disconnectPacket.username) {
+            credentialsRef.current.username = disconnectPacket.username;
+            setUsername(disconnectPacket.username);
+          }
           const shouldExitApplication = isTerminalExitReason(disconnectPacket.reason);
           const reason = localizeSystemMessage(disconnectPacket.reason, "status-disconnected");
           leaveVoiceChat({
@@ -2662,9 +2766,15 @@ export function PlayAuralApp() {
             allowReconnectRef.current = true;
             expectingReconnectRef.current = true;
             sessionEstablishedRef.current = true;
-            const reconnectMessage = localization.t("reconnect-server-restarting");
+            const immediate = disconnectPacket.reconnect_immediate === true;
+            const delayMs = immediate
+              ? 200
+              : (Number(disconnectPacket.reconnect_after_ms) || 3000);
+            const reconnectMessage = immediate
+              ? localization.t("status-connecting")
+              : localization.t("reconnect-server-restarting");
             setAuthStatusText(reconnectMessage);
-            queueReconnectAttempt(3000, reconnectMessage, true);
+            queueReconnectAttempt(delayMs, reconnectMessage, !immediate);
             return;
           }
 
@@ -2678,7 +2788,8 @@ export function PlayAuralApp() {
           return;
         }
 
-        if (packet.type === "force_exit") {
+        if (packet.type === "force_exit" || packet.type === "switch_server") {
+          resetForumMedia();
           const forceExitPacket = packet as ForceExitPacket;
           const reason = localizeSystemMessage(forceExitPacket.reason, "logout-complete");
           leaveVoiceChat({
@@ -2746,7 +2857,10 @@ export function PlayAuralApp() {
             multiline: inputPacket.multiline ?? false,
             prompt: inputPacket.prompt,
             readOnly: inputPacket.read_only ?? false,
+            translationDraft: inputPacket.translation_draft,
           });
+          translationSequenceRef.current = { token: inputPacket.translation_draft?.token || "", sequence: 0, lastValue: inputPacket.default_value || "" };
+          setTranslationPreview("");
           setInputOverlayFocus(0);
           setInputValue(inputPacket.default_value || "");
           announceInterfaceFeedback(localization.t("input-opened"));
@@ -2754,6 +2868,15 @@ export function PlayAuralApp() {
             requestAnimationFrame(() => {
               inputOverlayInputRef.current?.focus();
             });
+          }
+          return;
+        }
+
+        if (packet.type === "translation_draft") {
+          const draft = inputStateRef.current?.translationDraft;
+          if (draft?.token === packet.token && packet.sequence === translationSequenceRef.current.sequence) {
+            const preview = packet.error || packet.preview || "";
+            setTranslationPreview(typeof preview === "string" ? preview : "");
           }
           return;
         }
@@ -2863,6 +2986,10 @@ export function PlayAuralApp() {
 
         if (packet.type === "voice_settings") {
           applyServerVoiceSettings(packet as VoiceSettingsPacket);
+          return;
+        }
+
+        if (packet.type === "voice_pans") {
           return;
         }
 
@@ -3017,6 +3144,17 @@ export function PlayAuralApp() {
   }, [localization, voiceState, voiceStatusText]);
 
   const connection = connectionRef.current;
+  useEffect(() => {
+    const draft = inputState?.translationDraft;
+    if (!draft || inputState.readOnly || !connection || inputValue === translationSequenceRef.current.lastValue) return;
+    const timer = setTimeout(() => {
+      if (inputStateRef.current?.translationDraft?.token !== draft.token) return;
+      translationSequenceRef.current.lastValue = inputValue;
+      connection.send({ type: "translation_draft", input_id: inputState.inputId, token: draft.token,
+        sequence: ++translationSequenceRef.current.sequence, text: inputValue });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [connection, inputState, inputValue]);
   const getHistoryBufferOptionName = (buffer: BufferName): string => {
     const name = localization.t(`buffer-${buffer}`);
     return buffers.isMuted(buffer)
@@ -4070,7 +4208,18 @@ export function PlayAuralApp() {
   // Match desktop: an item-specific highlight sound replaces the generic click.
   const playMenuMoveSound = (item?: FocusableMenuItem | null) => {
     if (item?.sound) {
-      void audio.playSound(item.sound);
+      void audio.handleAudioCommand({
+        type: "audio",
+        version: 3,
+        command: "play",
+        kind: "sfx",
+        asset: item.sound,
+        handle: "menu_item_preview",
+        priority: 100,
+        volume: 100,
+        pitch: 100,
+        pan: 0,
+      });
       return;
     }
     void audio.playSound("menuclick.ogg", { volume: 0.5 });
@@ -4128,10 +4277,11 @@ export function PlayAuralApp() {
     if (!currentInput) {
       return;
     }
-    connection?.send({
-      menu_id: currentInput.inputId || undefined,
-      type: "escape",
-    });
+    if (currentInput.translationDraft) {
+      connection?.send({ type: "editbox", input_id: currentInput.inputId, text: inputValueRef.current, cancelled: true });
+    } else {
+      connection?.send({ menu_id: currentInput.inputId || undefined, type: "escape" });
+    }
     clearInputOverlay();
     announceInterfaceFeedback(localization.t("input-cancelled"));
   };
@@ -4141,6 +4291,7 @@ export function PlayAuralApp() {
       return;
     }
     if (inputState.readOnly) {
+      connection?.send({ type: "editbox", input_id: inputState.inputId, text: "", cancelled: true });
       clearInputOverlay();
       return;
     }
@@ -4569,6 +4720,10 @@ export function PlayAuralApp() {
   };
 
   const handleSystemSwipe = (direction: "up" | "down" | "left" | "right") => {
+    if (forumMediaPacketRef.current) {
+      if (direction === 'up') closeForumMedia();
+      return;
+    }
     void audio.handleUserInteraction();
     const currentMenuState = menuStateRef.current;
     const currentDialog = dialogStateRef.current;
@@ -4658,7 +4813,7 @@ export function PlayAuralApp() {
   }, [selfVoicingEnabled]);
 
   const gestures = useSelfVoicingGestures({
-    enabled: selfVoicingGestureEnabled,
+    enabled: selfVoicingGestureEnabled && !forumMediaPacket,
     globalToggleEnabled: true,
     isNativeTextInputTarget,
     isTextInputEditing,
@@ -5186,7 +5341,7 @@ export function PlayAuralApp() {
 
   const renderMainView = () => (
     <View style={styles.panel}>
-      <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{localization.t("mode-main")}</Text>
+      <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{menuState.title || localization.t("mode-main")}</Text>
       <View
         onLayout={(event) => {
           const { height, width } = event.nativeEvent.layout;
@@ -6230,6 +6385,9 @@ export function PlayAuralApp() {
           <View style={styles.inputOverlayScreen}>
             <ScrollView {...inputScroll} style={styles.dialogScroll} contentContainerStyle={styles.inputOverlayCard}>
               <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{inputState.prompt}</Text>
+              {inputState.translationDraft ? (
+                <Text style={[styles.subtitle, localeTextDirectionStyle]}>{inputState.translationDraft.original}</Text>
+              ) : null}
               <View
                 style={[
                   styles.inputOverlayFocusRing,
@@ -6260,6 +6418,9 @@ export function PlayAuralApp() {
                   value={inputValue}
                 />
               </View>
+              {inputState.translationDraft && translationPreview ? (
+                <Text accessibilityLiveRegion="none" style={[styles.subtitle, localeTextDirectionStyle]}>{translationPreview}</Text>
+              ) : null}
               <Pressable
                 accessibilityLabel={inputOverlayButtonText}
                 accessibilityRole="button"
@@ -6322,6 +6483,10 @@ export function PlayAuralApp() {
         )) : null}
         </KeyboardAvoidingView>
       </AccessibilityOrderedView>
+      {forumMediaPacket ? <ForumMediaModal key={`${forumMediaPacket.attachment.id}:${forumMediaPacket.token}`}
+        packet={forumMediaPacket} selfVoicing={selfVoicingEnabled} announce={announceForumMedia}
+        stopSpeech={stopForumSpeech} preparePlayback={prepareForumPlayback} onPlayback={onForumPlayback}
+        onClose={closeForumMedia} onSave={() => forumMediaTransport.save(forumMediaPacket)} /> : null}
     </SafeAreaView>
   );
 }

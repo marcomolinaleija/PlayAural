@@ -209,6 +209,8 @@ class WebSocketServer:
             ssl=self._ssl_context,
             origins=None,  # Allow all origins (handled by Cloudflare/Auth)
             process_request=self._process_request,
+            open_timeout=60,  # Accommodate the desktop's optional slow-network deadline.
+            ping_timeout=60,
         )
         protocol = "wss" if self._ssl_context else "ws"
         print(f"WebSocket server started on {protocol}://{self.host}:{self.port}")

@@ -1,4 +1,4 @@
-﻿"""Pytest configuration and fixtures."""
+"""Pytest configuration and fixtures."""
 
 import pytest
 import shutil

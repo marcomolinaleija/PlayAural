@@ -23,9 +23,13 @@ Trò chơi không dùng điểm hay mốc điểm thắng. Khi chỉ còn một 
 
 \*\*Các bàn cờ\*\*
 
-Chủ bàn chọn bàn cờ trước khi bắt đầu. Các lựa chọn gồm Hoa Kỳ, Luân Đôn, Paris, Đức, Ý, Madrid, Tokyo, Úc, New Zealand và Hà Nội, Việt Nam. Bàn cờ đã chọn quyết định tên ô, giá trị trên giấy sở hữu, thẻ bài, đơn vị tiền, các ô giao thông, cách gọi cấp phát triển và những số tiền riêng. Trình tự lượt chơi không đổi.
+Chủ bàn chọn bàn cờ trước khi bắt đầu. Các lựa chọn gồm Hoa Kỳ, Luân Đôn, Paris, Đức, Ý, Madrid, Tokyo, Úc, New Zealand, Mexico và Hà Nội, Việt Nam. Bàn cờ đã chọn quyết định tên ô, giá trị trên giấy sở hữu, thẻ bài, đơn vị tiền, các ô giao thông, cách gọi cấp phát triển và những số tiền riêng. Trình tự lượt chơi không đổi.
 
 Hầu hết bàn cờ dùng nhà và khách sạn. Bàn cờ Hà Nội, Việt Nam dùng đồng Việt Nam, bắt đầu tại Hồ Hoàn Kiếm, gọi bất động sản có thể phát triển là hàng quán và dùng năm cấp nâng cấp kinh doanh. Trình đơn luôn hiển thị đúng tên gọi và số tiền của bàn cờ đang chọn.
+
+Bàn cờ Mexico có 22 thành phố được nhóm theo các vùng lân cận, từ Baja California và nội địa phía bắc qua cao nguyên trung tâm, miền tây, miền trung, miền đông, miền nam đến bán đảo Yucatán. Đây là cách bố trí trong trò chơi, không phải tuyến đường bộ hay đường sắt; giá trong trò chơi không phải giá trị bất động sản thực tế. Chọn Mexico trong tùy chọn Bàn cờ trước khi bắt đầu.
+
+Bốn ga metro thay cho đường sắt: Cuauhtémoc ở Monterrey, Juárez thuộc đường sắt nhẹ SITEUR ở Guadalajara, cùng Tacubaya và Pantitlán ở Thành phố Mexico. Tiền thuê là 25, 50, 100 hoặc 200 peso tùy số ga chủ sở hữu nắm giữ. Sân bay quốc tế Monterrey ở Apodaca và sân bay quốc tế Benito Juárez ở Thành phố Mexico thay cho công ty tiện ích: mỗi sân bay có giá 150 peso; tiền thuê bằng 4 lần tổng của một lượt tung xúc xắc mới khi sở hữu một sân bay, hoặc 10 lần khi sở hữu cả hai. Các thẻ đến ô giao thông hoặc tiện ích gần nhất cũng áp dụng cho các bất động sản này. Bạn bắt đầu với 1.500 peso Mexico và nhận 200 khi qua ô Khởi hành. Nhà, khách sạn, thuế, nhà tù và cả hai bộ thẻ vẫn hoạt động như mô tả bên dưới.
 
 \*\*Bắt đầu ván chơi\*\*
 

@@ -246,6 +246,7 @@ async def test_general_options_navigation_is_shared_across_clients_and_locales(
             "friends",
             "my_stats",
             "options",
+            "collaborate",
             "back",
         ]
 
@@ -1481,3 +1482,51 @@ async def test_restore_frame_game_options_and_category(tmp_path) -> None:
         assert _user_state(server, user.username).get("pref_field") == "dice_keeping_style"
     finally:
         server._db.close()
+
+
+@pytest.mark.asyncio
+async def test_unfocused_silence_categories_toggle_independently(tmp_path) -> None:
+    server, user = _make_server(tmp_path)
+    synced_prefs = []
+    server._sync_pref_to_client = lambda u, k, v: synced_prefs.append((u.username, k, v))
+
+    try:
+        server._show_options_menu(user)
+        server._nav_push(user, server._show_audio_submenu)
+        assert _current_menu(server, user.username) == "options_audio_submenu"
+
+        item_ids = [item.id for item in user.menus["options_audio_submenu"]["items"]]
+        expected_ids = [
+            "toggle_unfocused_silence_game",
+            "toggle_unfocused_silence_table",
+            "toggle_unfocused_silence_invitations",
+            "toggle_unfocused_silence_system",
+            "toggle_unfocused_silence_private",
+        ]
+        assert expected_ids == [item_id for item_id in item_ids if item_id.startswith("toggle_unfocused_silence_")]
+        assert "toggle_limit_unfocused_audio" not in item_ids
+
+        assert user.preferences.unfocused_silence_private is False
+        await server._handle_audio_submenu_selection(
+            user, "toggle_unfocused_silence_private"
+        )
+        assert user.preferences.unfocused_silence_private is True
+        assert user.preferences.unfocused_silence_game is False
+        assert (
+            "NavTester",
+            "audio/unfocused_silence/private",
+            True,
+        ) in synced_prefs
+
+        await server._handle_audio_submenu_selection(
+            user, "toggle_unfocused_silence_private"
+        )
+        assert user.preferences.unfocused_silence_private is False
+        assert (
+            "NavTester",
+            "audio/unfocused_silence/private",
+            False,
+        ) in synced_prefs
+    finally:
+        server._db.close()
+

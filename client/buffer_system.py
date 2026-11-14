@@ -15,7 +15,7 @@ class BufferSystem:
     BUFFER_ALIASES = {
         "chats": "chat",
     }
-    DEFAULT_MAX_ITEMS_PER_BUFFER = 500
+    DEFAULT_MAX_ITEMS_PER_BUFFER = 8000
 
     def __init__(self, max_items_per_buffer: int = DEFAULT_MAX_ITEMS_PER_BUFFER):
         """Initialize the buffer system."""
@@ -60,13 +60,20 @@ class BufferSystem:
             self.buffer_order.append(name)
             self.buffer_anchors[name] = None
 
-    def add_item(self, buffer_name: str, text: str) -> None:
+    def add_item(
+        self,
+        buffer_name: str,
+        text: str,
+        metadata: dict | None = None,
+    ) -> None:
         """
         Add a message to a specific buffer (and automatically to "all").
 
         Args:
             buffer_name: Name of the buffer to add to
             text: Message text to add
+            metadata: Optional structured fields, such as a chat reply target.
+                The same item is shared with the combined history.
         """
         buffer_name = self.normalize_buffer_name(buffer_name)
 
@@ -82,6 +89,8 @@ class BufferSystem:
             "text": text,
             "timestamp": time.time(),
         }
+        if metadata:
+            item["metadata"] = dict(metadata)
 
         # Add to the source even while it is muted so its backlog remains available.
         self._append_item(buffer_name, item)

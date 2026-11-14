@@ -13,9 +13,10 @@ from pathlib import Path
 
 # Add parent directory to path to import config_manager
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config_manager import ConfigManager
+from config_manager import ConfigManager, parse_server_endpoint
 from auth_error_messages import get_login_failure_message
 from client_info import client_auth_metadata
+from connection_policy import LOGIN_TIMEOUT_SECONDS, LOGIN_TIMEOUT_OPTION, LoginAttempt, authorize, login_timeout
 from localization import Localization
 from ssl_utils import make_ssl_context
 from version import VERSION
@@ -43,40 +44,100 @@ def _find_saved_account_id(
     return matching_ids[0] if matching_ids else None
 
 
+OFFICIAL_SERVERS = [
+    {
+        "server_id": "playaural_dev",
+        "name": "dev.playaural.app",
+        "host": "wss://dev.playaural.app",
+        "port": "443",
+    },
+    {
+        "server_id": "playaural_prod",
+        "name": "playaural.app",
+        "host": "wss://playaural.app",
+        "port": "443",
+    },
+]
+if not getattr(sys, "frozen", False):
+    OFFICIAL_SERVERS.append(
+        {
+            "server_id": "playaural_local",
+            "name": "Servidor local (localhost:8000)",
+            "host": "ws://localhost",
+            "port": "8000",
+        }
+    )
+
+
 class LoginDialog(wx.Dialog):
     """Login dialog with simplified flow."""
 
-    def __init__(self, parent=None, disconnect_message=None):
+    def __init__(
+        self,
+        parent=None,
+        disconnect_message=None,
+        initial_server_url=None,
+        initial_server_name=None,
+    ):
         """Initialize the login dialog."""
-        super().__init__(parent, title=Localization.get("login-title"), size=(450, 450))
+        super().__init__(parent, title=Localization.get("login-title"), size=(450, 560))
+        self._login_generation = 0
+        self._login_attempt = None
+        self._login_closed = False
+        self.Bind(wx.EVT_CLOSE, self._on_login_close)
+        self.Bind(wx.EVT_WINDOW_DESTROY, self._on_login_destroy)
 
         if disconnect_message:
-            wx.CallAfter(lambda: wx.MessageBox(
-                disconnect_message,
-                Localization.get("common-disconnected"),
-                wx.OK | wx.ICON_INFORMATION
-            ))
+            if disconnect_message != "switch_server":
+                wx.CallAfter(lambda: wx.MessageBox(
+                    disconnect_message,
+                    Localization.get("common-disconnected"),
+                    wx.OK | wx.ICON_INFORMATION
+                ))
+            else:
+                wx.CallAfter(lambda: self.server_choice.SetFocus() if hasattr(self, "server_choice") else None)
 
         # Initialize config manager
         self.config_manager = ConfigManager()
 
-        # Keep this deployment's accounts separate from the upstream service.
-        self.server_id = "marco_server"
-        if not self.config_manager.get_server_by_id(self.server_id):
-            self.config_manager.add_server("PlayAural Marco", "wss://play.marco-ml.com", "443", server_id=self.server_id)
-
-        # Local dev server toggle: only when running from source (never in a
-        # packaged/production build), so testers can point at a local server
-        # without hand-editing identities.json.
-        self.is_source_build = not getattr(sys, "frozen", False)
-        self.local_server_id = "local_dev_server"
-        if self.is_source_build:
-            if not self.config_manager.get_server_by_id(self.local_server_id):
+        # Fixed server list: dev.playaural.app and playaural.app
+        for srv in OFFICIAL_SERVERS:
+            if not self.config_manager.get_server_by_id(srv["server_id"]):
                 self.config_manager.add_server(
-                    "Local Dev Server", "localhost", "8000", server_id=self.local_server_id
+                    srv["name"],
+                    srv["host"],
+                    srv["port"],
+                    server_id=srv["server_id"],
                 )
-            # Default to local server when running directly from source code
-            self.server_id = self.local_server_id
+            else:
+                self.config_manager.update_server(
+                    srv["server_id"],
+                    name=srv["name"],
+                    host=srv["host"],
+                    port=srv["port"],
+                )
+
+        official_ids = [s["server_id"] for s in OFFICIAL_SERVERS]
+        if initial_server_url:
+            srv_id, srv_name, srv_host, srv_port = parse_server_endpoint(
+                initial_server_url,
+                default_name=initial_server_name or "Custom Server",
+            )
+            if srv_id in official_ids:
+                self.server_id = srv_id
+            else:
+                for srv in OFFICIAL_SERVERS:
+                    if srv["name"] in (initial_server_name or "") or srv["host"] in initial_server_url:
+                        self.server_id = srv["server_id"]
+                        break
+                else:
+                    self.server_id = OFFICIAL_SERVERS[0]["server_id"]
+        else:
+            last_srv = self.config_manager.get_last_server_id()
+            if last_srv in official_ids:
+                self.server_id = last_srv
+            else:
+                self.server_id = OFFICIAL_SERVERS[0]["server_id"]
 
         self.server_url = self.config_manager.get_server_url(self.server_id)
 
@@ -84,6 +145,7 @@ class LoginDialog(wx.Dialog):
         self.password = ""
         self.account_id = None
         self.auto_login = False
+        self._server_ids_in_choice = []
 
         self._create_ui()
         self.CenterOnScreen()
@@ -108,15 +170,26 @@ class LoginDialog(wx.Dialog):
         self.info_text = wx.StaticText(self.panel, label=Localization.get("login-welcome-info"))
         self.sizer.Add(self.info_text, 0, wx.ALL | wx.CENTER, 10)
 
-        # Dev-only: switch between the official server and a local dev server.
-        # Hidden entirely in packaged/production builds.
-        if self.is_source_build:
-            self.chk_local_server = wx.CheckBox(
-                self.panel, label=Localization.get("login-use-local-server")
-            )
-            self.chk_local_server.SetValue(self.server_id == self.local_server_id)
-            self.chk_local_server.Bind(wx.EVT_CHECKBOX, self.on_toggle_local_server)
-            self.sizer.Add(self.chk_local_server, 0, wx.ALL | wx.CENTER, 10)
+        # Server selection row
+        server_box = wx.BoxSizer(wx.HORIZONTAL)
+        lbl_server = wx.StaticText(self.panel, label=Localization.get("login-server-label"))
+        server_box.Add(lbl_server, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+
+        self.server_choice = wx.Choice(self.panel)
+        self._populate_server_choice()
+        self.server_choice.Bind(wx.EVT_CHOICE, self.on_server_choice_changed)
+        server_box.Add(self.server_choice, 1, wx.ALIGN_CENTER_VERTICAL)
+        self.sizer.Add(server_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
+
+        timeout_box = wx.BoxSizer(wx.HORIZONTAL)
+        timeout_box.Add(wx.StaticText(self.panel, label=Localization.get('connection-timeout-label')),
+                        0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+        self.timeout_choice = wx.Choice(self.panel, choices=[Localization.get('connection-timeout-value', seconds=value)
+                                                            for value in LOGIN_TIMEOUT_SECONDS])
+        self.timeout_choice.SetSelection(LOGIN_TIMEOUT_SECONDS.index(login_timeout(self.config_manager)))
+        self.timeout_choice.Bind(wx.EVT_CHOICE, self._on_timeout_changed)
+        timeout_box.Add(self.timeout_choice, 1)
+        self.sizer.Add(timeout_box, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
         # Content Sizers (swapped based on state)
         self.action_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -125,6 +198,11 @@ class LoginDialog(wx.Dialog):
         # Status text
         self.status_text = wx.StaticText(self.panel, label="")
         self.sizer.Add(self.status_text, 0, wx.ALL | wx.CENTER, 10)
+        self.cancel_login_button = wx.Button(self.panel, wx.ID_CANCEL, Localization.get('common-cancel'))
+        self.cancel_login_button.Bind(wx.EVT_BUTTON, self._on_cancel_login)
+        self.SetEscapeId(wx.ID_CANCEL)
+        self.cancel_login_button.Hide()
+        self.sizer.Add(self.cancel_login_button, 0, wx.ALL | wx.CENTER, 10)
         
         # Set sizer
         self.panel.SetSizer(self.sizer)
@@ -219,21 +297,98 @@ class LoginDialog(wx.Dialog):
         """Login with current cached credentials."""
         self._verify_and_login(self.username, self.password)
 
-    def on_toggle_local_server(self, event):
-        """Switch between the official and local dev server (source builds only)."""
-        use_local = self.chk_local_server.GetValue()
-        self.server_id = self.local_server_id if use_local else "marco_server"
-        self.server_url = self.config_manager.get_server_url(self.server_id)
-        self.config_manager.set_last_server(self.server_id)
-        # Refresh the account area for the newly selected server.
-        self._check_existing_account()
-        self.status_text.SetLabel(
-            Localization.get(
-                "login-server-switched",
-                server=self.config_manager.get_server_display_name(self.server_id),
+    def _populate_server_choice(self):
+        """Populate server dropdown strictly with the 2 fixed servers."""
+        self.server_choice.Clear()
+        self._server_ids_in_choice = []
+        selected_idx = 0
+        for idx, srv in enumerate(OFFICIAL_SERVERS):
+            s_id = srv["server_id"]
+            self.server_choice.Append(srv["name"])
+            self._server_ids_in_choice.append(s_id)
+            if s_id == self.server_id:
+                selected_idx = idx
+        if self._server_ids_in_choice:
+            self.server_choice.SetSelection(selected_idx)
+
+    def on_server_choice_changed(self, event):
+        """Handle server dropdown selection."""
+        self._cancel_login_attempt()
+        self._set_login_busy(False)
+        idx = self.server_choice.GetSelection()
+        if 0 <= idx < len(self._server_ids_in_choice):
+            self.server_id = self._server_ids_in_choice[idx]
+            self.server_url = self.config_manager.get_server_url(self.server_id)
+            self.config_manager.set_last_server(self.server_id)
+            self._check_existing_account()
+            self.status_text.SetLabel(
+                Localization.get(
+                    "login-server-switched",
+                    server=self.config_manager.get_server_display_name(self.server_id),
+                )
             )
+            self.panel.Layout()
+
+    def on_add_custom_server(self, event):
+        """Prompt to add a custom server address and switch to it."""
+        dlg = wx.TextEntryDialog(
+            self,
+            Localization.get("login-custom-server-url-prompt"),
+            Localization.get("login-custom-server-title"),
         )
-        self.panel.Layout()
+        apply_text_layout_direction(dlg, Localization.current_locale())
+        if dlg.ShowModal() == wx.ID_OK:
+            raw_url = dlg.GetValue().strip()
+            if raw_url:
+                name_dlg = wx.TextEntryDialog(
+                    self,
+                    Localization.get("login-custom-server-name-prompt"),
+                    Localization.get("login-custom-server-title"),
+                )
+                apply_text_layout_direction(name_dlg, Localization.current_locale())
+                custom_name = ""
+                if name_dlg.ShowModal() == wx.ID_OK:
+                    custom_name = name_dlg.GetValue().strip()
+                name_dlg.Destroy()
+
+                srv_id, srv_name, srv_host, srv_port = parse_server_endpoint(
+                    raw_url,
+                    default_name=custom_name,
+                )
+                if srv_id:
+                    self.config_manager.add_server(
+                        srv_name,
+                        srv_host,
+                        srv_port,
+                        server_id=srv_id,
+                    )
+                    self.server_id = srv_id
+                    self.server_url = self.config_manager.get_server_url(self.server_id)
+                    self.config_manager.set_last_server(self.server_id)
+                    self._populate_server_choice()
+                    self._check_existing_account()
+                    self.status_text.SetLabel(
+                        Localization.get("login-server-switched", server=srv_name)
+                    )
+                    self.panel.Layout()
+        dlg.Destroy()
+
+    def on_toggle_local_server(self, event):
+        """Legacy helper for switching server."""
+        if hasattr(self, "chk_local_server"):
+            use_local = self.chk_local_server.GetValue()
+            self.server_id = self.local_server_id if use_local else self.official_server_id
+            self.server_url = self.config_manager.get_server_url(self.server_id)
+            self.config_manager.set_last_server(self.server_id)
+            self._populate_server_choice()
+            self._check_existing_account()
+            self.status_text.SetLabel(
+                Localization.get(
+                    "login-server-switched",
+                    server=self.config_manager.get_server_display_name(self.server_id),
+                )
+            )
+            self.panel.Layout()
 
     def on_remove_account(self, event):
         """Remove current account and reset UI."""
@@ -590,6 +745,8 @@ class LoginDialog(wx.Dialog):
 
     def _verify_and_login(self, username, password):
         """Verify credentials by connecting to server, then save and exit."""
+        if self._login_attempt or self._login_closed:
+            return
         # CAPTURE UI STATE EARLY to prevent RuntimeError if dialog is closed during async call
         auto_login_val = self.auto_login
         if hasattr(self, 'chk_auto') and self.chk_auto:
@@ -599,15 +756,21 @@ class LoginDialog(wx.Dialog):
                 pass # Object deleted, use default
 
         self.status_text.SetLabel(Localization.get("login-info-verifying"))
-        self.panel.Layout()
-        wx.Yield() # Update UI
-        
-        # Check connection
-        result = self._test_connection(username, password)
-        
-        # NOTE: Dialog might have been destroyed here!
-        if not self or not self.panel: 
+        self._set_login_busy(True)
+        self._login_generation += 1
+        generation = self._login_generation
+        url, timeout = self.server_url, login_timeout(self.config_manager)
+        attempt = LoginAttempt(
+            lambda: self._async_test(username, password, server_url=url, timeout=timeout),
+            lambda result: wx.CallAfter(self._finish_login, generation, username, password, auto_login_val, result))
+        self._login_attempt = attempt
+        attempt.start()
+
+    def _finish_login(self, generation, username, password, auto_login_val, result):
+        if self._login_closed or generation != self._login_generation:
             return
+        self._login_attempt = None
+        self._set_login_busy(False)
 
         if isinstance(result, dict) and result.get("type") == "authorize_success":
             try:
@@ -688,40 +851,23 @@ class LoginDialog(wx.Dialog):
             except RuntimeError:
                 pass
 
-    def _test_connection(self, username, password):
-        """Test connection and auth synchronously (blocking UI briefly)."""
+    async def _async_test(self, username, password, *, server_url=None, timeout=None):
+        url = server_url or self.server_url
+        timeout = login_timeout(self.config_manager) if timeout is None else timeout
         try:
-            return asyncio.run(self._async_test(username, password))
-        except Exception as e:
-            print(f"Async Loop Error: {e}")
-            return False
-
-    async def _async_test(self, username, password):
-        try:
-             async with websockets.connect(self.server_url, ssl=make_ssl_context(self.server_url)) as ws:
+             async with websockets.connect(url, ssl=make_ssl_context(url), open_timeout=timeout,
+                                           ping_timeout=timeout, close_timeout=2) as ws:
                 # Send authorize
-                await ws.send(json.dumps({
+                return await authorize(ws, {
                     **client_auth_metadata(),
                     "type": "authorize",
                     "username": username,
                     "password": password,
                     "version": VERSION,
-                }))
-                
-                # Wait for response
-                try:
-                    response = await asyncio.wait_for(ws.recv(), timeout=5.0)
-                    data = json.loads(response)
-                    
-                    if data.get("type") == "authorize_success":
-                        return data
-                    elif data.get("type") == "login_failed":
-                        return data
-                    else:
-                        return "auth_failed"
-                except asyncio.TimeoutError:
-                    return "timeout"
-                    
+                }, timeout)
+
+        except asyncio.TimeoutError:
+            return 'timeout'
         except ConnectionRefusedError:
             return "refused"
         except OSError as e:
@@ -732,6 +878,48 @@ class LoginDialog(wx.Dialog):
         except Exception as e:
              # websockets.exceptions.InvalidURI, etc
              return f"error:{str(e)}"
+
+    def _on_timeout_changed(self, event):
+        index = self.timeout_choice.GetSelection()
+        if index != wx.NOT_FOUND:
+            self.config_manager.set_client_option(LOGIN_TIMEOUT_OPTION, LOGIN_TIMEOUT_SECONDS[index], create_mode=True)
+
+    def _set_login_busy(self, busy):
+        self.server_choice.Enable(not busy)
+        self.timeout_choice.Enable(not busy)
+        for item in self.action_sizer.GetChildren():
+            if item.IsWindow():
+                item.GetWindow().Enable(not busy)
+        self.cancel_login_button.Show(busy)
+        self.panel.Layout()
+        if busy:
+            self.cancel_login_button.SetFocus()
+
+    def _cancel_login_attempt(self):
+        self._login_generation += 1
+        attempt, self._login_attempt = self._login_attempt, None
+        if attempt:
+            attempt.cancel()
+
+    def _on_cancel_login(self, event):
+        if self._login_attempt:
+            self._cancel_login_attempt()
+            self._set_login_busy(False)
+            self.status_text.SetLabel(Localization.get('login-cancelled'))
+            self.server_choice.SetFocus()
+        else:
+            self.EndModal(wx.ID_CANCEL)
+
+    def _on_login_close(self, event):
+        self._login_closed = True
+        self._cancel_login_attempt()
+        event.Skip()
+
+    def _on_login_destroy(self, event):
+        if event.GetEventObject() is self:
+            self._login_closed = True
+            self._cancel_login_attempt()
+        event.Skip()
 
     def get_credentials(self):
         """Get the login credentials."""

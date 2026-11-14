@@ -97,8 +97,11 @@ class MockUser(User):
         buffer: str = "misc",
         *,
         history: bool = True,
+        interrupt: bool = False,
     ) -> None:
         data = {"text": text, "buffer": buffer}
+        if interrupt:
+            data['interrupt'] = True
         if not history:
             data["history"] = False
         self.messages.append(Message("speak", data))
@@ -178,6 +181,7 @@ class MockUser(User):
         grid_height: int = 0,
         grid_width: int = 1,
         capture_focus_context_id: str | None = None,
+        title: str | None = None,
     ) -> None:
         if capture_focus_context_id is not None:
             capture_focus_context_id = validate_menu_focus_context_id(
@@ -205,6 +209,8 @@ class MockUser(User):
             "capture_focus_context_id": capture_focus_context_id,
             "restore_focus_context_id": restore_focus_context_id,
         }
+        if title:
+            menu_data["title"] = title
         self.menus[menu_id] = menu_data
         self.messages.append(Message("show_menu", {"menu_id": menu_id, **menu_data}))
 
@@ -266,6 +272,7 @@ class MockUser(User):
         multiline: bool = False,
         read_only: bool = False,
         max_length: int | None = None,
+        translation_draft: dict[str, str] | None = None,
     ) -> None:
         editbox_data = {
             "prompt": prompt,
@@ -275,6 +282,8 @@ class MockUser(User):
             "max_length": max_length,
         }
         self.editboxes[input_id] = editbox_data
+        if translation_draft is not None:
+            editbox_data['translation_draft'] = dict(translation_draft)
         self.messages.append(
             Message("show_editbox", {"input_id": input_id, **editbox_data})
         )

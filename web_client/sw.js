@@ -1,4 +1,4 @@
-const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-20";
+const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-26";
 
 const PRECACHE_URLS = [
   "./",
@@ -8,6 +8,7 @@ const PRECACHE_URLS = [
   "./style.css",
   "./game.js",
   "./app.js",
+  "./translationDraft.js",
   "./a11y.js",
   "./audio.js",
   "./clipboard.js",
@@ -27,6 +28,8 @@ const PRECACHE_URLS = [
   "./ui/history.js",
   "./ui/collapsiblePanels.js",
   "./ui/menus.js",
+  "./ui/menuTitle.js",
+  "./ui/forumMedia.js",
   "./vendor/livekit-client.umd.js",
   "./vendor/stb-vorbis.js",
 ];
@@ -34,7 +37,14 @@ const PRECACHE_URLS = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) => Promise.all(
+        PRECACHE_URLS.map((url) => fetch(url, { cache: "no-cache" }).then((response) => {
+          if (response && response.status === 200) {
+            return cache.put(url, response);
+          }
+          return undefined;
+        })),
+      ))
       .then(() => self.skipWaiting()),
   );
 });
@@ -54,13 +64,17 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/forum-media/') || event.request.headers.has('Authorization')) {
+    return; // Private files always use network authorization, never offline cache.
+  }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     return;
   }
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-cache" })
       .then((response) => {
-        if (!response || response.status !== 200 || response.type !== "basic") {
+        if (!response || response.status !== 200 || response.type !== "basic"
+            || response.headers.get('Cache-Control')?.includes('no-store')) {
           return response;
         }
         const copy = response.clone();

@@ -39,6 +39,32 @@ class FakeElement {
   }
 }
 
+test('a full read-only multiline message starts at the top without selecting all text', async () => {
+  const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  const start = source.indexOf('  showInlineInput(packet) {');
+  const end = source.indexOf('\n  hideInlineInput()', start);
+  const show = new Function('requestAnimationFrame', `return ({${source.slice(start, end)}}).showInlineInput;`)((callback) => callback());
+  const input = () => ({ hidden: false, scrollTop: 1000, selections: [], selectedAll: false,
+    setAttribute() {}, removeAttribute() {}, focus() {},
+    select() { this.selectedAll = true; },
+    setSelectionRange(...range) { this.selections.push(range); } });
+  const textarea = input();
+  const spoken = [];
+  const app = { elements: { inlineInputValue: textarea, inlineInputText: input(),
+    inlineInput: {}, inlineInputPrompt: { setAttribute() {} } },
+    speak(text) { spoken.push(text); } };
+  const body = 'First line\n' + 'x'.repeat(63989);
+  show.call(app, { prompt: 'Message', default_value: body, multiline: true, read_only: true, max_length: 64000 });
+  assert.equal(textarea.value, body);
+  assert.equal(textarea.readOnly, true);
+  assert.deepEqual(textarea.selections, [[0, 0]]);
+  assert.equal(textarea.scrollTop, 0);
+  assert.equal(textarea.selectedAll, false);
+  assert.deepEqual(spoken, ['Message']);
+  show.call(app, { prompt: 'Edit', default_value: body, multiline: true, read_only: false, max_length: 64000 });
+  assert.equal(textarea.selectedAll, true);
+});
+
 test("read-only and legacy text menu rows are never actionable", () => {
   assert.equal(isMenuItemActionable({ id: "confirm", text: "Confirm" }), true);
   assert.equal(isMenuItemActionable({ id: "summary", read_only: true, text: "Summary" }), false);
@@ -283,9 +309,17 @@ test("message-history punctuation shortcuts keep their established dispatch", ()
     onNewestMessage: () => calls.push("newest"),
   });
 
-  for (const [key, shiftKey] of [[",", false], [".", false], ["<", true], [">", true]]) {
+  for (const [key, shiftKey, code] of [
+    [",", false, "Comma"],
+    [".", false, "Period"],
+    ["<", true, "Comma"],
+    [">", true, "Period"],
+    [";", true, "Comma"],
+    [":", true, "Period"],
+  ]) {
     keydown({
       key,
+      code,
       altKey: false,
       ctrlKey: false,
       shiftKey,
@@ -294,7 +328,64 @@ test("message-history punctuation shortcuts keep their established dispatch", ()
     });
   }
 
-  assert.deepEqual(calls, ["older", "newer", "oldest", "newest"]);
+  assert.deepEqual(calls, ["older", "newer", "oldest", "newest", "oldest", "newest"]);
+});
+
+test('Ctrl+Shift+F opens the forum while Ctrl+F keeps opening Friends', () => {
+  const menu = { contains: () => false };
+  const calls = [];
+  let keydown;
+  globalThis.document = { activeElement: menu, addEventListener(type, listener) {
+    if (type === 'keydown') keydown = listener;
+  } };
+  const store = { state: { connection: { authenticated: true },
+    currentMenu: { menuId: 'turn_menu', items: [], selection: 0 } } };
+  let modal = false;
+  installKeybinds({ store, menuView: { getElement: () => menu },
+    sendKeybind: (packet) => calls.push(packet), onOpenFriends: () => calls.push('friends'),
+    isModalOpen: () => modal });
+  const press = (shiftKey) => keydown({ key: 'F', ctrlKey: true, shiftKey, altKey: false, metaKey: false,
+    preventDefault() { calls.push('prevented'); } });
+  press(true);
+  assert.deepEqual(calls, ['prevented', { key: 'f', control: true, shift: true, alt: false, meta: false, menu_id: 'turn_menu' }]);
+  calls.length = 0;
+  press(false);
+  assert.deepEqual(calls, ['prevented', 'friends']);
+  calls.length = 0;
+  modal = true;
+  press(true);
+  assert.deepEqual(calls, []);
+  modal = false;
+  store.state.connection.authenticated = false;
+  press(true);
+  assert.deepEqual(calls, []);
+});
+
+test('forum post keys read in place, open optional text and request context without moving selection', () => {
+  const menu = { contains: () => false };
+  let keydown;
+  globalThis.document = { activeElement: menu, addEventListener(type, callback) {
+    if (type === 'keydown') keydown = callback;
+  } };
+  const calls = [];
+  const store = { state: { connection: { authenticated: true }, currentMenu: {
+    menuId:'forum_thread', selection:0, multiletterEnabled:true,
+    items:[{id:'post:7'},{id:'thread_poll'}], gridEnabled:false,
+  } } };
+  installKeybinds({ store, menuView: { getElement:() => menu, moveSelection:() => calls.push('move') },
+    sendKeybind:packet => calls.push(packet) });
+  const press = (key, shiftKey=false) => keydown({key,shiftKey,ctrlKey:false,altKey:false,metaKey:false,preventDefault(){}});
+  for (const [key, shift, expected] of [['ArrowRight',false,'right'],['Enter',false,'enter'],
+      ['Enter',true,'enter'],['ContextMenu',false,'applications'],['F10',true,'f10']]) {
+    calls.length = 0;
+    press(key, shift);
+    assert.deepEqual(calls, [{key:expected, shift, control:false, alt:false, meta:false,
+      menu_id:'forum_thread', menu_index:1, menu_item_id:'post:7'}]);
+  }
+  calls.length = 0;
+  store.state.currentMenu.selection = 1;
+  press('ArrowRight');
+  assert.deepEqual(calls, ['move']);
 });
 
 test("large grids retain accessible cells and pan on both axes", async () => {
@@ -469,4 +560,64 @@ test("table roster shortcuts preserve key and modifier dispatch", () => {
   document.activeElement = { tagName: "INPUT" };
   keydown({key: "w", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false, preventDefault() {}});
   assert.equal(packets.length, 4);
+});
+
+test("desktop global hotkeys match remapped layout for friends, chat, volume, and personal options", () => {
+  const actions = [];
+  let keydown = null;
+  const menuElement = { contains: () => true };
+  globalThis.document = {
+    activeElement: menuElement,
+    addEventListener(type, listener) {
+      if (type === "keydown") keydown = listener;
+    },
+  };
+  installKeybinds({
+    store: {
+      state: {
+        connection: { authenticated: true },
+        currentMenu: { items: [], selection: 0 },
+      },
+    },
+    menuView: { getElement: () => menuElement },
+    onOpenFriends: () => actions.push("friends"),
+    onToggleTableChat: () => actions.push("table_chat"),
+    onToggleGlobalChat: () => actions.push("global_chat"),
+    onCycleVolumeNext: () => actions.push("vol_next"),
+    onCycleVolumePrev: () => actions.push("vol_prev"),
+    onActiveVolumeDown: () => actions.push("vol_down"),
+    onActiveVolumeUp: () => actions.push("vol_up"),
+    onOpenPersonalOptions: () => actions.push("personal_options"),
+  });
+
+  const press = (key, { ctrl = false, alt = false, shift = false } = {}) => {
+    keydown({
+      key,
+      ctrlKey: ctrl,
+      altKey: alt,
+      shiftKey: shift,
+      metaKey: false,
+      preventDefault() {},
+    });
+  };
+
+  press("f", { ctrl: true });
+  press("F5");
+  press("F5", { shift: true });
+  press("F6");
+  press("F6", { shift: true });
+  press("F7");
+  press("F8");
+  press("F9");
+
+  assert.deepEqual(actions, [
+    "friends",
+    "table_chat",
+    "global_chat",
+    "vol_next",
+    "vol_prev",
+    "vol_down",
+    "vol_up",
+    "personal_options",
+  ]);
 });

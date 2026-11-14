@@ -79,9 +79,15 @@ export function installKeybinds({
   onNewerMessage,
   onOldestMessage,
   onNewestMessage,
+  onReplyToMessage,
   onToggleBufferMute,
   onToggleTableChat,
   onToggleGlobalChat,
+  onCycleVolumeNext,
+  onCycleVolumePrev,
+  onActiveVolumeDown,
+  onActiveVolumeUp,
+  onOpenPersonalOptions,
   onAmbienceDown,
   onAmbienceUp,
   onMusicDown,
@@ -141,6 +147,30 @@ export function installKeybinds({
     }
 
     if (
+      event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey
+      && event.key.toLowerCase() === 'f'
+    ) {
+      if (connected) {
+        event.preventDefault();
+        sendKeybind({ key: 'f', control: true, shift: true, alt: false, meta: false, menu_id: menu.menuId });
+      }
+      return;
+    }
+
+    if (
+      connected
+      && event.ctrlKey
+      && !event.altKey
+      && !event.shiftKey
+      && !event.metaKey
+      && event.key.toLowerCase() === "f"
+    ) {
+      event.preventDefault();
+      onOpenFriends?.();
+      return;
+    }
+
+    if (
       connected
       && event.altKey
       && !event.ctrlKey
@@ -171,11 +201,6 @@ export function installKeybinds({
       if (altKey === "p") {
         event.preventDefault();
         onPing?.();
-        return;
-      }
-      if (altKey === "f") {
-        event.preventDefault();
-        onOpenFriends?.();
         return;
       }
       if (altKey === "o") {
@@ -240,7 +265,7 @@ export function installKeybinds({
         onToggleBufferMute?.();
         return;
       }
-      if (event.key === "F6") {
+      if (event.key === "F5") {
         event.preventDefault();
         if (event.shiftKey) {
           onToggleGlobalChat?.();
@@ -249,24 +274,36 @@ export function installKeybinds({
         }
         return;
       }
+      if (event.key === "F6") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          onCycleVolumePrev?.();
+        } else {
+          onCycleVolumeNext?.();
+        }
+        return;
+      }
       if (event.key === "F7" && !event.shiftKey) {
         event.preventDefault();
-        onAmbienceDown?.();
+        if (onActiveVolumeDown) {
+          onActiveVolumeDown();
+        } else {
+          onAmbienceDown?.();
+        }
         return;
       }
       if (event.key === "F8" && !event.shiftKey) {
         event.preventDefault();
-        onAmbienceUp?.();
+        if (onActiveVolumeUp) {
+          onActiveVolumeUp();
+        } else {
+          onAmbienceUp?.();
+        }
         return;
       }
       if (event.key === "F9" && !event.shiftKey) {
         event.preventDefault();
-        onMusicDown?.();
-        return;
-      }
-      if (event.key === "F10" && !event.shiftKey) {
-        event.preventDefault();
-        onMusicUp?.();
+        onOpenPersonalOptions?.();
         return;
       }
     }
@@ -314,6 +351,68 @@ export function installKeybinds({
         menu_item_id: actionableMenuItemId(currentItem),
       });
       return;
+    }
+
+    if (
+      connected
+      && (event.key === "u" || event.key === "U")
+      && event.ctrlKey
+      && !event.altKey
+      && !event.metaKey
+      && !editing
+    ) {
+      event.preventDefault();
+      const menuIndex = menu.items.length ? menu.selection + 1 : null;
+      const currentItem = menu.items[menu.selection] || null;
+      sendKeybind({
+        key: "u",
+        control: true,
+        alt: false,
+        shift: event.shiftKey,
+        menu_id: menu.menuId,
+        menu_index: menuIndex,
+        menu_item_id: actionableMenuItemId(currentItem),
+      });
+      return;
+    }
+
+    if (
+      connected
+      && (event.key === "j" || event.key === "J")
+      && event.ctrlKey
+      && !event.altKey
+      && !event.metaKey
+      && !editing
+    ) {
+      event.preventDefault();
+      const menuIndex = menu.items.length ? menu.selection + 1 : null;
+      const currentItem = menu.items[menu.selection] || null;
+      sendKeybind({
+        key: "j",
+        control: true,
+        alt: false,
+        shift: event.shiftKey,
+        menu_id: menu.menuId,
+        menu_index: menuIndex,
+        menu_item_id: actionableMenuItemId(currentItem),
+      });
+      return;
+    }
+
+    if (connected && menuFocused && !editing && menu.menuId === 'forum_thread'
+        && actionableMenuItemId(menu.items[menu.selection])?.startsWith('post:')
+        && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const forumKey = event.key === 'Enter' ? 'enter'
+        : event.key === 'ArrowRight' && !event.shiftKey ? 'right'
+        : event.key === 'F10' && event.shiftKey ? 'f10'
+        : event.key === 'ContextMenu' && !event.shiftKey ? 'applications' : null;
+      if (forumKey) {
+        event.preventDefault();
+        sendKeybind({ key: forumKey, control: false, alt: false, meta: false, shift: event.shiftKey,
+          menu_id: menu.menuId, menu_index: menu.selection + 1,
+          menu_item_id: actionableMenuItemId(menu.items[menu.selection]) });
+        return;
+      }
     }
 
     if (menuFocused) {
@@ -414,45 +513,74 @@ export function installKeybinds({
         menuView.handleTypeNavigation(typedChar);
         return;
       }
+    }
 
-      if (!event.ctrlKey && !event.altKey && !event.metaKey) {
-        if (event.key === "[") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onFirstBuffer?.();
-          } else {
-            onPreviousBuffer?.();
-          }
-          return;
+    if (
+      (menuFocused || (connected && !editing && activeElement?.tagName !== "SELECT"))
+      && !event.ctrlKey
+      && !event.altKey
+      && !event.metaKey
+    ) {
+      if (event.key === "[" || event.key === "{" || event.code === "BracketLeft") {
+        event.preventDefault();
+        if (event.shiftKey || event.key === "{") {
+          onFirstBuffer?.();
+        } else {
+          onPreviousBuffer?.();
         }
-        if (event.key === "]") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onLastBuffer?.();
-          } else {
-            onNextBuffer?.();
-          }
-          return;
-        }
-        if (event.key === "," || event.key === "<") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onOldestMessage?.();
-          } else {
-            onOlderMessage?.();
-          }
-          return;
-        }
-        if (event.key === "." || event.key === ">") {
-          event.preventDefault();
-          if (event.shiftKey) {
-            onNewestMessage?.();
-          } else {
-            onNewerMessage?.();
-          }
-          return;
-        }
+        return;
       }
+      if (event.key === "]" || event.key === "}" || event.code === "BracketRight") {
+        event.preventDefault();
+        if (event.shiftKey || event.key === "}") {
+          onLastBuffer?.();
+        } else {
+          onNextBuffer?.();
+        }
+        return;
+      }
+      if (
+        event.key === ","
+        || event.key === "<"
+        || (event.shiftKey && event.key === ";")
+        || event.code === "Comma"
+      ) {
+        event.preventDefault();
+        if (event.shiftKey || event.key === "<" || event.key === ";") {
+          onOldestMessage?.();
+        } else {
+          onOlderMessage?.();
+        }
+        return;
+      }
+      if (
+        event.key === "."
+        || event.key === ">"
+        || (event.shiftKey && event.key === ":")
+        || event.code === "Period"
+      ) {
+        event.preventDefault();
+        if (event.shiftKey || event.key === ">" || event.key === ":") {
+          onNewestMessage?.();
+        } else {
+          onNewerMessage?.();
+        }
+        return;
+      }
+    }
+
+    if (
+      connected
+      && !editing
+      && event.ctrlKey
+      && !event.altKey
+      && !event.shiftKey
+      && !event.metaKey
+      && event.key.toLowerCase() === "r"
+    ) {
+      event.preventDefault();
+      onReplyToMessage?.();
+      return;
     }
 
     if (!menuFocused && !typing) {

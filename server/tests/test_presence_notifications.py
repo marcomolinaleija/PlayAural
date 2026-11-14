@@ -146,6 +146,7 @@ def test_privileged_friend_presence_uses_role_sound(
         expected_message,
         buffer="system",
         player=target.username,
+        player_gender="unspecified",
     )
     recipient.play_sound.assert_called_once_with(expected_sound)
 
@@ -188,6 +189,7 @@ def test_privileged_presence_respects_each_recipient_preference(
         "user-online",
         buffer="system",
         player=target.username,
+        player_gender="unspecified",
     )
     expected_sound = "onlinedev.ogg" if trust_level >= 3 else "onlineadmin.ogg"
     enabled.play_sound.assert_called_once_with(expected_sound)
@@ -221,6 +223,7 @@ def test_disabled_friend_notifications_fall_back_to_general_preference(
         "user-online",
         buffer="system",
         player=target.username,
+        player_gender="unspecified",
     )
     recipient.play_sound.assert_called_once_with("onlineadmin.ogg")
 
@@ -282,6 +285,7 @@ def test_blocks_suppress_general_and_friend_presence_notifications(presence_serv
         "user-online",
         buffer="system",
         player=alice.username,
+        player_gender="unspecified",
     )
 
 
@@ -307,6 +311,7 @@ def test_normal_friend_presence_keeps_friend_sound(presence_server):
         "friend-offline",
         buffer="system",
         player=target.username,
+        player_gender="unspecified",
     )
     recipient.play_sound.assert_called_once_with("offlinefriend.ogg")
 
@@ -425,6 +430,7 @@ async def test_admin_authorization_emits_one_event_and_handover_emits_none(
         "user-online",
         buffer="system",
         player=admin.username,
+        player_gender="unspecified",
     )
     recipient.play_sound.assert_called_once_with("onlineadmin.ogg")
 

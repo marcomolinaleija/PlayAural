@@ -98,11 +98,17 @@ def can_build(
     if any(property_states[item.id].mortgaged for item in group):
         return "monopoly-error-group-mortgaged"
     levels = [property_states[item.id].buildings for item in group]
-    if state.buildings >= 5:
+    h_per_hotel = board.development.houses_per_hotel
+    max_level = h_per_hotel + space.max_hotels
+    if state.buildings >= max_level:
         return "monopoly-error-already-hotel"
-    if state.buildings == 4:
-        if any(level < 4 for level in levels):
-            return "monopoly-error-hotels-require-four-each"
+    if state.buildings >= h_per_hotel:
+        if any(level < state.buildings for level in levels):
+            return (
+                "monopoly-error-hotels-require-four-each"
+                if state.buildings == h_per_hotel
+                else "monopoly-error-build-evenly"
+            )
         if board.development.finite_supply and bank_hotels < 1:
             return "monopoly-error-no-hotels"
         return None
@@ -132,10 +138,11 @@ def can_sell_building(
     ]
     if state.buildings != max(levels):
         return "monopoly-error-sell-evenly"
+    h_per_hotel = board.development.houses_per_hotel
     if (
         board.development.finite_supply
-        and state.buildings == 5
-        and bank_houses < 4
+        and state.buildings == h_per_hotel + 1
+        and bank_houses < h_per_hotel
     ):
         return "monopoly-error-bank-needs-four-houses"
     return None

@@ -111,6 +111,9 @@ player-replaced-by-bot = { $bot } يلعب الآن نيابةً عن { $player 
 player-reclaimed-from-bot = عاد { $player } واستعاد المقعد { GENDER_TERM($player_gender, "possessive-determiner") } من { $bot }.
 player-reclaimed-from-bot-you = عدت واستعدت مقعدك من { $bot }.
 spectator-joined = انضممتَ إلى طاولة { $host } كمتفرّج.
+table-game-in-progress = اللعبة قيد التقدم.
+spectator-watching-game = مشاهدة اللعبة.
+spectator-stopped-watching = توقفت عن مشاهدة اللعبة.
 
 spectate = المشاهدة
 now-playing = { $player } يلعب الآن.
@@ -800,6 +803,8 @@ admin-broadcast-prompt = أدخل الرسالة لبثّها لجميع الم�
 admin-broadcast-sent = تم إرسال البث إلى { $count } مستخدم.
 
 manage-motd = إدارة رسالة اليوم
+admin-switch-server = تبديل الخادم
+admin-desc-switch-server = قطع الاتصال والعودة إلى محدد الخوادم في التطبيق.
 create-update-motd = إنشاء/تحديث رسالة اليوم
 view-motd = عرض رسالة اليوم النشطة
 delete-motd = حذف رسالة اليوم
@@ -1358,3 +1363,34 @@ global-voice-chat-availability-enabled = Global voice chat has been enabled by t
 global-voice-chat-availability-disabled = Global voice chat has been temporarily disabled by the developer.
 voice-room-global-label = Global Voice Chat
 voice-global-chat-disabled = Global voice chat is currently disabled.
+# إعدادات المضيف للدردشة الصوتية على الطاولة
+voice-host-spatial-audio-option = الصوت المكاني للدردشة: { $status }
+voice-host-desc-spatial-audio = تبديل توزيع الصوت المكاني لجميع اللاعبين على هذه الطاولة
+voice-host-spatial-audio-changed = تم ضبط الصوت المكاني للدردشة على الطاولة إلى { $status }.
+voice-host-spatial-audio-broadcast = قام المضيف بضبط الصوت المكاني للدردشة على الطاولة إلى { $status }.
+voice-host-quality-option = جودة الصوت: { $quality }
+voice-host-desc-quality = تغيير ملف جودة الدردشة الصوتية بين دقة عالية (64 ك.بت/ث) وقياسي (24 ك.بت/ث)
+voice-host-quality-changed = تم ضبط جودة صوت الطاولة إلى { $quality }.
+voice-host-quality-broadcast = قام المضيف بضبط جودة صوت الطاولة إلى { $quality }.
+voice-quality-high = دقة عالية (64 ك.بت/ث)
+voice-quality-standard = قياسي (24 ك.بت/ث)
+voice-host-members-heading = المشاركون في الدردشة الصوتية للطاولة:
+
+# تفضيلات الصوت الشخصية
+voice-noise-suppression-option = عزل ضوضاء الميكروفون: { $status }
+general-desc-voice-noise-suppression = تبديل عزل الضوضاء الخلفية على الميكروفون الخاص بك
+voice-noise-suppression-changed = تم ضبط عزل ضوضاء الميكروفون إلى { $status }.
+voice-spatial-audio-option = الصوت المكاني للدردشة: { $status }
+general-desc-voice-spatial-audio = توزيع الأصوات في ستيريو استنادًا إلى مواقع المقاعد على الطاولة
+voice-spatial-audio-changed = تم ضبط الصوت المكاني للدردشة إلى { $status }.
+voice-auto-gain-option = التحكم التلقائي في مستوى صوت الميكروفون: { $status }
+general-desc-voice-auto-gain = ضبط مستوى صوت الميكروفون تلقائيًا
+voice-auto-gain-changed = تم ضبط التحكم التلقائي في صوت الميكروفون إلى { $status }.
+
+# إدارة الدردشة الصوتية العامة
+global-voice-chat-toggle-enabled = الدردشة الصوتية العامة: { $status }
+global-voice-chat-desc-toggle-enabled = تمكين أو تعطيل الدردشة الصوتية العامة على مستوى الخادم
+global-voice-chat-status-changed = أصبحت الدردشة الصوتية العامة الآن { $status }.
+global-voice-chat-quality-option = جودة الصوت العامة: { $quality }
+global-voice-chat-desc-quality = تغيير ملف جودة صوت الدردشة الصوتية العامة
+global-voice-chat-quality-changed = تم ضبط جودة الصوت العامة إلى { $quality }.

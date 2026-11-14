@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from ..audio import AudioCommand
+from ..forum.backups import ForumObjectBackups
+from ..forum.config import configured_storage
 from ..messages.localization import Localization
 from ..persistence.database import (
     Database,
@@ -79,11 +81,14 @@ class DatabaseMaintenanceUnavailableError(RuntimeError):
 def _perform_backup_worker(
     db_path: Path,
     backup_dir: Path,
+    *,
+    object_snapshot=None,
 ) -> DatabaseBackupResult:
     database = Database(db_path)
     database.connect()
     try:
-        return database.backup_database(backup_dir, purpose="manual")
+        backup = database.backup_database(backup_dir, purpose="manual")
+        return object_snapshot(backup) if object_snapshot else backup
     finally:
         database.close()
 
@@ -91,6 +96,8 @@ def _perform_backup_worker(
 def _perform_compaction_worker(
     db_path: Path,
     backup_dir: Path,
+    *,
+    object_snapshot=None,
 ) -> DatabaseCompactionOperationResult:
     database = Database(db_path)
     database.connect()
@@ -99,6 +106,8 @@ def _perform_compaction_worker(
             backup_dir,
             purpose="pre-compaction",
         )
+        if object_snapshot:
+            safety_backup = object_snapshot(safety_backup)
         logger.info(
             "Created pre-compaction database safety backup at %s",
             safety_backup.path,
@@ -115,6 +124,8 @@ def _perform_compaction_worker(
 def _perform_storage_cleanup_worker(
     db_path: Path,
     backup_dir: Path,
+    *,
+    object_snapshot=None,
 ) -> DatabaseStorageCleanupOperationResult:
     database = Database(db_path)
     database.connect()
@@ -123,6 +134,8 @@ def _perform_storage_cleanup_worker(
             backup_dir,
             purpose="pre-cleanup",
         )
+        if object_snapshot:
+            safety_backup = object_snapshot(safety_backup)
         logger.info(
             "Created pre-cleanup database safety backup at %s",
             safety_backup.path,
@@ -254,7 +267,7 @@ class ServerMaintenanceManager:
         return await self._run_operation(
             DatabaseMaintenanceKind.BACKUP,
             requested_by=requested_by,
-            worker=lambda: _perform_backup_worker(
+            worker=lambda: self._storage_worker(_perform_backup_worker,
                 self.server.db.db_path,
                 self.backup_dir,
             ),
@@ -268,7 +281,7 @@ class ServerMaintenanceManager:
         return await self._run_operation(
             DatabaseMaintenanceKind.COMPACTION,
             requested_by=requested_by,
-            worker=lambda: _perform_compaction_worker(
+            worker=lambda: self._storage_worker(_perform_compaction_worker,
                 self.server.db.db_path,
                 self.backup_dir,
             ),
@@ -323,11 +336,27 @@ class ServerMaintenanceManager:
         return await self._run_operation(
             DatabaseMaintenanceKind.CLEANUP,
             requested_by=requested_by,
-            worker=lambda: _perform_storage_cleanup_worker(
+            worker=lambda: self._storage_worker(_perform_storage_cleanup_worker,
                 self.server.db.db_path,
                 self.backup_dir,
             ),
         )
+
+    def _storage_worker(self, worker, *arguments):
+        media = getattr(getattr(self.server, 'forum_manager', None), 'media', None)
+        if media is None and not ForumObjectBackups.required(Path(self.server.db.db_path)):
+            return worker(*arguments)
+        return worker(*arguments, object_snapshot=self._complete_forum_snapshot)
+
+    def _complete_forum_snapshot(self, snapshot):
+        """Verify object bytes before cleanup or compaction may alter SQLite."""
+        media = self.server.forum_manager.media
+        backups = media.backups if media is not None else ForumObjectBackups(
+            configured_storage(self.server._forum_media_directory / 'objects',
+                               backend=self.server.forum_manager.service.files.active_backend),
+        )
+        archive = backups.capture(snapshot.path)
+        return replace(snapshot, archive_path=archive, archive_size_bytes=archive.stat().st_size)
 
     async def _run_operation(
         self,

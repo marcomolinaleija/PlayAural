@@ -48,6 +48,24 @@ def pref_field(meta: PrefMeta) -> Any:
     return field(default=meta.default, metadata={"pref_meta": meta})
 
 
+# Independent "silence while the window is unfocused" categories.
+UNFOCUSED_SILENCE_CATEGORIES: tuple[str, ...] = (
+    "game",
+    "table",
+    "invitations",
+    "system",
+    "private",
+)
+
+
+def unfocused_silence_from_data(data: dict, category: str) -> bool:
+    """Read one category, folding the retired all-or-nothing switch once."""
+    key = f"unfocused_silence_{category}"
+    if key in data:
+        return bool(data[key])
+    return bool(data.get("limit_unfocused_audio", False))
+
+
 # Declarative game-preference categories, in Game Options menu order.
 PREF_CATEGORIES: list[tuple[str, str]] = [
     ("display", "pref-category-display"),
@@ -91,6 +109,14 @@ class UserPreferences:
     sound_volume: int = 100
     ambience_volume: int = 20
     voice_volume: int = 80  # 10-100 range (not 0 to avoid complete muting)
+    voice_noise_suppression: bool = True
+    voice_spatial_audio: bool = True
+    voice_auto_gain: bool = True
+    unfocused_silence_game: bool = False
+    unfocused_silence_table: bool = False
+    unfocused_silence_invitations: bool = False
+    unfocused_silence_system: bool = False
+    unfocused_silence_private: bool = False
     desktop_audio_input_device_id: str = ""
     desktop_audio_input_device_name: str = ""
 
@@ -105,6 +131,7 @@ class UserPreferences:
     mobile_tts_voice: str = ""  # Expo Speech voice identifier
 
     # Social preferences
+    profile_privacy: str = "everyone"  # "everyone", "friends", "private"
     mute_global_chat: bool = False
     global_chat_channel: str | None = None
     mute_table_chat: bool = False
@@ -186,6 +213,14 @@ class UserPreferences:
             "sound_volume": self.sound_volume,
             "ambience_volume": self.ambience_volume,
             "voice_volume": self.voice_volume,
+            "voice_noise_suppression": self.voice_noise_suppression,
+            "voice_spatial_audio": self.voice_spatial_audio,
+            "voice_auto_gain": self.voice_auto_gain,
+            "unfocused_silence_game": self.unfocused_silence_game,
+            "unfocused_silence_table": self.unfocused_silence_table,
+            "unfocused_silence_invitations": self.unfocused_silence_invitations,
+            "unfocused_silence_system": self.unfocused_silence_system,
+            "unfocused_silence_private": self.unfocused_silence_private,
             "desktop_audio_input_device_id": self.desktop_audio_input_device_id,
             "desktop_audio_input_device_name": self.desktop_audio_input_device_name,
             "speech_mode": self.speech_mode,
@@ -194,6 +229,7 @@ class UserPreferences:
             "mobile_tts_engine": self.mobile_tts_engine,
             "mobile_tts_rate": self.mobile_tts_rate,
             "mobile_tts_voice": self.mobile_tts_voice,
+            "profile_privacy": self.profile_privacy,
             "mute_global_chat": self.mute_global_chat,
             "global_chat_channel": self.global_chat_channel,
             "mute_table_chat": self.mute_table_chat,
@@ -222,6 +258,16 @@ class UserPreferences:
             sound_volume=data.get("sound_volume", 100),
             ambience_volume=data.get("ambience_volume", 20),
             voice_volume=data.get("voice_volume", 80),
+            voice_noise_suppression=data.get("voice_noise_suppression", True),
+            voice_spatial_audio=data.get("voice_spatial_audio", True),
+            voice_auto_gain=data.get("voice_auto_gain", True),
+            unfocused_silence_game=unfocused_silence_from_data(data, "game"),
+            unfocused_silence_table=unfocused_silence_from_data(data, "table"),
+            unfocused_silence_invitations=unfocused_silence_from_data(
+                data, "invitations"
+            ),
+            unfocused_silence_system=unfocused_silence_from_data(data, "system"),
+            unfocused_silence_private=unfocused_silence_from_data(data, "private"),
             desktop_audio_input_device_id=data.get("desktop_audio_input_device_id", ""),
             desktop_audio_input_device_name=data.get(
                 "desktop_audio_input_device_name", ""
@@ -232,6 +278,7 @@ class UserPreferences:
             mobile_tts_engine=data.get("mobile_tts_engine", "system"),
             mobile_tts_rate=data.get("mobile_tts_rate", 100),
             mobile_tts_voice=data.get("mobile_tts_voice", ""),
+            profile_privacy=data.get("profile_privacy", "everyone"),
             mute_global_chat=data.get("mute_global_chat", False),
             global_chat_channel=normalize_global_chat_channel(
                 data.get("global_chat_channel")

@@ -121,6 +121,9 @@ game-cancelled-no-controller = Ván chơi đã bị hủy và bàn đã đóng v
 player-reclaimed-from-bot = { $player } đã trở lại và lấy lại chỗ { GENDER_TERM($player_gender, "possessive-determiner") } từ { $bot }.
 player-reclaimed-from-bot-you = Bạn đã trở lại và lấy lại chỗ của mình từ { $bot }.
 spectator-joined = Đã tham gia bàn của { $host } với tư cách khán giả.
+table-game-in-progress = Trận đấu đang diễn ra.
+spectator-watching-game = Đang theo dõi trận đấu.
+spectator-stopped-watching = Đã dừng theo dõi trận đấu.
 
 spectate = Xem
 now-playing = { $player } đang chơi.
@@ -783,6 +786,8 @@ communication-voice-room-label = Thoại { $channel }
 communication-voice-restricted = Bạn không thể dùng micrô trong kênh này vào lúc này.
 communication-voice-not-connected = Bạn phải kết nối trò chuyện thoại trước khi có thể dùng micrô.
 chat-invalid-message = Không thể gửi tin nhắn này vì định dạng không hợp lệ.
+chat-reply-invalid = Câu trả lời không hợp lệ. Hãy chọn lại tin nhắn trò chuyện.
+chat-reply-table-unavailable = Bạn không còn ở bàn, nên câu trả lời không được gửi vào trò chuyện bàn.
 chat-message-too-long = Tin nhắn quá dài. Mỗi tin nhắn chỉ được chứa tối đa { $limit } ký tự.
 
 report-user = Báo cáo người dùng
@@ -810,6 +815,40 @@ admin-broadcast-prompt = Nhập tin nhắn để thông báo cho tất cả ngư
 admin-broadcast-sent = Đã gửi thông báo đến { $count } người dùng.
 
 manage-motd = Quản lý thông báo ngày (MOTD)
+admin-section-users = Quản lý người dùng
+admin-desc-section-users = Quản lý phê duyệt tài khoản, thăng cấp, giáng cấp và xu.
+admin-section-moderation = Kiểm duyệt và xử phạt
+admin-desc-section-moderation = Trung tâm kiểm duyệt, báo cáo, đuổi, tắt tiếng và cấm.
+admin-section-server-content = Máy chủ và nội dung
+admin-desc-section-server-content = Thông báo chung, thông điệp trong ngày, cài đặt âm thanh và từ Infiltrado.
+admin-section-system = Bảo trì hệ thống
+admin-desc-section-system = Quản lý nguồn máy chủ, cơ sở dữ liệu và cài đặt SMTP.
+admin-switch-server = Chuyển máy chủ
+admin-desc-switch-server = Ngắt kết nối và quay lại bộ chọn máy chủ của ứng dụng.
+admin-account-approval-toggle = Yêu cầu phê duyệt tài khoản: { $status }
+admin-desc-account-approval-toggle = Khi bật, tài khoản mới đăng ký phải được quản trị viên phê duyệt thủ công trước khi truy cập máy chủ.
+admin-account-approval-toggle-feedback = Yêu cầu phê duyệt tài khoản đã đổi thành { $status }.
+admin-new-account-request = Tài khoản mới đăng ký đang chờ phê duyệt: { $username }.
+auth-registration-pending-approval = Tài khoản của bạn đã được đăng ký thành công và đang chờ quản trị viên phê duyệt.
+admin-sound-settings = Cài đặt âm thanh máy chủ
+admin-desc-sound-settings = Định cấu hình âm thanh mặc định cho các sự kiện máy chủ như tạo bàn, người chơi tham gia và tin nhắn.
+sound-events-menu-title = Sự kiện âm thanh máy chủ
+sound-picker-menu-title = Chọn âm thanh cho { $event }
+sound-event-updated = Âm thanh cho { $event } đã được cập nhật thành { $sound }.
+sound-event-table-created = Tạo bàn
+sound-event-desc-table-created = Âm thanh phát khi một bàn công khai mới được tạo trên máy chủ.
+sound-event-table-joined = Người chơi vào bàn
+sound-event-desc-table-joined = Âm thanh phát khi người chơi tham gia bàn.
+sound-event-table-left = Người chơi rời bàn
+sound-event-desc-table-left = Âm thanh phát khi người chơi rời bàn.
+sound-event-table-invite = Lời mời vào bàn
+sound-event-desc-table-invite = Âm thanh phát khi bạn nhận được lời mời tham gia bàn.
+sound-event-private-message = Tin nhắn riêng
+sound-event-desc-private-message = Âm thanh phát khi gửi hoặc nhận tin nhắn riêng.
+sound-event-friend-request = Lời mời kết bạn
+sound-event-desc-friend-request = Âm thanh phát khi bạn nhận được lời mời kết bạn.
+default-selection = mặc định
+current-selection = hiện tại
 create-update-motd = Tạo/Cập nhật MOTD
 view-motd = Xem MOTD hiện tại
 delete-motd = Xóa MOTD
@@ -945,6 +984,18 @@ profile-email = Email: { $email }
 admin-view-email = Chế độ xem của Quản trị viên - Email: { $email }
 profile-gender = Giới tính: { $gender }
 profile-bio = Giới thiệu: { $bio }
+profile-privacy-setting = Quyền riêng tư hồ sơ: { $status }
+profile-privacy-everyone = Mọi người (công khai)
+profile-privacy-friends = Chỉ bạn bè
+profile-privacy-private = Không ai (riêng tư)
+profile-privacy-menu-title = Quyền riêng tư hồ sơ
+profile-privacy-changed = Quyền riêng tư hồ sơ được đặt thành { $status }.
+general-desc-profile-privacy = Cấu hình ai có thể xem thông tin hồ sơ của bạn.
+profile-view-friends-only = Người dùng này chỉ cho phép bạn bè xem hồ sơ của họ.
+profile-view-private = Người dùng này để hồ sơ ở chế độ riêng tư.
+user-not-in-table = Người dùng này hiện không ở bàn nào.
+invite-to-table = Mời vào bàn
+host-invite-no-players = (Không có người chơi nào khả dụng để mời)
 profile-bio-empty = Chưa đặt
 profile-email-empty = Chưa đặt
 
@@ -1021,6 +1072,14 @@ gender-term-reflexive =
         [male] chính anh ấy
         [female] chính cô ấy
        *[other] chính họ
+    }
+gender-term-friend =
+    { $gender ->
+       *[other] bạn
+    }
+gender-term-friend-capitalized =
+    { $gender ->
+       *[other] Bạn
     }
 
 action-set-edit = Đặt / Chỉnh sửa
@@ -1151,6 +1210,8 @@ pm-error-self = Bạn không thể gửi tin nhắn riêng cho chính mình.
 pm-error-message-required = Hãy nhập tin nhắn riêng. Khi dùng ô trò chuyện, hãy kèm tên người dùng, ví dụ: @User xin chào.
 pm-sent-content = Bạn gửi đến { $username }: { $message }
 pm-received = Tin nhắn riêng từ { $username }: { $message }
+pm-sent-content-reply = Bạn gửi đến { $username }, trả lời { $target }: { $message }, { $quote }
+pm-received-reply = Tin nhắn riêng từ { $username } trả lời { $target }: { $message }, { $quote }
 
 host-management = Quản lý bàn
 table-spectator-suffix = (Khán giả)
@@ -1362,6 +1423,14 @@ host-game-switch-confirm-free-table = Chuyển bàn này sang bàn tự do? Mọ
 free-table-choose-game = Chọn trò chơi
 free-table-description = Mở bàn để trò chuyện bằng văn bản và giọng nói mà không bắt đầu trò chơi.
 free-table-help = Trợ giúp bàn tự do
+free-table-set-topic = Đặt chủ đề bàn
+free-table-topic-display = Chủ đề bàn: { $topic }
+free-table-prompt-topic = Nhập chủ đề mới cho bàn tự do (để trống để xóa):
+free-table-topic-changed = { $host } đã đổi chủ đề bàn thành: { $topic }.
+free-table-topic-cleared = { $host } đã xóa chủ đề bàn.
+free-table-current-topic = Chủ đề bàn: { $topic }.
+free-table-read-topic = Xem chủ đề bàn
+free-table-no-topic = Bàn tự do chưa có chủ đề.
 
 # Trò chuyện thoại chung
 global-voice-chat = Trò chuyện thoại chung
@@ -1381,3 +1450,101 @@ global-voice-chat-availability-enabled = Nhà phát triển đã bật trò chuy
 global-voice-chat-availability-disabled = Nhà phát triển đã tạm thời tắt trò chuyện thoại chung.
 voice-room-global-label = Trò chuyện thoại chung
 voice-global-chat-disabled = Trò chuyện thoại chung hiện đang bị tắt.
+# Cài đặt thoại bàn của chủ bàn
+voice-host-spatial-audio-option = Âm thanh thoại không gian: { $status }
+voice-host-desc-spatial-audio = Bật hoặc tắt định vị âm thanh không gian cho tất cả người chơi tại bàn này
+voice-host-spatial-audio-changed = Âm thanh thoại không gian của bàn được đặt thành { $status }.
+voice-host-spatial-audio-broadcast = Chủ bàn đã đặt âm thanh thoại không gian thành { $status }.
+voice-host-quality-option = Chất lượng thoại: { $quality }
+voice-host-desc-quality = Thay đổi chất lượng trò chuyện thoại giữa Độ trung thực cao (64 kbps) và Tiêu chuẩn (24 kbps)
+voice-host-quality-changed = Chất lượng thoại của bàn được đặt thành { $quality }.
+voice-host-quality-broadcast = Chủ bàn đã đặt chất lượng thoại của bàn thành { $quality }.
+voice-quality-high = Độ trung thực cao (64 kbps)
+voice-quality-standard = Tiêu chuẩn (24 kbps)
+voice-host-members-heading = Người tham gia trò chuyện thoại:
+
+# Tùy chọn âm thanh thoại cá nhân
+voice-noise-suppression-option = Khử tiếng ồn micrô: { $status }
+general-desc-voice-noise-suppression = Bật hoặc tắt tính năng khử tiếng ồn nền trên micrô của bạn
+voice-noise-suppression-changed = Khử tiếng ồn micrô được đặt thành { $status }.
+options-unfocused-silence-game-toggle = Tắt trò chơi khi cửa sổ không hoạt động: { $status }
+general-desc-unfocused-silence-game = Tắt tin nhắn và âm thanh của ván đang chơi khi cửa sổ không được chọn. Thông báo đến lượt bạn vẫn phát.
+options-unfocused-silence-game-changed = Tắt trò chơi ngoài cửa sổ được đặt thành { $status }.
+options-unfocused-silence-table-toggle = Tắt tin nhắn bàn khi cửa sổ không hoạt động: { $status }
+general-desc-unfocused-silence-table = Tắt tin nhắn trong bàn khi cửa sổ không được chọn.
+options-unfocused-silence-table-changed = Tắt tin nhắn bàn ngoài cửa sổ được đặt thành { $status }.
+options-unfocused-silence-invitations-toggle = Tắt lời mời khi cửa sổ không hoạt động: { $status }
+general-desc-unfocused-silence-invitations = Tắt lời mời vào bàn khi cửa sổ không được chọn.
+options-unfocused-silence-invitations-changed = Tắt lời mời ngoài cửa sổ được đặt thành { $status }.
+options-unfocused-silence-system-toggle = Tắt tin nhắn quản trị và hệ thống khi cửa sổ không hoạt động: { $status }
+general-desc-unfocused-silence-system = Tắt thông báo của quản trị và hệ thống khi cửa sổ không được chọn.
+options-unfocused-silence-system-changed = Tắt tin nhắn quản trị và hệ thống ngoài cửa sổ được đặt thành { $status }.
+options-unfocused-silence-private-toggle = Tắt tin nhắn riêng khi cửa sổ không hoạt động: { $status }
+general-desc-unfocused-silence-private = Tắt tin nhắn riêng khi cửa sổ không được chọn.
+options-unfocused-silence-private-changed = Tắt tin nhắn riêng ngoài cửa sổ được đặt thành { $status }.
+voice-spatial-audio-option = Âm thanh thoại không gian: { $status }
+general-desc-voice-spatial-audio = Định vị giọng nói trong không gian hai tai dựa trên vị trí ngồi tại bàn
+voice-spatial-audio-changed = Âm thanh thoại không gian được đặt thành { $status }.
+voice-auto-gain-option = Tự động điều chỉnh âm lượng micrô: { $status }
+general-desc-voice-auto-gain = Tự động điều chỉnh âm lượng đầu vào của micrô
+voice-auto-gain-changed = Tự động điều chỉnh âm lượng micrô được đặt thành { $status }.
+
+# Quản lý trò chuyện thoại chung
+global-voice-chat-toggle-enabled = Trò chuyện thoại chung: { $status }
+global-voice-chat-desc-toggle-enabled = Bật hoặc tắt trò chuyện thoại chung trên toàn máy chủ
+global-voice-chat-status-changed = Trò chuyện thoại chung hiện { $status }.
+global-voice-chat-quality-option = Chất lượng thoại chung: { $quality }
+global-voice-chat-desc-quality = Thay đổi cấu hình chất lượng âm thanh trò chuyện thoại chung
+global-voice-chat-quality-changed = Chất lượng thoại chung được đặt thành { $quality }.
+
+# User nick change
+nick-change-action = Đổi tên người dùng
+nick-change-pending-status = Đang chờ quản trị viên duyệt: đổi thành { $requested }
+nick-cooldown-counter = Thời gian chờ đổi miễn phí còn lại: { $days } ngày, { $hours } giờ và { $minutes } phút
+nick-bypass-cooldown-option = Xóa giới hạn và đổi tên ngay với { $price } xu (số dư: { $balance })
+nick-reduce-cooldown-option = Giảm thời gian chờ xuống { $days } ngày với { $price } xu (số dư: { $balance })
+nick-cooldown-already-reduced = Đã áp dụng giảm thời gian chờ xuống { $days } ngày trong kỳ này
+confirm-nick-reduce-cooldown = Bạn có muốn trả { $price } xu để giảm thời gian chờ đổi tên từ 90 xuống { $days } ngày không?
+nick-cooldown-reduced-success = Đã trừ { $price } xu. Thời gian chờ đổi tên giảm xuống { $days } ngày. Số dư: { $balance } xu.
+enter-new-nick = Nhập tên người dùng mới:
+nick-confirm-password-prompt = Vui lòng xác nhận mật khẩu của bạn để tiếp tục đổi tên thành { $new_nick }:
+nick-confirm-password-paid-prompt = Vui lòng xác nhận mật khẩu của bạn để tiếp tục đổi tên thành { $new_nick } với { $price } xu:
+nick-request-submitted = Yêu cầu đổi tên thành { $new_nick } đã được gửi và đang chờ quản trị viên duyệt.
+nick-request-submitted-paid = Đã trừ { $price } xu và gửi yêu cầu đổi tên thành { $new_nick }. Số dư: { $balance } xu.
+nick-error-insufficient-coins = Bạn không đủ xu. Cần { $required } xu nhưng hiện có { $balance }.
+nick-error-wrong-password = Mật khẩu không đúng. Chưa gửi yêu cầu đổi tên.
+nick-error-invalid = Tên mới không hợp lệ.
+nick-error-reserved = Tên này được hệ thống bảo lưu.
+nick-error-already-pending = Bạn đã có một yêu cầu đổi tên đang chờ duyệt.
+nick-error-cooldown-active = Chưa hết thời gian chờ để đổi tên miễn phí.
+nick-change-approved-user = Quản trị viên đã duyệt yêu cầu đổi tên. Tên mới của bạn là { $new_nick }.
+nick-change-approved-reconnect-user = Tên mới của bạn ({ $new_nick }) đã được quản trị viên duyệt. Sau { $seconds } giây bạn sẽ được kết nối lại với tên mới.
+nick-change-rejected-user = Yêu cầu đổi tên thành { $new_nick } đã bị từ chối. Lý do: { $reason }.
+nick-change-rejected-refunded-user = Yêu cầu đổi tên thành { $new_nick } đã bị từ chối. Lý do: { $reason }. Đã hoàn lại { $coins } xu (số dư: { $balance }).
+
+# Admin pending nick changes
+admin-pending-nick-changes = Thay đổi đang chờ
+admin-desc-pending-nick-changes = Xem xét, duyệt hoặc từ chối các yêu cầu đổi tên đang chờ.
+admin-no-pending-nick-changes = Không có yêu cầu đổi tên nào đang chờ.
+admin-nick-change-requested-notify = { $player } đã yêu cầu đổi tên thành { $new_nick }.
+admin-nick-change-row = { $old_nick } -> { $new_nick }
+admin-nick-change-row-paid = { $old_nick } -> { $new_nick } (đã trả { $coins } xu)
+admin-nick-change-row-collision = { $old_nick } -> { $new_nick } [CẢNH BÁO: trùng với { $collision }]
+admin-nick-change-row-paid-collision = { $old_nick } -> { $new_nick } (đã trả { $coins } xu) [CẢNH BÁO: trùng với { $collision }]
+admin-nick-detail-summary = Yêu cầu: đổi từ { $old_nick } thành { $new_nick }
+admin-nick-detail-free = Hình thức: đổi miễn phí tiêu chuẩn
+admin-nick-detail-paid = Hình thức: đổi trả phí ({ $coins } xu)
+admin-nick-detail-collision-warning = Cảnh báo: tên yêu cầu trùng với tài khoản hiện có ({ $collision }).
+admin-nick-approve = Duyệt thay đổi
+admin-nick-reject = Từ chối thay đổi
+admin-nick-reject-reason-prompt = Nhập lý do từ chối yêu cầu đổi tên của { $player } thành { $new_nick }:
+admin-nick-reject-reason-empty = Bạn phải nhập lý do từ chối.
+admin-nick-reject-refund-prompt = { $player } đã trả { $coins } xu cho yêu cầu này. Bạn có muốn hoàn xu khi từ chối không?
+admin-nick-reject-with-refund = Từ chối và hoàn lại { $coins } xu
+admin-nick-reject-without-refund = Từ chối không hoàn xu
+admin-nick-approved-feedback = Đã duyệt đổi tên từ { $old_nick } thành { $new_nick }.
+admin-nick-rejected-feedback = Đã từ chối đổi tên của { $player } thành { $new_nick }.
+admin-nick-rejected-refunded-feedback = Đã từ chối đổi tên của { $player } thành { $new_nick } và hoàn lại { $coins } xu.
+admin-nick-error-not-pending = Yêu cầu đổi tên này không còn ở trạng thái chờ.
+admin-nick-error-already-taken = Không thể duyệt vì tên { $new_nick } đang được tài khoản khác sử dụng.
+

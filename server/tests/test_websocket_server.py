@@ -15,6 +15,23 @@ from ..network.websocket_server import ClientConnection, WebSocketServer
 HOST = "127.0.0.1"
 
 
+@pytest.mark.asyncio
+async def test_slow_opening_handshake_is_not_cut_off_at_the_old_ten_second_default():
+    server = WebSocketServer(host=HOST, port=0)
+    original = server._process_request
+    async def slow_handshake(connection, request):
+        await asyncio.sleep(10.2)
+        return original(connection, request)
+    server._process_request = slow_handshake
+    await server.start()
+    try:
+        port = server._server.sockets[0].getsockname()[1]
+        async with websockets.connect(f'ws://{HOST}:{port}', open_timeout=30) as websocket:
+            await websocket.ping()
+    finally:
+        await server.stop()
+
+
 def _get_free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind((HOST, 0))

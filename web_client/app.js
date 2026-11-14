@@ -1,4 +1,5 @@
 import { createA11y } from "./a11y.js";
+import { TranslationDraft } from "./translationDraft.js";
 import { createAudioEngine } from "./audio.js";
 import { executeCopyDirective } from "./copy_directive.js";
 import { installKeybinds } from "./keybinds.js";
@@ -13,6 +14,8 @@ import {
   normalizeLocale,
 } from "./locales/index.js";
 import { installCollapsiblePanels } from "./ui/collapsiblePanels.js";
+import { semanticMenuTitle } from "./ui/menuTitle.js";
+import { ForumMedia } from './ui/forumMedia.js';
 import {
   BUFFER_CATEGORY_NAVIGATION_ASSET,
   BUFFER_ITEM_NAVIGATION_ASSET,
@@ -36,6 +39,13 @@ import {
   isImeCompositionKeyEvent,
   resolveTypingSoundCue,
 } from "./typing_sounds.js";
+import {
+  metadataFromChatPacket,
+  metadataFromSpeakPacket,
+  outgoingChatPacket,
+  replyChannelKey,
+  replyFormatKey,
+} from "./chatReply.js";
 import { retireVoiceRoom } from "./voice_lifecycle.js";
 
 const CLIENT_VERSION = String(window.PLAYAURAL_WEB_VERSION || "");
@@ -43,7 +53,7 @@ const WEB_CLIENT_CONFIG = window.PLAYAURAL_WEB_CONFIG || {};
 const DEFAULT_SERVER_URL = String(
   WEB_CLIENT_CONFIG.serverUrl
   || window.PLAYAURAL_SERVER_URL
-  || "wss://playaural.ddt.one:443",
+  || "wss://playaural.app:443",
 ).trim();
 const CONFIG_KEY = "playaural_config";
 const REMEMBER_KEY = "pa_remember";
@@ -1207,9 +1217,17 @@ class VoiceChatManager {
   }
 }
 
+const VOLUME_CHANNELS = [
+  { id: "sound", flatKey: "sound_volume", serverKey: "audio/sound_volume", min: 10, max: 100, step: 10, messageKey: "main-sound-volume" },
+  { id: "music", flatKey: "music_volume", serverKey: "audio/music_volume", min: 0, max: 100, step: 10, messageKey: "main-music-volume" },
+  { id: "ambience", flatKey: "ambience_volume", serverKey: "audio/ambience_volume", min: 0, max: 100, step: 10, messageKey: "main-ambience-volume" },
+  { id: "voice", flatKey: "voice_volume", serverKey: "audio/voice_volume", min: 10, max: 100, step: 10, messageKey: "main-voice-volume" },
+];
+
 class PlayAuralWebApp {
   constructor({ validator }) {
     this.validator = validator;
+    this.currentVolumeChannelIndex = 0;
     this.store = createStore();
     this.a11y = createA11y({
       politeEl: byId("live-polite"),
@@ -1259,6 +1277,17 @@ class PlayAuralWebApp {
     this.webActionsMenuId = "";
     this.focusMenuOnNextPacket = false;
     this.pendingInput = null;
+    this.translationDraft = new TranslationDraft((packet) => this.send(packet), (state) => {
+      if (this.elements.translationOriginal) {
+        this.elements.translationOriginal.textContent = state.original;
+        this.elements.translationOriginal.hidden = false;
+      }
+      if (this.elements.translationPreview) {
+        this.elements.translationPreview.textContent = state.error || state.preview;
+        this.elements.translationPreview.hidden = false;
+      }
+    });
+    this.chatReply = null;
     this.localeUpdateBarrier = null;
     this.localeUpdateGeneration = 0;
     this.pingStart = null;
@@ -1272,6 +1301,14 @@ class PlayAuralWebApp {
       || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
     ) && !window.MSStream;
     this.voice = new VoiceChatManager(this);
+    this.forumMedia = new ForumMedia({
+      isSelfVoicing: () => this.preferences.speech_mode === 'web_speech',
+      announce: (text) => this.speak(text, { noHistory: true }),
+      onPlayback: (playing) => {
+        if (playing) this.webSpeech.cancel();
+        this.audio.setExternalDucking('forum-media', playing ? { music: 0.3, ambience: 0.3 } : null);
+      },
+    });
 
     this.historyView = createHistoryView({
       store: this.store,
@@ -1302,12 +1339,16 @@ class PlayAuralWebApp {
           this.speak(text, { buffer: "misc", assertive: true, noHistory: true });
         }
       },
-      onContextAction: (item, index) => {
+      onContextAction: (item, index, trigger) => {
         if (item?.copyDirectivePresent) {
           this.activateMenuItem(item, index);
           return;
         }
-        this.sendKeybind("enter", item?.id || "", { shift: true });
+        if (this.store.state.currentMenu.menuId === 'forum_thread' && item?.id?.startsWith('post:') && trigger !== 'reader') {
+          this.sendKeybind('applications', item.id);
+        } else {
+          this.sendKeybind("enter", item?.id || "", { shift: true });
+        }
       },
       getDefaultLabel: () => Localization.get("game-menu-label"),
     });
@@ -1365,6 +1406,8 @@ class PlayAuralWebApp {
       actionsBtn: byId("actions-btn"),
       inlineInput: byId("inline-input"),
       inlineInputPrompt: byId("inline-input-prompt"),
+      translationOriginal: byId("translation-original"),
+      translationPreview: byId("translation-preview"),
       inlineInputText: byId("inline-input-text"),
       inlineInputValue: byId("inline-input-value"),
       inlineInputSubmit: byId("inline-input-submit"),
@@ -1453,8 +1496,22 @@ class PlayAuralWebApp {
     this.elements.inlineInputCancel?.addEventListener("click", () => this.cancelInlineInput());
     for (const input of [this.elements.inlineInputText, this.elements.inlineInputValue]) {
       input?.addEventListener("keydown", (event) => this.handleInlineInputKeydown(event));
+      input?.addEventListener("input", () => this.translationDraft?.change(input.value));
     }
     this.elements.chatInput?.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape"
+        && !event.altKey
+        && !event.ctrlKey
+        && !event.metaKey
+        && !event.shiftKey
+        && this.chatReply
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.cancelChatReply();
+        return;
+      }
       this.playTypingSoundForEvent(event, this.elements.chatInput);
     });
     this.elements.chatForm?.addEventListener("submit", (event) => {
@@ -1509,15 +1566,21 @@ class PlayAuralWebApp {
       onNewerMessage: () => this.historyView.newerMessage(),
       onOldestMessage: () => this.historyView.oldestMessage(),
       onNewestMessage: () => this.historyView.newestMessage(),
+      onReplyToMessage: () => this.startChatReply(),
       onToggleBufferMute: () => this.historyView.toggleCurrentBufferMute(),
       onToggleTableChat: () => this.toggleChatMute("table"),
       onToggleGlobalChat: () => this.toggleChatMute("global"),
+      onCycleVolumeNext: () => this.cycleVolumeChannel(1),
+      onCycleVolumePrev: () => this.cycleVolumeChannel(-1),
+      onActiveVolumeDown: () => this.adjustActiveVolume(-10),
+      onActiveVolumeUp: () => this.adjustActiveVolume(10),
+      onOpenPersonalOptions: () => this.openPersonalOptions(),
       onAmbienceDown: () => this.adjustVolumePreference("ambience_volume", "audio/ambience_volume", -10, 0, 100, 10),
       onAmbienceUp: () => this.adjustVolumePreference("ambience_volume", "audio/ambience_volume", 10, 0, 100, 10),
       onMusicDown: () => this.adjustVolumePreference("music_volume", "audio/music_volume", -10, 0, 100, 10),
       onMusicUp: () => this.adjustVolumePreference("music_volume", "audio/music_volume", 10, 0, 100, 10),
       onPing: () => this.sendPing(),
-      isModalOpen: () => Boolean(!this.elements.inlineInput?.hidden),
+      isModalOpen: () => Boolean(!this.elements.inlineInput?.hidden || this.forumMedia?.isOpen()),
       a11y: this.a11y,
     });
     this.installInGameTabTrap();
@@ -1646,6 +1709,77 @@ class PlayAuralWebApp {
     }
   }
 
+  applyChatReplyLabel() {
+    const label = byId("chat-input-label");
+    if (!label) {
+      return;
+    }
+    if (!this.chatReply) {
+      if (Localization.has("chat-input-label")) {
+        label.textContent = Localization.get("chat-input-label");
+      }
+      return;
+    }
+    label.textContent = Localization.get("chat-reply-started", {
+      player: this.chatReply.sender,
+      channel: Localization.get(replyChannelKey(this.chatReply.convo)),
+    });
+  }
+
+  startChatReply() {
+    const item = this.historyView.getCurrentItem?.() || null;
+    const metadata = item?.metadata;
+    const quoted = typeof metadata?.message === "string" ? metadata.message : "";
+    if (
+      !metadata
+      || metadata.kind !== "chat"
+      || !metadata.sender
+      || !quoted.trim()
+    ) {
+      this.speak(item ? "chat-reply-unavailable" : "chat-reply-empty", {
+        buffer: "system",
+        noHistory: true,
+        interrupt: true,
+      });
+      return;
+    }
+    this.chatReply = {
+      convo: metadata.convo,
+      sender: metadata.sender,
+      message: metadata.message,
+    };
+    this.applyChatReplyLabel();
+    this.focusChat();
+    this.speak("chat-reply-started", {
+      params: {
+        player: metadata.sender,
+        channel: Localization.get(replyChannelKey(metadata.convo)),
+      },
+      buffer: "system",
+      noHistory: true,
+      interrupt: true,
+    });
+  }
+
+  cancelChatReply() {
+    this.chatReply = null;
+    this.applyChatReplyLabel();
+    this.focusMenu();
+    this.speak("chat-reply-cancelled", {
+      buffer: "system",
+      noHistory: true,
+      interrupt: true,
+    });
+  }
+
+  clearChatReply() {
+    if (!this.chatReply) {
+      return;
+    }
+    this.chatReply = null;
+    this.applyChatReplyLabel();
+  }
+
   toggleVoiceChatShortcut() {
     if (this.voice.state === "connected") {
       this.voice.leave();
@@ -1688,6 +1822,38 @@ class PlayAuralWebApp {
     });
   }
 
+  getActiveVolumeChannel() {
+    const len = VOLUME_CHANNELS.length;
+    return VOLUME_CHANNELS[((this.currentVolumeChannelIndex % len) + len) % len];
+  }
+
+  speakCurrentVolumeChannel() {
+    const channel = this.getActiveVolumeChannel();
+    const value = snapNumberToStep(this.preferences[channel.flatKey] ?? channel.max, channel.min, channel.max, channel.max, channel.step);
+    const message = Localization.get(channel.messageKey, { value });
+    this.speak(message, { buffer: "system", noHistory: true });
+  }
+
+  cycleVolumeChannel(step = 1) {
+    this.currentVolumeChannelIndex = (this.currentVolumeChannelIndex + step + VOLUME_CHANNELS.length) % VOLUME_CHANNELS.length;
+    this.speakCurrentVolumeChannel();
+  }
+
+  adjustActiveVolume(delta) {
+    const channel = this.getActiveVolumeChannel();
+    this.adjustVolumePreference(channel.flatKey, channel.serverKey, delta, channel.min, channel.max, channel.step);
+  }
+
+  openPersonalOptions() {
+    if (!this.isConnected()) {
+      return;
+    }
+    if (this.store.state.currentMenu?.menuId === "personal_options_menu") {
+      return;
+    }
+    this.send({ type: "open_personal_options" });
+  }
+
   adjustVolumePreference(flatKey, serverKey, delta, min, max, step = 1) {
     const current = snapNumberToStep(this.preferences[flatKey] ?? max, min, max, max, step);
     const value = snapNumberToStep(current + delta, min, max, current, step);
@@ -1701,7 +1867,11 @@ class PlayAuralWebApp {
       ? "main-ambience-volume"
       : flatKey === "music_volume"
         ? "main-music-volume"
-        : "";
+        : flatKey === "sound_volume"
+          ? "main-sound-volume"
+          : flatKey === "voice_volume"
+            ? "main-voice-volume"
+            : "";
     const message = messageKey ? Localization.get(messageKey, { value }) : `${value}%`;
     this.speak(message, { buffer: "system", noHistory: true });
   }
@@ -1789,6 +1959,9 @@ class PlayAuralWebApp {
     }
     if (e.chatInput && Localization.has("chat-input-placeholder")) {
       e.chatInput.placeholder = Localization.get("chat-input-placeholder");
+    }
+    if (this.chatReply) {
+      this.applyChatReplyLabel();
     }
     if (e.installInstruction && this.isIOS && !this.isStandalone()) {
       e.installInstruction.textContent = Localization.get("install-fail-hint");
@@ -2419,6 +2592,7 @@ class PlayAuralWebApp {
   }
 
   cleanupRuntime(full = false) {
+    this.forumMedia?.close(false);
     this.localeUpdateGeneration += 1;
     this.localeUpdateBarrier = null;
     this.voice.cleanup(false, false);
@@ -2441,6 +2615,8 @@ class PlayAuralWebApp {
 
   clearSessionHistory() {
     this.historyView.clearHistory();
+    this.chatReply = null;
+    this.applyChatReplyLabel();
     if (this.elements.chatInput) {
       this.elements.chatInput.value = "";
     }
@@ -2471,7 +2647,7 @@ class PlayAuralWebApp {
         this.webSpeech.speak(text);
       }
     } else {
-      this.a11y.announce(text, { assertive });
+      this.a11y.announce(text, { assertive, interrupt });
     }
   }
 
@@ -2482,6 +2658,8 @@ class PlayAuralWebApp {
       assertive = false,
       noHistory = false,
       muted = false,
+      interrupt = false,
+      metadata = null,
     } = options;
     const text = Localization.has(textOrKey) ? Localization.get(textOrKey, params) : String(textOrKey || "");
     if (!text) {
@@ -2490,15 +2668,23 @@ class PlayAuralWebApp {
     const normalizedBuffer = normalizeHistoryBuffer(buffer);
     let outputAllowed = !this.historyView.isBufferMuted(normalizedBuffer);
     if (!noHistory) {
-      outputAllowed = this.historyView.addEntry(text, { buffer: normalizedBuffer, announce: false });
+      outputAllowed = this.historyView.addEntry(text, {
+        buffer: normalizedBuffer,
+        announce: false,
+        metadata,
+      });
     }
     if (muted || !outputAllowed) {
       return;
     }
     if (this.preferences.speech_mode === "web_speech") {
-      this.webSpeech.speak(text);
+      if (interrupt) {
+        this.webSpeech.speakNow(text);
+      } else {
+        this.webSpeech.speak(text);
+      }
     } else {
-      this.a11y.announce(text, { assertive });
+      this.a11y.announce(text, { assertive, interrupt });
     }
   }
 
@@ -2529,9 +2715,11 @@ class PlayAuralWebApp {
       case "speak":
         this.speak(packet.text || "", {
           buffer: normalizeHistoryBuffer(packet.buffer || "misc"),
-          assertive: packet.buffer === "system",
+          assertive: packet.buffer === "system" || packet.interrupt === true,
+          interrupt: packet.interrupt === true,
           noHistory: packet.history === false,
           muted: packet.muted === true,
+          metadata: packet.history === false ? null : metadataFromSpeakPacket(packet),
         });
         break;
       case "voice_join_info":
@@ -2540,6 +2728,14 @@ class PlayAuralWebApp {
         } else {
           this.voice.connect(packet, this.voice.joinGeneration);
         }
+        break;
+      case 'forum_file_picker':
+        this.forumMedia.choose(packet);
+        break;
+      case 'forum_open_media':
+        void this.forumMedia.open(packet).catch(() => this.speak(packet.labels?.error || '', { noHistory: true }));
+        break;
+      case 'forum_media_session':
         break;
       case "voice_join_error":
         this.handleVoiceJoinError(packet);
@@ -2556,10 +2752,22 @@ class PlayAuralWebApp {
       case "voice_settings":
         this.voice.applySettings(packet);
         break;
+      case "voice_pans":
+        break;
       case "disconnect":
         this.handleServerDisconnect(packet);
         break;
+      case "username_updated":
+        if (packet.username) {
+          this.lastUser = packet.username;
+          if (this.elements.username) {
+            this.elements.username.value = packet.username;
+          }
+          this.saveLocalConfig();
+        }
+        break;
       case "force_exit":
+      case "switch_server":
         this.handleForceExit(packet);
         break;
       case "audio":
@@ -2585,6 +2793,9 @@ class PlayAuralWebApp {
         break;
       case "request_input":
         this.showInlineInput(packet);
+        break;
+      case "translation_draft":
+        this.translationDraft?.receive(packet);
         break;
       case "remove_editbox":
         if (!packet.input_id || packet.input_id === this.pendingInput?.input_id) {
@@ -2743,6 +2954,13 @@ class PlayAuralWebApp {
   }
 
   handleServerDisconnect(packet) {
+    if (packet.username) {
+      this.lastUser = packet.username;
+      if (this.elements.username) {
+        this.elements.username.value = packet.username;
+      }
+      this.saveLocalConfig();
+    }
     if (packet.reconnect === true) {
       this.shouldReconnect = true;
       this.manualDisconnect = false;
@@ -2750,11 +2968,15 @@ class PlayAuralWebApp {
       this.cleanupRuntime();
       this.network.disconnect();
       this.store.setConnection({ authenticated: false, status: "disconnected" });
+      const immediate = packet.reconnect_immediate === true;
+      const delayMs = immediate
+        ? 200
+        : (Number(packet.reconnect_after_ms) || SERVER_RESTART_RECONNECT_DELAY_MS);
       this.startReconnectWindow({
-        initialDelayMs: SERVER_RESTART_RECONNECT_DELAY_MS,
-        statusKey: "main-reconnecting-in-3s",
-        params: { seconds: Math.round(SERVER_RESTART_RECONNECT_DELAY_MS / 1000) },
-        speak: true,
+        initialDelayMs: delayMs,
+        statusKey: immediate ? "main-reconnecting" : "main-reconnecting-in-3s",
+        params: { seconds: Math.round(delayMs / 1000) },
+        speak: !immediate,
       });
       return;
     }
@@ -2840,12 +3062,31 @@ class PlayAuralWebApp {
       shouldSpeak = shouldSpeak && this.preferences.mute_table_chat !== true;
     }
 
-    const display = historyBuffer === "private"
-      ? speakText
-      : `${prefix}: ${packet.message || ""}`;
+    const reply = packet.reply_to;
+    let replyLine = "";
+    if (
+      convo !== "announcement"
+      && reply
+      && typeof reply === "object"
+      && typeof reply.sender === "string"
+      && typeof reply.message === "string"
+    ) {
+      const destination = convo === "global" ? "global" : convo === "private" ? "private" : "table";
+      replyLine = Localization.get(replyFormatKey(destination), {
+        player: sender,
+        target: reply.sender,
+        message: packet.message || "",
+        quote: reply.message,
+      });
+      speakText = replyLine;
+    }
+
+    const display = replyLine
+      || (historyBuffer === "private" ? speakText : `${prefix}: ${packet.message || ""}`);
     const outputAllowed = this.historyView.addEntry(display, {
       buffer: historyBuffer,
       announce: false,
+      metadata: metadataFromChatPacket(packet),
     });
     if (shouldSpeak && outputAllowed) {
       if (soundFamily) {
@@ -3021,7 +3262,9 @@ class PlayAuralWebApp {
       },
     );
 
-    const title = packet.title || this.titleFromMenuId(packet.menu_id);
+    const title = packet.title || semanticMenuTitle(packet.items) || this.titleFromMenuId(packet.menu_id);
+    const menuHeading = byId('menu-heading');
+    if (menuHeading) menuHeading.textContent = packet.title || semanticMenuTitle(packet.items) || Localization.get('tab-menu');
     const shouldFocus = this.shouldFocusMenuAfterPacket(previousMenu.menuId, packet.menu_id);
     this.store.setMenu({
       menuId: packet.menu_id || null,
@@ -3092,6 +3335,7 @@ class PlayAuralWebApp {
   }
 
   activateMenuItem(item, index) {
+    this.audio.stopHandle?.("menu_item_preview");
     if (!isMenuItemActionable(item)) {
       return;
     }
@@ -3122,8 +3366,9 @@ class PlayAuralWebApp {
 
   playSelectionSound(item) {
     if (item?.sound) {
-      this.audio.playSound({ asset: item.sound });
+      this.audio.playSound({ asset: item.sound, handle: "menu_item_preview" });
     } else {
+      this.audio.stopHandle?.("menu_item_preview");
       this.audio.playSound({ asset: "menuclick.ogg", volume: 50 });
     }
     if (this.preferences.speech_mode === "web_speech" && item?.text) {
@@ -3132,6 +3377,7 @@ class PlayAuralWebApp {
   }
 
   sendEscape() {
+    this.audio.stopHandle?.("menu_item_preview");
     if (!this.isConnected()) {
       return;
     }
@@ -3298,6 +3544,10 @@ class PlayAuralWebApp {
 
   showInlineInput(packet) {
     this.pendingInput = packet;
+    for (const element of [this.elements.translationOriginal, this.elements.translationPreview]) {
+      if (element) { element.hidden = true; element.textContent = ""; }
+    }
+    this.translationDraft?.open(packet);
     const prompt = packet.prompt || packet.title || "";
     const multiline = packet.multiline === true;
     const activeInput = multiline ? this.elements.inlineInputValue : this.elements.inlineInputText;
@@ -3333,6 +3583,11 @@ class PlayAuralWebApp {
     this.speak(prompt, { buffer: "system", noHistory: true });
     requestAnimationFrame(() => {
       activeInput?.focus?.({ preventScroll: false });
+      if (activeInput?.readOnly) {
+        activeInput.setSelectionRange?.(0, 0);
+        activeInput.scrollTop = 0;
+        return;
+      }
       try {
         activeInput?.select?.();
       } catch {
@@ -3342,6 +3597,10 @@ class PlayAuralWebApp {
   }
 
   hideInlineInput() {
+    this.translationDraft?.close();
+    for (const element of [this.elements.translationOriginal, this.elements.translationPreview]) {
+      if (element) { element.hidden = true; element.textContent = ""; }
+    }
     this.pendingInput = null;
     if (this.elements.inlineInput) {
       this.elements.inlineInput.hidden = true;
@@ -3379,7 +3638,7 @@ class PlayAuralWebApp {
     this.send({
       type: "editbox",
       input_id: this.pendingInput.input_id,
-      text: "",
+      text: this.pendingInput.translation_draft ? this.getActiveInlineInputElement()?.value || "" : "",
       cancelled: true,
     });
     this.hideInlineInput();
@@ -3393,6 +3652,9 @@ class PlayAuralWebApp {
     }
     if (raw.startsWith("/")) {
       this.handleChatCommand(raw);
+    } else if (this.chatReply) {
+      this.send(outgoingChatPacket(raw, this.chatReply));
+      this.clearChatReply();
     } else if (raw.startsWith(".")) {
       const message = raw.slice(1).trim();
       if (message) {
