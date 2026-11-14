@@ -1,4 +1,5 @@
 FROM ghcr.io/astral-sh/uv@sha256:08477888ac23d6cfbeb8c7dc6fc70cf297fd38b7bf35522be33ce832750ca242
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY server /app/server
 COPY LICENSE THIRD_PARTY_NOTICES.md /app/
