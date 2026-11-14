@@ -83,6 +83,20 @@ PlayAural currently supports the following languages:
 Community translators should follow [TRANSLATING.md](TRANSLATING.md). Partial
 translations are supported safely: missing strings and missing translated
 documentation fall back to English rather than displaying raw translation keys.
+Spanish is the required source language for new work in this fork.
+
+Contribute from **Personal and options → Contribute → Translations**, including
+while seated at a table. The shared editor offers original/translation fields,
+automatic private drafts, live examples, missing texts, language proposals and
+submission for review. Administrators and developers review from
+**Administration → Review translations**, grouped by language and contributor.
+Admins grant language-scoped translator roles in **Administration → Manage
+translators**; assigned translators review from **Personal and options →
+Contribute → Review translations**, without moderation permissions. Temporary
+reservations prevent duplicate work while preserving private drafts.
+Approval credits the contributor and
+stages the work for the next coordinated update. See **Documentation →
+Translations** and [the workflow guide](TRANSLATING.md).
 
 ## Repository Layout
 

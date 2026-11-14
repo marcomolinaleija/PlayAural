@@ -206,7 +206,7 @@ def test_v11_migration_keeps_message_poll_votes_notifications_and_reading_state(
     db.close()
     db.connect(migration_backup_dir=tmp_path / 'backups')
     try:
-        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == 12
+        assert db._conn.execute('PRAGMA user_version').fetchone()[0] == Database.CURRENT_SCHEMA_VERSION
         for name, rows in before.items():
             assert [tuple(row) for row in db._conn.execute(f'SELECT * FROM {name} ORDER BY rowid')] == rows
         assert not db._conn.execute('PRAGMA foreign_key_check').fetchall()

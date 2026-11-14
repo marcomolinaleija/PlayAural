@@ -1,4 +1,4 @@
-const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-25";
+const CACHE_NAME = "playaural-web-v1.0.5.3+marco.1-shell-26";
 
 const PRECACHE_URLS = [
   "./",
@@ -8,6 +8,7 @@ const PRECACHE_URLS = [
   "./style.css",
   "./game.js",
   "./app.js",
+  "./translationDraft.js",
   "./a11y.js",
   "./audio.js",
   "./clipboard.js",

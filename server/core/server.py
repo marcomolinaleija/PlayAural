@@ -169,6 +169,8 @@ from ..menu_pagination import (
 )
 from ..documentation.manager import DocumentationManager
 from ..forum.manager import ForumManager
+from ..translations.controller import TranslationController
+from ..translations.navigation import MENU_IDS as TRANSLATION_MENU_IDS
 from ..forum.media_http import ForumMediaHTTP
 from ..administration.files import (
     MENU_IDS as FILE_ADMIN_MENU_IDS,
@@ -519,6 +521,7 @@ class Server:
     # Global menus handled directly by the server, even if the user is sitting at a table.
     # This prevents active games from swallowing interactions meant for global overlays (like options or online list).
     GLOBAL_SYSTEM_MENUS = {
+        *TRANSLATION_MENU_IDS,
         *FORUM_MENU_IDS,
         "main_menu", "personal_options_menu", "games_menu", "tables_menu",
         "game_category_filter_menu", "active_tables_menu", "active_tables_filter_menu",
@@ -678,6 +681,7 @@ class Server:
         # Initialize admin manager
         self.admin_manager = AdministrationManager(self)
         self.forum_manager = ForumManager(self)
+        self.translations = TranslationController(self)
         # Backups still need the object store when HTTP uploads are disabled.
         self._forum_media_directory = Path(forum_media_dir or Path(db_path).with_suffix('.forum-media')).resolve()
         if forum_media_url:
@@ -926,6 +930,7 @@ PlayAural Server
         )
         try:
             self._prune_obsolete_game_data()
+            await asyncio.to_thread(lambda: self.translations.service.catalog)
             self._load_persistent_server_settings()
             self._auth = AuthManager(self._db)
 
@@ -2002,6 +2007,8 @@ PlayAural Server
 
         if packet_type == "menu":
             await self._handle_menu(client, packet)
+        elif packet_type == 'translation_draft':
+            self.translations.save_live_draft(user, packet)
         elif packet_type == 'forum_media_session' and self.forum_manager.media:
             try:
                 user.queue_protocol_packet({'type': 'forum_media_session', **self.forum_manager.media.credentials(user)})
@@ -2660,6 +2667,7 @@ PlayAural Server
         # Process Offline Notifications exactly once when they enter active state
         self._process_offline_notifications(user)
         self.forum_manager.notifications.deliver(user)
+        self.translations.notify(user)
 
         if not restored_game:
             # Not in an active game (or was a spectator); restore the user's
@@ -6907,7 +6915,9 @@ PlayAural Server
             return
 
         # Handle menu selections based on current menu
-        if current_menu in FORUM_MENU_IDS:
+        if current_menu in TRANSLATION_MENU_IDS:
+            self.translations.handle(user, selection_id, state)
+        elif current_menu in FORUM_MENU_IDS:
             self.forum_manager.handle_menu(user, selection_id, state)
         elif current_menu == "main_menu":
             await self._handle_main_menu_selection(user, selection_id)
@@ -7402,6 +7412,7 @@ PlayAural Server
                 id="options",
                 description_key="general-desc-general-options",
             ),
+            MenuItem(text=Localization.get(user.locale, 'translation-collaborate'), id='collaborate'),
             MenuItem(text=Localization.get(user.locale, "back"), id="back")
         ]
         user.show_menu(
@@ -7425,6 +7436,8 @@ PlayAural Server
             self._nav_push(user, self._show_my_stats_menu)
         elif selection_id == "options":
             self._nav_push(user, self._show_options_menu)
+        elif selection_id == 'collaborate':
+            self._nav_push(user, self.translations.collaborate)
         elif selection_id == "back":
             self._nav_back(user)
 
@@ -18172,6 +18185,9 @@ PlayAural Server
                         self._show_main_menu(user)
                 return
 
+        if current_menu in TRANSLATION_MENU_IDS:
+            self.translations.handle_input(user, packet, user_state)
+            return
         if current_menu in FORUM_MENU_IDS:
             self.forum_manager.handle_input(user, packet, user_state)
             return
@@ -19097,7 +19113,10 @@ PlayAural Server
 
     def _get_user_role_and_client_text(self, locale: str, user: NetworkUser) -> tuple[str, str]:
         """Get localized role and client type text for a user."""
-        role_key = f"user-role-{self._get_user_role(user.trust_level)}"
+        role = self._get_user_role(user.trust_level)
+        if role == 'user' and self.translations.service.roles.is_translator(user.uuid):
+            role = 'translator'
+        role_key = f"user-role-{role}"
         role_text = Localization.get(locale, role_key)
 
         # Client
@@ -19789,7 +19808,9 @@ PlayAural Server
                 self._restore_menu_focus(user, frame)
             return  # IN_GAME_OVERLAY_MENUS manage their own state
         # For all other menus: call show function then re-inject stack
-        if menu in FORUM_MENU_IDS:
+        if menu in TRANSLATION_MENU_IDS:
+            self.translations.restore(user, frame)
+        elif menu in FORUM_MENU_IDS:
             self.forum_manager.restore(user, frame)
         elif menu == "main_menu":
             self._show_main_menu(user)

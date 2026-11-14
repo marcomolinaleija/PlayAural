@@ -1,4 +1,5 @@
 import { forumPacketDefinition } from './ui/forumMedia.js';
+import { translationPacketDefinition } from './translationDraft.js';
 
 function checkType(value, typeName) {
   if (typeName === "string") return typeof value === "string";
@@ -42,7 +43,9 @@ function refNameFromMapping(ref) {
 }
 
 const OPTIONAL_PROTOCOL_FIELDS = {
+  client_to_server: { editbox: { cancelled: { type: "boolean" } } },
   server_to_client: {
+    request_input: { translation_draft: { type: "object" } },
     menu: { title: { type: "string" } },
     update_menu: { title: { type: "string" } },
     speak: {
@@ -70,7 +73,7 @@ export function createPacketValidator(schema) {
     }
 
     const ref = mappingByDir[direction][packet.type];
-    const extension = forumPacketDefinition(packet.type, direction);
+    const extension = forumPacketDefinition(packet.type, direction) || translationPacketDefinition(packet.type, direction);
     if (!ref && !extension) {
       return { ok: false, error: `Unknown ${direction} packet type: ${packet.type}` };
     }

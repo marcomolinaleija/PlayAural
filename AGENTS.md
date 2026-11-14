@@ -6,9 +6,26 @@ conflict, follow `CLAUDE.md` and update `AGENTS.md`.
 
 ## Project
 
+Collaborative translations live in `server/translations/`, with shared server
+menus and existing editboxes on all clients. Keep drafts private, authorize
+review against current DB roles, prohibit self-review, and bind every mutation
+to proposal/source/accepted revisions. Live draft previews are input-token bound
+and must never alter global catalogs, speech queues, focus, games or table voice.
+Approval stages work for a coordinated release; the read-only exporter creates a
+checked ZIP with metadata/registries. Schema 14 uses backed-up central migration
+and UUID relations; account deletion removes open work and anonymizes decisions.
+Translator roles are language-scoped capabilities, granted/revoked by current
+DB administrators/developers; never raise moderation trust for a translator.
+Recheck scope on lists, reads and decisions, and reject self-review. Review
+groups by language and author UUID. Reserve only on editing; claims expire after
+24 hours without activity, pending submissions hold until a decision/withdrawal.
+Release preserves drafts. Claim/save/submit and lease checks share one immediate
+transaction. Never expose another author's unsubmitted work through reservations.
+See `devdoc/translation-workbench.md` and `TRANSLATING.md`.
+
 The native forum lives in `server/forum/`: keep schema, repository, service,
 navigation, composing, and presentation separate. It shares account UUIDs,
-approval/moderation/block rules, the central SQLite lifecycle (schema v12), and
+approval/moderation/block rules, the central SQLite lifecycle (schema v14), and
 the existing menu/input/speech protocol across desktop, web, and mobile.
 On thread post rows, Right speaks the complete body in place without history
 storage or a menu/input transition. Enter opens the only attached poll/file or

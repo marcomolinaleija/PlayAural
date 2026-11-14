@@ -15,6 +15,7 @@ class PacketType(Enum):
     KEYBIND = "keybind"
     ESCAPE = "escape"
     EDITBOX = "editbox"
+    TRANSLATION_DRAFT = "translation_draft"
     CHAT = "chat"
 
     # Server to client

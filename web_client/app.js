@@ -1,4 +1,5 @@
 import { createA11y } from "./a11y.js";
+import { TranslationDraft } from "./translationDraft.js";
 import { createAudioEngine } from "./audio.js";
 import { executeCopyDirective } from "./copy_directive.js";
 import { installKeybinds } from "./keybinds.js";
@@ -1276,6 +1277,16 @@ class PlayAuralWebApp {
     this.webActionsMenuId = "";
     this.focusMenuOnNextPacket = false;
     this.pendingInput = null;
+    this.translationDraft = new TranslationDraft((packet) => this.send(packet), (state) => {
+      if (this.elements.translationOriginal) {
+        this.elements.translationOriginal.textContent = state.original;
+        this.elements.translationOriginal.hidden = false;
+      }
+      if (this.elements.translationPreview) {
+        this.elements.translationPreview.textContent = state.error || state.preview;
+        this.elements.translationPreview.hidden = false;
+      }
+    });
     this.chatReply = null;
     this.localeUpdateBarrier = null;
     this.localeUpdateGeneration = 0;
@@ -1395,6 +1406,8 @@ class PlayAuralWebApp {
       actionsBtn: byId("actions-btn"),
       inlineInput: byId("inline-input"),
       inlineInputPrompt: byId("inline-input-prompt"),
+      translationOriginal: byId("translation-original"),
+      translationPreview: byId("translation-preview"),
       inlineInputText: byId("inline-input-text"),
       inlineInputValue: byId("inline-input-value"),
       inlineInputSubmit: byId("inline-input-submit"),
@@ -1483,6 +1496,7 @@ class PlayAuralWebApp {
     this.elements.inlineInputCancel?.addEventListener("click", () => this.cancelInlineInput());
     for (const input of [this.elements.inlineInputText, this.elements.inlineInputValue]) {
       input?.addEventListener("keydown", (event) => this.handleInlineInputKeydown(event));
+      input?.addEventListener("input", () => this.translationDraft?.change(input.value));
     }
     this.elements.chatInput?.addEventListener("keydown", (event) => {
       if (
@@ -2780,6 +2794,9 @@ class PlayAuralWebApp {
       case "request_input":
         this.showInlineInput(packet);
         break;
+      case "translation_draft":
+        this.translationDraft?.receive(packet);
+        break;
       case "remove_editbox":
         if (!packet.input_id || packet.input_id === this.pendingInput?.input_id) {
           if (this.pendingInput) {
@@ -3527,6 +3544,10 @@ class PlayAuralWebApp {
 
   showInlineInput(packet) {
     this.pendingInput = packet;
+    for (const element of [this.elements.translationOriginal, this.elements.translationPreview]) {
+      if (element) { element.hidden = true; element.textContent = ""; }
+    }
+    this.translationDraft?.open(packet);
     const prompt = packet.prompt || packet.title || "";
     const multiline = packet.multiline === true;
     const activeInput = multiline ? this.elements.inlineInputValue : this.elements.inlineInputText;
@@ -3576,6 +3597,10 @@ class PlayAuralWebApp {
   }
 
   hideInlineInput() {
+    this.translationDraft?.close();
+    for (const element of [this.elements.translationOriginal, this.elements.translationPreview]) {
+      if (element) { element.hidden = true; element.textContent = ""; }
+    }
     this.pendingInput = null;
     if (this.elements.inlineInput) {
       this.elements.inlineInput.hidden = true;
@@ -3613,7 +3638,7 @@ class PlayAuralWebApp {
     this.send({
       type: "editbox",
       input_id: this.pendingInput.input_id,
-      text: "",
+      text: this.pendingInput.translation_draft ? this.getActiveInlineInputElement()?.value || "" : "",
       cancelled: true,
     });
     this.hideInlineInput();

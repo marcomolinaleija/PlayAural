@@ -232,6 +232,7 @@ type InputState = {
   multiline: boolean;
   prompt: string;
   readOnly: boolean;
+  translationDraft?: { token: string; original: string };
 };
 
 type InputOverlayFocus = 0 | 1;
@@ -630,6 +631,9 @@ export function PlayAuralApp() {
     setDialogValue(nextState);
   }, []);
   const [inputValue, setInputValue] = useState("");
+  const inputValueRef = useRef("");
+  const [translationPreview, setTranslationPreview] = useState("");
+  const translationSequenceRef = useRef({ token: "", sequence: 0, lastValue: "" });
   const [inputOverlayFocus, setInputOverlayFocus] = useState<InputOverlayFocus>(0);
   const [appState, setAppState] = useState(AppState.currentState);
   const [chatDraft, setChatDraft] = useState("");
@@ -797,6 +801,10 @@ export function PlayAuralApp() {
   useEffect(() => {
     inputStateRef.current = inputState;
   }, [inputState]);
+
+  useEffect(() => {
+    inputValueRef.current = inputValue;
+  }, [inputValue]);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -2849,7 +2857,10 @@ export function PlayAuralApp() {
             multiline: inputPacket.multiline ?? false,
             prompt: inputPacket.prompt,
             readOnly: inputPacket.read_only ?? false,
+            translationDraft: inputPacket.translation_draft,
           });
+          translationSequenceRef.current = { token: inputPacket.translation_draft?.token || "", sequence: 0, lastValue: inputPacket.default_value || "" };
+          setTranslationPreview("");
           setInputOverlayFocus(0);
           setInputValue(inputPacket.default_value || "");
           announceInterfaceFeedback(localization.t("input-opened"));
@@ -2857,6 +2868,15 @@ export function PlayAuralApp() {
             requestAnimationFrame(() => {
               inputOverlayInputRef.current?.focus();
             });
+          }
+          return;
+        }
+
+        if (packet.type === "translation_draft") {
+          const draft = inputStateRef.current?.translationDraft;
+          if (draft?.token === packet.token && packet.sequence === translationSequenceRef.current.sequence) {
+            const preview = packet.error || packet.preview || "";
+            setTranslationPreview(typeof preview === "string" ? preview : "");
           }
           return;
         }
@@ -3124,6 +3144,17 @@ export function PlayAuralApp() {
   }, [localization, voiceState, voiceStatusText]);
 
   const connection = connectionRef.current;
+  useEffect(() => {
+    const draft = inputState?.translationDraft;
+    if (!draft || inputState.readOnly || !connection || inputValue === translationSequenceRef.current.lastValue) return;
+    const timer = setTimeout(() => {
+      if (inputStateRef.current?.translationDraft?.token !== draft.token) return;
+      translationSequenceRef.current.lastValue = inputValue;
+      connection.send({ type: "translation_draft", input_id: inputState.inputId, token: draft.token,
+        sequence: ++translationSequenceRef.current.sequence, text: inputValue });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [connection, inputState, inputValue]);
   const getHistoryBufferOptionName = (buffer: BufferName): string => {
     const name = localization.t(`buffer-${buffer}`);
     return buffers.isMuted(buffer)
@@ -4246,10 +4277,11 @@ export function PlayAuralApp() {
     if (!currentInput) {
       return;
     }
-    connection?.send({
-      menu_id: currentInput.inputId || undefined,
-      type: "escape",
-    });
+    if (currentInput.translationDraft) {
+      connection?.send({ type: "editbox", input_id: currentInput.inputId, text: inputValueRef.current, cancelled: true });
+    } else {
+      connection?.send({ menu_id: currentInput.inputId || undefined, type: "escape" });
+    }
     clearInputOverlay();
     announceInterfaceFeedback(localization.t("input-cancelled"));
   };
@@ -4259,6 +4291,7 @@ export function PlayAuralApp() {
       return;
     }
     if (inputState.readOnly) {
+      connection?.send({ type: "editbox", input_id: inputState.inputId, text: "", cancelled: true });
       clearInputOverlay();
       return;
     }
@@ -6352,6 +6385,9 @@ export function PlayAuralApp() {
           <View style={styles.inputOverlayScreen}>
             <ScrollView {...inputScroll} style={styles.dialogScroll} contentContainerStyle={styles.inputOverlayCard}>
               <Text style={[styles.panelTitle, localeTextDirectionStyle]}>{inputState.prompt}</Text>
+              {inputState.translationDraft ? (
+                <Text style={[styles.subtitle, localeTextDirectionStyle]}>{inputState.translationDraft.original}</Text>
+              ) : null}
               <View
                 style={[
                   styles.inputOverlayFocusRing,
@@ -6382,6 +6418,9 @@ export function PlayAuralApp() {
                   value={inputValue}
                 />
               </View>
+              {inputState.translationDraft && translationPreview ? (
+                <Text accessibilityLiveRegion="none" style={[styles.subtitle, localeTextDirectionStyle]}>{translationPreview}</Text>
+              ) : null}
               <Pressable
                 accessibilityLabel={inputOverlayButtonText}
                 accessibilityRole="button"

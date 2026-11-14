@@ -60,6 +60,11 @@ from ..forum.schema import (
     create_schema as create_forum_schema,
     erase_account as erase_forum_account,
 )
+from ..translations.schema import (
+    CHECK_CONSTRAINTS as TRANSLATION_CHECK_CONSTRAINTS,
+    create_schema as create_translation_schema,
+    erase_account as erase_translation_account,
+)
 from ..users.roles import (
     ADMIN_TRUST_LEVEL,
     DEVELOPER_TRUST_LEVEL,
@@ -479,7 +484,7 @@ class Database:
     )
     SQLITE_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
     APPLICATION_ID = 0x50415552  # "PAUR"
-    CURRENT_SCHEMA_VERSION = 12
+    CURRENT_SCHEMA_VERSION = 14
     # Window functions are the newest SQLite syntax used by the persistence
     # layer. They were added in SQLite 3.25.0; AlmaLinux 8's supported 3.26.0
     # runtime satisfies this baseline without relying on newer aliases such as
@@ -516,6 +521,7 @@ class Database:
     )
     SCHEMA_REQUIRED_TABLE_SQL_FRAGMENTS = {
         **FORUM_CHECK_CONSTRAINTS,
+        **TRANSLATION_CHECK_CONSTRAINTS,
         "user_blocks": ("CHECK (blocker_id != blocked_id)",),
         "global_chat_messages": (
             "CHECK (sender_uuid != '')",
@@ -1605,7 +1611,7 @@ class Database:
         # protects that identity. Version six combines wallets and forums. All supported
         # layouts migrate through one backed-up transaction into the strict
         # current contract.
-        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}:
+        if schema_version not in {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}:
             raise sqlite3.DatabaseError(
                 f"no migration path exists from schema version {schema_version}"
             )
@@ -1910,7 +1916,7 @@ class Database:
         self,
         *,
         include_forum: bool = True,
-        forum_version: int = 12,
+        forum_version: int = 14,
     ) -> tuple[
         dict[str, dict[str, _ColumnAttributes]],
         dict[str, _NamedIndexAttributes],
@@ -2418,7 +2424,7 @@ class Database:
         cursor.execute(f"DROP TABLE {self._quote_identifier(legacy_table_name)}")
 
     def _create_tables_in_transaction(self, cursor: sqlite3.Cursor, *, include_forum: bool = True,
-                                      forum_version: int = 12) -> None:
+                                      forum_version: int = 14) -> None:
         """Create and migrate the schema inside the caller's transaction."""
 
         source_schema_version = int(
@@ -2836,6 +2842,8 @@ class Database:
 
         if include_forum:
             create_forum_schema(cursor, version=forum_version)
+        if forum_version >= 13:
+            create_translation_schema(cursor, version=forum_version)
 
     def _ensure_column(
         self,
@@ -4980,6 +4988,7 @@ class Database:
         with self._transaction(immediate=True) as cursor:
             # Delete dependent data using explicit soft keys (username/uuid).
             erase_forum_account(cursor, user.uuid)
+            erase_translation_account(cursor, user.uuid)
             cursor.execute(
                 "DELETE FROM player_game_stats WHERE player_id = ?",
                 (user.uuid,),
